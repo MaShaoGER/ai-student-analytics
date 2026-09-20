@@ -1,0 +1,36 @@
+# macOS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+coverage/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Local databases and generated files
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# Large or externally sourced datasets
+oulad.zip
+oulad_raw/*.csv
+*.parquet
+*.arrow
+
