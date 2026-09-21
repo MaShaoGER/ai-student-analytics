@@ -15,6 +15,40 @@
 
 - [AI学生数据分析系统开发路线图.md](AI学生数据分析系统开发路线图.md)：产品、架构、开发计划和验收标准。
 - `oulad_raw/OULAD.names`：OULAD 数据字段说明。
+- `app/`、`components/`、`lib/`：Next.js 页面、图表和受控 DuckDB 分析链路。
+- `data/sample/`、`data/schema/`：虚构演示数据、数据字典和冻结的指标口径。
+- `docs/`：架构、工具契约、演示问题和验收基准。
+
+## 本地运行
+
+环境要求：Node.js 20.9+、pnpm 11+。
+
+```bash
+pnpm install
+pnpm dev
+```
+
+浏览器打开 `http://localhost:3000`，选择模拟校园数据后即可运行平均成绩、活跃次数或完成率分析。项目会优先读取 `data/sample/`；如果 `oulad_raw/` 中存在本地 OULAD CSV，也会在数据集选择器中显示。
+
+页面内置 10 个经过回归验证的固定问题，不需要模型密钥即可运行。要启用其他自然语言问题，将 `.env.example` 复制为 `.env.local`，填写仅供服务端读取的 `OPENAI_API_KEY` 和 `OPENAI_MODEL`，再重启开发服务。模型只生成受限的 `AnalysisPlan`，不能提供文件路径或执行任意 SQL。
+
+验证命令：
+
+```bash
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+首次部署时必须使用带有 DuckDB 原生依赖的 Node.js 服务端运行时，不能把分析模块打包到浏览器端。
+
+有 Docker 环境时可以直接启动可复现的服务端：
+
+```bash
+docker compose up --build
+```
+
+`oulad_raw/` 会以只读卷挂载；没有 OULAD 文件时，模拟校园数据仍可完整运行。
 
 ## 数据说明
 

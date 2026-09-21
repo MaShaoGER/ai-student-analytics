@@ -9,6 +9,7 @@ node_modules/
 out/
 dist/
 coverage/
+*.tsbuildinfo
 
 # Python
 __pycache__/
@@ -33,4 +34,3 @@ oulad.zip
 oulad_raw/*.csv
 *.parquet
 *.arrow
-

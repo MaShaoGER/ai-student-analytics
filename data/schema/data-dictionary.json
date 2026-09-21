@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "dataset": "student_learning_demo",
+  "description": "用于演示的虚构学生学习数据，不包含真实个人信息。",
+  "tables": {
+    "learning_activity": {
+      "grain": "学生-课程-开课期-周次",
+      "fields": {
+        "id_student": { "type": "string", "description": "匿名学生编号", "sensitive": true },
+        "code_module": {
+          "type": "string",
+          "description": "课程代码",
+          "analysisDimension": "course"
+        },
+        "code_presentation": {
+          "type": "string",
+          "description": "开课期代码",
+          "analysisDimension": "term"
+        },
+        "week": { "type": "integer", "description": "相对课程开始周次" },
+        "activity_count": { "type": "integer", "description": "该周学习资源访问次数" }
+      }
+    },
+    "student_outcomes": {
+      "grain": "学生-课程-开课期",
+      "fields": {
+        "id_student": { "type": "string", "description": "匿名学生编号", "sensitive": true },
+        "code_module": {
+          "type": "string",
+          "description": "课程代码",
+          "analysisDimension": "course"
+        },
+        "code_presentation": {
+          "type": "string",
+          "description": "开课期代码",
+          "analysisDimension": "term"
+        },
+        "score": { "type": "number", "description": "0 到 100 的课程成绩" },
+        "completed": { "type": "integer", "description": "是否完成课程，1 是，0 否" }
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+.git
+.next
+node_modules
+coverage
+oulad.zip
+oulad_raw/*.csv
+*.log

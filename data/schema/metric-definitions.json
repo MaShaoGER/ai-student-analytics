@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "metrics": {
+    "score": {
+      "label": "平均成绩",
+      "unit": "分",
+      "formula": "AVG(student_outcomes.score)",
+      "grain": "学生-课程-开课期",
+      "minimumSampleSize": 3,
+      "allowedDimensions": ["course", "term"]
+    },
+    "activity": {
+      "label": "活跃次数",
+      "unit": "次",
+      "formula": "SUM(learning_activity.activity_count)",
+      "grain": "学生-课程-开课期-周次",
+      "minimumSampleSize": 3,
+      "allowedDimensions": ["course", "term"]
+    },
+    "completion_rate": {
+      "label": "完成率",
+      "unit": "%",
+      "formula": "AVG(student_outcomes.completed) * 100",
+      "grain": "学生-课程-开课期",
+      "minimumSampleSize": 3,
+      "allowedDimensions": ["course", "term"]
+    }
+  }
+}
