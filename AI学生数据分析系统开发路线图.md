@@ -61,7 +61,7 @@
 | P0 | 自建模拟校园数据 | 演示、测试和公开仓库 | 使用虚构学生编号，不对应真实人员 |
 | P2 | 学校真实脱敏数据 | 提升本土场景真实性 | 必须取得学校授权，不能直接放入公开仓库 |
 
-仓库当前已有以下数据资产：
+本地开发目录可放置以下数据资产（CSV 已被 `.gitignore` 排除，不提交到公开仓库）：
 
 - `oulad_raw/assessments.csv`
 - `oulad_raw/studentRegistration.csv`
@@ -70,7 +70,6 @@
 - `oulad_raw/studentVle.csv`
 - `oulad_raw/studentInfo.csv`
 - `oulad_raw/studentAssessment.csv`
-- `scripts/verify_oulad.py`
 
 ### 2.2 建议的数据模型
 
@@ -306,7 +305,7 @@ type AnalysisPlan = {
 ## 10. 开工清单
 
 - [ ] 建立公开代码仓库和分支规范；
-- [ ] 运行 `scripts/verify_oulad.py`，确认本地数据可读；
+- [ ] 校验 OULAD 本地文件的完整性和字段结构；
 - [ ] 从 OULAD 中制作可快速加载的小型样本；
 - [ ] 写出数据库表结构和 `AnalysisPlan` 类型；
 - [ ] 初始化 Next.js、TypeScript、Tailwind、shadcn/ui 和 pnpm；
@@ -315,4 +314,3 @@ type AnalysisPlan = {
 - [ ] 补充数据字典、指标定义和 AI 工具说明；
 - [ ] 再接入模型和自然语言分析流程；
 - [ ] 每完成一个可验证模块就提交 Git。
-
