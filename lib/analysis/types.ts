@@ -81,6 +81,11 @@ export type DatasetProfile = {
     rows: number | null;
     grain: string;
     status: "ready" | "not_found";
+    fields?: Array<{
+      name: string;
+      type: string;
+      missing: number;
+    }>;
   }>;
   available: boolean;
 };

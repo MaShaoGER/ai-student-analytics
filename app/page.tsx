@@ -207,7 +207,31 @@ export default function HomePage() {
                             : `${table.rows.toLocaleString("zh-CN")} 行`}
                           <br />
                           {table.grain}
+                          {table.fields && (
+                            <>
+                              <br />
+                              {table.fields.length} 个字段 · 缺失值 {table.fields.reduce(
+                                (total, field) => total + field.missing,
+                                0,
+                              )}
+                            </>
+                          )}
                         </div>
+                        {table.fields && (
+                          <details className="profile-fields">
+                            <summary>查看字段质量</summary>
+                            <ul>
+                              {table.fields.map((field) => (
+                                <li key={field.name}>
+                                  <span>{field.name}</span>
+                                  <span>
+                                    {field.type} · 缺失 {field.missing}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </details>
+                        )}
                       </div>
                     ))}
                   </div>

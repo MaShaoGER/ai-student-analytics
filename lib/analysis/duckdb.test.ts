@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { runAnalysis } from "./duckdb";
+import { profileDatasets, runAnalysis } from "./duckdb";
 
 describe("demo DuckDB analysis", () => {
   it("calculates average score by course from the source rows", async () => {
@@ -51,5 +51,19 @@ describe("demo DuckDB analysis", () => {
 
     expect(activity.result.rows[0]).toEqual({ dimension: "AAA", value: 186, sampleSize: 3 });
     expect(completion.result.rows[0]).toEqual({ dimension: "AAA", value: 100, sampleSize: 3 });
+  });
+
+  it("profiles demo fields and missing values without exposing records", async () => {
+    const profiles = await profileDatasets();
+    const demo = profiles.find((profile) => profile.id === "demo");
+    expect(demo?.available).toBe(true);
+    expect(demo?.tables[0].rows).toBe(27);
+    expect(demo?.tables[0].fields).toEqual([
+      { name: "id_student", type: "VARCHAR", missing: 0 },
+      { name: "code_module", type: "VARCHAR", missing: 0 },
+      { name: "code_presentation", type: "VARCHAR", missing: 0 },
+      { name: "week", type: "BIGINT", missing: 0 },
+      { name: "activity_count", type: "BIGINT", missing: 0 },
+    ]);
   });
 });

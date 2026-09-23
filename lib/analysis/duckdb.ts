@@ -33,6 +33,10 @@ function fileExists(filePath: string): boolean {
   return existsSync(/*turbopackIgnore: true*/ filePath);
 }
 
+function sqlIdentifier(identifier: string): string {
+  return `"${identifier.replaceAll('"', '""')}"`;
+}
+
 async function withConnection<T>(
   callback: (sql: (query: string) => Promise<Record<string, unknown>[]>) => Promise<T>,
 ): Promise<T> {
@@ -73,6 +77,13 @@ function whereClause(plan: AnalysisPlan, alias = "") {
   return `WHERE ${clauses.join(" AND ")}`;
 }
 
+function orderClause(plan: AnalysisPlan): string {
+  const direction = plan.sort.direction === "asc" ? "ASC" : "DESC";
+  // Keep ties deterministic so golden cases and the UI do not depend on
+  // DuckDB's incidental grouping order.
+  return `ORDER BY value ${direction}, dimension ASC`;
+}
+
 function queryForDemo(plan: AnalysisPlan) {
   const dimension = dimensionExpression(plan);
   const where = whereClause(plan);
@@ -85,7 +96,7 @@ function queryForDemo(plan: AnalysisPlan) {
       ${where}
       GROUP BY ALL
       HAVING COUNT(DISTINCT id_student) >= 3
-      ORDER BY value ${plan.sort.direction === "asc" ? "ASC" : "DESC"}
+      ${orderClause(plan)}
       LIMIT ${plan.limit}`;
   }
   const aggregate = plan.metric === "completion_rate" ? "AVG(completed) * 100" : "AVG(score)";
@@ -97,7 +108,7 @@ function queryForDemo(plan: AnalysisPlan) {
     ${where}
     GROUP BY ALL
     HAVING COUNT(DISTINCT id_student) >= 3
-    ORDER BY value ${plan.sort.direction === "asc" ? "ASC" : "DESC"}
+    ${orderClause(plan)}
     LIMIT ${plan.limit}`;
 }
 
@@ -113,7 +124,7 @@ function queryForOulad(plan: AnalysisPlan) {
       ${where}
       GROUP BY ALL
       HAVING COUNT(DISTINCT id_student) >= 3
-      ORDER BY value ${plan.sort.direction === "asc" ? "ASC" : "DESC"}
+      ${orderClause(plan)}
       LIMIT ${plan.limit}`;
   }
   if (plan.metric === "completion_rate") {
@@ -125,7 +136,7 @@ function queryForOulad(plan: AnalysisPlan) {
       ${where}
       GROUP BY ALL
       HAVING COUNT(DISTINCT id_student) >= 3
-      ORDER BY value ${plan.sort.direction === "asc" ? "ASC" : "DESC"}
+      ${orderClause(plan)}
       LIMIT ${plan.limit}`;
   }
   return `
@@ -145,13 +156,52 @@ function queryForOulad(plan: AnalysisPlan) {
     FROM student_scores
     GROUP BY ALL
     HAVING COUNT(DISTINCT id_student) >= 3
-    ORDER BY value ${plan.sort.direction === "asc" ? "ASC" : "DESC"}
+    ${orderClause(plan)}
     LIMIT ${plan.limit}`;
 }
 
 function validateFiles(source: DataSource) {
   if (source === "demo") return fileExists(DEMO_ACTIVITY) && fileExists(DEMO_OUTCOMES);
   return Object.values(OULAD).every(fileExists);
+}
+
+type ProfileTable = {
+  name: string;
+  grain: string;
+  path: string;
+};
+
+async function profileTable(
+  sql: (query: string) => Promise<Record<string, unknown>[]>,
+  table: ProfileTable,
+) {
+  const schema = await sql(`DESCRIBE SELECT * FROM ${csv(table.path)}`);
+  const fields = schema.map((column) => ({
+    name: String(column.column_name),
+    type: String(column.column_type),
+  }));
+  if (fields.length === 0) {
+    return { name: table.name, rows: 0, grain: table.grain, status: "ready" as const, fields: [] };
+  }
+  const missingExpressions = fields
+    .map(
+      (field) =>
+        `SUM(CASE WHEN ${sqlIdentifier(field.name)} IS NULL THEN 1 ELSE 0 END) AS ${sqlIdentifier(`missing_${field.name}`)}`,
+    )
+    .join(", ");
+  const [stats] = await sql(
+    `SELECT COUNT(*) AS row_count, ${missingExpressions} FROM ${csv(table.path)}`,
+  );
+  return {
+    name: table.name,
+    rows: Number(stats?.row_count ?? 0),
+    grain: table.grain,
+    status: "ready" as const,
+    fields: fields.map((field) => ({
+      ...field,
+      missing: Number(stats?.[`missing_${field.name}`] ?? 0),
+    })),
+  };
 }
 
 export async function runAnalysis(
@@ -193,6 +243,22 @@ export async function runAnalysis(
 export async function profileDatasets(): Promise<DatasetProfile[]> {
   const demoAvailable = validateFiles("demo");
   const ouladAvailable = validateFiles("oulad");
+  const profiledTables = await withConnection(async (sql) => {
+    const tables = new Map<string, Awaited<ReturnType<typeof profileTable>>>();
+    const candidates: ProfileTable[] = [
+      { name: "learning_activity", grain: "学生-课程-开课期-周次", path: DEMO_ACTIVITY },
+      { name: "student_outcomes", grain: "学生-课程-开课期", path: DEMO_OUTCOMES },
+      { name: "studentInfo", grain: "学生-课程-开课期", path: OULAD.studentInfo },
+      { name: "studentVle", grain: "学生-课程-开课期-日期-资源", path: OULAD.studentVle },
+      { name: "studentAssessment", grain: "学生-考核项", path: OULAD.studentAssessment },
+      { name: "assessments", grain: "课程-开课期-考核项", path: OULAD.assessments },
+      { name: "courses", grain: "课程-开课期", path: OULAD.courses },
+    ];
+    for (const candidate of candidates) {
+      if (fileExists(candidate.path)) tables.set(candidate.name, await profileTable(sql, candidate));
+    }
+    return tables;
+  });
   const profiles: DatasetProfile[] = [
     {
       id: "demo",
@@ -203,15 +269,17 @@ export async function profileDatasets(): Promise<DatasetProfile[]> {
       tables: [
         {
           name: "learning_activity",
-          rows: demoAvailable ? 27 : null,
+          rows: profiledTables.get("learning_activity")?.rows ?? null,
           grain: "学生-课程-开课期-周次",
           status: demoAvailable ? "ready" : "not_found",
+          fields: profiledTables.get("learning_activity")?.fields,
         },
         {
           name: "student_outcomes",
-          rows: demoAvailable ? 9 : null,
+          rows: profiledTables.get("student_outcomes")?.rows ?? null,
           grain: "学生-课程-开课期",
           status: demoAvailable ? "ready" : "not_found",
+          fields: profiledTables.get("student_outcomes")?.fields,
         },
       ],
     },
@@ -224,33 +292,38 @@ export async function profileDatasets(): Promise<DatasetProfile[]> {
       tables: [
         {
           name: "studentInfo",
-          rows: ouladAvailable ? null : null,
+          rows: profiledTables.get("studentInfo")?.rows ?? null,
           grain: "学生-课程-开课期",
           status: fileExists(OULAD.studentInfo) ? "ready" : "not_found",
+          fields: profiledTables.get("studentInfo")?.fields,
         },
         {
           name: "studentVle",
-          rows: ouladAvailable ? null : null,
+          rows: profiledTables.get("studentVle")?.rows ?? null,
           grain: "学生-课程-开课期-日期-资源",
           status: fileExists(OULAD.studentVle) ? "ready" : "not_found",
+          fields: profiledTables.get("studentVle")?.fields,
         },
         {
           name: "studentAssessment",
-          rows: ouladAvailable ? null : null,
+          rows: profiledTables.get("studentAssessment")?.rows ?? null,
           grain: "学生-考核项",
           status: fileExists(OULAD.studentAssessment) ? "ready" : "not_found",
+          fields: profiledTables.get("studentAssessment")?.fields,
         },
         {
           name: "assessments",
-          rows: ouladAvailable ? null : null,
+          rows: profiledTables.get("assessments")?.rows ?? null,
           grain: "课程-开课期-考核项",
           status: fileExists(OULAD.assessments) ? "ready" : "not_found",
+          fields: profiledTables.get("assessments")?.fields,
         },
         {
           name: "courses",
-          rows: ouladAvailable ? null : null,
+          rows: profiledTables.get("courses")?.rows ?? null,
           grain: "课程-开课期",
           status: fileExists(OULAD.courses) ? "ready" : "not_found",
+          fields: profiledTables.get("courses")?.fields,
         },
       ],
     },
