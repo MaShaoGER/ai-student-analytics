@@ -1,6 +1,6 @@
 # MVP 固定问题与基准
 
-固定问题先映射为受控的 `AnalysisPlan`，暂不让模型自由生成 SQL。下面 10 条覆盖首版 3 个指标、2 个维度和 2 种图表；基准值来自 `data/sample/`。
+固定问题先映射为受控的 `AnalysisPlan`，暂不让模型自由生成 SQL。下面 10 条覆盖首版 3 个指标、2 个维度和 3 种展示方式；基准值来自 `data/sample/`。
 
 这些基准同时维护在 `lib/analysis/golden-cases.ts`，测试会逐条执行 DuckDB 查询并检查完整结果、样本数和 ±0.01 数值容差。
 

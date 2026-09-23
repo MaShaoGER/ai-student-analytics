@@ -18,6 +18,7 @@
 - `app/`、`components/`、`lib/`：Next.js 页面、图表和受控 DuckDB 分析链路。
 - `data/sample/`、`data/schema/`：虚构演示数据、数据字典和冻结的指标口径。
 - `docs/`：架构、工具契约、演示问题和验收基准。
+- `docs/reference-cases.md`：开源教育分析和 GenBI 案例的学习结论。
 
 ## 本地运行
 
