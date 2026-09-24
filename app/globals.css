@@ -204,6 +204,13 @@ h1 {
   outline: 3px solid rgb(20 89 217 / 12%);
 }
 
+.ask-row input:focus-visible,
+.question-chip:focus-visible,
+.field select:focus-visible {
+  outline: 3px solid rgb(20 89 217 / 20%);
+  outline-offset: 1px;
+}
+
 .question-list {
   display: flex;
   flex-wrap: wrap;
@@ -384,6 +391,16 @@ h1 {
   padding: 12px 14px;
 }
 
+.dataset-error {
+  margin-top: 18px;
+}
+
+.empty-inline {
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .result-panel {
   margin-top: 18px;
 }
@@ -395,18 +412,10 @@ h1 {
   justify-content: space-between;
 }
 
-.result-value {
-  color: var(--blue);
-  font-size: 28px;
-  font-weight: 760;
-  margin-top: 6px;
-}
-
-.result-unit {
+.result-subtitle {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 500;
-  margin-left: 5px;
+  margin-top: 6px;
 }
 
 .result-meta {
@@ -435,22 +444,39 @@ h1 {
 }
 
 .chart-wrap {
-  min-height: 330px;
+  min-height: 350px;
   padding: 10px 12px 2px;
 }
 
+.chart-frame {
+  height: 340px;
+}
+
+.chart-context {
+  color: var(--muted);
+  font-size: 11px;
+  padding: 3px 8px 0;
+}
+
 .chart {
-  height: 320px;
+  height: 315px;
   width: 100%;
 }
 
 .empty-state {
   align-items: center;
   color: var(--muted);
+  flex-direction: column;
+  gap: 6px;
   display: flex;
-  height: 320px;
+  height: 330px;
   justify-content: center;
   text-align: center;
+}
+
+.empty-state strong {
+  color: var(--ink);
+  font-size: 14px;
 }
 
 .table-wrap {
@@ -475,6 +501,29 @@ h1 {
   color: var(--muted);
   font-size: 11px;
   font-weight: 700;
+}
+
+.result-table caption {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+.table-fallback {
+  border-top: 1px solid var(--line);
+  margin: 0 20px;
+  padding: 12px 0;
+}
+
+.table-fallback summary {
+  color: var(--blue);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .result-table td:last-child,
@@ -614,7 +663,35 @@ h1 {
     text-align: left;
   }
 
+  .panel-header,
+  .panel-body {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .chart-wrap {
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+
+  .table-fallback,
+  .trace {
+    margin-left: 14px;
+    margin-right: 14px;
+  }
+
   .profile-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

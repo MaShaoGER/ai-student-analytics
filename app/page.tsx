@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { AnalysisChart } from "@/components/analysis-chart";
 import { GOLDEN_CASES } from "@/lib/analysis/golden-cases";
 import { METRICS } from "@/lib/analysis/metrics";
@@ -46,13 +46,15 @@ export default function HomePage() {
   >(null);
   const [aiStatus, setAIStatus] = useState<AIStatus>({ configured: false, model: null });
   const [loading, setLoading] = useState(false);
+  const [profilesLoading, setProfilesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/profile")
       .then((response) => response.json())
       .then((payload: { datasets: DatasetProfile[] }) => setProfiles(payload.datasets))
-      .catch(() => setError("数据集概览加载失败，请确认服务已启动。"));
+      .catch(() => setError("数据集概览加载失败，请确认服务已启动。"))
+      .finally(() => setProfilesLoading(false));
     fetch("/api/ai/status")
       .then((response) => response.json())
       .then((payload: AIStatus) => setAIStatus(payload))
@@ -62,11 +64,6 @@ export default function HomePage() {
   const selectedProfile = profiles.find((profile) => profile.id === datasetId);
   const metricDefinition = METRICS[metric];
   const canRun = selectedProfile?.available ?? datasetId === "demo";
-
-  const headline = useMemo(() => {
-    if (!analysis || analysis.rows.length === 0) return null;
-    return analysis.rows[0];
-  }, [analysis]);
 
   async function handleRun() {
     setLoading(true);
@@ -171,8 +168,10 @@ export default function HomePage() {
             </div>
             <div className="panel-body">
               <div className="dataset-list">
-                {profiles.length === 0 ? (
-                  <p className="panel-caption">正在读取数据集...</p>
+                {profilesLoading ? (
+                  <p className="panel-caption" role="status">正在读取数据集...</p>
+                ) : profiles.length === 0 ? (
+                  <p className="empty-inline" role="alert">没有可用的数据集，请检查本地数据文件。</p>
                 ) : (
                   profiles.map((profile) => (
                     <button
@@ -290,6 +289,12 @@ export default function HomePage() {
               </div>
             </div>
 
+            {!canRun && !profilesLoading && (
+              <div className="error-box dataset-error" role="alert">
+                当前数据集不可用，请先选择标记为“可用”的数据集。
+              </div>
+            )}
+
             <div className="panel">
               <div className="panel-header">
                 <h2 className="panel-title">固定指标分析</h2>
@@ -365,19 +370,14 @@ export default function HomePage() {
                         {analysis.metricLabel} · 按
                         {analysis.dimension === "course" ? "课程" : "学期"}
                       </h2>
-                      {headline && (
-                        <div className="result-value">
-                          {headline.value.toLocaleString("zh-CN")}
-                          <span className="result-unit">
-                            {analysis.unit} · {headline.dimension}
-                          </span>
-                        </div>
-                      )}
+                      <div className="result-subtitle">
+                        {analysis.rows.length > 0 ? "分组聚合结果" : "当前查询没有可展示的分组"}
+                      </div>
                     </div>
                     <div className="result-meta">
-                      {analysis.rows.length} 个分组 · 查询耗时 {analysis.durationMs} ms
+                      {analysis.rows.length} 个分组 · 查询耗时 {analysis.durationMs} ms · 单位 {analysis.unit}
                       <br />
-                      {analysis.period} · 每个分组均满足最小样本阈值
+                      {analysis.period} · 仅展示满足最小样本阈值的聚合结果
                     </div>
                   </div>
                   {planning && (
@@ -391,10 +391,14 @@ export default function HomePage() {
                 </div>
                 <div className="chart-wrap">
                   {analysis.rows.length === 0 ? (
-                    <div className="empty-state">没有满足最小样本阈值的结果。</div>
+                    <div className="empty-state" role="status">
+                      <strong>暂无可展示结果</strong>
+                      <span>没有满足最小样本阈值（3 名学生）的分组。</span>
+                    </div>
                   ) : analysis.chartType === "table" ? (
                     <div className="table-wrap">
                       <table className="result-table">
+                        <caption>{analysis.metricLabel}按{analysis.dimension === "course" ? "课程" : "学期"}聚合结果，单位：{analysis.unit}</caption>
                         <thead>
                           <tr>
                             <th>分组</th>
@@ -418,9 +422,23 @@ export default function HomePage() {
                       rows={analysis.rows}
                       chartType={analysis.chartType}
                       unit={analysis.unit}
+                      metricLabel={analysis.metricLabel}
+                      dimensionLabel={analysis.dimension === "course" ? "课程" : "学期"}
                     />
                   )}
                 </div>
+                {analysis.rows.length > 0 && analysis.chartType !== "table" && (
+                  <details className="table-fallback">
+                    <summary>查看数据表核对结果</summary>
+                    <div className="table-wrap">
+                      <table className="result-table">
+                        <caption>{analysis.metricLabel}按{analysis.dimension === "course" ? "课程" : "学期"}聚合结果，单位：{analysis.unit}</caption>
+                        <thead><tr><th>分组</th><th>样本数</th><th>数值（{analysis.unit}）</th></tr></thead>
+                        <tbody>{analysis.rows.map((row) => <tr key={row.dimension}><td>{row.dimension}</td><td>{row.sampleSize}</td><td>{row.value.toLocaleString("zh-CN")}</td></tr>)}</tbody>
+                      </table>
+                    </div>
+                  </details>
+                )}
                 <details className="trace">
                   <summary>查看指标口径与只读查询</summary>
                   <pre>{`数据源：${analysis.datasetId}\n指标：${analysis.metricLabel}\n统计周期：${analysis.period}\n单位：${analysis.unit}\nSQL：${analysis.query}`}</pre>

@@ -8,15 +8,19 @@ export function AnalysisChart({
   rows,
   chartType,
   unit,
+  metricLabel,
+  dimensionLabel,
 }: {
   rows: AnalysisRow[];
   chartType: ChartType;
   unit: string;
+  metricLabel: string;
+  dimensionLabel: string;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!rootRef.current || chartType === "table") return;
+    if (!rootRef.current || chartType === "table" || rows.length === 0) return;
     const chart = echarts.init(rootRef.current);
     chart.setOption({
       animationDuration: 280,
@@ -24,12 +28,23 @@ export function AnalysisChart({
       grid: { top: 24, right: 24, bottom: 56, left: 62 },
       tooltip: {
         trigger: "axis",
-        valueFormatter: (value: number) => `${value.toLocaleString("zh-CN")} ${unit}`,
+        formatter: (params: unknown) => {
+          const items = Array.isArray(params) ? params : [params];
+          const first = items[0] as { axisValue?: string; dataIndex?: number; value?: number } | undefined;
+          const row = first?.dataIndex === undefined ? undefined : rows[first.dataIndex];
+          if (!row) return "";
+          return `${dimensionLabel}：${row.dimension}<br/>${metricLabel}：${row.value.toLocaleString("zh-CN")} ${unit}<br/>样本数：${row.sampleSize.toLocaleString("zh-CN")}`;
+        },
       },
       xAxis: {
         type: "category",
         data: rows.map((row) => row.dimension),
-        axisLabel: { color: "#6f7b88", interval: 0, rotate: rows.length > 5 ? 28 : 0 },
+        axisLabel: {
+          color: "#6f7b88",
+          interval: 0,
+          hideOverlap: true,
+          rotate: rows.length > 5 || rows.some((row) => row.dimension.length > 8) ? 28 : 0,
+        },
         axisLine: { lineStyle: { color: "#dce2e8" } },
       },
       yAxis: {
@@ -41,12 +56,11 @@ export function AnalysisChart({
         {
           type: chartType === "line" ? "line" : "bar",
           data: rows.map((row) => row.value),
-          smooth: chartType === "line",
+          smooth: false,
           symbol: chartType === "line" ? "circle" : undefined,
           symbolSize: 7,
           barMaxWidth: 46,
           itemStyle: { borderRadius: chartType === "bar" ? [4, 4, 0, 0] : 0 },
-          areaStyle: chartType === "line" ? { color: "rgb(20 89 217 / 8%)" } : undefined,
         },
       ],
     });
@@ -59,5 +73,10 @@ export function AnalysisChart({
   }, [chartType, rows, unit]);
 
   if (chartType === "table") return null;
-  return <div ref={rootRef} className="chart" aria-label="分析结果图表" />;
+  return (
+    <div className="chart-frame">
+      <div className="chart-context">{metricLabel} · 按{dimensionLabel} · 单位：{unit}</div>
+      <div ref={rootRef} className="chart" aria-label={`${metricLabel}按${dimensionLabel}的分析结果图表`} />
+    </div>
+  );
 }
