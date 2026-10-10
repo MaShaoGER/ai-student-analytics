@@ -49,7 +49,7 @@ pnpm build
 docker compose up --build
 ```
 
-`oulad_raw/` 会以只读卷挂载；没有 OULAD 文件时，模拟校园数据仍可完整运行。
+`oulad_raw/` 会以只读卷挂载；没有 OULAD 文件时，模拟校园数据仍可完整运行。详见 [部署指南](docs/deployment.md)。
 
 ## 数据说明
 
