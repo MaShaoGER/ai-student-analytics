@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:api": "./scripts/test-api.sh",
     "format": "prettier --write ."
   },
   "dependencies": {
