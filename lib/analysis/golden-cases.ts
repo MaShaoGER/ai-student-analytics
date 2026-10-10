@@ -16,8 +16,8 @@ const scoreByCourse: AnalysisRow[] = [
 ];
 
 const scoreByTerm: AnalysisRow[] = [
-  { dimension: "2024J", value: 73.67, sampleSize: 6 },
   { dimension: "2024B", value: 70.67, sampleSize: 3 },
+  { dimension: "2024J", value: 73.67, sampleSize: 6 },
 ];
 
 const activityByCourse: AnalysisRow[] = [
@@ -27,8 +27,8 @@ const activityByCourse: AnalysisRow[] = [
 ];
 
 const activityByTerm: AnalysisRow[] = [
-  { dimension: "2024J", value: 331, sampleSize: 6 },
   { dimension: "2024B", value: 178, sampleSize: 3 },
+  { dimension: "2024J", value: 331, sampleSize: 6 },
 ];
 
 const completionByCourse: AnalysisRow[] = [
@@ -38,8 +38,8 @@ const completionByCourse: AnalysisRow[] = [
 ];
 
 const completionByTerm: AnalysisRow[] = [
-  { dimension: "2024J", value: 83.33, sampleSize: 6 },
   { dimension: "2024B", value: 66.67, sampleSize: 3 },
+  { dimension: "2024J", value: 83.33, sampleSize: 6 },
 ];
 
 function plan(

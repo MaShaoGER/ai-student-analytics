@@ -14,7 +14,10 @@ export function createPlan(options: {
     aggregation: metricAggregation(options.metric),
     dimensions: [options.dimension],
     filters: [],
-    sort: { by: "value", direction: "desc" },
+    sort:
+      options.dimension === "term" && options.chartType === "line"
+        ? { by: "dimension", direction: "asc" }
+        : { by: "value", direction: "desc" },
     limit: 20,
     chartType: options.chartType,
   });

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AnalysisChart } from "@/components/analysis-chart";
 import { GOLDEN_CASES } from "@/lib/analysis/golden-cases";
 import { METRICS } from "@/lib/analysis/metrics";
+import { createPlan } from "@/lib/analysis/plan";
 import type {
   AnalysisPlan,
   AnalysisResult,
@@ -72,18 +73,7 @@ export default function HomePage() {
       const response = await fetch("/api/analysis", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          version: 1,
-          datasetId,
-          metric,
-          aggregation:
-            metric === "activity" ? "sum" : metric === "completion_rate" ? "rate" : "avg",
-          dimensions: [dimension],
-          filters: [],
-          sort: { by: "value", direction: "desc" },
-          limit: 20,
-          chartType,
-        }),
+        body: JSON.stringify(createPlan({ datasetId, metric, dimension, chartType })),
       });
       const payload = (await response.json()) as AnalysisResponse;
       if (!response.ok || "error" in payload)

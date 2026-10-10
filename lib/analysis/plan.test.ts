@@ -3,6 +3,19 @@ import { createPlan } from "./plan";
 import { analysisPlanSchema } from "./types";
 
 describe("AnalysisPlan v1", () => {
+  it("uses chronological order for term lines and value order for comparisons", () => {
+    expect(
+      createPlan({ datasetId: "demo", metric: "score", dimension: "term", chartType: "line" }).sort,
+    ).toEqual({ by: "dimension", direction: "asc" });
+    expect(
+      createPlan({ datasetId: "demo", metric: "score", dimension: "course", chartType: "line" })
+        .sort,
+    ).toEqual({ by: "value", direction: "desc" });
+    expect(
+      createPlan({ datasetId: "demo", metric: "score", dimension: "term", chartType: "bar" }).sort,
+    ).toEqual({ by: "value", direction: "desc" });
+  });
+
   it("creates a bounded plan for a supported metric", () => {
     const plan = createPlan({
       datasetId: "demo",

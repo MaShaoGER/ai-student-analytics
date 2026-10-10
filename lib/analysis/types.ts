@@ -5,11 +5,14 @@ export const dimensionSchema = z.enum(["course", "term"]);
 export const chartTypeSchema = z.enum(["line", "bar", "table"]);
 export const dataSourceSchema = z.enum(["demo", "oulad"]);
 
-export const filterSchema = z.object({
-  field: dimensionSchema,
-  op: z.enum(["eq", "in"]),
-  value: z.union([z.string(), z.array(z.string()).min(1)]),
-});
+export const filterSchema = z.discriminatedUnion("op", [
+  z.object({ field: dimensionSchema, op: z.literal("eq"), value: z.string().min(1) }),
+  z.object({
+    field: dimensionSchema,
+    op: z.literal("in"),
+    value: z.array(z.string().min(1)).min(1),
+  }),
+]);
 
 export const analysisPlanSchema = z
   .object({

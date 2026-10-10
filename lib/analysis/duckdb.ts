@@ -68,7 +68,7 @@ function dimensionExpression(plan: AnalysisPlan, alias = "") {
 function whereClause(plan: AnalysisPlan, alias = "") {
   if (plan.filters.length === 0) return "";
   const prefix = alias ? `${alias}.` : "";
-  const clauses = plan.filters.map((filter, index) => {
+  const clauses = plan.filters.map((filter) => {
     const column = `${prefix}${DIMENSIONS[filter.field].column}`;
     const values = Array.isArray(filter.value) ? filter.value : [filter.value];
     const literals = values.map((value) => `'${value.replaceAll("'", "''")}'`).join(", ");
@@ -79,6 +79,7 @@ function whereClause(plan: AnalysisPlan, alias = "") {
 
 function orderClause(plan: AnalysisPlan): string {
   const direction = plan.sort.direction === "asc" ? "ASC" : "DESC";
+  if (plan.sort.by === "dimension") return `ORDER BY dimension ${direction}`;
   // Keep ties deterministic so golden cases and the UI do not depend on
   // DuckDB's incidental grouping order.
   return `ORDER BY value ${direction}, dimension ASC`;

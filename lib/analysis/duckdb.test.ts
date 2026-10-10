@@ -1,7 +1,42 @@
 import { describe, expect, it } from "vitest";
 import { profileDatasets, runAnalysis } from "./duckdb";
+import { createPlan } from "./plan";
+import type { AnalysisPlan } from "./types";
 
 describe("demo DuckDB analysis", () => {
+  it.each<{ sort: AnalysisPlan["sort"]; groups: string[] }>([
+    { sort: { by: "dimension", direction: "asc" }, groups: ["AAA", "BBB", "CCC"] },
+    { sort: { by: "dimension", direction: "desc" }, groups: ["CCC", "BBB", "AAA"] },
+    { sort: { by: "value", direction: "asc" }, groups: ["BBB", "CCC", "AAA"] },
+    { sort: { by: "value", direction: "desc" }, groups: ["AAA", "CCC", "BBB"] },
+  ])(
+    "respects $sort.by $sort.direction before applying the row limit",
+    async ({ sort, groups }) => {
+      const { result } = await runAnalysis({
+        ...createPlan({
+          datasetId: "demo",
+          metric: "score",
+          dimension: "course",
+          chartType: "table",
+        }),
+        sort,
+        limit: 2,
+      });
+      expect(result.rows.map((row) => row.dimension)).toEqual(groups.slice(0, 2));
+    },
+  );
+
+  it("supports a valid IN filter without changing score calculations", async () => {
+    const { result } = await runAnalysis({
+      ...createPlan({ datasetId: "demo", metric: "score", dimension: "course", chartType: "bar" }),
+      filters: [{ field: "course", op: "in", value: ["AAA", "CCC"] }],
+    });
+    expect(result.rows).toEqual([
+      { dimension: "AAA", value: 79.67, sampleSize: 3 },
+      { dimension: "CCC", value: 70.67, sampleSize: 3 },
+    ]);
+  });
+
   it("calculates average score by course from the source rows", async () => {
     const { result } = await runAnalysis({
       version: 1,
