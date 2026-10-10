@@ -7,6 +7,7 @@ import {
   planQuestion,
   planQuestionInputSchema,
 } from "@/lib/ai/planner";
+import { saveAnalysisRecord } from "@/lib/records";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,27 @@ export async function POST(request: Request) {
     const input = planQuestionInputSchema.parse(await request.json());
     const planned = await planQuestion(input);
     const analysis = await runAnalysis(planned.plan);
+
+    // Save analysis record
+    try {
+      await saveAnalysisRecord({
+        datasetId: analysis.result.datasetId,
+        datasetVersion: "1.0",
+        metricId: analysis.plan.metric,
+        metricVersion: "1.0",
+        plan: analysis.plan,
+        result: {
+          rowCount: analysis.result.rows.length,
+          period: analysis.result.period,
+          durationMs: analysis.result.durationMs,
+        },
+        errorCode: null,
+        errorMessage: null,
+      });
+    } catch (recordError) {
+      console.error("Warning: failed to save analysis record", recordError);
+    }
+
     return NextResponse.json({
       question: input.question,
       planning: {

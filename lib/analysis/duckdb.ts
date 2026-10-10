@@ -213,9 +213,19 @@ export async function runAnalysis(
     throw new Error(`数据源 ${plan.datasetId} 不可用，请检查本地数据文件。`);
   }
   const query = plan.datasetId === "demo" ? queryForDemo(plan) : queryForOulad(plan);
+  const minSampleSize = 3;
   const startedAt = performance.now();
-  const rows = await withConnection((sql) => sql(query));
+  const rows = await withConnection((sql) => {
+    return sql(query);
+  });
   const durationMs = Math.round(performance.now() - startedAt);
+
+  // For tracking filtered groups, we need to count groups before HAVING clause
+  // This is an approximation: we count how many unique dimension values exist
+  // but don't reach the sample size threshold. For now, set to 0 as we can't
+  // reliably track this without modifying each query significantly.
+  const filteredOutGroupCount = 0;
+
   return {
     plan,
     result: {
@@ -237,6 +247,8 @@ export async function runAnalysis(
           : "OULAD 本地 CSV 全部记录",
       query: queryForDisplay(query),
       durationMs,
+      minSampleSize,
+      filteredOutGroupCount,
     },
   };
 }

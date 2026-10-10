@@ -72,6 +72,25 @@ export type AnalysisResult = {
   period: string;
   query: string;
   durationMs: number;
+  minSampleSize: number;
+  filteredOutGroupCount: number;
+};
+
+export type AnalysisRecord = {
+  id: string; // uuid or timestamp-based id
+  timestamp: string; // ISO 8601
+  datasetId: DataSource;
+  datasetVersion: string;
+  metricId: Metric;
+  metricVersion: string;
+  plan: AnalysisPlan;
+  result: {
+    rowCount: number;
+    period: string;
+    durationMs: number;
+  };
+  errorCode: string | null;
+  errorMessage: string | null;
 };
 
 export type DatasetProfile = {

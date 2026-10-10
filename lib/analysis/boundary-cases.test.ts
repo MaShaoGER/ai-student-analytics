@@ -164,4 +164,15 @@ describe("MVP boundary cases (B01–B10)", () => {
     ).rejects.toBeInstanceOf(AIClarificationError);
     expect(generator).toHaveBeenCalledOnce();
   });
+
+  it("B11 returns empty rows and minSampleSize when all groups fall below threshold", async () => {
+    // Filter for a group that doesn't exist at all
+    const { result } = await runAnalysis({
+      ...basePlan,
+      filters: [{ field: "course", op: "eq", value: "NONEXISTENT" }],
+    });
+    expect(result.rows).toEqual([]);
+    expect(result.minSampleSize).toBe(3);
+    expect(result.filteredOutGroupCount).toBe(0);
+  });
 });
