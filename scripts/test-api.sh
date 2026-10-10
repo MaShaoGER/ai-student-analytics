@@ -28,7 +28,7 @@ done
 
 # Run integration tests
 echo "🧪 Running API integration tests..."
-if pnpm vitest run $TEST_FILE; then
+if API_INTEGRATION=1 API_BASE_URL="http://localhost:$PORT" pnpm vitest run $TEST_FILE; then
   echo "✅ All integration tests passed"
   EXIT_CODE=0
 else

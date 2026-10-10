@@ -84,7 +84,7 @@ OPENAI_MODEL=gpt-4o-mini
 # 1. 类型检查
 pnpm typecheck
 
-# 2. 运行测试（43 个测试应全部通过）
+# 2. 运行测试
 pnpm test
 
 # 3. 生产构建
@@ -92,6 +92,9 @@ pnpm build
 
 # 4. 启动本地服务
 pnpm dev
+
+# 5. HTTP 集成测试（会自行启动/停止服务）
+./scripts/test-api.sh
 ```
 
 在浏览器打开 `http://localhost:3000`，选择模拟校园数据后运行：
@@ -131,11 +134,11 @@ curl -s -X POST http://localhost:3000/api/analysis \
 ### 安全
 - 不提交 `.env.local` 和 API 密钥到版本控制
 - 使用只读卷挂载数据文件
-- 配置 API 速率限制和超时（待实现）
+- API 已配置 per-IP 速率限制（analysis 30/min、ask 20/min）与查询超时（analysis 10s、profile 30s）
 
 ### 性能
 - 使用 `NODE_ENV=production`（Docker Compose 已设置）
-- DuckDB 在内存中执行，大数据集查询可能耗时（当前无超时限制，第5周补充）
+- DuckDB 在内存中执行，大数据集查询可能耗时；analysis 超时 10 秒，profile 超时 30 秒
 - 分析记录追加写入 JSONL，长期可能需要分片或归档
 
 ### 数据管理
@@ -183,7 +186,7 @@ curl -s -X POST http://localhost:3000/api/analysis \
 
 ## 下一步
 
-- [ ] 配置 API 速率限制和成本上限（第5周）
+- [x] 配置 API 速率限制和成本上限（第5周）
 - [ ] 完整的部署回滚脚本（第7周）
 - [ ] 在线演示环境和账号初始化（第7周）
 - [ ] 健康检查端点和监控（第7周）

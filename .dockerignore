@@ -5,3 +5,8 @@ coverage
 oulad.zip
 oulad_raw/*.csv
 *.log
+
+# Not needed at runtime: analysis records, docs and local test scripts
+records
+docs
+scripts

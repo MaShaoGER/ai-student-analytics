@@ -10,9 +10,13 @@
 import { describe, it, expect } from "vitest";
 import { createPlan } from "../analysis/plan";
 
-const BASE_URL = "http://localhost:3000";
+const BASE_URL = process.env.API_BASE_URL ?? "http://localhost:3000";
 
-describe.skip("API integration tests (requires running server)", () => {
+// Opt-in: only run when a server is actually reachable, so `pnpm test` stays
+// green without one. scripts/test-api.sh sets API_INTEGRATION=1.
+const describeIntegration = process.env.API_INTEGRATION === "1" ? describe : describe.skip;
+
+describeIntegration("API integration tests (requires running server)", () => {
   describe("POST /api/analysis", () => {
     it("should return valid analysis result", async () => {
       const plan = createPlan({
@@ -95,13 +99,18 @@ describe.skip("API integration tests (requires running server)", () => {
         chartType: "bar",
       });
 
+      // One fixed client id per test run: a key computed inside the mapper below
+      // can advance between calls, spreading 35 requests across several buckets
+      // that each stay under the limit, so nothing would ever be rate limited.
+      const clientId = `test-rate-limit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
       // Make many requests quickly to trigger rate limit
       const requests = Array.from({ length: 35 }, () =>
         fetch(`${BASE_URL}/api/analysis`, {
           method: "POST",
           headers: {
             "content-type": "application/json",
-            "x-forwarded-for": "test-rate-limit-" + Date.now(),
+            "x-forwarded-for": clientId,
           },
           body: JSON.stringify(plan),
         })
@@ -110,14 +119,12 @@ describe.skip("API integration tests (requires running server)", () => {
       const responses = await Promise.all(requests);
       const rateLimited = responses.filter((r) => r.status === 429);
 
-      // Should have at least some rate limited (limit is 30/min)
-      expect(rateLimited.length).toBeGreaterThan(0);
+      // Limit is 30/min, so 35 concurrent requests should leave 5 rejected
+      expect(rateLimited.length).toBe(5);
 
-      if (rateLimited.length > 0) {
-        const data = await rateLimited[0].json();
-        expect(data.code).toBe("RATE_LIMIT_EXCEEDED");
-        expect(data.retryAfter).toBeGreaterThan(0);
-      }
+      const data = await rateLimited[0].json();
+      expect(data.code).toBe("RATE_LIMIT_EXCEEDED");
+      expect(data.retryAfter).toBeGreaterThan(0);
     }, 30000); // Allow more time for this test
   });
 
@@ -181,13 +188,16 @@ describe.skip("API integration tests (requires running server)", () => {
     });
 
     it("should enforce stricter rate limiting for ask", async () => {
-      // Ask has limit of 20/min, analysis has 30/min
+      // Ask has limit of 20/min, analysis has 30/min.
+      // Fixed client id, same reason as the analysis rate-limit test above.
+      const clientId = `test-ask-rate-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
       const requests = Array.from({ length: 25 }, () =>
         fetch(`${BASE_URL}/api/ask`, {
           method: "POST",
           headers: {
             "content-type": "application/json",
-            "x-forwarded-for": "test-ask-rate-" + Date.now(),
+            "x-forwarded-for": clientId,
           },
           body: JSON.stringify({
             question: "哪门课程平均成绩最高？",
@@ -199,8 +209,8 @@ describe.skip("API integration tests (requires running server)", () => {
       const responses = await Promise.all(requests);
       const rateLimited = responses.filter((r) => r.status === 429);
 
-      // Should hit 20/min limit
-      expect(rateLimited.length).toBeGreaterThan(0);
+      // Limit is 20/min, so 25 concurrent requests should leave 5 rejected
+      expect(rateLimited.length).toBe(5);
     }, 30000);
   });
 
