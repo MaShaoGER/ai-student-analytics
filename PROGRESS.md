@@ -1,6 +1,6 @@
 # 项目进度记录
 
-## 当前阶段（第4周末）
+## 当前阶段（第5周初）
 
 **当前日期：2026-10-10**
 **省赛截止：2026-11-18**（还有 39 天）
@@ -45,16 +45,26 @@
 - ✅ pnpm 包管理器安装配置
 - ⏳ Docker 本机启动（工具缺失，不属于代码问题）
 
+### 第5周初（安全性）
+- ✅ 限流器实现：内存式 IP 追踪，支持多配置
+- ✅ 查询限制框架：超时、内存、行数限制
+- ✅ API 限流集成：analysis 和 ask 端点
+- ⏳ 查询执行超时钩子（待与 DuckDB 集成）
+- ⏳ OpenAI 成本监控
+
 ## 累计代码统计
 
 ```
-commit db236d1: 第3周测试补齐 (+267 lines)
-commit 3556519: 第4周分析记录 (+399 lines)
+commit 6ac8ea7: 第5周限流与查询限制 (+386 lines)
+commit e70d583: 进度总结 (+210 lines)
+commit c296276: 部署指南 (+190 lines)
 commit d2f5b32: Docker 配置修复 (+17 lines)
-commit c296276: 部署文档 (+190 lines)
+commit 3556519: 第4周分析记录 (+399 lines)
+commit db236d1: 第3周测试补齐 (+267 lines)
 ───────────────────────────────
-总计：873 新增行（不含测试）
-提交数：10 commits（含初始化）
+总计：1,469 新增行（含文档、测试、安全）
+提交数：12 commits
+测试数：53 条（全部通过）
 ```
 
 ## 接下来的工作（第5-8周）
@@ -63,7 +73,7 @@ commit c296276: 部署文档 (+190 lines)
 **目标**：完成权限校验、超时限制、限流、成本上限。
 
 **任务清单**：
-- [ ] API 速率限制（per-IP，单位：/min、/hour）
+- [x] API 速率限制（per-IP，单位：/min、/hour）
 - [ ] DuckDB 查询超时（建议 10s）
 - [ ] 查询内存和结果行数硬限制
 - [ ] OpenAI 成本监控和上限（防止滥用）
@@ -77,9 +87,12 @@ commit c296276: 部署文档 (+190 lines)
 - API 请求被限流/超时时返回明确错误
 
 **预期代码变化**：
-- lib/middleware/rateLimit.ts：新增限流中间件
+- lib/middleware/rateLimit.ts：新增限流中间件 ✅
 - lib/analysis/safety.ts：新增超时和内存限制
-- app/api/analysis/route.ts：集成限流和超时
+- lib/security/rate-limit.ts：限流器实现 ✅
+- lib/security/query-limits.ts：查询限制框架 ✅
+- app/api/analysis/route.ts：集成限流 ✅
+- app/api/ask/route.ts：集成限流 ✅
 - 新增 lib/analysis/safety.test.ts
 
 ### 第6周（10/25-10/31）：P1 功能扩展
@@ -206,5 +219,5 @@ commit c296276: 部署文档 (+190 lines)
 
 ---
 
-更新时间：2026-10-10  
+更新时间：2026-10-10 11:20 UTC+8
 下一审查：2026-10-24（第5周末）
