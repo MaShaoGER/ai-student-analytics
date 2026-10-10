@@ -39,16 +39,35 @@ function sqlIdentifier(identifier: string): string {
 
 async function withConnection<T>(
   callback: (sql: (query: string) => Promise<Record<string, unknown>[]>) => Promise<T>,
+  timeoutMs = 30000,
 ): Promise<T> {
   const instance = await DuckDBInstance.create(":memory:", { threads: "2" });
   const connection = await instance.connect();
+  
+  let timeoutId: NodeJS.Timeout | undefined;
+  
   try {
     const sql = async (query: string) => {
       const reader = await connection.runAndReadAll(query);
       return reader.getRowObjectsJson() as Record<string, unknown>[];
     };
-    return await callback(sql);
+    
+    // Create timeout promise
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(`查询超时（${timeoutMs / 1000} 秒）。请简化查询或添加筛选条件。`));
+      }, timeoutMs);
+    });
+    
+    // Race between callback and timeout
+    const result = await Promise.race([
+      callback(sql),
+      timeoutPromise,
+    ]);
+    
+    return result;
   } finally {
+    if (timeoutId) clearTimeout(timeoutId);
     connection.closeSync();
     instance.closeSync();
   }
@@ -215,9 +234,12 @@ export async function runAnalysis(
   const query = plan.datasetId === "demo" ? queryForDemo(plan) : queryForOulad(plan);
   const minSampleSize = 3;
   const startedAt = performance.now();
+  
+  // Use 10 second timeout for user-facing analysis
   const rows = await withConnection((sql) => {
     return sql(query);
-  });
+  }, 10000);
+  
   const durationMs = Math.round(performance.now() - startedAt);
 
   // For tracking filtered groups, we need to count groups before HAVING clause
@@ -256,6 +278,7 @@ export async function runAnalysis(
 export async function profileDatasets(): Promise<DatasetProfile[]> {
   const demoAvailable = validateFiles("demo");
   const ouladAvailable = validateFiles("oulad");
+  // Use 30 second timeout for dataset profiling (slower operation)
   const profiledTables = await withConnection(async (sql) => {
     const tables = new Map<string, Awaited<ReturnType<typeof profileTable>>>();
     const candidates: ProfileTable[] = [
@@ -271,7 +294,7 @@ export async function profileDatasets(): Promise<DatasetProfile[]> {
       if (fileExists(candidate.path)) tables.set(candidate.name, await profileTable(sql, candidate));
     }
     return tables;
-  });
+  }, 30000);
   const profiles: DatasetProfile[] = [
     {
       id: "demo",

@@ -5,6 +5,7 @@ import { findGoldenCase, planForDataset } from "../analysis/golden-cases";
 import { METRICS } from "../analysis/metrics";
 import { createPlan } from "../analysis/plan";
 import { dataSourceSchema, type AnalysisPlan } from "../analysis/types";
+import { checkBudget, recordCost } from "../security/ai-cost";
 
 const aiPlanFieldsSchema = z.object({
   canAnalyze: z.boolean(),
@@ -57,6 +58,9 @@ async function generateWithOpenAI(question: string): Promise<AIPlanFields> {
   const { configured, model } = getAIStatus();
   if (!configured || !model) throw new AIConfigurationError();
 
+  // Check budget before making expensive API call
+  checkBudget(0.05); // Estimate ~$0.05 per planning request
+
   const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
     maxRetries: 1,
@@ -79,6 +83,19 @@ async function generateWithOpenAI(question: string): Promise<AIPlanFields> {
       }),
     },
   });
+
+  // Record actual cost
+  if (response.usage) {
+    recordCost(
+      model,
+      {
+        promptTokens: response.usage.input_tokens || 0,
+        completionTokens: response.usage.output_tokens || 0,
+        totalTokens: response.usage.total_tokens || 0,
+      },
+      "planner"
+    );
+  }
 
   if (!response.output_parsed) {
     throw new Error("模型没有返回可验证的分析计划，请换一种问法。");
