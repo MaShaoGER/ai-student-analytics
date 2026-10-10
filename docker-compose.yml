@@ -5,9 +5,14 @@ services:
       - "3000:3000"
     volumes:
       - ./oulad_raw:/app/oulad_raw:ro
+      - records:/app/records
     environment:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-}
     restart: unless-stopped
+
+volumes:
+  records:
+    driver: local
