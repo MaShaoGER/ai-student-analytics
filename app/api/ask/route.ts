@@ -8,10 +8,31 @@ import {
   planQuestionInputSchema,
 } from "@/lib/ai/planner";
 import { saveAnalysisRecord } from "@/lib/records";
+import { checkRateLimit, extractClientId, rateLimitConfigs } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  // Check rate limit (stricter for ask due to AI cost)
+  const clientId = extractClientId(request);
+  const rateLimitResult = checkRateLimit(clientId, rateLimitConfigs.ask);
+
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json(
+      {
+        error: "自然语言请求过于频繁。请稍后再试。",
+        code: "RATE_LIMIT_EXCEEDED",
+        retryAfter: Math.ceil(rateLimitResult.resetAfter / 1000),
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": Math.ceil(rateLimitResult.resetAfter / 1000).toString(),
+        },
+      }
+    );
+  }
+
   try {
     const input = planQuestionInputSchema.parse(await request.json());
     const planned = await planQuestion(input);

@@ -2,10 +2,31 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { runAnalysis } from "@/lib/analysis/duckdb";
 import { saveAnalysisRecord } from "@/lib/records";
+import { checkRateLimit, extractClientId, rateLimitConfigs } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  // Check rate limit
+  const clientId = extractClientId(request);
+  const rateLimitResult = checkRateLimit(clientId, rateLimitConfigs.analysis);
+
+  if (!rateLimitResult.allowed) {
+    return NextResponse.json(
+      {
+        error: "请求过于频繁。请稍后再试。",
+        code: "RATE_LIMIT_EXCEEDED",
+        retryAfter: Math.ceil(rateLimitResult.resetAfter / 1000),
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": Math.ceil(rateLimitResult.resetAfter / 1000).toString(),
+        },
+      }
+    );
+  }
+
   try {
     const payload: unknown = await request.json();
     const analysis = await runAnalysis(payload);
