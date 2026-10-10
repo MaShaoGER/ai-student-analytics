@@ -47,6 +47,21 @@ OPENAI_MODEL=gpt-4o-mini
 - Docker
 - Docker Compose
 
+### macOS 上的容器运行时
+
+Docker Desktop 之外，也可以用 colima（轻量虚拟机，`brew install colima docker docker-compose`）。装完有两个坑必须处理，否则 `docker compose` 用不了：
+
+1. Homebrew 的 docker CLI 默认不加载 compose 插件，需要写 `~/.docker/config.json`：
+   ```json
+   { "cliPluginsExtraDirs": ["/opt/homebrew/lib/docker/cli-plugins"] }
+   ```
+2. `colima start` 会打印 "Current context is now colima"，但 context 实际仍是 `default`，CLI 于是去连不存在的 `/var/run/docker.sock`。手动切一次：
+   ```bash
+   docker context use colima
+   ```
+
+colima 虚拟机的架构跟随宿主机：Apple Silicon 上是 aarch64，容器里装的是 DuckDB 的 `linux-arm64` 变体。Dockerfile 已按容器实际架构匹配，不写死 x64。
+
 ### 启动服务
 
 ```bash

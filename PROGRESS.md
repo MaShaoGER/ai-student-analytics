@@ -43,7 +43,7 @@
 - ✅ docker-compose.yml：volumes、environment 完整配置
 - ✅ 部署指南：本地开发、Docker、验证、故障排查
 - ✅ pnpm 包管理器安装配置
-- ⏳ Docker 本机启动（工具缺失，不属于代码问题）
+- ⏳ 主机部署和备用部署演练（第7周）
 
 ### 第5周初（安全性）- 已完成 ✅
 - ✅ 限流器实现：内存式 IP 追踪，支持多配置
@@ -68,10 +68,13 @@ commit c296276: 部署指南 (+190 lines)
 commit d2f5b32: Docker 配置修复 (+17 lines)
 commit 3556519: 第4周分析记录 (+399 lines)
 commit db236d1: 第3周测试补齐 (+267 lines)
+commit c4da890: 第5周进度收尾 (+16 lines)
+commit 2e46299: Docker 部署链路修复 + 启用 HTTP 集成测试 (+65 lines)
+commit fd9637d: 修正 DuckDB 原生库在镜像中的落位 (+20 lines)
 ───────────────────────────────
-总计：~2,541 新增行（含文档、测试、安全）
-提交数：15 commits
-测试数：84 条（全部通过）+ 11条API测试（手动）
+总计：~2,642 新增行（含文档、测试、安全）
+提交数：18 commits
+测试数：84 条单测（全部通过）+ 11 条 HTTP 集成测试（scripts/test-api.sh 自动运行）
 ```
 
 ## 接下来的工作（第5-8周）
@@ -221,8 +224,8 @@ commit db236d1: 第3周测试补齐 (+267 lines)
 |------|------|------|------|
 | P95 响应时间 | < 2s | 1.5s | 本地测试 |
 | 单次查询耗时 | < 10s | 1-2s | 10s 超时已实现（`withConnection`） |
-| 测试覆盖率 | > 80% | 68% | 边界 + 功能测试计 |
-| 部署时间 | < 5min | TBD | Docker 本机验证待完成 |
+| 测试覆盖率 | > 80% | 未统计 | 未配置 coverage 工具（vitest 未启用 `--coverage`），此前的 68% 无法复现 |
+| 部署时间 | < 5min | 已通过 | colima + `docker compose up --build`，全链路验收 |
 
 ---
 
