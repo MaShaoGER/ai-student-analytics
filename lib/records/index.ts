@@ -2,17 +2,10 @@ import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { type AnalysisRecord } from "../analysis/types";
 
-const PROJECT_ROOT = process.cwd();
-const RECORDS_DIR = path.join(PROJECT_ROOT, "records");
-
-// Ensure records directory exists
-try {
-  mkdirSync(RECORDS_DIR, { recursive: true });
-} catch {
-  // directory may already exist
+function recordsDirectory(): string {
+  // Runtime records belong to the mounted state directory, never the build bundle.
+  return path.resolve(/* turbopackIgnore: true */ process.env.ANALYSIS_RECORDS_DIR?.trim() || path.join(process.cwd(), "records"));
 }
-
-const RECORDS_FILE = path.join(RECORDS_DIR, "analysis.jsonl");
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -27,7 +20,9 @@ export async function saveAnalysisRecord(record: Omit<AnalysisRecord, "id" | "ti
     ...record,
   };
   try {
-    appendFileSync(RECORDS_FILE, JSON.stringify(completeRecord) + "\n", "utf-8");
+    const directory = recordsDirectory();
+    mkdirSync(directory, { recursive: true });
+    appendFileSync(path.join(directory, "analysis.jsonl"), JSON.stringify(completeRecord) + "\n", "utf-8");
     return id;
   } catch (error) {
     console.error("Failed to save analysis record", error);
@@ -37,7 +32,7 @@ export async function saveAnalysisRecord(record: Omit<AnalysisRecord, "id" | "ti
 
 export function loadAnalysisRecords(): AnalysisRecord[] {
   try {
-    const content = readFileSync(RECORDS_FILE, "utf-8");
+    const content = readFileSync(/* turbopackIgnore: true */ path.join(recordsDirectory(), "analysis.jsonl"), "utf-8");
     return content
       .split("\n")
       .filter((line) => line.trim().length > 0)

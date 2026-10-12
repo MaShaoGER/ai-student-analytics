@@ -11,7 +11,10 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY . .
 # .dockerignore keeps oulad_raw/*.csv out of the context, so the build is small;
 # the CSVs reach the container through the read-only mount in docker-compose.yml.
-RUN pnpm build
+# Memory-constrained hosts can opt into Next.js's Webpack builder with
+# --build-arg NEXT_BUILD_ARGS=--webpack; the default remains Turbopack.
+ARG NEXT_BUILD_ARGS=""
+RUN pnpm build ${NEXT_BUILD_ARGS}
 
 # Output file tracing follows require("@duckdb/node-bindings") to duckdb.node but
 # stops there, so the shared library next to it never lands in .next/standalone.
@@ -54,6 +57,7 @@ COPY --from=builder /app/.next/static ./.next/static
 
 # OULAD.names keeps the dataset's provenance alongside the mounted CSVs.
 COPY --from=builder /app/oulad_raw/OULAD.names ./oulad_raw/OULAD.names
+COPY --from=builder /app/scripts/admin-init.mjs ./scripts/admin-init.mjs
 
 RUN mkdir -p /app/records
 

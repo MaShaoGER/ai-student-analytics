@@ -1,0 +1,927 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import type {
+  AIBudgets,
+  AIConfig,
+  AIConfigResponse,
+  AICostStats,
+  AITestResponse,
+  ManagedUser,
+  SessionUser,
+} from "@/lib/client-types";
+import { Icon, type IconName } from "@/components/app-icons";
+
+type AdminTab = "ai" | "users" | "account";
+type Feedback = { kind: "success" | "error"; message: string } | null;
+type ConfigDraft = {
+  enabled: boolean;
+  model: string;
+  apiKey: string;
+  budgets: Record<keyof AIBudgets, string>;
+  inputPrice: string;
+  outputPrice: string;
+};
+
+const budgetFields: { key: keyof AIBudgets; label: string }[] = [
+  { key: "perRequest", label: "每次调用" },
+  { key: "perHour", label: "每小时" },
+  { key: "perDay", label: "每天" },
+  { key: "perMonth", label: "每 30 天" },
+];
+
+function makeDraft(config: AIConfig): ConfigDraft {
+  return {
+    enabled: config.enabled,
+    model: config.model,
+    apiKey: "",
+    budgets: {
+      perRequest: String(config.budgets.perRequest),
+      perHour: String(config.budgets.perHour),
+      perDay: String(config.budgets.perDay),
+      perMonth: String(config.budgets.perMonth),
+    },
+    inputPrice:
+      config.pricing.inputPerMillion === null ? "" : String(config.pricing.inputPerMillion),
+    outputPrice:
+      config.pricing.outputPerMillion === null ? "" : String(config.pricing.outputPerMillion),
+  };
+}
+
+function requestMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && !(error instanceof SyntaxError) && !(error instanceof TypeError)
+    ? error.message
+    : fallback;
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
+
+function FeedbackNotice({ feedback }: { feedback: Feedback }) {
+  if (!feedback) return null;
+  return (
+    <div
+      className={`notice notice-${feedback.kind}`}
+      role={feedback.kind === "error" ? "alert" : "status"}
+    >
+      <Icon name={feedback.kind === "error" ? "info" : "check"} />
+      <span>{feedback.message}</span>
+    </div>
+  );
+}
+
+function costLabel(value: string | undefined): string {
+  if (value === undefined || !Number.isFinite(Number(value))) return "—";
+  return `$${Number(value).toFixed(4)}`;
+}
+
+function createdLabel(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "创建日期未记录";
+  return `${new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(date)} 创建`;
+}
+
+export function AdminPanel({
+  user,
+  onSessionExpired,
+}: {
+  user: SessionUser;
+  onSessionExpired: () => void;
+}) {
+  const [tab, setTab] = useState<AdminTab>("ai");
+  const [config, setConfig] = useState<AIConfig | null>(null);
+  const [draft, setDraft] = useState<ConfigDraft | null>(null);
+  const [stats, setStats] = useState<AICostStats | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [configFeedback, setConfigFeedback] = useState<Feedback>(null);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [userFeedback, setUserFeedback] = useState<Feedback>(null);
+  const [newUser, setNewUser] = useState({ username: "", displayName: "", password: "" });
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [updatingUser, setUpdatingUser] = useState<string | null>(null);
+  const [passwords, setPasswords] = useState({ current: "", next: "", confirm: "" });
+  const [passwordFeedback, setPasswordFeedback] = useState<Feedback>(null);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const sessionExpired = useRef(onSessionExpired);
+  const active = useRef(true);
+  const pendingRequests = useRef(new Set<AbortController>());
+  const usersRequestId = useRef(0);
+
+  useEffect(() => {
+    sessionExpired.current = onSessionExpired;
+  }, [onSessionExpired]);
+
+  useEffect(() => {
+    active.current = true;
+    const requests = pendingRequests.current;
+    return () => {
+      active.current = false;
+      usersRequestId.current++;
+      requests.forEach((controller) => controller.abort());
+      requests.clear();
+    };
+  }, []);
+
+  const request = useCallback(async <T,>(url: string, options?: RequestInit): Promise<T> => {
+    if (!active.current) throw new DOMException("Request cancelled", "AbortError");
+    const controller = new AbortController();
+    const externalSignal = options?.signal;
+    const cancel = () => controller.abort();
+    if (externalSignal?.aborted) cancel();
+    else externalSignal?.addEventListener("abort", cancel, { once: true });
+    pendingRequests.current.add(controller);
+    try {
+      const response = await fetch(url, {
+        cache: "no-store",
+        ...options,
+        signal: controller.signal,
+      });
+      // A response from a closed panel must never expire a newly opened session.
+      if (!active.current || controller.signal.aborted)
+        throw new DOMException("Request cancelled", "AbortError");
+      if (response.status === 401) {
+        sessionExpired.current();
+        throw new Error("登录已过期，请重新登录。");
+      }
+      const payload = (await response.json()) as T & { error?: string };
+      if (!active.current || controller.signal.aborted)
+        throw new DOMException("Request cancelled", "AbortError");
+      if (!response.ok) throw new Error(payload.error || "操作失败，请稍后重试。");
+      return payload;
+    } finally {
+      pendingRequests.current.delete(controller);
+      externalSignal?.removeEventListener("abort", cancel);
+    }
+  }, []);
+
+  const loadConfig = useCallback(async () => {
+    setConfigLoading(true);
+    setConfigFeedback(null);
+    let cancelled = false;
+    try {
+      const payload = await request<AIConfigResponse>("/api/admin/ai-config");
+      setConfig(payload.config);
+      setDraft(makeDraft(payload.config));
+      setStats(payload.stats);
+    } catch (error) {
+      if (!active.current || isAbortError(error)) {
+        cancelled = true;
+        return;
+      }
+      setConfigFeedback({
+        kind: "error",
+        message: requestMessage(error, "设置加载失败，请稍后重试。"),
+      });
+    } finally {
+      if (active.current && !cancelled) setConfigLoading(false);
+    }
+  }, [request]);
+
+  const loadUsers = useCallback(async () => {
+    const requestId = ++usersRequestId.current;
+    setUsersLoading(true);
+    try {
+      const payload = await request<{ users: ManagedUser[] }>("/api/admin/users");
+      if (!active.current || requestId !== usersRequestId.current) return;
+      setUsers(payload.users);
+    } catch (error) {
+      if (!active.current || requestId !== usersRequestId.current || isAbortError(error)) return;
+      setUserFeedback({
+        kind: "error",
+        message: requestMessage(error, "账号列表加载失败，请稍后重试。"),
+      });
+    } finally {
+      if (active.current && requestId === usersRequestId.current) setUsersLoading(false);
+    }
+  }, [request]);
+
+  useEffect(() => {
+    void loadConfig();
+  }, [loadConfig]);
+  useEffect(() => {
+    if (tab === "users") void loadUsers();
+  }, [tab, loadUsers]);
+
+  const hasChanges = Boolean(
+    draft && config && JSON.stringify(draft) !== JSON.stringify(makeDraft(config)),
+  );
+  const pricesConfigured = Boolean(
+    config && config.pricing.inputPerMillion !== null && config.pricing.outputPerMillion !== null,
+  );
+  const canTest = Boolean(
+    config?.enabled &&
+    config.keyConfigured &&
+    pricesConfigured &&
+    !hasChanges &&
+    !saving &&
+    !testing,
+  );
+
+  async function saveConfig(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!draft || saving || testing) return;
+    setConfigFeedback(null);
+    const budgets = Object.fromEntries(
+      budgetFields.map(({ key }) => [key, Number(draft.budgets[key])]),
+    ) as AIBudgets;
+    if (
+      budgetFields.some(
+        ({ key }) =>
+          !draft.budgets[key].trim() || !Number.isFinite(budgets[key]) || budgets[key] <= 0,
+      )
+    ) {
+      setConfigFeedback({ kind: "error", message: "调用预算需要填写大于 0 的金额。" });
+      return;
+    }
+    const pricing = {
+      inputPerMillion: draft.inputPrice.trim() === "" ? null : Number(draft.inputPrice),
+      outputPerMillion: draft.outputPrice.trim() === "" ? null : Number(draft.outputPrice),
+    };
+    if (
+      Object.values(pricing).some(
+        (value) => value !== null && (!Number.isFinite(value) || value < 0),
+      )
+    ) {
+      setConfigFeedback({
+        kind: "error",
+        message: "模型单价需要填写大于或等于 0 的金额，也可以留空。",
+      });
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = await request<AIConfigResponse>("/api/admin/ai-config", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          enabled: draft.enabled,
+          model: draft.model.trim(),
+          budgets,
+          pricing,
+          ...(draft.apiKey.trim() ? { apiKey: draft.apiKey.trim() } : {}),
+        }),
+      });
+      setConfig(payload.config);
+      setDraft(makeDraft(payload.config));
+      setStats(payload.stats);
+      setConfigFeedback({ kind: "success", message: "AI 设置已保存，后续调用会使用这些配置。" });
+    } catch (error) {
+      setConfigFeedback({
+        kind: "error",
+        message: requestMessage(error, "设置保存失败，请稍后重试。"),
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function testConnection() {
+    if (!canTest) return;
+    setTesting(true);
+    setConfigFeedback(null);
+    try {
+      const payload = await request<AITestResponse>("/api/admin/ai-test", { method: "POST" });
+      setStats(payload.stats);
+      setConfigFeedback({
+        kind: "success",
+        message: payload.message || "连接成功，AI 已返回有效结果。此次测试已计入用量。",
+      });
+    } catch (error) {
+      setConfigFeedback({
+        kind: "error",
+        message: requestMessage(error, "AI 连接测试失败，请检查设置。"),
+      });
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  async function createUser(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (creatingUser) return;
+    setCreatingUser(true);
+    setUserFeedback(null);
+    try {
+      await request("/api/admin/users", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ...newUser,
+          username: newUser.username.trim(),
+          displayName: newUser.displayName.trim(),
+          role: "user",
+        }),
+      });
+      setNewUser({ username: "", displayName: "", password: "" });
+      setUserFeedback({
+        kind: "success",
+        message: "账号已创建。请通过安全渠道把账号和初始密码交给使用者。",
+      });
+      await loadUsers();
+    } catch (error) {
+      setUserFeedback({
+        kind: "error",
+        message: requestMessage(error, "账号创建失败，请稍后重试。"),
+      });
+    } finally {
+      setCreatingUser(false);
+    }
+  }
+
+  async function changeUserStatus(account: ManagedUser) {
+    if (updatingUser || account.role === "admin") return;
+    setUpdatingUser(account.id);
+    setUserFeedback(null);
+    try {
+      await request("/api/admin/users", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: account.id, disabled: !account.disabled }),
+      });
+      setUserFeedback({
+        kind: "success",
+        message: account.disabled
+          ? `${account.displayName}的账号已启用。`
+          : `${account.displayName}的账号已停用，已有登录会话已退出。`,
+      });
+      await loadUsers();
+    } catch (error) {
+      setUserFeedback({
+        kind: "error",
+        message: requestMessage(error, "账号状态修改失败，请稍后重试。"),
+      });
+    } finally {
+      setUpdatingUser(null);
+    }
+  }
+
+  async function changePassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (changingPassword) return;
+    if (passwords.next !== passwords.confirm) {
+      setPasswordFeedback({ kind: "error", message: "两次输入的新密码不一致，请重新确认。" });
+      return;
+    }
+    setChangingPassword(true);
+    setPasswordFeedback(null);
+    try {
+      await request("/api/auth/password", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ currentPassword: passwords.current, newPassword: passwords.next }),
+      });
+      setPasswords({ current: "", next: "", confirm: "" });
+      sessionExpired.current();
+    } catch (error) {
+      setPasswordFeedback({
+        kind: "error",
+        message: requestMessage(error, "密码修改失败，请稍后重试。"),
+      });
+    } finally {
+      setChangingPassword(false);
+    }
+  }
+
+  return (
+    <div className="admin-panel">
+      <nav className="admin-tabs" aria-label="管理设置">
+        {(
+          [
+            { value: "ai", label: "AI 设置", icon: "sparkles" },
+            { value: "users", label: "账号管理", icon: "users" },
+            { value: "account", label: "我的账号", icon: "shield" },
+          ] as { value: AdminTab; label: string; icon: IconName }[]
+        ).map((item) => (
+          <button
+            key={item.value}
+            type="button"
+            className={tab === item.value ? "active" : ""}
+            aria-pressed={tab === item.value}
+            onClick={() => setTab(item.value)}
+          >
+            <Icon name={item.icon} size={18} />
+            {item.label}
+          </button>
+        ))}
+      </nav>
+
+      {tab === "ai" && (
+        <>
+          <div className="admin-intro">
+            <div>
+              <h2>让 AI 按你的设置工作</h2>
+              <p>在这里连接模型、控制用量，再开放给工作台用户。</p>
+            </div>
+            <span
+              className={`badge ${config?.enabled && config.keyConfigured && pricesConfigured ? "badge-success" : "badge-muted"}`}
+            >
+              <span className="status-dot" />
+              {configLoading
+                ? "正在读取设置"
+                : !config
+                  ? "设置未读取"
+                  : config.enabled && config.keyConfigured && pricesConfigured
+                    ? "AI 已开启"
+                    : "AI 尚未就绪"}
+            </span>
+          </div>
+          <FeedbackNotice feedback={configFeedback} />
+          {configLoading ? (
+            <div className="panel admin-state" role="status">
+              <Icon name="refresh" />
+              正在读取 AI 设置…
+            </div>
+          ) : !draft || !config ? (
+            <div className="panel admin-state">
+              <p>暂时无法读取 AI 设置。</p>
+              <button type="button" className="secondary-button" onClick={() => void loadConfig()}>
+                <Icon name="refresh" size={16} />
+                重新加载
+              </button>
+            </div>
+          ) : (
+            <div className="admin-config-layout">
+              <form
+                className="panel admin-config-main"
+                onSubmit={saveConfig}
+                aria-busy={saving || testing}
+              >
+                <div className="admin-form-section">
+                  <div className="admin-section-heading">
+                    <div>
+                      <h3>模型连接</h3>
+                      <p>密钥保存在服务端，页面不会显示已有密钥。</p>
+                    </div>
+                    <Icon name="link" size={21} />
+                  </div>
+                  <label className="admin-toggle" htmlFor="admin-ai-enabled">
+                    <span>
+                      <strong>允许 AI 分析</strong>
+                      <span>开启后，用户可以用自然语言提问。</span>
+                    </span>
+                    <input
+                      id="admin-ai-enabled"
+                      type="checkbox"
+                      checked={draft.enabled}
+                      onChange={(event) => setDraft({ ...draft, enabled: event.target.checked })}
+                      disabled={saving || testing}
+                    />
+                  </label>
+                  <div className="admin-form-grid">
+                    <div className="form-field">
+                      <label htmlFor="admin-ai-model">模型名称</label>
+                      <input
+                        id="admin-ai-model"
+                        value={draft.model}
+                        onChange={(event) => setDraft({ ...draft, model: event.target.value })}
+                        placeholder="填写服务商提供的模型名称"
+                        required
+                        maxLength={100}
+                        disabled={saving || testing}
+                      />
+                      <span className="form-help">填写与你的 API 密钥对应的模型。</span>
+                    </div>
+                    <div className="form-field">
+                      <label htmlFor="admin-ai-key">
+                        API 密钥{" "}
+                        <span
+                          className={`badge ${config.keyConfigured ? "badge-success" : "badge-muted"}`}
+                        >
+                          {config.keyConfigured ? "已配置" : "未配置"}
+                        </span>
+                      </label>
+                      <input
+                        id="admin-ai-key"
+                        type="password"
+                        autoComplete="off"
+                        spellCheck={false}
+                        value={draft.apiKey}
+                        onChange={(event) => setDraft({ ...draft, apiKey: event.target.value })}
+                        placeholder={
+                          config.keyConfigured ? "留空则保留已有密钥" : "粘贴你的 API 密钥"
+                        }
+                        maxLength={500}
+                        disabled={saving || testing}
+                      />
+                      <span className="form-help">输入新密钥会替换已有密钥。</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="admin-form-section">
+                  <div className="admin-section-heading">
+                    <div>
+                      <h3>费用估算</h3>
+                      <p>按服务商的模型单价填写，单位为美元 / 百万 token。</p>
+                    </div>
+                    <Icon name="chart" size={21} />
+                  </div>
+                  <div className="admin-form-grid">
+                    <div className="form-field">
+                      <label htmlFor="admin-input-price">输入单价（USD / 百万 token）</label>
+                      <input
+                        id="admin-input-price"
+                        type="number"
+                        min="0"
+                        step="any"
+                        inputMode="decimal"
+                        value={draft.inputPrice}
+                        onChange={(event) => setDraft({ ...draft, inputPrice: event.target.value })}
+                        placeholder="请按服务商价格填写"
+                        disabled={saving || testing}
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label htmlFor="admin-output-price">输出单价（USD / 百万 token）</label>
+                      <input
+                        id="admin-output-price"
+                        type="number"
+                        min="0"
+                        step="any"
+                        inputMode="decimal"
+                        value={draft.outputPrice}
+                        onChange={(event) =>
+                          setDraft({ ...draft, outputPrice: event.target.value })
+                        }
+                        placeholder="请按服务商价格填写"
+                        disabled={saving || testing}
+                      />
+                    </div>
+                  </div>
+                  <p className="form-help">
+                    token 是模型处理文字的计量单位。填写单价后才允许 AI 调用，账单金额以服务商为准。
+                  </p>
+                </div>
+                <div className="admin-form-section">
+                  <div className="admin-section-heading">
+                    <div>
+                      <h3>调用预算</h3>
+                      <p>达到对应上限后暂停 AI 调用，帮助控制支出。</p>
+                    </div>
+                    <Icon name="sliders" size={21} />
+                  </div>
+                  <div className="admin-budget-grid">
+                    {budgetFields.map(({ key, label }) => (
+                      <div className="form-field" key={key}>
+                        <label htmlFor={`admin-budget-${key}`}>{label}（USD）</label>
+                        <input
+                          id={`admin-budget-${key}`}
+                          type="number"
+                          min="0.000001"
+                          step="any"
+                          inputMode="decimal"
+                          required
+                          value={draft.budgets[key]}
+                          onChange={(event) =>
+                            setDraft({
+                              ...draft,
+                              budgets: { ...draft.budgets, [key]: event.target.value },
+                            })
+                          }
+                          disabled={saving || testing}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="admin-form-actions">
+                  <button
+                    type="submit"
+                    className="primary-button"
+                    disabled={saving || testing || !hasChanges}
+                  >
+                    <Icon name="check" size={17} />
+                    {saving ? "正在保存…" : "保存设置"}
+                  </button>
+                  <span>{hasChanges ? "有尚未保存的修改" : "当前设置已保存"}</span>
+                </div>
+              </form>
+              <aside className="admin-config-side">
+                <section className="panel">
+                  <div className="panel-header">
+                    <h3 className="panel-title">用量与费用</h3>
+                    <span className="badge badge-muted">估算</span>
+                  </div>
+                  <div className="admin-stats">
+                    <div className="admin-stat">
+                      <span>累计调用</span>
+                      <strong>
+                        {stats?.totalCalls ?? "—"}
+                        <small> 次</small>
+                      </strong>
+                    </div>
+                    <div className="admin-stat">
+                      <span>近 24 小时</span>
+                      <strong>
+                        {costLabel(stats?.last24Hours.totalCost)}
+                        <small> USD</small>
+                      </strong>
+                    </div>
+                    <div className="admin-stat">
+                      <span>近 1 小时</span>
+                      <strong>
+                        {costLabel(stats?.lastHour.totalCost)}
+                        <small> USD</small>
+                      </strong>
+                    </div>
+                  </div>
+                  <p className="form-help">
+                    费用根据填写的单价估算。用量包含连接测试，以服务商账单为准。
+                  </p>
+                </section>
+                <section className="panel">
+                  <div className="panel-header">
+                    <h3 className="panel-title">检查连接</h3>
+                    <Icon name="link" size={20} />
+                  </div>
+                  <p className="form-help">保存设置后，发送一次请求，确认模型可以正常返回结果。</p>
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    disabled={!canTest}
+                    onClick={() => void testConnection()}
+                  >
+                    <Icon name="refresh" size={17} />
+                    {testing ? "正在测试…" : "测试连接"}
+                  </button>
+                  <p className="form-help">
+                    将实际调用 AI 并产生费用。
+                    {hasChanges
+                      ? "请先保存修改。"
+                      : !config.enabled
+                        ? "请先开启 AI。"
+                        : !config.keyConfigured
+                          ? "请先配置密钥。"
+                          : !pricesConfigured
+                            ? "请先填写输入与输出单价。"
+                            : ""}
+                  </p>
+                </section>
+              </aside>
+            </div>
+          )}
+        </>
+      )}
+
+      {tab === "users" && (
+        <>
+          <div className="admin-intro">
+            <div>
+              <h2>为团队开通访问账号</h2>
+              <p>普通用户可以查看与分析数据，系统设置只向管理员开放。</p>
+            </div>
+            <span className="badge badge-muted">按角色开放功能</span>
+          </div>
+          <FeedbackNotice feedback={userFeedback} />
+          <div className="admin-user-layout">
+            <section className="panel">
+              <div className="panel-header">
+                <h3 className="panel-title">已创建的账号</h3>
+                <button
+                  type="button"
+                  className="text-button"
+                  disabled={usersLoading || Boolean(updatingUser)}
+                  onClick={() => {
+                    setUserFeedback(null);
+                    void loadUsers();
+                  }}
+                >
+                  <Icon name="refresh" size={16} />
+                  刷新
+                </button>
+              </div>
+              {usersLoading ? (
+                <div className="admin-state" role="status">
+                  正在读取账号列表…
+                </div>
+              ) : (
+                <div className="admin-user-list">
+                  {users.length === 0 ? (
+                    <div className="admin-state">还没有读取到账号，请刷新重试。</div>
+                  ) : (
+                    users.map((account) => (
+                      <div className="admin-user-row" key={account.id}>
+                        <div className="admin-user-avatar">
+                          {(account.displayName || account.username).slice(0, 1)}
+                        </div>
+                        <div className="admin-user-detail">
+                          <strong>
+                            {account.displayName}{" "}
+                            {account.id === user.id && (
+                              <span className="badge badge-muted">你</span>
+                            )}
+                          </strong>
+                          <span>
+                            {account.username} · {createdLabel(account.createdAt)}
+                          </span>
+                        </div>
+                        <div className="admin-user-actions">
+                          <span
+                            className={`badge ${account.disabled ? "badge-warning" : account.role === "admin" ? "badge-muted" : "badge-success"}`}
+                          >
+                            {account.role === "admin"
+                              ? "管理员"
+                              : account.disabled
+                                ? "已停用"
+                                : "普通用户"}
+                          </span>
+                          {account.role === "user" && (
+                            <button
+                              type="button"
+                              className="text-button"
+                              disabled={Boolean(updatingUser)}
+                              onClick={() => void changeUserStatus(account)}
+                              aria-label={`${account.disabled ? "启用" : "停用"}${account.displayName}的账号`}
+                            >
+                              {updatingUser === account.id
+                                ? "处理中…"
+                                : account.disabled
+                                  ? "启用"
+                                  : "停用"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+              <p className="form-help">
+                停用后，该账号立即退出且无法登录；启用后可以重新登录。管理员账号受保护。
+              </p>
+            </section>
+            <form className="panel" onSubmit={createUser} aria-busy={creatingUser}>
+              <div className="panel-header">
+                <h3 className="panel-title">创建普通用户</h3>
+                <Icon name="plus" size={20} />
+              </div>
+              <div className="form-field">
+                <label htmlFor="admin-new-name">使用者姓名</label>
+                <input
+                  id="admin-new-name"
+                  required
+                  maxLength={60}
+                  value={newUser.displayName}
+                  onChange={(event) => setNewUser({ ...newUser, displayName: event.target.value })}
+                  placeholder="填写姓名或显示名称"
+                  disabled={creatingUser}
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor="admin-new-username">登录账号</label>
+                <input
+                  id="admin-new-username"
+                  autoComplete="off"
+                  required
+                  minLength={3}
+                  maxLength={40}
+                  pattern={"[A-Za-z0-9._\\-]{3,40}"}
+                  value={newUser.username}
+                  onChange={(event) => setNewUser({ ...newUser, username: event.target.value })}
+                  placeholder="例如 teacher.zhang"
+                  disabled={creatingUser}
+                />
+                <span className="form-help">3–40 个字母、数字、点、下划线或短横线。</span>
+              </div>
+              <div className="form-field">
+                <label htmlFor="admin-new-password">初始密码</label>
+                <input
+                  id="admin-new-password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  minLength={12}
+                  maxLength={128}
+                  value={newUser.password}
+                  onChange={(event) => setNewUser({ ...newUser, password: event.target.value })}
+                  placeholder="至少 12 个字符"
+                  disabled={creatingUser}
+                />
+                <span className="form-help">使用至少 12 个字符，不要与其他账号共用密码。</span>
+              </div>
+              <button type="submit" className="primary-button" disabled={creatingUser}>
+                <Icon name="plus" size={17} />
+                {creatingUser ? "正在创建…" : "创建账号"}
+              </button>
+            </form>
+          </div>
+        </>
+      )}
+
+      {tab === "account" && (
+        <>
+          <div className="admin-intro">
+            <div>
+              <h2>管理你的登录信息</h2>
+              <p>定期更新密码，保护工作台和团队数据。</p>
+            </div>
+          </div>
+          <FeedbackNotice feedback={passwordFeedback} />
+          <div className="admin-user-layout">
+            <section className="panel admin-account-card">
+              <div className="admin-user-avatar">
+                {(user.displayName || user.username).slice(0, 1)}
+              </div>
+              <h3>{user.displayName}</h3>
+              <p>{user.username}</p>
+              <span className="badge badge-muted">管理员</span>
+              <div className="notice notice-info">
+                <Icon name="shield" />
+                <span>你的账号可以管理 AI 设置和普通用户，请妥善保管登录信息。</span>
+              </div>
+            </section>
+            <form className="panel" onSubmit={changePassword} aria-busy={changingPassword}>
+              <div className="panel-header">
+                <h3 className="panel-title">修改密码</h3>
+                <Icon name="lock" size={20} />
+              </div>
+              <div className="form-field">
+                <label htmlFor="admin-current-password">当前密码</label>
+                <input
+                  id="admin-current-password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  maxLength={128}
+                  value={passwords.current}
+                  onChange={(event) => setPasswords({ ...passwords, current: event.target.value })}
+                  disabled={changingPassword}
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor="admin-next-password">新密码</label>
+                <input
+                  id="admin-next-password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  minLength={12}
+                  maxLength={128}
+                  value={passwords.next}
+                  onChange={(event) => setPasswords({ ...passwords, next: event.target.value })}
+                  placeholder="至少 12 个字符"
+                  disabled={changingPassword}
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor="admin-confirm-password">再次输入新密码</label>
+                <input
+                  id="admin-confirm-password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  minLength={12}
+                  maxLength={128}
+                  value={passwords.confirm}
+                  onChange={(event) => setPasswords({ ...passwords, confirm: event.target.value })}
+                  disabled={changingPassword}
+                />
+              </div>
+              <p className="form-help">修改后，你在所有设备上都会退出，需要使用新密码重新登录。</p>
+              <button className="primary-button" type="submit" disabled={changingPassword}>
+                <Icon name="check" size={17} />
+                {changingPassword ? "正在修改…" : "保存新密码并重新登录"}
+              </button>
+            </form>
+          </div>
+        </>
+      )}
+
+      <div className="admin-section-heading admin-roadmap-heading">
+        <div>
+          <h3>更多管理能力</h3>
+          <p>这些模块将陆续开放，你可以先了解它们的用途。</p>
+        </div>
+      </div>
+      <div className="admin-future-grid">
+        {(
+          [
+            { icon: "link", title: "服务商接入", copy: "接入更多 AI 服务商，按需求选择模型。" },
+            {
+              icon: "shield",
+              title: "数据访问权限",
+              copy: "按课程和学期，为不同使用者分配数据范围。",
+            },
+            { icon: "clock", title: "操作记录", copy: "查看账号、配置与数据操作的历史记录。" },
+          ] as { icon: IconName; title: string; copy: string }[]
+        ).map((feature) => (
+          <section className="panel admin-future-card" key={feature.title}>
+            <div className="admin-future-icon">
+              <Icon name={feature.icon} size={22} />
+            </div>
+            <span className="badge badge-muted">即将支持</span>
+            <h3>{feature.title}</h3>
+            <p>{feature.copy}</p>
+            <button type="button" className="text-button" disabled>
+              暂未开放
+              <Icon name="arrow" size={16} />
+            </button>
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}

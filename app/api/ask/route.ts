@@ -8,13 +8,20 @@ import {
   planQuestionInputSchema,
 } from "@/lib/ai/planner";
 import { saveAnalysisRecord } from "@/lib/records";
-import { checkRateLimit, extractClientId, rateLimitConfigs } from "@/lib/security/rate-limit";
+import { checkRateLimit, rateLimitConfigs } from "@/lib/security/rate-limit";
+import { apiError, assertSameOrigin, requireUser } from "@/lib/auth/http";
+import { AuthError } from "@/lib/auth/service";
+import { BudgetExceededError, UnknownModelPricingError } from "@/lib/security/ai-cost";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  let clientId: string;
+  try {
+    assertSameOrigin(request);
+    clientId = `ask:${(await requireUser(request)).id}`;
+  } catch (error) { return apiError(error); }
   // Check rate limit (stricter for ask due to AI cost)
-  const clientId = extractClientId(request);
   const rateLimitResult = checkRateLimit(clientId, rateLimitConfigs.ask);
 
   if (!rateLimitResult.allowed) {
@@ -69,6 +76,9 @@ export async function POST(request: Request) {
       ...analysis,
     });
   } catch (error) {
+    if (error instanceof AuthError) return apiError(error);
+    if (error instanceof BudgetExceededError) return NextResponse.json({ error: error.message, code: "AI_BUDGET_EXCEEDED" }, { status: 429 });
+    if (error instanceof UnknownModelPricingError) return NextResponse.json({ error: error.message, code: "AI_PRICING_REQUIRED" }, { status: 503 });
     if (error instanceof AIClarificationError) {
       return NextResponse.json(
         {
@@ -91,7 +101,6 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    console.error("AI planning failed", error instanceof Error ? error.message : "unknown error");
     return NextResponse.json(
       { error: "AI 暂时无法生成分析计划，请稍后重试。", code: "AI_PLANNING_FAILED" },
       { status: 502 },

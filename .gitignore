@@ -24,7 +24,7 @@ venv/
 !.env.example
 
 # Local databases and generated files
-records/
+/records/
 *.db
 *.sqlite
 *.sqlite3

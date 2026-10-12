@@ -2,13 +2,18 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { runAnalysis } from "@/lib/analysis/duckdb";
 import { saveAnalysisRecord } from "@/lib/records";
-import { checkRateLimit, extractClientId, rateLimitConfigs } from "@/lib/security/rate-limit";
+import { checkRateLimit, rateLimitConfigs } from "@/lib/security/rate-limit";
+import { apiError, assertSameOrigin, requireUser } from "@/lib/auth/http";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  let clientId: string;
+  try {
+    assertSameOrigin(request);
+    clientId = `analysis:${(await requireUser(request)).id}`;
+  } catch (error) { return apiError(error); }
   // Check rate limit
-  const clientId = extractClientId(request);
   const rateLimitResult = checkRateLimit(clientId, rateLimitConfigs.analysis);
 
   if (!rateLimitResult.allowed) {

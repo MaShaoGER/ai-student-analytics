@@ -26,12 +26,15 @@
 
 ```bash
 pnpm install
+pnpm admin:init
 pnpm dev
 ```
 
-浏览器打开 `http://localhost:3000`，选择模拟校园数据后即可运行平均成绩、活跃次数或完成率分析。项目会优先读取 `data/sample/`；如果 `oulad_raw/` 中存在本地 OULAD CSV，也会在数据集选择器中显示。
+首次运行 `pnpm admin:init`，在终端设置管理员账号和至少 12 个字符的密码。浏览器打开 `http://localhost:3000`，登录后即可使用数据概览、数据浏览与智能分析。管理员还可创建普通账号、停用账号和管理 AI 设置。项目会优先读取 `data/sample/`；如果 `oulad_raw/` 中存在本地 OULAD CSV，也会在数据集选择器中显示。
 
-页面内置 10 个经过回归验证的固定问题，不需要模型密钥即可运行。要启用其他自然语言问题，将 `.env.example` 复制为 `.env.local`，填写仅供服务端读取的 `OPENAI_API_KEY` 和 `OPENAI_MODEL`，再重启开发服务。模型只生成受限的 `AnalysisPlan`，不能提供文件路径或执行任意 SQL。
+页面内置 10 个经过回归验证的固定问题，不需要模型密钥即可运行。要启用自由提问，复制 `.env.example` 为 `.env.local` 并设置 `APP_SETTINGS_KEY`（32 字节 base64），之后在管理员的“系统管理 → AI 配置”中保存模型、密钥、估算单价和调用预算。保存后立即生效；也兼容服务端 `OPENAI_API_KEY` / `OPENAI_MODEL` 初始化。模型只生成受限的 `AnalysisPlan`，不能提供文件路径或执行任意 SQL。
+
+导入、异常提醒、报告导出、多服务商接入和更细的数据权限已预留可见面板，明确标为“即将支持”，不会模拟已经实现。使用和部署细节见 [工作台使用指南](docs/workspace-guide.md)。
 
 验证命令：
 

@@ -3,7 +3,10 @@
  * Tests for common security issues and attack vectors
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { checkRateLimit, rateLimitConfigs } from "./rate-limit";
 import { checkBudget, BudgetExceededError, calculateCost } from "./ai-cost";
 import { API_QUERY_LIMITS, validateQueryResult } from "./query-limits";
@@ -11,6 +14,18 @@ import { createPlan } from "../analysis/plan";
 import { analysisPlanSchema } from "../analysis/types";
 
 describe("Security scenarios", () => {
+  let directory: string;
+  let originalDirectory: string | undefined;
+  beforeEach(() => {
+    originalDirectory = process.env.APP_STATE_DIR;
+    directory = mkdtempSync(join(tmpdir(), "analytics-security-test-"));
+    process.env.APP_STATE_DIR = directory;
+  });
+  afterEach(() => {
+    if (originalDirectory === undefined) delete process.env.APP_STATE_DIR;
+    else process.env.APP_STATE_DIR = originalDirectory;
+    rmSync(directory, { recursive: true, force: true });
+  });
   describe("S01: SQL injection attempts", () => {
     it("should reject SQL injection in filter values", () => {
       const maliciousPlan = {

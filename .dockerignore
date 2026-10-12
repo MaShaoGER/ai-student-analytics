@@ -6,7 +6,15 @@ oulad.zip
 oulad_raw/*.csv
 *.log
 
+# Keep runtime secrets out of the image build context.
+.env
+.env.*
+!.env.example
+
 # Not needed at runtime: analysis records, docs and local test scripts
 records
 docs
 scripts
+!scripts/
+scripts/*
+!scripts/admin-init.mjs

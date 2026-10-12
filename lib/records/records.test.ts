@@ -1,26 +1,22 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { saveAnalysisRecord, loadAnalysisRecords, findRecordById } from "./index";
-import type { AnalysisRecord } from "../analysis/types";
 
 describe("analysis records", () => {
-  const testRecordsDir = path.join(process.cwd(), "records");
+  let testRoot: string;
+  let testRecordsDir: string;
 
   beforeEach(() => {
-    // Clean test records file before each test
-    const recordsFile = path.join(testRecordsDir, "analysis.jsonl");
-    if (fs.existsSync(recordsFile)) {
-      fs.unlinkSync(recordsFile);
-    }
+    testRoot = fs.mkdtempSync(path.join(tmpdir(), "analytics-records-test-"));
+    testRecordsDir = path.join(testRoot, "records");
+    vi.stubEnv("ANALYSIS_RECORDS_DIR", testRecordsDir);
   });
 
   afterEach(() => {
-    // Clean up after tests
-    const recordsFile = path.join(testRecordsDir, "analysis.jsonl");
-    if (fs.existsSync(recordsFile)) {
-      fs.unlinkSync(recordsFile);
-    }
+    vi.unstubAllEnvs();
+    fs.rmSync(testRoot, { recursive: true, force: true });
   });
 
   it("should save and load analysis records", async () => {
@@ -96,6 +92,7 @@ describe("analysis records", () => {
   it("should return undefined for non-existent id", () => {
     const found = findRecordById("non-existent");
     expect(found).toBeUndefined();
+    expect(fs.existsSync(testRecordsDir)).toBe(false);
   });
 
   it("should handle error records", async () => {

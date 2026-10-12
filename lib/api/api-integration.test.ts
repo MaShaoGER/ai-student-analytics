@@ -1,255 +1,347 @@
-/**
- * HTTP API integration tests
- * Tests real API endpoints with rate limiting, timeouts, and error handling
- * 
- * NOTE: These tests require a running dev server on port 3000.
- * Run with: ./scripts/test-api.sh
- * Or manually: pnpm dev (in one terminal), then pnpm vitest run lib/api/api-integration.test.ts
- */
-
-import { describe, it, expect } from "vitest";
+/** Real HTTP regression tests. scripts/test-api.sh provides isolated accounts/state. */
+import { beforeAll, describe, expect, it } from "vitest";
 import { createPlan } from "../analysis/plan";
 
-const BASE_URL = process.env.API_BASE_URL ?? "http://localhost:3000";
+const BASE_URL = process.env.API_BASE_URL ?? "http://localhost:3100";
+const integration = process.env.API_INTEGRATION === "1" ? describe : describe.skip;
+const username = process.env.API_TEST_USERNAME;
+const password = process.env.API_TEST_PASSWORD;
+let adminCookie = "";
+let userCookie = "";
+let ordinaryUserId = "";
 
-// Opt-in: only run when a server is actually reachable, so `pnpm test` stays
-// green without one. scripts/test-api.sh sets API_INTEGRATION=1.
-const describeIntegration = process.env.API_INTEGRATION === "1" ? describe : describe.skip;
+async function request(path: string, options: RequestInit = {}, cookie = adminCookie) {
+  return fetch(`${BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      "content-type": "application/json",
+      origin: BASE_URL,
+      ...(cookie ? { cookie } : {}),
+      ...options.headers,
+    },
+  });
+}
+async function login(account: string, secret: string): Promise<string> {
+  const response = await request(
+    "/api/auth/login",
+    { method: "POST", body: JSON.stringify({ username: account, password: secret }) },
+    "",
+  );
+  expect(response.status).toBe(200);
+  const cookie = response.headers.get("set-cookie")?.split(";")[0];
+  expect(cookie).toBeTruthy();
+  expect(response.headers.get("set-cookie")).toContain("HttpOnly");
+  return cookie!;
+}
+async function createAccount(account: string): Promise<{ cookie: string; id: string }> {
+  const secret = "Fixture-Password-2026!";
+  const response = await request("/api/admin/users", {
+    method: "POST",
+    body: JSON.stringify({
+      username: account,
+      displayName: "接口测试用户",
+      password: secret,
+      role: "user",
+    }),
+  });
+  expect(response.status).toBe(201);
+  const payload = await response.json();
+  return { cookie: await login(account, secret), id: payload.user.id };
+}
 
-describeIntegration("API integration tests (requires running server)", () => {
-  describe("POST /api/analysis", () => {
-    it("should return valid analysis result", async () => {
-      const plan = createPlan({
-        datasetId: "demo",
-        metric: "score",
-        dimension: "course",
-        chartType: "bar",
-      });
+integration("authenticated application HTTP API", () => {
+  beforeAll(async () => {
+    if (!username || !password)
+      throw new Error("Use scripts/test-api.sh to provide an isolated administrator.");
+    adminCookie = await login(username, password);
+    const user = await createAccount(`reader.${Date.now()}`);
+    userCookie = user.cookie;
+    ordinaryUserId = user.id;
+  }, 30_000);
 
-      const response = await fetch(`${BASE_URL}/api/analysis`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(plan),
-      });
+  it("rejects unauthenticated data and admin requests", async () => {
+    for (const path of [
+      "/api/profile",
+      "/api/ai/status",
+      "/api/ai/cost",
+      "/api/admin/users",
+      "/api/admin/ai-config",
+    ]) {
+      expect((await request(path, {}, "")).status).toBe(401);
+    }
+    expect((await request("/api/analysis", { method: "POST", body: "{}" }, "")).status).toBe(401);
+    expect((await request("/api/ask", { method: "POST", body: "{}" }, "")).status).toBe(401);
+  });
 
-      if (!response.ok) {
-        const error = await response.json();
-        console.error("API error:", error);
-      }
+  it("returns a public session DTO without credentials", async () => {
+    const response = await request("/api/auth/session");
+    const payload = await response.json();
+    expect(payload.user.role).toBe("admin");
+    expect(Object.keys(payload.user).sort()).toEqual(["displayName", "id", "role", "username"]);
+    expect(response.headers.get("cache-control")).toContain("no-store");
+  });
 
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data.result).toBeDefined();
-      expect(data.result.rows).toBeInstanceOf(Array);
-      expect(data.result.minSampleSize).toBe(3);
-    });
+  it("rejects incorrect passwords", async () => {
+    const response = await request(
+      "/api/auth/login",
+      { method: "POST", body: JSON.stringify({ username, password: "incorrect-password" }) },
+      "",
+    );
+    expect(response.status).toBe(401);
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
 
-    it("should reject invalid plan with 400", async () => {
-      const invalidPlan = {
-        version: 1,
-        datasetId: "demo",
-        metric: "invalid_metric",
-        aggregation: "avg",
-        dimensions: ["course"],
-        filters: [],
-        sort: { by: "value", direction: "desc" },
-        limit: 20,
-        chartType: "bar",
-      };
+  it("rejects ordinary users reading or modifying administration", async () => {
+    for (const path of ["/api/admin/users", "/api/admin/ai-config", "/api/ai/cost"])
+      expect((await request(path, {}, userCookie)).status).toBe(403);
+    expect(
+      (await request("/api/admin/ai-config", { method: "PUT", body: "{}" }, userCookie)).status,
+    ).toBe(403);
+    expect((await request("/api/admin/ai-test", { method: "POST" }, userCookie)).status).toBe(403);
+  });
 
-      const response = await fetch(`${BASE_URL}/api/analysis`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(invalidPlan),
-      });
-
-      expect(response.status).toBe(400);
-      const data = await response.json();
-      expect(data.error).toBeDefined();
-    });
-
-    it("should return 422 for no data", async () => {
-      const plan = createPlan({
-        datasetId: "demo",
-        metric: "score",
-        dimension: "course",
-        chartType: "bar",
-      });
-
-      // Add filter that matches nothing
-      plan.filters = [{ field: "course", op: "eq", value: "NONEXISTENT" }];
-
-      const response = await fetch(`${BASE_URL}/api/analysis`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(plan),
-      });
-
-      expect(response.status).toBe(422);
-      const data = await response.json();
-      expect(data.error).toContain("未找到满足条件");
-      expect(data.code).toBe("NO_DATA");
-    });
-
-    it("should enforce rate limiting with 429", async () => {
-      const plan = createPlan({
-        datasetId: "demo",
-        metric: "score",
-        dimension: "course",
-        chartType: "bar",
-      });
-
-      // One fixed client id per test run: a key computed inside the mapper below
-      // can advance between calls, spreading 35 requests across several buckets
-      // that each stay under the limit, so nothing would ever be rate limited.
-      const clientId = `test-rate-limit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-      // Make many requests quickly to trigger rate limit
-      const requests = Array.from({ length: 35 }, () =>
-        fetch(`${BASE_URL}/api/analysis`, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-forwarded-for": clientId,
-          },
-          body: JSON.stringify(plan),
+  it("rejects cross-origin and missing-origin mutations", async () => {
+    expect(
+      (
+        await request("/api/admin/ai-config", {
+          method: "PUT",
+          headers: { origin: "https://untrusted.example" },
+          body: "{}",
         })
-      );
-
-      const responses = await Promise.all(requests);
-      const rateLimited = responses.filter((r) => r.status === 429);
-
-      // Limit is 30/min, so 35 concurrent requests should leave 5 rejected
-      expect(rateLimited.length).toBe(5);
-
-      const data = await rateLimited[0].json();
-      expect(data.code).toBe("RATE_LIMIT_EXCEEDED");
-      expect(data.retryAfter).toBeGreaterThan(0);
-    }, 30000); // Allow more time for this test
+      ).status,
+    ).toBe(403);
+    const response = await fetch(`${BASE_URL}/api/auth/logout`, {
+      method: "POST",
+      headers: { cookie: adminCookie },
+    });
+    expect(response.status).toBe(403);
   });
 
-  describe("POST /api/ask", () => {
-    it("should handle golden case without AI", async () => {
-      const response = await fetch(`${BASE_URL}/api/ask`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          question: "哪门课程平均成绩最高？",
-          datasetId: "demo",
-        }),
-      });
+  it("provides dataset profiles to ordinary users", async () => {
+    const response = await request("/api/profile", {}, userCookie);
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(
+      payload.datasets.find((item: { id: string; available: boolean }) => item.id === "demo")
+        .available,
+    ).toBe(true);
+  });
 
-      if (!response.ok) {
-        const error = await response.json();
-        console.log("Ask API response:", error);
-      }
-
-      expect(response.ok).toBe(true);
-      const data = await response.json();
-      expect(data.planning).toBeDefined();
-      expect(data.planning.source).toBe("golden_case");
-      expect(data.result.rows).toBeInstanceOf(Array);
+  it("calculates the unchanged reference result", async () => {
+    const plan = createPlan({
+      datasetId: "demo",
+      metric: "score",
+      dimension: "course",
+      chartType: "bar",
     });
+    const response = await request(
+      "/api/analysis",
+      { method: "POST", body: JSON.stringify(plan) },
+      userCookie,
+    );
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.result.rows).toEqual([
+      { dimension: "AAA", value: 79.67, sampleSize: 3 },
+      { dimension: "CCC", value: 70.67, sampleSize: 3 },
+      { dimension: "BBB", value: 67.67, sampleSize: 3 },
+    ]);
+  });
 
-    it("should return AI_NOT_CONFIGURED for non-golden questions without API key", async () => {
-      const response = await fetch(`${BASE_URL}/api/ask`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          question: "这是一个需要AI处理的新问题",
-          datasetId: "demo",
-        }),
-      });
-
-      // Could be 503 (AI not configured) or 200 if API key is set
-      if (response.status === 503) {
-        const data = await response.json();
-        expect(data.code).toBe("AI_NOT_CONFIGURED");
-      } else if (response.status === 200) {
-        // AI is configured, should work
-        const data = await response.json();
-        expect(data.planning.source).toBe("openai");
-      }
+  it("returns 400 for an invalid analysis and 422 for an empty result", async () => {
+    const plan = createPlan({
+      datasetId: "demo",
+      metric: "score",
+      dimension: "course",
+      chartType: "bar",
     });
-
-    it("should reject invalid question with 400", async () => {
-      const response = await fetch(`${BASE_URL}/api/ask`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          question: "a", // Too short
-          datasetId: "demo",
-        }),
-      });
-
-      expect(response.status).toBe(400);
-      const data = await response.json();
-      expect(data.code).toBe("INVALID_QUESTION");
-    });
-
-    it("should enforce stricter rate limiting for ask", async () => {
-      // Ask has limit of 20/min, analysis has 30/min.
-      // Fixed client id, same reason as the analysis rate-limit test above.
-      const clientId = `test-ask-rate-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-      const requests = Array.from({ length: 25 }, () =>
-        fetch(`${BASE_URL}/api/ask`, {
+    expect(
+      (
+        await request("/api/analysis", {
           method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-forwarded-for": clientId,
-          },
-          body: JSON.stringify({
-            question: "哪门课程平均成绩最高？",
-            datasetId: "demo",
-          }),
+          body: JSON.stringify({ ...plan, metric: "invalid" }),
         })
-      );
-
-      const responses = await Promise.all(requests);
-      const rateLimited = responses.filter((r) => r.status === 429);
-
-      // Limit is 20/min, so 25 concurrent requests should leave 5 rejected
-      expect(rateLimited.length).toBe(5);
-    }, 30000);
-  });
-
-  describe("GET /api/profile", () => {
-    it("should return dataset profiles", async () => {
-      const response = await fetch(`${BASE_URL}/api/profile`);
-
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data.datasets).toBeInstanceOf(Array);
-      expect(data.datasets.length).toBeGreaterThan(0);
-
-      const demo = data.datasets.find((d: any) => d.id === "demo");
-      expect(demo).toBeDefined();
-      expect(demo.available).toBe(true);
+      ).status,
+    ).toBe(400);
+    const response = await request("/api/analysis", {
+      method: "POST",
+      body: JSON.stringify({
+        ...plan,
+        filters: [{ field: "course", op: "eq", value: "NONEXISTENT" }],
+      }),
     });
+    expect(response.status).toBe(422);
+    expect((await response.json()).code).toBe("NO_DATA");
   });
 
-  describe("GET /api/ai/status", () => {
-    it("should return AI configuration status", async () => {
-      const response = await fetch(`${BASE_URL}/api/ai/status`);
+  it("runs verified questions without a model connection", async () => {
+    const response = await request(
+      "/api/ask",
+      {
+        method: "POST",
+        body: JSON.stringify({ question: "哪门课程平均成绩最高？", datasetId: "demo" }),
+      },
+      userCookie,
+    );
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.planning.source).toBe("golden_case");
+    expect(payload.result.rows[0].value).toBe(79.67);
+  });
 
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data).toHaveProperty("configured");
-      expect(data).toHaveProperty("model");
+  it("rejects invalid questions", async () => {
+    const response = await request("/api/ask", {
+      method: "POST",
+      body: JSON.stringify({ question: "a", datasetId: "demo" }),
     });
+    expect(response.status).toBe(400);
+    expect((await response.json()).code).toBe("INVALID_QUESTION");
   });
 
-  describe("GET /api/ai/cost", () => {
-    it("should return cost statistics", async () => {
-      const response = await fetch(`${BASE_URL}/api/ai/cost`);
-
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data.stats).toBeDefined();
-      expect(data.stats).toHaveProperty("totalCalls");
-      expect(data.stats).toHaveProperty("lastHour");
-      expect(data.stats).toHaveProperty("last24Hours");
+  it("saves AI settings with only a public key status", async () => {
+    const initialResponse = await request("/api/admin/ai-config");
+    const initial = await initialResponse.json();
+    const config = {
+      ...initial.config,
+      enabled: false,
+      model: "fixture-model",
+      apiKey: "fixture-key-never-used",
+      pricing: { inputPerMillion: 1, outputPerMillion: 2 },
+    };
+    const response = await request("/api/admin/ai-config", {
+      method: "PUT",
+      body: JSON.stringify(config),
     });
+    expect(response.status).toBe(200);
+    const saved = await response.json();
+    expect(saved.config.keyConfigured).toBe(true);
+    expect(saved.config.model).toBe("fixture-model");
+    expect(JSON.stringify(saved)).not.toContain("fixture-key-never-used");
+    const reloaded = await (await request("/api/admin/ai-config")).json();
+    expect(reloaded.config).toEqual(saved.config);
+    const status = await (await request("/api/ai/status", {}, userCookie)).json();
+    expect(Object.keys(status).sort()).toEqual(["configured", "enabled"]);
+    expect(status.enabled).toBe(false);
   });
+
+  it("does not call the provider while AI is disabled", async () => {
+    const response = await request("/api/ask", {
+      method: "POST",
+      body: JSON.stringify({ question: "这是需要自由分析的问题", datasetId: "demo" }),
+    });
+    expect(response.status).toBe(503);
+    expect((await response.json()).code).toBe("AI_NOT_CONFIGURED");
+    expect((await request("/api/admin/ai-test", { method: "POST" })).status).toBe(503);
+    const payload = await (await request("/api/ai/cost")).json();
+    expect(payload.stats.estimated).toBe(true);
+    expect(payload.stats.totalCalls).toBe(0);
+  });
+
+  it("protects the administrator from being disabled", async () => {
+    const session = await (await request("/api/auth/session")).json();
+    const response = await request("/api/admin/users", {
+      method: "PATCH",
+      body: JSON.stringify({ id: session.user.id, disabled: true }),
+    });
+    expect(response.status).toBe(403);
+  });
+
+  it("revokes existing sessions when an account is disabled", async () => {
+    const response = await request("/api/admin/users", {
+      method: "PATCH",
+      body: JSON.stringify({ id: ordinaryUserId, disabled: true }),
+    });
+    expect(response.status).toBe(200);
+    expect((await request("/api/profile", {}, userCookie)).status).toBe(401);
+    expect(
+      (
+        await request("/api/admin/users", {
+          method: "PATCH",
+          body: JSON.stringify({ id: ordinaryUserId, disabled: false }),
+        })
+      ).status,
+    ).toBe(200);
+    expect((await request("/api/profile", {}, userCookie)).status).toBe(401);
+  });
+
+  it("invalidates a session on logout", async () => {
+    const account = await createAccount(`logout.${Date.now()}`);
+    expect((await request("/api/auth/logout", { method: "POST" }, account.cookie)).status).toBe(
+      200,
+    );
+    expect((await request("/api/profile", {}, account.cookie)).status).toBe(401);
+  });
+
+  it("invalidates all sessions after changing a password", async () => {
+    const accountName = `password.${Date.now()}`;
+    const account = await createAccount(accountName);
+    const next = "Changed-Fixture-2026!";
+    const response = await request(
+      "/api/auth/password",
+      {
+        method: "POST",
+        body: JSON.stringify({ currentPassword: "Fixture-Password-2026!", newPassword: next }),
+      },
+      account.cookie,
+    );
+    expect(response.status).toBe(200);
+    expect((await request("/api/profile", {}, account.cookie)).status).toBe(401);
+    expect((await request("/api/profile", {}, await login(accountName, next))).status).toBe(200);
+  });
+
+  it("limits analysis by authenticated account even with spoofed forwarding headers", async () => {
+    const account = await createAccount(`ratelimit.${Date.now()}`);
+    const plan = createPlan({
+      datasetId: "demo",
+      metric: "score",
+      dimension: "course",
+      chartType: "bar",
+    });
+    const responses = await Promise.all(
+      Array.from({ length: 35 }, (_, i) =>
+        request(
+          "/api/analysis",
+          {
+            method: "POST",
+            headers: { "x-forwarded-for": `spoof-${i}` },
+            body: JSON.stringify(plan),
+          },
+          account.cookie,
+        ),
+      ),
+    );
+    expect(responses.filter((response) => response.status === 429)).toHaveLength(5);
+    const limited = responses.find((response) => response.status === 429)!;
+    expect(limited.headers.get("retry-after")).toBeTruthy();
+    // Reading many charts must not exhaust this account's separate ask allowance.
+    expect(
+      (
+        await request(
+          "/api/ask",
+          {
+            method: "POST",
+            body: JSON.stringify({ question: "哪门课程平均成绩最高？", datasetId: "demo" }),
+          },
+          account.cookie,
+        )
+      ).status,
+    ).toBe(200);
+  }, 30_000);
+
+  it("uses a separate stricter allowance for questions", async () => {
+    const account = await createAccount(`asklimit.${Date.now()}`);
+    const responses = await Promise.all(
+      Array.from({ length: 25 }, () =>
+        request(
+          "/api/ask",
+          {
+            method: "POST",
+            body: JSON.stringify({ question: "哪门课程平均成绩最高？", datasetId: "demo" }),
+          },
+          account.cookie,
+        ),
+      ),
+    );
+    expect(responses.filter((response) => response.status === 429)).toHaveLength(5);
+  }, 30_000);
 });

@@ -5,7 +5,8 @@ import { findGoldenCase, planForDataset } from "../analysis/golden-cases";
 import { METRICS } from "../analysis/metrics";
 import { createPlan } from "../analysis/plan";
 import { dataSourceSchema, type AnalysisPlan } from "../analysis/types";
-import { checkBudget, recordCost } from "../security/ai-cost";
+import { calculateCost, reserveBudget, settleBudget, type TokenUsage } from "../security/ai-cost";
+import { getAIConfig, getRuntimeAIConfig } from "../settings/ai";
 
 const aiPlanFieldsSchema = z.object({
   canAnalyze: z.boolean(),
@@ -22,11 +23,11 @@ export const planQuestionInputSchema = z.object({
 });
 
 type AIPlanFields = z.infer<typeof aiPlanFieldsSchema>;
-type StructuredPlanGenerator = (question: string) => Promise<AIPlanFields>;
+type StructuredPlanGenerator = (question: string) => Promise<AIPlanFields & { usedModel?: string }>;
 
 export class AIConfigurationError extends Error {
-  constructor() {
-    super("AI 尚未配置。请设置 OPENAI_API_KEY 和 OPENAI_MODEL，或选择一个固定问题。");
+  constructor(message = "AI 尚未配置，请让管理员在系统管理中设置模型和密钥。你仍可以使用常用分析问题。") {
+    super(message);
     this.name = "AIConfigurationError";
   }
 }
@@ -47,27 +48,26 @@ export type PlannedQuestion = {
 };
 
 export function getAIStatus() {
-  const model = process.env.OPENAI_MODEL?.trim() || null;
+  const config = getAIConfig();
   return {
-    configured: Boolean(process.env.OPENAI_API_KEY?.trim() && model),
-    model,
+    configured: Boolean(config.keyConfigured && config.model),
+    enabled: config.enabled,
+    model: config.model || null,
   };
 }
 
-async function generateWithOpenAI(question: string): Promise<AIPlanFields> {
-  const { configured, model } = getAIStatus();
-  if (!configured || !model) throw new AIConfigurationError();
-
-  // Check budget before making expensive API call
-  checkBudget(0.05); // Estimate ~$0.05 per planning request
-
+async function generateWithOpenAI(question: string, endpoint = "planner"): Promise<AIPlanFields & { usedModel: string }> {
+  if (!getAIConfig().enabled) throw new AIConfigurationError("AI 当前已停用，请使用常用分析问题，或联系管理员开启 AI。");
+  const config = getRuntimeAIConfig();
+  if (!config.enabled) throw new AIConfigurationError("AI 当前已停用，请使用常用分析问题，或联系管理员开启 AI。");
+  if (!config.apiKey || !config.model) throw new AIConfigurationError();
   const client = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-    maxRetries: 1,
+    apiKey: config.apiKey,
+    maxRetries: 0,
     timeout: 20_000,
   });
-  const response = await client.responses.parse({
-    model,
+  const payload = {
+    model: config.model,
     instructions: [
       "你是高校教学数据分析规划器。只为允许的指标和维度生成计划，不计算数字，不生成 SQL。",
       `允许指标：score（${METRICS.score.description}）、activity（${METRICS.activity.description}）、completion_rate（${METRICS.completion_rate.description}）。`,
@@ -82,25 +82,33 @@ async function generateWithOpenAI(question: string): Promise<AIPlanFields> {
         description: "受限的学生学习数据分析计划",
       }),
     },
-  });
-
-  // Record actual cost
-  if (response.usage) {
-    recordCost(
-      model,
-      {
-        promptTokens: response.usage.input_tokens || 0,
-        completionTokens: response.usage.output_tokens || 0,
-        totalTokens: response.usage.total_tokens || 0,
-      },
-      "planner"
-    );
+  };
+  // A UTF-8 byte bound covers input, instructions and the structured output schema.
+  // Pending calls reserve this amount atomically before any provider request.
+  const upperInputTokens = Buffer.byteLength(JSON.stringify(payload), "utf8") + 512;
+  const estimatedUsage: TokenUsage = { promptTokens: upperInputTokens, completionTokens: 500, totalTokens: upperInputTokens + 500 };
+  const estimatedCost = calculateCost(config.model, estimatedUsage, config.pricing).totalCost;
+  const reservation = reserveBudget(estimatedCost, config.budgets);
+  let usage = estimatedUsage;
+  let usageEstimated = true;
+  try {
+    const response = await client.responses.parse(payload);
+    if (response.usage) {
+      usage = { promptTokens: response.usage.input_tokens, completionTokens: response.usage.output_tokens, totalTokens: response.usage.total_tokens };
+      usageEstimated = false;
+    }
+    if (!response.output_parsed) throw new Error("模型没有返回可验证的分析计划，请换一种问法。");
+    return { ...aiPlanFieldsSchema.parse(response.output_parsed), usedModel: config.model };
+  } finally {
+    // Network failures may still have been billed: retain a conservative estimate.
+    settleBudget(reservation, config.model, usage, endpoint, config.pricing, usageEstimated);
   }
+}
 
-  if (!response.output_parsed) {
-    throw new Error("模型没有返回可验证的分析计划，请换一种问法。");
-  }
-  return aiPlanFieldsSchema.parse(response.output_parsed);
+export async function testAIConnection(): Promise<{ model: string }> {
+  const fields = await generateWithOpenAI("比较各课程的平均成绩，用柱状图展示。", "admin-test");
+  if (!fields.canAnalyze) throw new Error("AI 已返回内容，但未通过分析计划验证，请检查模型是否支持结构化输出。");
+  return { model: fields.usedModel };
 }
 
 export async function planQuestion(
@@ -135,6 +143,6 @@ export async function planQuestion(
     source: "openai",
     rationale: fields.rationale,
     matchedCaseId: null,
-    model: getAIStatus().model,
+    model: fields.usedModel ?? getAIStatus().model,
   };
 }

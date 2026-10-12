@@ -11,6 +11,13 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-}
+      APP_STATE_DIR: /app/records/system
+      APP_ORIGIN: ${APP_ORIGIN:-}
+      APP_SETTINGS_KEY: ${APP_SETTINGS_KEY:-}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      OPENAI_INPUT_PRICE: ${OPENAI_INPUT_PRICE:-}
+      OPENAI_OUTPUT_PRICE: ${OPENAI_OUTPUT_PRICE:-}
     restart: unless-stopped
 
 volumes:

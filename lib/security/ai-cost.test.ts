@@ -1,4 +1,7 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   calculateCost,
   recordCost,
@@ -7,12 +10,21 @@ import {
   BudgetExceededError,
   getCostStats,
   BUDGET_LIMITS,
+  UnknownModelPricingError,
 } from "./ai-cost";
 
 describe("AI cost tracking", () => {
+  let directory: string;
+  let originalDirectory: string | undefined;
   beforeEach(() => {
-    // Note: costHistory is module-scoped, so tests may interfere
-    // In production, we'd want to reset it or use dependency injection
+    originalDirectory = process.env.APP_STATE_DIR;
+    directory = mkdtempSync(join(tmpdir(), "analytics-cost-test-"));
+    process.env.APP_STATE_DIR = directory;
+  });
+  afterEach(() => {
+    if (originalDirectory === undefined) delete process.env.APP_STATE_DIR;
+    else process.env.APP_STATE_DIR = originalDirectory;
+    rmSync(directory, { recursive: true, force: true });
   });
 
   describe("calculateCost", () => {
@@ -43,14 +55,14 @@ describe("AI cost tracking", () => {
       expect(cost.totalCost).toBeCloseTo(0.0075, 6);
     });
 
-    it("should default to gpt-4o-mini pricing for unknown models", () => {
-      const cost = calculateCost("unknown-model", {
-        promptTokens: 1000,
-        completionTokens: 500,
-        totalTokens: 1500,
-      });
-
-      expect(cost.totalCost).toBeCloseTo(0.00045, 6);
+    it("requires explicit pricing for unknown models", () => {
+      expect(() =>
+        calculateCost("unknown-model", {
+          promptTokens: 1000,
+          completionTokens: 500,
+          totalTokens: 1500,
+        }),
+      ).toThrow(UnknownModelPricingError);
     });
   });
 

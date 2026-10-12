@@ -22,35 +22,50 @@ export function AnalysisChart({
   useEffect(() => {
     if (!rootRef.current || chartType === "table" || rows.length === 0) return;
     const chart = echarts.init(rootRef.current);
+    const escape = (value: string) =>
+      value.replace(
+        /[&<>"']/g,
+        (character) =>
+          ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!,
+      );
     chart.setOption({
       animationDuration: 280,
-      color: ["#1459d9"],
-      grid: { top: 24, right: 24, bottom: 56, left: 62 },
+      color: ["#319b8b"],
+      textStyle: { fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif' },
+      grid: { top: 32, right: 22, bottom: 48, left: 50, containLabel: true },
       tooltip: {
         trigger: "axis",
+        backgroundColor: "#ffffff",
+        borderColor: "#e6ebf1",
+        padding: [12, 16],
+        textStyle: { color: "#526981", fontSize: 12 },
         formatter: (params: unknown) => {
           const items = Array.isArray(params) ? params : [params];
-          const first = items[0] as { axisValue?: string; dataIndex?: number; value?: number } | undefined;
+          const first = items[0] as
+            { axisValue?: string; dataIndex?: number; value?: number } | undefined;
           const row = first?.dataIndex === undefined ? undefined : rows[first.dataIndex];
           if (!row) return "";
-          return `${dimensionLabel}：${row.dimension}<br/>${metricLabel}：${row.value.toLocaleString("zh-CN")} ${unit}<br/>样本数：${row.sampleSize.toLocaleString("zh-CN")}`;
+          return `${escape(dimensionLabel)}：${escape(row.dimension)}<br/>${escape(metricLabel)}：${row.value.toLocaleString("zh-CN")} ${escape(unit)}<br/>参与统计：${row.sampleSize.toLocaleString("zh-CN")} 人`;
         },
       },
       xAxis: {
         type: "category",
         data: rows.map((row) => row.dimension),
         axisLabel: {
-          color: "#6f7b88",
+          color: "#8d9bad",
+          fontSize: 11,
+          margin: 12,
           interval: 0,
           hideOverlap: true,
           rotate: rows.length > 5 || rows.some((row) => row.dimension.length > 8) ? 28 : 0,
         },
-        axisLine: { lineStyle: { color: "#dce2e8" } },
+        axisLine: { lineStyle: { color: "#e7edf2" } },
+        axisTick: { show: false },
       },
       yAxis: {
         type: "value",
-        axisLabel: { color: "#6f7b88" },
-        splitLine: { lineStyle: { color: "#edf0f3" } },
+        axisLabel: { color: "#98a6b6", fontSize: 10 },
+        splitLine: { lineStyle: { color: "#eef2f6", type: "dashed" } },
       },
       series: [
         {
@@ -60,23 +75,32 @@ export function AnalysisChart({
           symbol: chartType === "line" ? "circle" : undefined,
           symbolSize: 7,
           barMaxWidth: 46,
-          itemStyle: { borderRadius: chartType === "bar" ? [4, 4, 0, 0] : 0 },
+          itemStyle: { borderRadius: chartType === "bar" ? [6, 6, 0, 0] : 0 },
+          lineStyle: { width: 3 },
+          emphasis: { itemStyle: { color: "#168b7c" } },
         },
       ],
     });
     const resize = () => chart.resize();
-    window.addEventListener("resize", resize);
+    const observer = new ResizeObserver(resize);
+    observer.observe(rootRef.current);
     return () => {
-      window.removeEventListener("resize", resize);
+      observer.disconnect();
       chart.dispose();
     };
-  }, [chartType, rows, unit]);
+  }, [chartType, rows, unit, metricLabel, dimensionLabel]);
 
   if (chartType === "table") return null;
   return (
     <div className="chart-frame">
-      <div className="chart-context">{metricLabel} · 按{dimensionLabel} · 单位：{unit}</div>
-      <div ref={rootRef} className="chart" aria-label={`${metricLabel}按${dimensionLabel}的分析结果图表`} />
+      <div className="chart-context">
+        {metricLabel} · 按{dimensionLabel} · 单位：{unit}
+      </div>
+      <div
+        ref={rootRef}
+        className="chart"
+        aria-label={`${metricLabel}按${dimensionLabel}的分析结果图表`}
+      />
     </div>
   );
 }
