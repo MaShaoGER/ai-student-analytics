@@ -19,6 +19,6 @@ export async function POST(request: Request) {
     if (error instanceof AIConfigurationError) return NextResponse.json({ error: error.message, code: "AI_NOT_CONFIGURED" }, { status: 503 });
     const handled = apiError(error);
     if (handled.status !== 500) return handled;
-    return NextResponse.json({ error: "AI 连接测试未通过，请检查密钥、模型是否支持结构化输出，以及服务端网络。调用失败也可能产生费用，详情以服务商账单为准。", code: "AI_TEST_FAILED" }, { status: 502 });
+    return NextResponse.json({ error: "AI 连接测试未通过，请检查接口地址、协议、密钥、模型返回格式和服务端网络。调用失败也可能产生费用，详情以服务商账单为准。", code: "AI_TEST_FAILED" }, { status: 502 });
   }
 }

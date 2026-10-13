@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { APIConnectionTimeoutError, APIUserAbortError } from "openai/core/error";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import { findGoldenCase, planForDataset } from "../analysis/golden-cases";
@@ -7,6 +8,7 @@ import { createPlan } from "../analysis/plan";
 import { dataSourceSchema, type AnalysisPlan } from "../analysis/types";
 import { calculateCost, reserveBudget, settleBudget, type TokenUsage } from "../security/ai-cost";
 import { getAIConfig, getRuntimeAIConfig } from "../settings/ai";
+import { QueryExecutionError } from "../security/query-execution";
 
 const aiPlanFieldsSchema = z.object({
   canAnalyze: z.boolean(),
@@ -23,7 +25,15 @@ export const planQuestionInputSchema = z.object({
 });
 
 type AIPlanFields = z.infer<typeof aiPlanFieldsSchema>;
-type StructuredPlanGenerator = (question: string) => Promise<AIPlanFields & { usedModel?: string }>;
+type PlanningOptions = { signal?: AbortSignal };
+type StructuredPlanGenerator = (
+  question: string,
+  options?: PlanningOptions,
+) => Promise<AIPlanFields & { usedModel?: string }>;
+
+function assertPlanningActive(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new QueryExecutionError("CANCELLED", "分析请求已取消。");
+}
 
 export class AIConfigurationError extends Error {
   constructor(message = "AI 尚未配置，请让管理员在系统管理中设置模型和密钥。你仍可以使用常用分析问题。") {
@@ -41,7 +51,7 @@ export class AIClarificationError extends Error {
 
 export type PlannedQuestion = {
   plan: AnalysisPlan;
-  source: "golden_case" | "openai";
+  source: "golden_case" | "openai" | "external";
   rationale: string;
   matchedCaseId: string | null;
   model: string | null;
@@ -56,25 +66,28 @@ export function getAIStatus() {
   };
 }
 
-async function generateWithOpenAI(question: string, endpoint = "planner"): Promise<AIPlanFields & { usedModel: string }> {
+async function generateWithOpenAI(question: string, options: PlanningOptions = {}, endpoint = "planner"): Promise<AIPlanFields & { usedModel: string }> {
+  assertPlanningActive(options.signal);
   if (!getAIConfig().enabled) throw new AIConfigurationError("AI 当前已停用，请使用常用分析问题，或联系管理员开启 AI。");
   const config = getRuntimeAIConfig();
   if (!config.enabled) throw new AIConfigurationError("AI 当前已停用，请使用常用分析问题，或联系管理员开启 AI。");
   if (!config.apiKey || !config.model) throw new AIConfigurationError();
   const client = new OpenAI({
     apiKey: config.apiKey,
+    ...(config.baseUrl ? { baseURL: config.baseUrl } : {}),
     maxRetries: 0,
     timeout: 20_000,
   });
-  const payload = {
-    model: config.model,
-    instructions: [
+  const instructions = [
       "你是高校教学数据分析规划器。只为允许的指标和维度生成计划，不计算数字，不生成 SQL。",
       `允许指标：score（${METRICS.score.description}）、activity（${METRICS.activity.description}）、completion_rate（${METRICS.completion_rate.description}）。`,
       "允许维度：course（课程）、term（学期）。趋势或按学期的问题优先使用折线图，课程比较优先使用柱状图；用户明确要求表格时使用 table。",
       "只有问题能由允许的指标和维度准确回答时，canAnalyze 才为 true，clarificationQuestion 为 null。",
       "口径含糊或超出能力时，canAnalyze 必须为 false，并在 clarificationQuestion 中提出一个简短、可回答的澄清问题；不要强行选择近似指标。",
-    ].join("\n"),
+    ].join("\n");
+  const payload = {
+    model: config.model,
+    instructions,
     input: question,
     max_output_tokens: 500,
     text: {
@@ -92,13 +105,41 @@ async function generateWithOpenAI(question: string, endpoint = "planner"): Promi
   let usage = estimatedUsage;
   let usageEstimated = true;
   try {
-    const response = await client.responses.parse(payload);
-    if (response.usage) {
-      usage = { promptTokens: response.usage.input_tokens, completionTokens: response.usage.output_tokens, totalTokens: response.usage.total_tokens };
-      usageEstimated = false;
+    let fields: unknown;
+    if (config.apiFormat === "chat_completions") {
+      const response = await client.chat.completions.create({
+        model: config.model,
+        messages: [
+          { role: "system", content: `${instructions}\n只输出一个 JSON 对象，包含 canAnalyze(boolean)、metric(score|activity|completion_rate)、dimension(course|term)、chartType(line|bar|table)、rationale(string)、clarificationQuestion(string|null)。不要使用 Markdown。` },
+          { role: "user", content: question },
+        ],
+        max_tokens: 500,
+      }, { signal: options.signal });
+      if (response.usage) {
+        usage = { promptTokens: response.usage.prompt_tokens, completionTokens: response.usage.completion_tokens, totalTokens: response.usage.total_tokens };
+        usageEstimated = false;
+      }
+      const content = response.choices[0]?.message.content;
+      if (!content) throw new Error("模型没有返回可验证的分析计划，请换一种问法。");
+      fields = JSON.parse(content);
+    } else {
+      const response = await client.responses.parse(payload, { signal: options.signal });
+      if (response.usage) {
+        usage = { promptTokens: response.usage.input_tokens, completionTokens: response.usage.output_tokens, totalTokens: response.usage.total_tokens };
+        usageEstimated = false;
+      }
+      fields = response.output_parsed;
     }
-    if (!response.output_parsed) throw new Error("模型没有返回可验证的分析计划，请换一种问法。");
-    return { ...aiPlanFieldsSchema.parse(response.output_parsed), usedModel: config.model };
+    if (!fields) throw new Error("模型没有返回可验证的分析计划，请换一种问法。");
+    return { ...aiPlanFieldsSchema.parse(fields), usedModel: config.model };
+  } catch (error) {
+    if (options.signal?.aborted || error instanceof APIUserAbortError) {
+      throw new QueryExecutionError("CANCELLED", "分析请求已取消。");
+    }
+    if (error instanceof APIConnectionTimeoutError) {
+      throw new QueryExecutionError("TIMEOUT", "AI 响应超时，请稍后重试或使用推荐问题。");
+    }
+    throw error;
   } finally {
     // Network failures may still have been billed: retain a conservative estimate.
     settleBudget(reservation, config.model, usage, endpoint, config.pricing, usageEstimated);
@@ -106,15 +147,17 @@ async function generateWithOpenAI(question: string, endpoint = "planner"): Promi
 }
 
 export async function testAIConnection(): Promise<{ model: string }> {
-  const fields = await generateWithOpenAI("比较各课程的平均成绩，用柱状图展示。", "admin-test");
-  if (!fields.canAnalyze) throw new Error("AI 已返回内容，但未通过分析计划验证，请检查模型是否支持结构化输出。");
+  const fields = await generateWithOpenAI("比较各课程的平均成绩，用柱状图展示。", {}, "admin-test");
+  if (!fields.canAnalyze) throw new Error("AI 已返回内容，但未通过分析计划验证，请检查模型能否按当前协议返回有效计划。");
   return { model: fields.usedModel };
 }
 
 export async function planQuestion(
   input: z.infer<typeof planQuestionInputSchema>,
   generator: StructuredPlanGenerator = generateWithOpenAI,
+  options: PlanningOptions = {},
 ): Promise<PlannedQuestion> {
+  assertPlanningActive(options.signal);
   const parsed = planQuestionInputSchema.parse(input);
   const goldenCase = findGoldenCase(parsed.question);
   if (goldenCase) {
@@ -127,7 +170,8 @@ export async function planQuestion(
     };
   }
 
-  const fields = await generator(parsed.question);
+  const fields = await generator(parsed.question, options);
+  assertPlanningActive(options.signal);
   if (!fields.canAnalyze) {
     throw new AIClarificationError(
       fields.clarificationQuestion ?? "这个问题的指标或分组口径不够明确，请补充说明。",
@@ -140,7 +184,7 @@ export async function planQuestion(
       dimension: fields.dimension,
       chartType: fields.chartType,
     }),
-    source: "openai",
+    source: getAIConfig().baseUrl ? "external" : "openai",
     rationale: fields.rationale,
     matchedCaseId: null,
     model: fields.usedModel ?? getAIStatus().model,

@@ -2,8 +2,20 @@ import { describe, expect, it } from "vitest";
 import { profileDatasets, runAnalysis } from "./duckdb";
 import { createPlan } from "./plan";
 import type { AnalysisPlan } from "./types";
+import { QueryExecutionError } from "../security/query-execution";
 
 describe("demo DuckDB analysis", () => {
+  it("supports cancellation without changing the existing plan contract", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(runAnalysis(createPlan({
+      datasetId: "demo", metric: "score", dimension: "course", chartType: "bar",
+    }), { signal: controller.signal })).rejects.toBeInstanceOf(QueryExecutionError);
+    await expect(profileDatasets({ signal: controller.signal })).rejects.toMatchObject({
+      code: "CANCELLED",
+    });
+  });
+
   it.each<{ sort: AnalysisPlan["sort"]; groups: string[] }>([
     { sort: { by: "dimension", direction: "asc" }, groups: ["AAA", "BBB", "CCC"] },
     { sort: { by: "dimension", direction: "desc" }, groups: ["CCC", "BBB", "AAA"] },
@@ -35,6 +47,16 @@ describe("demo DuckDB analysis", () => {
       { dimension: "AAA", value: 79.67, sampleSize: 3 },
       { dimension: "CCC", value: 70.67, sampleSize: 3 },
     ]);
+  });
+
+  it("preserves both grouping dimensions for saved reports", async () => {
+    const { result } = await runAnalysis({
+      ...createPlan({ datasetId: "demo", metric: "score", dimension: "course", chartType: "table" }),
+      dimensions: ["course", "term"],
+    });
+    expect(result.dimensions).toEqual(["course", "term"]);
+    expect(result.dimension).toBe("course");
+    expect(result.rows[0].dimension).toContain(" / ");
   });
 
   it("calculates average score by course from the source rows", async () => {

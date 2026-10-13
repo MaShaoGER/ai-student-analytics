@@ -164,7 +164,7 @@ console.table((await response.json()).result?.rows);
 - `.dockerignore` 排除 `.env` 和 `.env.*`（保留 `.env.example`），实际密钥通过运行时环境变量传入
 - 使用只读卷挂载数据文件
 - API 已配置登录账号速率限制（analysis 30/min、ask 20/min）；登录另有持久化账号及全局限额
-- 查询已有超时逻辑（analysis 10s、profile 30s）；内存硬限制、实际取消行为与超时 HTTP 分类仍待专项验证
+- 查询已有超时（analysis 10s、profile 30s）、DuckDB 管理内存和结果行列限制，真实中断/取消及 HTTP 分类已有回归；进程总内存由部署层配置，当前 VPS 为 768 MiB
 
 ### 性能
 - 使用 `NODE_ENV=production`（Docker Compose 已设置）
@@ -235,7 +235,7 @@ console.table((await response.json()).result?.rows);
 ## 下一步
 
 - [x] 配置 API 速率限制和成本上限（第5周）
-- [~] VPS 已有回滚脚本并通过语法检查；仓库脚本、实际回滚与恢复演练待完成（第7周）
+- [x] 仓库完整 records 备份/校验/恢复与单服务镜像回退工具；2026-10-13 VPS 独立恢复实例实际演练通过（见下文）
 - [x] 模拟数据云端测试环境与访问账号初始化（2026-10-11）
 - [ ] 正式在线演示环境、域名和可信 HTTPS 证书（第7周）
 - [~] 公开会话端点已用于基础就绪检查；独立健康端点、监控与告警待完成（第7周）
@@ -266,3 +266,18 @@ docker compose exec student-analytics node scripts/admin-init.mjs
 本次仍使用模拟数据，未上传完整 OULAD CSV，未配置真实 AI 密钥；固定问题和手动分析可使用。HTTPS 沿用自签名测试证书，浏览器会提示证书未受信任，正式演示需使用可信证书。
 
 部署前已备份 Compose、Nginx 和分析记录，并保留旧镜像。服务器 `/opt/chuanzhi-student-analytics-test/deploy/rollback-20261012T115926.sh` 可回退应用版本：恢复备份目录中的 `compose.yml` 与 `nginx.conf`，执行 Compose `up -d --wait` 后重启网关；保留当前 records 卷，不覆盖新增记录。此脚本通过语法检查，本次未执行实际回退。
+
+
+### 稳定性增量发布与恢复验收（2026-10-13）
+
+线上已切换为 `chuanzhi-student-analytics-test:stability-20261012T142546`，入口仍为 `https://64.81.112.189:3443/`。复用上一轮成功构建且应用源码一致的镜像，保留 `chuanzhi-test_records`、原账号和设置密钥。应用与网关内存上限分别为 768 MiB / 96 MiB。
+
+- 仓库 [smoke 工具](./smoke-release.md) 在独立候选通过 70 项完整检查：10 个固定问题的计划、数值、排序、样本数，普通用户权限，两个分析接口的失败审计、用户归属及旧记录字节保留。
+- 公网通过 52 项检查；普通用户与本机 records 读取两项显式跳过。随后服务器检查全部 17 条新增审计：ask 13 条、analysis 4 条，错误码和执行阶段符合预期，全部归属已登录管理员。生产账号列表与身份保持一致。
+- 原 42 条分析记录完整保留，发布验收后共 59 条。停止/启动应用后，完整 records 文件集合及运行配置 SHA-256 一致；其他 8 个业务容器保持相同 ID 且运行。
+- [恢复工具](./recovery.md) 从线上一致性备份恢复到全新卷，全部 3 个持久化文件哈希一致，管理员可登录。隔离实例实际回退旧镜像通过 49 项 smoke，再切回新版通过 70 项；两次镜像切换前后持久化哈希一致。
+- 候选/恢复容器及临时卷均已清理。发布前恢复验收备份为服务器 `backups/recovery-20261013`，发布后包含全部 59 条记录的已校验备份为 `backups/released-20261013`；相对根目录 `/opt/chuanzhi-student-analytics-test`。私有工具和证据位于 `acceptance/20261013`，旧镜像与原发布配置备份保留。
+
+上述回退演练使用独立恢复卷；通用工具只切换明确指定的单个 Compose 服务。公开仓库包含工具和说明，运行配置、账号、备份与密钥保存在私有运维目录。
+
+本轮重跑类型检查、194 条单元/路由测试、19 条认证 HTTP 测试及 15 条运维 CLI 测试。仍使用模拟数据和自签名测试证书，HTTP 验收加载已保存证书且保持 TLS 验证。真实 AI、完整 OULAD、可信 HTTPS、并发/P95 和备用主机尚未验收。本地页面核对完成率和导出入口后，浏览器工具拒绝继续访问；线上浏览器下载与实际 PDF 保存仍列待办。

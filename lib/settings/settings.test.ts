@@ -16,6 +16,7 @@ import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { ModuleKind, ScriptTarget, transpileModule } from "typescript";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { APIConnectionTimeoutError, APIUserAbortError } from "openai/core/error";
 import type { AIConfig } from "../client-types";
 import { getAIStatus, planQuestion } from "../ai/planner";
 import {
@@ -34,12 +35,14 @@ import { readState, updateState } from "./storage";
 const openAIStub = vi.hoisted(() => ({
   options: null as unknown,
   parse: vi.fn(),
+  create: vi.fn(),
 }));
 
 // Exercise the real planner/configuration/cost path while forbidding network calls.
 vi.mock("openai", () => ({
   default: class {
     responses = { parse: openAIStub.parse };
+    chat = { completions: { create: openAIStub.create } };
     constructor(options: unknown) {
       openAIStub.options = options;
     }
@@ -52,6 +55,8 @@ const ENV_KEY = "sk-fictional-env-key-for-unit-tests";
 const SETTINGS_KEY = Buffer.alloc(32, 42).toString("base64");
 const config: AIConfig = {
   enabled: true,
+  apiFormat: "responses",
+  baseUrl: "",
   model: "campus-analysis-custom",
   keyConfigured: true,
   budgets: { perRequest: 0.1, perHour: 1, perDay: 5, perMonth: 20 },
@@ -71,6 +76,7 @@ describe("persistent AI settings and usage", () => {
     vi.stubEnv("OPENAI_OUTPUT_PRICE", "");
     openAIStub.options = null;
     openAIStub.parse.mockReset();
+    openAIStub.create.mockReset();
     openAIStub.parse.mockResolvedValue({
       output_parsed: {
         canAnalyze: true,
@@ -105,6 +111,14 @@ describe("persistent AI settings and usage", () => {
     expect(persisted).not.toContain(SETTINGS_KEY);
     expect(persisted).toContain("encryptedApiKey");
     if (process.platform !== "win32") expect(statSync(file).mode & 0o777).toBe(0o600);
+  });
+
+  it("opens pre-upgrade settings with the official Responses defaults", () => {
+    writeFileSync(path.join(stateDir, "ai-config.json"), JSON.stringify({
+      version: 1, enabled: true, model: "gpt-4o-mini",
+      budgets: config.budgets, pricing: config.pricing, encryptedApiKey: null,
+    }));
+    expect(getAIConfig()).toMatchObject({ apiFormat: "responses", baseUrl: "", model: "gpt-4o-mini" });
   });
 
   it("preserves the saved key when the administrator leaves the replacement field empty", () => {
@@ -154,9 +168,77 @@ describe("persistent AI settings and usage", () => {
 
     expect(result).toMatchObject({ source: "openai", model: config.model });
     expect(openAIStub.options).toMatchObject({ apiKey: SAVED_KEY });
-    expect(openAIStub.parse).toHaveBeenCalledWith(expect.objectContaining({ model: config.model }));
+    expect(openAIStub.parse).toHaveBeenCalledWith(
+      expect.objectContaining({ model: config.model }),
+      { signal: undefined },
+    );
     expect(getTotalCost().totalCost).toBeCloseTo(0.0045, 8);
     expect(getCostStats().total).toBe(1);
+  });
+
+  it("uses a custom Chat Completions endpoint and validates its JSON plan", async () => {
+    saveAIConfig({ ...config, apiFormat: "chat_completions", baseUrl: "https://models.example.test/v1/", apiKey: SAVED_KEY });
+    openAIStub.create.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({
+        canAnalyze: true, metric: "score", dimension: "term", chartType: "line",
+        rationale: "按学期比较成绩。", clarificationQuestion: null,
+      }) } }],
+      usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
+    });
+    const result = await planQuestion({ question: "请按学期比较平均成绩变化", datasetId: "demo" });
+    expect(result.source).toBe("external");
+    expect(result.plan).toMatchObject({ metric: "score", dimensions: ["term"] });
+    expect(openAIStub.options).toMatchObject({ apiKey: SAVED_KEY, baseURL: "https://models.example.test/v1" });
+    expect(openAIStub.create).toHaveBeenCalledOnce();
+    expect(openAIStub.parse).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsafe endpoint URLs and invalid custom plans", async () => {
+    expect(() => saveAIConfig({ ...config, baseUrl: "http://models.example.test/v1" })).toThrow();
+    expect(() => saveAIConfig({ ...config, baseUrl: "https://user:pass@models.example.test/v1" })).toThrow();
+    saveAIConfig({ ...config, apiFormat: "chat_completions", baseUrl: "https://models.example.test/v1", apiKey: SAVED_KEY });
+    openAIStub.create.mockResolvedValue({ choices: [{ message: { content: '{"canAnalyze":true,"metric":"made_up"}' } }] });
+    await expect(planQuestion({ question: "请按学期比较平均成绩变化", datasetId: "demo" })).rejects.toThrow();
+  });
+
+  it("passes cancellation to the provider and settles the conservative usage estimate", async () => {
+    saveAIConfig({ ...config, apiKey: SAVED_KEY });
+    const controller = new AbortController();
+    openAIStub.parse.mockImplementationOnce(async (_payload, options) => {
+      expect(options.signal).toBe(controller.signal);
+      controller.abort();
+      throw new APIUserAbortError();
+    });
+    await expect(planQuestion(
+      { question: "请把成绩按学期整理成一条时间趋势", datasetId: "demo" },
+      undefined,
+      { signal: controller.signal },
+    )).rejects.toMatchObject({ code: "CANCELLED" });
+    expect(getCostStats().total).toBe(1);
+    expect(getTotalCost().totalCost).toBeGreaterThan(0);
+  });
+
+  it("classifies provider timeouts and preserves estimated charges for the attempted call", async () => {
+    saveAIConfig({ ...config, apiKey: SAVED_KEY });
+    openAIStub.parse.mockRejectedValueOnce(new APIConnectionTimeoutError());
+    await expect(planQuestion(
+      { question: "请把成绩按学期整理成一条时间趋势", datasetId: "demo" },
+    )).rejects.toMatchObject({ code: "TIMEOUT" });
+    expect(getCostStats().total).toBe(1);
+    expect(getTotalCost().totalCost).toBeGreaterThan(0);
+  });
+
+  it("avoids provider calls and reservations for a request cancelled before planning", async () => {
+    saveAIConfig({ ...config, apiKey: SAVED_KEY });
+    const controller = new AbortController();
+    controller.abort();
+    await expect(planQuestion(
+      { question: "请把成绩按学期整理成一条时间趋势", datasetId: "demo" },
+      undefined,
+      { signal: controller.signal },
+    )).rejects.toMatchObject({ code: "CANCELLED" });
+    expect(openAIStub.parse).not.toHaveBeenCalled();
+    expect(getCostStats().total).toBe(0);
   });
 
   it("stops model calls immediately when saved settings disable AI or lower its budget", async () => {

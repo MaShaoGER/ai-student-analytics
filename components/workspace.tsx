@@ -8,6 +8,12 @@ import { LoginScreen } from "@/components/login-screen";
 import { GOLDEN_CASES } from "@/lib/analysis/golden-cases";
 import { createPlan } from "@/lib/analysis/plan";
 import { METRICS } from "@/lib/analysis/metrics";
+import {
+  analysisDimensionLabel,
+  analysisReportHtml,
+  analysisSourceLabel,
+  downloadAnalysisFile,
+} from "@/lib/exports/analysis";
 import type {
   AnalysisPlan,
   AnalysisResult,
@@ -19,14 +25,22 @@ import type {
 import type { SessionUser } from "@/lib/client-types";
 
 type View = "overview" | "browse" | "ask" | "reports" | "admin" | "account";
-type Planning = { source: "golden_case" | "openai"; rationale: string };
+type Planning = { source: "golden_case" | "openai" | "external"; rationale: string };
 type AIStatus = { configured: boolean; enabled: boolean };
 type Overview = Partial<Record<Metric, AnalysisResult>>;
+type SessionAnalysis = { key: string; result: AnalysisResult };
+const analysisKey = (result: AnalysisResult) =>
+  JSON.stringify([
+    result.datasetId,
+    result.metricLabel,
+    result.dimensions ?? [result.dimension],
+    result.query,
+  ]);
 const pageInfo: Record<View, { title: string; description: string }> = {
   overview: { title: "数据概览", description: "从这里了解数据，找到下一步要分析的问题。" },
   browse: { title: "数据浏览", description: "选择想比较的内容，用图表和表格快速看清差异。" },
   ask: { title: "智能分析", description: "把想了解的问题写下来，让数据给出答案。" },
-  reports: { title: "报告中心", description: "这里将汇集可分享、可下载的分析报告。" },
+  reports: { title: "报告中心", description: "把本次会话的分析结果整理成报告，下载或打印留存。" },
   admin: { title: "系统管理", description: "管理 AI 连接、使用预算和工作台账号。" },
   account: { title: "个人设置", description: "查看账号信息，管理你的登录密码。" },
 };
@@ -81,12 +95,12 @@ function ResultTable({ rows, result }: { rows: AnalysisResult["rows"]; result: A
     <div className="table-wrap">
       <table className="result-table">
         <caption>
-          {result.metricLabel}按{result.dimension === "term" ? "学期" : "课程"}比较，单位：
+          {result.metricLabel}按{analysisDimensionLabel(result)}比较，单位：
           {result.unit}
         </caption>
         <thead>
           <tr>
-            <th>{result.dimension === "term" ? "学期" : "课程"}</th>
+            <th>{analysisDimensionLabel(result)}</th>
             <th>
               {result.metricLabel}（{result.unit}）
             </th>
@@ -122,6 +136,7 @@ function ResultPanel({
   loading = false,
   searchable = false,
   planning,
+  onReport,
 }: {
   result: AnalysisResult | null;
   chartType: ChartType;
@@ -129,6 +144,7 @@ function ResultPanel({
   loading?: boolean;
   searchable?: boolean;
   planning?: Planning | null;
+  onReport?: (result: AnalysisResult) => void;
 }) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("default");
@@ -152,7 +168,7 @@ function ResultPanel({
     (best, row) => (!best || row.value > best.value ? row : best),
     null,
   );
-  const dimensionLabel = result?.dimension === "term" ? "学期" : "课程";
+  const dimensionLabel = result ? analysisDimensionLabel(result) : "课程";
   const metricDefinition = Object.values(METRICS).find(
     (item) => item.label === result?.metricLabel,
   );
@@ -289,6 +305,33 @@ function ResultPanel({
               单位：{result.unit} · 每组至少 {result.minSampleSize} 人
             </span>
           </div>
+          {result.rows.length > 0 && (
+            <div className="result-export-actions">
+              <button
+                className="secondary-button"
+                onClick={() => downloadAnalysisFile(result, "csv")}
+                type="button"
+              >
+                <Icon name="download" size={16} />
+                下载 CSV
+              </button>
+              <button
+                className="secondary-button"
+                onClick={() => downloadAnalysisFile(result, "html")}
+                type="button"
+              >
+                <Icon name="file" size={16} />
+                下载 HTML 报告
+              </button>
+              {onReport && (
+                <button className="secondary-button" onClick={() => onReport(result)} type="button">
+                  <Icon name="file" size={16} />
+                  预览 / 打印报告
+                </button>
+              )}
+              <span>导出本次查询的全部返回分组，保留原始顺序。</span>
+            </div>
+          )}
           {chartType !== "table" && rows.length > 0 && (
             <details className="result-details">
               <summary>
@@ -554,6 +597,119 @@ function AccountPanel({ user, expire }: { user: SessionUser; expire: () => void 
   );
 }
 
+function ReportCenter({
+  analyses,
+  selectedKey,
+  onSelect,
+  onStart,
+}: {
+  analyses: SessionAnalysis[];
+  selectedKey: string;
+  onSelect: (key: string) => void;
+  onStart: () => void;
+}) {
+  const frame = useRef<HTMLIFrameElement>(null);
+  const [loadedHtml, setLoadedHtml] = useState("");
+  const [printError, setPrintError] = useState("");
+  const selected = analyses.find((entry) => entry.key === selectedKey) ?? analyses[0];
+  const result = selected?.result;
+  const html = useMemo(() => (result ? analysisReportHtml(result) : ""), [result]);
+  function printReport() {
+    setPrintError("");
+    try {
+      const reportWindow = frame.current?.contentWindow;
+      if (!reportWindow || loadedHtml !== html) return;
+      reportWindow.focus();
+      reportWindow.print();
+    } catch {
+      setPrintError("浏览器暂时无法打印预览。请下载 HTML 报告后打开，再使用浏览器打印。");
+    }
+  }
+  if (!result)
+    return (
+      <section className="panel report-empty">
+        <span className="feature-icon">
+          <Icon name="file" size={26} />
+        </span>
+        <h2>先完成一次分析，再生成报告</h2>
+        <p>报告会包含真实结论、分组数据、样本人数和计算说明。本次会话还没有可用的分析结果。</p>
+        <button className="primary-button" onClick={onStart} type="button">
+          开始分析
+          <Icon name="arrow" size={16} />
+        </button>
+      </section>
+    );
+  return (
+    <section className="panel report-workspace">
+      <div className="report-controls">
+        <div>
+          <span className="section-kicker">ANALYSIS REPORT</span>
+          <h2>本次会话的分析报告</h2>
+          <p>从已完成的分析中选择一份预览；刷新页面或退出后会清空此列表。</p>
+        </div>
+        <label className="form-field" htmlFor="report-analysis">
+          选择分析结果
+          <select
+            id="report-analysis"
+            value={selected.key}
+            onChange={(event) => onSelect(event.target.value)}
+          >
+            {analyses.map((entry) => (
+              <option key={entry.key} value={entry.key}>
+                {analysisSourceLabel(entry.result)} · {entry.result.metricLabel} · 按
+                {analysisDimensionLabel(entry.result)} · {entry.result.rows.length} 组
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="report-actions">
+          <button
+            className="primary-button"
+            disabled={loadedHtml !== html}
+            onClick={printReport}
+            type="button"
+          >
+            <Icon name="file" size={16} />
+            打印 / 另存 PDF
+          </button>
+          <button
+            className="secondary-button"
+            onClick={() => downloadAnalysisFile(result, "html")}
+            type="button"
+          >
+            <Icon name="download" size={16} />
+            下载 HTML 报告
+          </button>
+          <button
+            className="secondary-button"
+            onClick={() => downloadAnalysisFile(result, "csv")}
+            type="button"
+          >
+            <Icon name="download" size={16} />
+            下载 CSV 数据
+          </button>
+        </div>
+        <p className="report-help">
+          点击打印后，在浏览器的打印窗口中选择“另存为 PDF”。HTML 报告可下载后独立打开。
+        </p>
+        {printError && (
+          <p className="notice notice-error" role="alert">
+            {printError}
+          </p>
+        )}
+      </div>
+      <iframe
+        className="report-frame"
+        ref={frame}
+        sandbox="allow-same-origin allow-modals"
+        srcDoc={html}
+        title={`${result.metricLabel}分析报告预览`}
+        onLoad={() => setLoadedHtml(html)}
+      />
+    </section>
+  );
+}
+
 export function Workspace() {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [bootLoading, setBootLoading] = useState(true);
@@ -581,12 +737,40 @@ export function Workspace() {
   const [askChart, setAskChart] = useState<ChartType>("bar");
   const [planning, setPlanning] = useState<Planning | null>(null);
   const [askLoading, setAskLoading] = useState(false);
+  const [sessionAnalyses, setSessionAnalyses] = useState<SessionAnalysis[]>([]);
+  const [selectedReportKey, setSelectedReportKey] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [refreshCount, setRefreshCount] = useState(0);
   const generation = useRef(0);
+  const askPending = useRef<AbortController | null>(null);
   const selectedProfile = profiles.find((profile) => profile.id === datasetId);
   const canRun = !profilesLoading && Boolean(selectedProfile?.available);
   const aiReady = aiStatus.configured && aiStatus.enabled;
+  useEffect(
+    () => () => {
+      generation.current++;
+      askPending.current?.abort();
+      askPending.current = null;
+    },
+    [],
+  );
+  useEffect(() => {
+    if (!user) return;
+    const completed = [analysis, askResult, ...Object.values(overview)].filter(
+      (result): result is AnalysisResult => Boolean(result?.rows.length),
+    );
+    if (completed.length === 0) return;
+    setSessionAnalyses((previous) => {
+      let next = [...previous];
+      completed.forEach((result) => {
+        const key = analysisKey(result);
+        const existing = next.find((entry) => entry.key === key);
+        if (existing?.result === result) return;
+        next = [{ key, result }, ...next.filter((entry) => entry.key !== key)];
+      });
+      return next.slice(0, 20);
+    });
+  }, [user, analysis, askResult, overview]);
   useEffect(() => {
     if (!sidebarOpen) return;
     const controls = () =>
@@ -616,11 +800,15 @@ export function Workspace() {
   }, [sidebarOpen]);
   const expire = useCallback(() => {
     generation.current++;
+    askPending.current?.abort();
+    askPending.current = null;
     setUser(null);
     setProfiles([]);
     setOverview({});
     setAnalysis(null);
     setAskResult(null);
+    setSessionAnalyses([]);
+    setSelectedReportKey("");
     setPlanning(null);
     setQuestion("");
     setError(null);
@@ -631,6 +819,7 @@ export function Workspace() {
     async (url: string, options?: RequestInit) => {
       const current = generation.current;
       const response = await fetch(url, { ...options, cache: "no-store" });
+      if (options?.signal?.aborted) throw new DOMException("Request cancelled", "AbortError");
       if (response.status === 401) {
         if (current === generation.current) expire();
         throw new Error("登录已过期，请重新登录。");
@@ -761,6 +950,8 @@ export function Workspace() {
   }, [user, view, datasetId, metric, dimension, canRun, api, refreshCount]);
   function changeSource(value: DataSource) {
     generation.current++;
+    askPending.current?.abort();
+    askPending.current = null;
     setDatasetId(value);
     setOverview({});
     setAnalysis(null);
@@ -774,6 +965,14 @@ export function Workspace() {
     if (sidebarOpen) menuButton.current?.focus();
     setSidebarOpen(false);
     setError(null);
+  }
+  function previewReport(result: AnalysisResult) {
+    const key = analysisKey(result);
+    setSessionAnalyses((previous) =>
+      [{ key, result }, ...previous.filter((entry) => entry.key !== key)].slice(0, 20),
+    );
+    setSelectedReportKey(key);
+    navigate("reports");
   }
   async function logout() {
     try {
@@ -789,28 +988,38 @@ export function Workspace() {
       setError("请写下你想了解的问题，至少输入 2 个字。");
       return;
     }
-    if (!canRun || askLoading) return;
+    if (!canRun) return;
+    askPending.current?.abort();
+    const controller = new AbortController();
+    askPending.current = controller;
     setQuestion(nextQuestion);
     setAskLoading(true);
     setError(null);
     setAskResult(null);
     setPlanning(null);
     const current = generation.current;
+    const isCurrent = () =>
+      !controller.signal.aborted &&
+      askPending.current === controller &&
+      current === generation.current;
     try {
       const payload = (await api("/api/ask", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ question: trimmed, datasetId }),
+        signal: controller.signal,
       })) as { result: AnalysisResult; plan: AnalysisPlan; planning: Planning };
-      if (current !== generation.current) return;
+      if (!isCurrent()) return;
       setAskResult(payload.result);
       setAskChart(payload.plan.chartType);
       setPlanning(payload.planning);
     } catch (e) {
-      if (current === generation.current)
-        setError(e instanceof Error ? e.message : "分析失败，请稍后重试。");
+      if (isCurrent()) setError(e instanceof Error ? e.message : "分析失败，请稍后重试。");
     } finally {
-      if (current === generation.current) setAskLoading(false);
+      if (isCurrent()) {
+        askPending.current = null;
+        setAskLoading(false);
+      }
     }
   }
   if (bootLoading)
@@ -858,6 +1067,12 @@ export function Workspace() {
   const activity = overview.activity?.rows.reduce((sum, row) => sum + row.value, 0);
   const overviewResult =
     overview[overviewMetric]?.datasetId === datasetId ? overview[overviewMetric]! : null;
+  const browseResult =
+    analysis?.datasetId === datasetId &&
+    analysis.dimension === dimension &&
+    analysis.metricLabel === METRICS[metric].label
+      ? analysis
+      : null;
   const kpis = [
     {
       label: "最高课程均分",
@@ -948,11 +1163,7 @@ export function Workspace() {
             >
               <Icon name={icon} size={20} />
               <span>{label}</span>
-              {key === "reports" ? (
-                <small>规划中</small>
-              ) : view === key ? (
-                <span className="nav-active-dot" />
-              ) : null}
+              {view === key ? <span className="nav-active-dot" /> : null}
             </button>
           ))}
         </nav>
@@ -1190,6 +1401,7 @@ export function Workspace() {
                     loading={overviewLoading}
                     chartType={overviewChart}
                     onChartChange={setOverviewChart}
+                    onReport={previewReport}
                   />
                 </div>
                 <aside className="overview-side">
@@ -1242,7 +1454,7 @@ export function Workspace() {
               </div>
               <div className="overview-section-label future-section-label">
                 <h2>接下来，还能做更多</h2>
-                <span>规划中的功能也在这里，后续逐步开放</span>
+                <span>分析报告已可导出，更多功能逐步开放</span>
               </div>
               <section className="future-grid">
                 <FutureCard
@@ -1257,12 +1469,24 @@ export function Workspace() {
                   description="自动检查成绩和课程完成情况，整理需要进一步了解的异常变化。"
                   action="查看异常提醒"
                 />
-                <FutureCard
-                  icon="download"
-                  title="把分析整理成报告"
-                  description="将结论、图表和数据来源整理在一起，方便分享和留存。"
-                  action="生成与导出报告"
-                />
+                <article className="future-card">
+                  <div className="future-heading">
+                    <span className="feature-icon">
+                      <Icon name="download" />
+                    </span>
+                    <span className="badge badge-teal">已可使用</span>
+                  </div>
+                  <h3>把分析整理成报告</h3>
+                  <p>将结论、分组数据和统计说明整理在一起，下载或打印留存。</p>
+                  <button
+                    className="future-action"
+                    onClick={() => navigate("reports")}
+                    type="button"
+                  >
+                    打开报告中心
+                    <Icon name="arrow" size={15} />
+                  </button>
+                </article>
               </section>
             </>
           )}
@@ -1330,17 +1554,12 @@ export function Workspace() {
               </section>
               <ResultPanel
                 key={`${datasetId}-${metric}-${dimension}`}
-                result={
-                  analysis?.datasetId === datasetId &&
-                  analysis.dimension === dimension &&
-                  analysis.metricLabel === METRICS[metric].label
-                    ? analysis
-                    : null
-                }
+                result={browseResult}
                 loading={browseLoading}
                 chartType={chartType}
                 onChartChange={setChartType}
                 searchable
+                onReport={previewReport}
               />
               <DataSourceDetails profile={selectedProfile} />
               <section className="planned-toolbar">
@@ -1349,16 +1568,21 @@ export function Workspace() {
                 </span>
                 <div>
                   <strong>更多数据操作</strong>
-                  <p>导入文件、多条件筛选与数据导出将逐步开放。</p>
+                  <p>可导出本次查询的全部返回分组。文件导入与多条件筛选正在规划中。</p>
                 </div>
-                <span className="badge badge-planned">即将支持</span>
+                <span className="badge badge-planned">导入规划中</span>
                 <button className="secondary-button" disabled type="button">
                   <Icon name="upload" size={16} />
                   导入数据
                 </button>
-                <button className="secondary-button" disabled type="button">
+                <button
+                  className="secondary-button"
+                  disabled={!browseResult?.rows.length || browseLoading}
+                  onClick={() => browseResult && downloadAnalysisFile(browseResult, "csv")}
+                  type="button"
+                >
                   <Icon name="download" size={16} />
-                  导出数据
+                  导出 CSV 数据
                 </button>
               </section>
             </>
@@ -1476,6 +1700,7 @@ export function Workspace() {
                 chartType={askChart}
                 onChartChange={setAskChart}
                 planning={planning}
+                onReport={previewReport}
               />
               <div className="planned-toolbar">
                 <span className="feature-icon">
@@ -1491,72 +1716,17 @@ export function Workspace() {
           )}
           {view === "reports" && (
             <>
-              <section className="report-preview panel">
-                <div className="report-preview-copy">
-                  <span className="badge badge-planned">功能规划中</span>
-                  <span className="section-kicker">FROM INSIGHT TO ACTION</span>
-                  <h2>
-                    让每次分析，
-                    <br />
-                    成为一份清晰的报告。
-                  </h2>
-                  <p>
-                    这里将保存你的分析结论、图表和统计说明。
-                    <br />
-                    从一次探索，到一份可以分享的教学参考。
-                  </p>
-                  <div className="report-features">
-                    <span>
-                      <Icon name="check" size={16} />
-                      完整结论与图表
-                    </span>
-                    <span>
-                      <Icon name="check" size={16} />
-                      数据来源与计算说明
-                    </span>
-                    <span>
-                      <Icon name="check" size={16} />
-                      PDF / 图片导出
-                    </span>
-                  </div>
-                  <button className="primary-button" disabled type="button">
-                    <Icon name="plus" size={17} />
-                    创建分析报告
-                  </button>
-                  <button className="text-button" onClick={() => navigate("ask")} type="button">
-                    先开始一次分析
-                    <Icon name="arrow" size={16} />
-                  </button>
-                </div>
-                <div className="report-paper" aria-label="报告版式示意">
-                  <span className="report-paper-label">报告版式示意</span>
-                  <div className="paper-line paper-title" />
-                  <div className="paper-line paper-subtitle" />
-                  <div className="paper-divider" />
-                  <div className="paper-summary">
-                    <i />
-                    <i />
-                    <i />
-                  </div>
-                  <div className="paper-chart">
-                    {[42, 68, 53, 85, 64].map((height, i) => (
-                      <span key={i} style={{ height: `${height}%` }} />
-                    ))}
-                  </div>
-                  <div className="paper-line" />
-                  <div className="paper-line" />
-                  <div className="paper-line short" />
-                  <div className="paper-bottom">
-                    <Icon name="chart" size={17} />
-                    <span>学析台 · 分析报告</span>
-                  </div>
-                </div>
-              </section>
+              <ReportCenter
+                analyses={sessionAnalyses}
+                selectedKey={selectedReportKey}
+                onSelect={setSelectedReportKey}
+                onStart={() => navigate("ask")}
+              />
               <section className="future-grid">
                 <FutureCard
                   icon="file"
-                  title="分析报告库"
-                  description="集中保存分析结果，按课程、学期或时间查找。"
+                  title="长期保存报告"
+                  description="后续可集中保存报告，按课程、学期或时间查找。"
                   action="查看报告"
                 />
                 <FutureCard

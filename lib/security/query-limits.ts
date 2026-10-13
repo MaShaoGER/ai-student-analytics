@@ -4,7 +4,7 @@
 
 export interface QueryLimits {
   timeoutMs: number; // Query execution timeout
-  maxMemoryMb: number; // Max memory per query (soft limit, advisory)
+  maxMemoryMb: number; // DuckDB buffer-manager memory limit; does not cap Node process RSS
   maxResultRows: number; // Max rows in result
   maxFieldCount: number; // Max fields per table
 }
@@ -83,7 +83,7 @@ export const API_QUERY_LIMITS = {
   analysis: {
     timeoutMs: 10_000, // 10 seconds
     maxMemoryMb: 256,
-    maxResultRows: 1000,
+    maxResultRows: 100,
     maxFieldCount: 50,
   } as QueryLimits,
 

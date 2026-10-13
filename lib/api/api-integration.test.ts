@@ -1,6 +1,7 @@
 /** Real HTTP regression tests. scripts/test-api.sh provides isolated accounts/state. */
 import { beforeAll, describe, expect, it } from "vitest";
 import { createPlan } from "../analysis/plan";
+import { loadAnalysisRecords } from "../records";
 
 const BASE_URL = process.env.API_BASE_URL ?? "http://localhost:3100";
 const integration = process.env.API_INTEGRATION === "1" ? describe : describe.skip;
@@ -196,6 +197,20 @@ integration("authenticated application HTTP API", () => {
     });
     expect(response.status).toBe(400);
     expect((await response.json()).code).toBe("INVALID_QUESTION");
+  });
+
+  it("persists empty and invalid requests with accurate context and authenticated ownership", () => {
+    const records = loadAnalysisRecords();
+    const empty = records.find((record) => record.errorCode === "NO_DATA");
+    expect(empty).toMatchObject({ datasetId: "demo", metricId: "score", requestSource: "analysis" });
+    expect(empty?.userId).toBeTruthy();
+    expect(empty?.result.rowCount).toBe(0);
+    const invalid = records.find((record) => record.errorCode === "INVALID_PLAN");
+    expect(invalid).toMatchObject({ datasetId: "demo", metricId: null, plan: null });
+    const invalidQuestion = records.find((record) => record.errorCode === "INVALID_QUESTION");
+    expect(invalidQuestion).toMatchObject({ datasetId: "demo", metricId: null, requestSource: "ask" });
+    expect(invalidQuestion?.userId).toBeTruthy();
+    expect(JSON.stringify(records)).not.toContain(password);
   });
 
   it("saves AI settings with only a public key status", async () => {

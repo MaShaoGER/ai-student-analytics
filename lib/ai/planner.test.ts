@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { planQuestion, planQuestionInputSchema } from "./planner";
 
 describe("AI analysis planner", () => {
@@ -66,5 +66,38 @@ describe("AI analysis planner", () => {
     expect(() =>
       planQuestionInputSchema.parse({ question: "问".repeat(501), datasetId: "demo" }),
     ).toThrow();
+  });
+
+  it("does not plan or call a model for an already cancelled request", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const generator = vi.fn();
+    await expect(planQuestion(
+      { question: "哪门课程平均成绩最高？", datasetId: "demo" },
+      generator,
+      { signal: controller.signal },
+    )).rejects.toMatchObject({ code: "CANCELLED" });
+    expect(generator).not.toHaveBeenCalled();
+  });
+
+  it("passes cancellation to the generator and rejects a late result after cancellation", async () => {
+    const controller = new AbortController();
+    const generator = vi.fn(async (_question: string, options?: { signal?: AbortSignal }) => {
+      expect(options?.signal).toBe(controller.signal);
+      controller.abort();
+      return {
+        canAnalyze: true,
+        metric: "score" as const,
+        dimension: "term" as const,
+        chartType: "line" as const,
+        rationale: "按学期比较成绩。",
+        clarificationQuestion: null,
+      };
+    });
+    await expect(planQuestion(
+      { question: "请按学期比较成绩的变化", datasetId: "demo" },
+      generator,
+      { signal: controller.signal },
+    )).rejects.toMatchObject({ code: "CANCELLED" });
   });
 });

@@ -1,6 +1,30 @@
 import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { type AnalysisRecord } from "../analysis/types";
+import {
+  analysisPlanSchema,
+  dataSourceSchema,
+  metricSchema,
+  type AnalysisRecord,
+} from "../analysis/types";
+
+type RecordInput = Omit<AnalysisRecord, "id" | "timestamp">;
+export type AnalysisRecordContext = Pick<RecordInput, "datasetId" | "metricId" | "plan">;
+
+/** Preserve only validated context; never persist an untrusted request or question. */
+export function analysisRecordContext(input: unknown): AnalysisRecordContext {
+  const plan = analysisPlanSchema.safeParse(input);
+  if (plan.success) {
+    return { datasetId: plan.data.datasetId, metricId: plan.data.metric, plan: plan.data };
+  }
+  const fields = typeof input === "object" && input !== null ? input as Record<string, unknown> : {};
+  const dataset = dataSourceSchema.safeParse(fields.datasetId);
+  const metric = metricSchema.safeParse(fields.metric);
+  return {
+    datasetId: dataset.success ? dataset.data : null,
+    metricId: metric.success ? metric.data : null,
+    plan: null,
+  };
+}
 
 function recordsDirectory(): string {
   // Runtime records belong to the mounted state directory, never the build bundle.
@@ -11,13 +35,28 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
-export async function saveAnalysisRecord(record: Omit<AnalysisRecord, "id" | "timestamp">): Promise<string> {
+export async function saveAnalysisRecord(record: RecordInput): Promise<string> {
   const id = generateId();
   const timestamp = new Date().toISOString();
   const completeRecord: AnalysisRecord = {
     id,
     timestamp,
-    ...record,
+    datasetId: record.datasetId,
+    datasetVersion: record.datasetVersion,
+    metricId: record.metricId,
+    metricVersion: record.metricVersion,
+    // Zod strips unknown fields such as credentials accidentally attached by a caller.
+    plan: analysisRecordContext(record.plan).plan,
+    userId: record.userId,
+    requestSource: record.requestSource,
+    stage: record.stage,
+    result: {
+      rowCount: record.result.rowCount,
+      period: record.result.period,
+      durationMs: record.result.durationMs,
+    },
+    errorCode: record.errorCode,
+    errorMessage: record.errorMessage,
   };
   try {
     const directory = recordsDirectory();
@@ -25,8 +64,20 @@ export async function saveAnalysisRecord(record: Omit<AnalysisRecord, "id" | "ti
     appendFileSync(path.join(directory, "analysis.jsonl"), JSON.stringify(completeRecord) + "\n", "utf-8");
     return id;
   } catch (error) {
-    console.error("Failed to save analysis record", error);
+    console.error("Failed to save analysis record");
     throw new Error("Failed to persist analysis record");
+  }
+}
+
+/** Audit failures must not hide a successful result or the original API error. */
+export async function saveAnalysisAudit(
+  record: AnalysisRecordContext & Pick<RecordInput, "userId" | "requestSource" | "stage" | "result" | "errorCode" | "errorMessage">,
+): Promise<void> {
+  try {
+    await saveAnalysisRecord({ datasetVersion: "1.0", metricVersion: "1.0", ...record });
+  } catch {
+    // Whole errors can include request details or credentials from upstream services.
+    console.warn("Warning: failed to save analysis audit record");
   }
 }
 
@@ -36,7 +87,11 @@ export function loadAnalysisRecords(): AnalysisRecord[] {
     return content
       .split("\n")
       .filter((line) => line.trim().length > 0)
-      .map((line) => JSON.parse(line) as AnalysisRecord);
+      .map((line) => {
+        const record = JSON.parse(line) as AnalysisRecord;
+        // Earlier failure records used {} as a fake plan. Expose an honest unknown value.
+        return { ...record, plan: analysisRecordContext(record.plan).plan };
+      });
   } catch (error) {
     // File may not exist yet or be empty
     return [];

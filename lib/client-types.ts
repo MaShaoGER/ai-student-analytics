@@ -21,6 +21,8 @@ export type AIPricing = {
 };
 export type AIConfig = {
   enabled: boolean;
+  apiFormat: "responses" | "chat_completions";
+  baseUrl: string;
   model: string;
   keyConfigured: boolean;
   budgets: AIBudgets;

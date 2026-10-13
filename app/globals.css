@@ -2153,7 +2153,74 @@ table caption {
   box-shadow: 0 4px 15px #1b61440a;
 }
 
-/* Upcoming report workspace */
+.result-export-actions,
+.report-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.result-export-actions {
+  padding: 0 24px 20px;
+}
+.result-export-actions > span {
+  flex-basis: 100%;
+  color: #8294aa;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.report-workspace {
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+.report-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 28px;
+}
+.report-controls h2,
+.report-empty h2 {
+  margin-top: 8px;
+  font-size: 22px;
+  font-weight: 600;
+}
+.report-controls p,
+.report-empty p {
+  margin-top: 8px;
+  color: #8294aa;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.report-controls .form-field {
+  max-width: 680px;
+}
+.report-controls .report-help {
+  margin-top: 0;
+}
+.report-frame {
+  display: block;
+  width: 100%;
+  height: 780px;
+  border: 0;
+  border-top: 1px solid #e4ebf2;
+  background: #f4f7fa;
+}
+.report-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  padding: 48px 24px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+.report-empty p {
+  max-width: 550px;
+  margin: 0 0 12px;
+}
+
+/* Report layout illustrations */
 .report-preview {
   display: grid;
   grid-template-columns: 1fr 1fr;

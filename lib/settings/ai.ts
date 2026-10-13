@@ -16,6 +16,14 @@ export const REFERENCE_PRICING: Record<string, AIPricing> = {
 const amount = z.number().finite().nonnegative().max(1_000_000);
 export const aiConfigInputSchema = z.object({
   enabled: z.boolean(),
+  apiFormat: z.enum(["responses", "chat_completions"]),
+  baseUrl: z.string().trim().max(2048).refine((value) => {
+    if (!value) return true;
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" && !url.username && !url.password && !url.search && !url.hash;
+    } catch { return false; }
+  }, "接口地址必须是 HTTPS URL，且不能包含账号、查询参数或片段。"),
   model: z.string().trim().max(100).regex(/^(?:[a-zA-Z0-9][a-zA-Z0-9._:-]{0,99})?$/),
   keyConfigured: z.boolean().optional(),
   apiKey: z.string().trim().max(1024).optional(),
@@ -27,6 +35,8 @@ type EncryptedKey = { iv: string; tag: string; ciphertext: string };
 type Settings = {
   version: 1;
   enabled: boolean;
+  apiFormat?: AIConfig["apiFormat"];
+  baseUrl?: string;
   model: string;
   budgets: AIBudgets;
   pricing: AIPricing;
@@ -45,6 +55,8 @@ function defaults(): Settings {
   return {
     version: 1,
     enabled: Boolean(process.env.OPENAI_API_KEY?.trim() && model),
+    apiFormat: "responses",
+    baseUrl: "",
     model,
     budgets: { ...DEFAULT_BUDGETS },
     pricing: {
@@ -84,6 +96,8 @@ function decrypt(key: EncryptedKey): string {
 function publicConfig(state: Settings): AIConfig {
   return {
     enabled: state.enabled,
+    apiFormat: state.apiFormat ?? "responses",
+    baseUrl: state.baseUrl ?? "",
     model: state.model,
     keyConfigured: Boolean(state.encryptedApiKey || process.env.OPENAI_API_KEY?.trim()),
     budgets: { ...state.budgets },
@@ -100,6 +114,8 @@ export function saveAIConfig(payload: unknown): AIConfig {
   const encryptedApiKey = input.apiKey ? encrypt(input.apiKey) : undefined;
   return updateState("ai-config.json", defaults, (state) => {
     state.enabled = input.enabled;
+    state.apiFormat = input.apiFormat;
+    state.baseUrl = input.baseUrl.replace(/\/+$/, "");
     state.model = input.model;
     state.budgets = { ...input.budgets };
     state.pricing = { ...input.pricing };

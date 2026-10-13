@@ -1,6 +1,11 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { DuckDBInstance } from "@duckdb/node-api";
+import { API_QUERY_LIMITS } from "../security/query-limits";
+import {
+  assertQueryResultLimits,
+  withBoundedQueryConnection,
+  type QueryExecutionOptions,
+} from "../security/query-execution";
 import {
   analysisPlanSchema,
   type AnalysisPlan,
@@ -35,42 +40,6 @@ function fileExists(filePath: string): boolean {
 
 function sqlIdentifier(identifier: string): string {
   return `"${identifier.replaceAll('"', '""')}"`;
-}
-
-async function withConnection<T>(
-  callback: (sql: (query: string) => Promise<Record<string, unknown>[]>) => Promise<T>,
-  timeoutMs = 30000,
-): Promise<T> {
-  const instance = await DuckDBInstance.create(":memory:", { threads: "2" });
-  const connection = await instance.connect();
-  
-  let timeoutId: NodeJS.Timeout | undefined;
-  
-  try {
-    const sql = async (query: string) => {
-      const reader = await connection.runAndReadAll(query);
-      return reader.getRowObjectsJson() as Record<string, unknown>[];
-    };
-    
-    // Create timeout promise
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(() => {
-        reject(new Error(`查询超时（${timeoutMs / 1000} 秒）。请简化查询或添加筛选条件。`));
-      }, timeoutMs);
-    });
-    
-    // Race between callback and timeout
-    const result = await Promise.race([
-      callback(sql),
-      timeoutPromise,
-    ]);
-    
-    return result;
-  } finally {
-    if (timeoutId) clearTimeout(timeoutId);
-    connection.closeSync();
-    instance.closeSync();
-  }
 }
 
 function csv(filePath: string, options = "") {
@@ -200,18 +169,20 @@ async function profileTable(
     name: String(column.column_name),
     type: String(column.column_type),
   }));
+  assertQueryResultLimits(0, fields.length, API_QUERY_LIMITS.profile);
   if (fields.length === 0) {
     return { name: table.name, rows: 0, grain: table.grain, status: "ready" as const, fields: [] };
   }
   const missingExpressions = fields
     .map(
       (field) =>
-        `SUM(CASE WHEN ${sqlIdentifier(field.name)} IS NULL THEN 1 ELSE 0 END) AS ${sqlIdentifier(`missing_${field.name}`)}`,
+        `${sqlIdentifier(field.name)} := SUM(CASE WHEN ${sqlIdentifier(field.name)} IS NULL THEN 1 ELSE 0 END)`,
     )
     .join(", ");
   const [stats] = await sql(
-    `SELECT COUNT(*) AS row_count, ${missingExpressions} FROM ${csv(table.path)}`,
+    `SELECT COUNT(*) AS row_count, struct_pack(${missingExpressions}) AS missing_counts FROM ${csv(table.path)}`,
   );
+  const missingCounts = stats?.missing_counts as Record<string, unknown> | undefined;
   return {
     name: table.name,
     rows: Number(stats?.row_count ?? 0),
@@ -219,13 +190,14 @@ async function profileTable(
     status: "ready" as const,
     fields: fields.map((field) => ({
       ...field,
-      missing: Number(stats?.[`missing_${field.name}`] ?? 0),
+      missing: Number(missingCounts?.[field.name] ?? 0),
     })),
   };
 }
 
 export async function runAnalysis(
   input: unknown,
+  options: QueryExecutionOptions = {},
 ): Promise<{ plan: AnalysisPlan; result: AnalysisResult }> {
   const plan = analysisPlanSchema.parse(input);
   if (!validateFiles(plan.datasetId)) {
@@ -235,10 +207,9 @@ export async function runAnalysis(
   const minSampleSize = 3;
   const startedAt = performance.now();
   
-  // Use 10 second timeout for user-facing analysis
-  const rows = await withConnection((sql) => {
+  const rows = await withBoundedQueryConnection((sql) => {
     return sql(query);
-  }, 10000);
+  }, API_QUERY_LIMITS.analysis, options);
   
   const durationMs = Math.round(performance.now() - startedAt);
 
@@ -253,6 +224,7 @@ export async function runAnalysis(
     result: {
       datasetId: plan.datasetId,
       dimension: plan.dimensions[0],
+      dimensions: plan.dimensions,
       chartType: plan.chartType,
       rows: rows.map((row) => ({
         dimension: String(row.dimension),
@@ -275,11 +247,10 @@ export async function runAnalysis(
   };
 }
 
-export async function profileDatasets(): Promise<DatasetProfile[]> {
+export async function profileDatasets(options: QueryExecutionOptions = {}): Promise<DatasetProfile[]> {
   const demoAvailable = validateFiles("demo");
   const ouladAvailable = validateFiles("oulad");
-  // Use 30 second timeout for dataset profiling (slower operation)
-  const profiledTables = await withConnection(async (sql) => {
+  const profiledTables = await withBoundedQueryConnection(async (sql) => {
     const tables = new Map<string, Awaited<ReturnType<typeof profileTable>>>();
     const candidates: ProfileTable[] = [
       { name: "learning_activity", grain: "学生-课程-开课期-周次", path: DEMO_ACTIVITY },
@@ -294,7 +265,7 @@ export async function profileDatasets(): Promise<DatasetProfile[]> {
       if (fileExists(candidate.path)) tables.set(candidate.name, await profileTable(sql, candidate));
     }
     return tables;
-  }, 30000);
+  }, API_QUERY_LIMITS.profile, options);
   const profiles: DatasetProfile[] = [
     {
       id: "demo",

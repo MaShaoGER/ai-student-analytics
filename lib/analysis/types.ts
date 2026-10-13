@@ -65,6 +65,7 @@ export type AnalysisRow = {
 export type AnalysisResult = {
   datasetId: DataSource;
   dimension: Dimension;
+  dimensions?: Dimension[];
   chartType: ChartType;
   rows: AnalysisRow[];
   unit: string;
@@ -79,11 +80,15 @@ export type AnalysisResult = {
 export type AnalysisRecord = {
   id: string; // uuid or timestamp-based id
   timestamp: string; // ISO 8601
-  datasetId: DataSource;
+  datasetId: DataSource | null;
   datasetVersion: string;
-  metricId: Metric;
+  metricId: Metric | null;
   metricVersion: string;
-  plan: AnalysisPlan;
+  plan: AnalysisPlan | null;
+  /** Older records predate ownership and must not be attributed to a current user. */
+  userId?: string | null;
+  requestSource?: "analysis" | "ask";
+  stage?: "validation" | "planning" | "execution";
   result: {
     rowCount: number;
     period: string;

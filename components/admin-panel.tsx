@@ -16,6 +16,8 @@ type AdminTab = "ai" | "users" | "account";
 type Feedback = { kind: "success" | "error"; message: string } | null;
 type ConfigDraft = {
   enabled: boolean;
+  apiFormat: AIConfig["apiFormat"];
+  baseUrl: string;
   model: string;
   apiKey: string;
   budgets: Record<keyof AIBudgets, string>;
@@ -33,6 +35,8 @@ const budgetFields: { key: keyof AIBudgets; label: string }[] = [
 function makeDraft(config: AIConfig): ConfigDraft {
   return {
     enabled: config.enabled,
+    apiFormat: config.apiFormat,
+    baseUrl: config.baseUrl,
     model: config.model,
     apiKey: "",
     budgets: {
@@ -259,6 +263,8 @@ export function AdminPanel({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           enabled: draft.enabled,
+          apiFormat: draft.apiFormat,
+          baseUrl: draft.baseUrl.trim(),
           model: draft.model.trim(),
           budgets,
           pricing,
@@ -472,6 +478,32 @@ export function AdminPanel({
                     />
                   </label>
                   <div className="admin-form-grid">
+                    <div className="form-field">
+                      <label htmlFor="admin-ai-format">接口协议</label>
+                      <select
+                        id="admin-ai-format"
+                        value={draft.apiFormat}
+                        onChange={(event) => setDraft({ ...draft, apiFormat: event.target.value as AIConfig["apiFormat"] })}
+                        disabled={saving || testing}
+                      >
+                        <option value="responses">OpenAI Responses</option>
+                        <option value="chat_completions">兼容 Chat Completions</option>
+                      </select>
+                      <span className="form-help">按服务商文档选择接口格式。</span>
+                    </div>
+                    <div className="form-field">
+                      <label htmlFor="admin-ai-base-url">API 基础地址</label>
+                      <input
+                        id="admin-ai-base-url"
+                        type="url"
+                        value={draft.baseUrl}
+                        onChange={(event) => setDraft({ ...draft, baseUrl: event.target.value })}
+                        placeholder="留空使用 OpenAI 官方地址"
+                        maxLength={2048}
+                        disabled={saving || testing}
+                      />
+                      <span className="form-help">填写 HTTPS 基础地址，例如 https://服务商域名/v1；不要包含 /chat/completions。</span>
+                    </div>
                     <div className="form-field">
                       <label htmlFor="admin-ai-model">模型名称</label>
                       <input
@@ -899,7 +931,7 @@ export function AdminPanel({
       <div className="admin-future-grid">
         {(
           [
-            { icon: "link", title: "服务商接入", copy: "接入更多 AI 服务商，按需求选择模型。" },
+            { icon: "link", title: "专用服务商适配", copy: "接入使用专有认证或接口格式的模型服务。" },
             {
               icon: "shield",
               title: "数据访问权限",
