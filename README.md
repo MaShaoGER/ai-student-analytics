@@ -38,6 +38,10 @@ pnpm dev
 
 页面内置 10 个经过回归验证的固定问题，不需要模型密钥即可运行。要启用自由提问，复制 `.env.example` 为 `.env.local` 并设置 `APP_SETTINGS_KEY`（32 字节 base64），之后在管理员的“系统管理 → AI 配置”中选择 Responses 或兼容 Chat Completions 协议，保存 API 基础地址、模型、密钥、估算单价和调用预算。地址留空使用 OpenAI 官方 API；保存后立即生效。也兼容服务端 `OPENAI_API_KEY` / `OPENAI_MODEL` 初始化。模型只生成受限的 `AnalysisPlan`，不能提供文件路径或执行任意 SQL。
 
+当前已真实验证百炼 `qwen3.7-flash` 的连接与受限分析计划输出；在 AI 配置中使用 Chat Completions 协议，填写百炼地址、密钥、模型及换算成 USD 的估算单价。`qwen3.7-flash` 与 `qwen3.8-flash` 均适配 JSON 输出和关闭思考模式，步骤见 [百炼接入指南](docs/bailian-qwen.md)。
+
+也可试用智谱 `glm-4.7-flash`：在 AI 配置中点击智谱预设，填写智谱密钥，输入与输出单价按官方当前免费定价填 `0`，保存并测试。适配 JSON 输出与关闭思考模式；免费服务仍受平台限流约束，步骤见 [智谱试用指南](docs/zhipu-glm.md)。
+
 数据浏览和智能分析的当前结果可下载 CSV，并在报告中心预览、下载 HTML 报告或打印另存为 PDF。报告来源是本次会话中已有的真实分析结果，刷新或退出后不保留报告列表。导入、异常提醒、连续追问、报告分享、专有服务商接口适配和更细的数据权限仍标为“即将支持”。使用和部署细节见 [工作台使用指南](docs/workspace-guide.md)。
 
 验证命令：

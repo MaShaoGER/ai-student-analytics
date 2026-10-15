@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import type { SessionUser } from "@/lib/client-types";
+import { ProductBrand } from "@/components/product-brand";
 import { Icon } from "@/components/app-icons";
 
 const REMEMBERED_USERNAME = "student-analytics.remembered-username";
@@ -71,94 +72,99 @@ export function LoginScreen({
     <main className="login-screen">
       <section className="login-story" aria-labelledby="login-product-title">
         <div className="login-brand">
-          <span className="login-brand-mark">
-            <Icon name="chart" size={24} />
-          </span>
-          <span>
-            学析台<span>学习数据分析工作台</span>
-          </span>
+          <ProductBrand />
         </div>
         <div className="login-story-copy">
-          <div className="login-eyebrow">让教学决策，有据可依</div>
+          <span className="login-eyebrow">
+            <i aria-hidden="true" />
+            让教学决策，有据可依
+          </span>
           <h1 id="login-product-title">
-            看清学习情况，
+            看见学习的脉络，
             <br />
-            发现更好的教学方向。
+            <em>找到教学的方向。</em>
           </h1>
           <p>
-            课程表现、学习活动和完成情况，一处看清。
+            让分散的学习记录，成为清晰的教学线索。
             <br />
-            从直观图表出发，让每一次分析都有数据依据。
+            从课程表现到学习活动，每一次发现都有据可循。
           </p>
         </div>
-        <div className="login-preview" aria-label="分析工作台界面示意，非真实分析数据">
-          <div className="login-preview-header">
+        <div
+          className="login-signals"
+          role="img"
+          aria-label="学习记录汇聚为教学洞察的概念示意，非真实统计图表"
+        >
+          <div className="login-signals-heading" aria-hidden="true">
+            <span>LEARNING SIGNALS</span>
             <span>
-              <i />
-              <i />
-              <i />
+              从记录到洞察
+              <Icon name="arrow" size={13} />
             </span>
-            <span>分析工作台</span>
-            <span className="badge">界面示意</span>
           </div>
-          <div className="login-preview-body" aria-hidden="true">
-            <div className="login-preview-sidebar">
-              <span>
-                <Icon name="dashboard" size={16} />
-                概览
-              </span>
-              <span>
-                <Icon name="database" size={16} />
-                数据
-              </span>
-              <span>
-                <Icon name="sparkles" size={16} />
-                分析
-              </span>
-            </div>
-            <div className="login-preview-content">
-              <div className="login-preview-line">
-                <span />
-                <span />
-              </div>
-              <div className="login-preview-bars">
-                <span style={{ height: "46%" }} />
-                <span style={{ height: "70%" }} />
-                <span style={{ height: "56%" }} />
-                <span style={{ height: "86%" }} />
-                <span style={{ height: "65%" }} />
-                <span style={{ height: "94%" }} />
-              </div>
-              <div className="login-preview-line">
-                <span />
-                <span />
-                <span />
-              </div>
-            </div>
+          <svg className="login-signal-map" viewBox="0 0 600 200" fill="none" aria-hidden="true">
+            <defs>
+              <pattern id="signal-grid" width="30" height="30" patternUnits="userSpaceOnUse">
+                <circle cx="1" cy="1" r="1" fill="currentColor" opacity=".18" />
+              </pattern>
+            </defs>
+            <rect width="600" height="200" fill="url(#signal-grid)" />
+            <path
+              className="signal-path signal-path-muted"
+              d="M0 166C65 166 79 145 130 145S206 170 260 143 330 110 385 105 478 80 532 82 576 58 600 58"
+            />
+            <path
+              className="signal-path signal-path-secondary"
+              d="M0 135C58 135 74 90 130 90S207 124 260 105 333 142 385 115 472 119 532 67 580 85 600 85"
+            />
+            <path
+              className="signal-path signal-path-primary"
+              d="M0 172C57 172 80 152 130 152S207 76 260 76 330 102 385 82 475 31 532 31 578 20 600 20"
+            />
+            <path
+              d="M130 26V184M260 26V184M385 26V184M532 26V184"
+              stroke="currentColor"
+              opacity=".08"
+              strokeDasharray="3 6"
+            />
+            <circle cx="130" cy="152" r="4" className="signal-point" />
+            <circle cx="260" cy="76" r="5" className="signal-point" />
+            <circle cx="385" cy="82" r="4" className="signal-point" />
+            <circle cx="532" cy="31" r="5" className="signal-point" />
+            <circle cx="532" cy="31" r="13" stroke="currentColor" opacity=".2" />
+          </svg>
+          <div className="login-signal-labels" aria-hidden="true">
+            <span>学习记录</span>
+            <span>课程表现</span>
+            <span>教学洞察</span>
           </div>
         </div>
         <div className="login-story-features">
           <span>
-            <Icon name="chart" size={17} />
-            清晰的图表
+            <Icon name="chart" size={16} />
+            多维数据分析
           </span>
           <span>
-            <Icon name="sparkles" size={17} />
-            一句话分析
+            <Icon name="sparkles" size={16} />
+            一句话探索
           </span>
           <span>
-            <Icon name="shield" size={17} />
-            可追溯的数据
+            <Icon name="file" size={16} />
+            可追溯的报告
           </span>
         </div>
       </section>
 
       <section className="login-form-area" aria-labelledby="login-title">
+        <div className="login-access-label">
+          <Icon name="lock" size={13} />
+          你的学习分析空间
+        </div>
         <div className="login-form-card">
           <div className="login-heading">
             <span className="login-eyebrow">WELCOME BACK</span>
             <h2 id="login-title">欢迎回来</h2>
-            <p>登录学析台，开始查看与分析学习数据。</p>
+            <p>登录账号，继续你的探索与发现。</p>
           </div>
           {setupRequired && (
             <div className="notice notice-info" role="status">
@@ -174,13 +180,15 @@ export function LoginScreen({
           )}
           <form className="login-form" onSubmit={handleLogin} aria-busy={loading}>
             <div className="form-field">
-              <label htmlFor="login-username">账号</label>
+              <label className="login-field-label" htmlFor="login-username">
+                账号<span aria-hidden="true">由管理员分配</span>
+              </label>
               <input
                 id="login-username"
                 name="username"
                 type="text"
                 autoComplete="username"
-                placeholder="请输入管理员分配的账号"
+                placeholder="请输入账号"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
                 required
@@ -228,8 +236,8 @@ export function LoginScreen({
               <span>账号问题请联系管理员</span>
             </div>
             <button className="primary-button" type="submit" disabled={loading || setupRequired}>
-              {loading ? "正在登录…" : "登录工作台"}
-              <Icon name="arrow" size={18} />
+              <span>{loading ? "正在登录…" : "登录工作台"}</span>
+              {loading ? <span className="spinner" /> : <Icon name="arrow" size={18} />}
             </button>
           </form>
           <p className="login-secure-note">
@@ -239,7 +247,7 @@ export function LoginScreen({
         </div>
         <div className="login-footer">
           <span>学析台 · 从数据到洞察</span>
-          <span>Student Analytics Workspace</span>
+          <span>LEARNING INSIGHTS WORKSPACE</span>
         </div>
       </section>
     </main>

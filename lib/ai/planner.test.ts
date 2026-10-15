@@ -1,7 +1,22 @@
-import { describe, expect, it, vi } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { planQuestion, planQuestionInputSchema } from "./planner";
 
 describe("AI analysis planner", () => {
+  let stateDirectory: string;
+  beforeEach(() => {
+    stateDirectory = mkdtempSync(join(tmpdir(), "analytics-planner-test-"));
+    vi.stubEnv("APP_STATE_DIR", stateDirectory);
+    vi.stubEnv("OPENAI_API_KEY", "");
+    vi.stubEnv("OPENAI_MODEL", "");
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    rmSync(stateDirectory, { recursive: true, force: true });
+  });
+
   it("uses a verified plan for an exact golden question without calling a model", async () => {
     let called = false;
     const result = await planQuestion(

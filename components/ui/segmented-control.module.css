@@ -1,0 +1,143 @@
+.control {
+  position: relative;
+  isolation: isolate;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
+  padding: 4px;
+  border: 1px solid var(--line, #35404d);
+  border-radius: 12px;
+  background: var(--surface-inset, #19212c);
+  vertical-align: middle;
+}
+
+.track {
+  position: absolute;
+  inset: 4px;
+  pointer-events: none;
+}
+
+.indicator {
+  display: block;
+  height: 100%;
+  border: 1px solid var(--line, #35404d);
+  border-radius: 8px;
+  background: var(--surface-raised, #344151);
+  box-shadow: 0 1px 3px #00000018;
+  transition: transform var(--motion-standard, 180ms)
+    var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+.indicator[hidden] {
+  display: none;
+}
+
+.control .button {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 36px;
+  padding: 7px 15px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted, #a7b3c2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 120ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+.control .button[aria-pressed="true"] {
+  color: var(--ink, #eef2f6);
+}
+
+.control .button:focus-visible {
+  outline: 2px solid var(--accent, #92a9cd);
+  outline-offset: 2px;
+}
+
+.control .button:disabled {
+  cursor: default;
+}
+
+.control[data-disabled] {
+  opacity: 0.55;
+}
+
+.icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .control .button:hover:not(:disabled) {
+    color: var(--ink, #eef2f6);
+  }
+}
+
+:global(html[data-input-modality="pointer"]) .control .button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* High-frequency keyboard navigation remains immediate. */
+:global(html:not([data-input-modality="pointer"])) .indicator,
+:global(html:not([data-input-modality="pointer"])) .control .button {
+  transition: none;
+}
+
+@media (max-width: 600px) {
+  .control {
+    width: 100%;
+  }
+
+  .control .button {
+    min-height: 40px;
+    padding-inline: 10px;
+  }
+}
+
+@media (max-width: 380px) {
+  .control .button {
+    padding-inline: 6px;
+  }
+
+  .icon {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .indicator,
+  .control .button {
+    transition: none;
+  }
+
+  :global(html[data-input-modality="pointer"]) .control .button:active:not(:disabled) {
+    transform: none;
+  }
+}

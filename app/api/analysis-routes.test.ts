@@ -14,6 +14,7 @@ import { checkRateLimit } from "../../lib/security/rate-limit";
 import { QueryExecutionError, type QueryExecutionErrorCode } from "../../lib/security/query-execution";
 import { BudgetExceededError, UnknownModelPricingError } from "../../lib/security/ai-cost";
 import { AIClarificationError, AIConfigurationError, planQuestion } from "../../lib/ai/planner";
+import { AIProviderError } from "../../lib/ai/provider-errors";
 
 vi.mock("@/lib/analysis/duckdb", () => ({ runAnalysis: vi.fn(), profileDatasets: vi.fn() }));
 vi.mock("@/lib/auth/http", async (original) => ({ ...await original<typeof import("../../lib/auth/http")>(), requireUser: vi.fn() }));
@@ -175,10 +176,17 @@ describe("analysis API classification and persisted audit", () => {
     { failure: new AIClarificationError(privateValue), status: 422, code: "CLARIFICATION_REQUIRED" },
     { failure: new BudgetExceededError("单次请求", 1, 0.5), status: 429, code: "AI_BUDGET_EXCEEDED" },
     { failure: new UnknownModelPricingError(privateValue), status: 503, code: "AI_PRICING_REQUIRED" },
+    { failure: new AIProviderError("AI_PROVIDER_OVERLOADED"), status: 429, code: "AI_PROVIDER_OVERLOADED" },
+    { failure: new AIProviderError("AI_PROVIDER_RATE_LIMITED"), status: 429, code: "AI_PROVIDER_RATE_LIMITED" },
   ])("retains $code planning response and audits safe context", async ({ failure, status, code }) => {
     vi.mocked(planQuestion).mockRejectedValue(failure);
     const response = await postAsk(request("ask", { question: privateValue, datasetId: "oulad" }));
     expect(response.status).toBe(status);
+    if (failure instanceof AIProviderError) {
+      expect(response.headers.get("retry-after")).toBe("30");
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(runAnalysis).not.toHaveBeenCalled();
+    }
     expect(await response.json()).toMatchObject({ code });
     expect(loadAnalysisRecords()[0]).toMatchObject({ datasetId: "oulad", metricId: null, plan: null, stage: "planning", errorCode: code });
     expect(readFileSync(path.join(directory, "analysis.jsonl"), "utf8")).not.toContain(privateValue);

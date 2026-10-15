@@ -10,7 +10,10 @@ import type {
   ManagedUser,
   SessionUser,
 } from "@/lib/client-types";
-import { Icon, type IconName } from "@/components/app-icons";
+import { Icon } from "@/components/app-icons";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { BAILIAN_QWEN_FLASH, isBailianQwenFlash } from "@/lib/ai/bailian";
+import { ZHIPU_GLM_FLASH, isZhipuGLMFlash } from "@/lib/ai/zhipu";
 
 type AdminTab = "ai" | "users" | "account";
 type Feedback = { kind: "success" | "error"; message: string } | null;
@@ -395,24 +398,16 @@ export function AdminPanel({
   return (
     <div className="admin-panel">
       <nav className="admin-tabs" aria-label="管理设置">
-        {(
-          [
-            { value: "ai", label: "AI 设置", icon: "sparkles" },
-            { value: "users", label: "账号管理", icon: "users" },
-            { value: "account", label: "我的账号", icon: "shield" },
-          ] as { value: AdminTab; label: string; icon: IconName }[]
-        ).map((item) => (
-          <button
-            key={item.value}
-            type="button"
-            className={tab === item.value ? "active" : ""}
-            aria-pressed={tab === item.value}
-            onClick={() => setTab(item.value)}
-          >
-            <Icon name={item.icon} size={18} />
-            {item.label}
-          </button>
-        ))}
+        <SegmentedControl<AdminTab>
+          label="管理分类"
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: "ai", label: "AI 设置", icon: <Icon name="sparkles" size={18} /> },
+            { value: "users", label: "账号管理", icon: <Icon name="users" size={18} /> },
+            { value: "account", label: "我的账号", icon: <Icon name="shield" size={18} /> },
+          ]}
+        />
       </nav>
 
       {tab === "ai" && (
@@ -477,13 +472,57 @@ export function AdminPanel({
                       disabled={saving || testing}
                     />
                   </label>
+                  <div className="admin-provider-presets">
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      disabled={saving || testing}
+                      onClick={() => {
+                        setDraft({
+                          ...draft,
+                          ...ZHIPU_GLM_FLASH,
+                          apiKey: "",
+                          inputPrice: "0",
+                          outputPrice: "0",
+                        });
+                        setConfigFeedback(null);
+                      }}
+                    >
+                      使用智谱 GLM-4.7-Flash（免费）
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      disabled={saving || testing}
+                      onClick={() => {
+                        setDraft({
+                          ...draft,
+                          ...BAILIAN_QWEN_FLASH,
+                          apiKey: "",
+                          inputPrice: "",
+                          outputPrice: "",
+                        });
+                        setConfigFeedback(null);
+                      }}
+                    >
+                      使用百炼 Qwen3.8 Flash（北京）
+                    </button>
+                  </div>
+                  <p className="form-help">
+                    选择预设后填入对应平台的密钥并保存。地址、模型、单价和预算仍可自行修改。
+                  </p>
                   <div className="admin-form-grid">
                     <div className="form-field">
                       <label htmlFor="admin-ai-format">接口协议</label>
                       <select
                         id="admin-ai-format"
                         value={draft.apiFormat}
-                        onChange={(event) => setDraft({ ...draft, apiFormat: event.target.value as AIConfig["apiFormat"] })}
+                        onChange={(event) =>
+                          setDraft({
+                            ...draft,
+                            apiFormat: event.target.value as AIConfig["apiFormat"],
+                          })
+                        }
                         disabled={saving || testing}
                       >
                         <option value="responses">OpenAI Responses</option>
@@ -502,7 +541,10 @@ export function AdminPanel({
                         maxLength={2048}
                         disabled={saving || testing}
                       />
-                      <span className="form-help">填写 HTTPS 基础地址，例如 https://服务商域名/v1；不要包含 /chat/completions。</span>
+                      <span className="form-help">
+                        填写 HTTPS 基础地址，例如 https://服务商域名/v1；不要包含
+                        /chat/completions。
+                      </span>
                     </div>
                     <div className="form-field">
                       <label htmlFor="admin-ai-model">模型名称</label>
@@ -539,7 +581,9 @@ export function AdminPanel({
                         maxLength={500}
                         disabled={saving || testing}
                       />
-                      <span className="form-help">输入新密钥会替换已有密钥。</span>
+                      <span className="form-help">
+                        输入新密钥会替换已有密钥；切换服务商时请填写对应的新密钥。
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -586,6 +630,19 @@ export function AdminPanel({
                   <p className="form-help">
                     token 是模型处理文字的计量单位。填写单价后才允许 AI 调用，账单金额以服务商为准。
                   </p>
+                  {isBailianQwenFlash(draft) && (
+                    <p className="form-help">
+                      百炼人民币单价需先换算为美元再填写：人民币单价 ÷
+                      每美元对应的人民币金额。免费额度不代表单价为
+                      0；额度与扣费限制请在百炼控制台设置。
+                    </p>
+                  )}
+                  {isZhipuGLMFlash(draft) && (
+                    <p className="form-help">
+                      智谱当前将 GLM-4.7-Flash 的输入和输出单价列为免费，预设填写
+                      0；仍记录调用次数和 token 用量。免费服务受平台限流约束，价格调整后请更新单价。
+                    </p>
+                  )}
                 </div>
                 <div className="admin-form-section">
                   <div className="admin-section-heading">
@@ -921,39 +978,6 @@ export function AdminPanel({
           </div>
         </>
       )}
-
-      <div className="admin-section-heading admin-roadmap-heading">
-        <div>
-          <h3>更多管理能力</h3>
-          <p>这些模块将陆续开放，你可以先了解它们的用途。</p>
-        </div>
-      </div>
-      <div className="admin-future-grid">
-        {(
-          [
-            { icon: "link", title: "专用服务商适配", copy: "接入使用专有认证或接口格式的模型服务。" },
-            {
-              icon: "shield",
-              title: "数据访问权限",
-              copy: "按课程和学期，为不同使用者分配数据范围。",
-            },
-            { icon: "clock", title: "操作记录", copy: "查看账号、配置与数据操作的历史记录。" },
-          ] as { icon: IconName; title: string; copy: string }[]
-        ).map((feature) => (
-          <section className="panel admin-future-card" key={feature.title}>
-            <div className="admin-future-icon">
-              <Icon name={feature.icon} size={22} />
-            </div>
-            <span className="badge badge-muted">即将支持</span>
-            <h3>{feature.title}</h3>
-            <p>{feature.copy}</p>
-            <button type="button" className="text-button" disabled>
-              暂未开放
-              <Icon name="arrow" size={16} />
-            </button>
-          </section>
-        ))}
-      </div>
     </div>
   );
 }

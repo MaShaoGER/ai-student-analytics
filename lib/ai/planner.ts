@@ -9,6 +9,9 @@ import { dataSourceSchema, type AnalysisPlan } from "../analysis/types";
 import { calculateCost, reserveBudget, settleBudget, type TokenUsage } from "../security/ai-cost";
 import { getAIConfig, getRuntimeAIConfig } from "../settings/ai";
 import { QueryExecutionError } from "../security/query-execution";
+import { isBailianQwenFlash } from "./bailian";
+import { isZhipuGLMFlash } from "./zhipu";
+import { classifyAIProviderError } from "./provider-errors";
 
 const aiPlanFieldsSchema = z.object({
   canAnalyze: z.boolean(),
@@ -18,6 +21,16 @@ const aiPlanFieldsSchema = z.object({
   rationale: z.string().min(1).max(200),
   clarificationQuestion: z.string().min(1).max(200).nullable(),
 });
+
+// A clarification has no executable plan. Responses still requires every wire field.
+const aiPlanResponseSchema = aiPlanFieldsSchema.extend({
+  metric: aiPlanFieldsSchema.shape.metric.nullable(),
+  dimension: aiPlanFieldsSchema.shape.dimension.nullable(),
+  chartType: aiPlanFieldsSchema.shape.chartType.nullable(),
+});
+const aiClarificationSchema = aiPlanFieldsSchema.pick({
+  canAnalyze: true, rationale: true, clarificationQuestion: true,
+}).extend({ canAnalyze: z.literal(false) });
 
 export const planQuestionInputSchema = z.object({
   question: z.string().trim().min(2).max(500),
@@ -84,6 +97,7 @@ async function generateWithOpenAI(question: string, options: PlanningOptions = {
       "允许维度：course（课程）、term（学期）。趋势或按学期的问题优先使用折线图，课程比较优先使用柱状图；用户明确要求表格时使用 table。",
       "只有问题能由允许的指标和维度准确回答时，canAnalyze 才为 true，clarificationQuestion 为 null。",
       "口径含糊或超出能力时，canAnalyze 必须为 false，并在 clarificationQuestion 中提出一个简短、可回答的澄清问题；不要强行选择近似指标。",
+      "需要澄清时 metric、dimension、chartType 可为 null。请求具体学生名单或个体排名时，说明当前仅支持课程、学期分组统计，并询问是否改为相应的群体统计；不要暗示补充课程或分数阈值就能查询个体。",
     ].join("\n");
   const payload = {
     model: config.model,
@@ -91,14 +105,32 @@ async function generateWithOpenAI(question: string, options: PlanningOptions = {
     input: question,
     max_output_tokens: 500,
     text: {
-      format: zodTextFormat(aiPlanFieldsSchema, "analysis_plan", {
+      format: zodTextFormat(aiPlanResponseSchema, "analysis_plan", {
         description: "受限的学生学习数据分析计划",
       }),
     },
   };
+  const chatPayload = {
+    model: config.model,
+    messages: [
+      { role: "system" as const, content: `${instructions}\n只输出一个 JSON 对象，包含 canAnalyze(boolean)、metric(score|activity|completion_rate|null)、dimension(course|term|null)、chartType(line|bar|table|null)、rationale(string)、clarificationQuestion(string|null)。不要使用 Markdown。` },
+      { role: "user" as const, content: question },
+    ],
+    max_tokens: 500,
+    // Provider extensions are top-level fields in the JavaScript SDK request.
+    ...(isBailianQwenFlash(config) ? {
+      enable_thinking: false,
+      response_format: { type: "json_object" as const },
+    } : {}),
+    ...(isZhipuGLMFlash(config) ? {
+      thinking: { type: "disabled" as const },
+      response_format: { type: "json_object" as const },
+    } : {}),
+  };
   // A UTF-8 byte bound covers input, instructions and the structured output schema.
   // Pending calls reserve this amount atomically before any provider request.
-  const upperInputTokens = Buffer.byteLength(JSON.stringify(payload), "utf8") + 512;
+  const requestPayload = config.apiFormat === "chat_completions" ? chatPayload : payload;
+  const upperInputTokens = Buffer.byteLength(JSON.stringify(requestPayload), "utf8") + 512;
   const estimatedUsage: TokenUsage = { promptTokens: upperInputTokens, completionTokens: 500, totalTokens: upperInputTokens + 500 };
   const estimatedCost = calculateCost(config.model, estimatedUsage, config.pricing).totalCost;
   const reservation = reserveBudget(estimatedCost, config.budgets);
@@ -107,17 +139,13 @@ async function generateWithOpenAI(question: string, options: PlanningOptions = {
   try {
     let fields: unknown;
     if (config.apiFormat === "chat_completions") {
-      const response = await client.chat.completions.create({
-        model: config.model,
-        messages: [
-          { role: "system", content: `${instructions}\n只输出一个 JSON 对象，包含 canAnalyze(boolean)、metric(score|activity|completion_rate)、dimension(course|term)、chartType(line|bar|table)、rationale(string)、clarificationQuestion(string|null)。不要使用 Markdown。` },
-          { role: "user", content: question },
-        ],
-        max_tokens: 500,
-      }, { signal: options.signal });
+      const response = await client.chat.completions.create(chatPayload, { signal: options.signal });
       if (response.usage) {
         usage = { promptTokens: response.usage.prompt_tokens, completionTokens: response.usage.completion_tokens, totalTokens: response.usage.total_tokens };
         usageEstimated = false;
+      }
+      if (response.choices[0]?.finish_reason === "length") {
+        throw new Error("模型输出已达到长度上限，未返回完整分析计划。");
       }
       const content = response.choices[0]?.message.content;
       if (!content) throw new Error("模型没有返回可验证的分析计划，请换一种问法。");
@@ -131,6 +159,12 @@ async function generateWithOpenAI(question: string, options: PlanningOptions = {
       fields = response.output_parsed;
     }
     if (!fields) throw new Error("模型没有返回可验证的分析计划，请换一种问法。");
+    if (typeof fields === "object" && "canAnalyze" in fields && fields.canAnalyze === false) {
+      const clarification = aiClarificationSchema.parse(fields);
+      throw new AIClarificationError(
+        clarification.clarificationQuestion ?? "这个问题的指标或分组口径不够明确，请补充说明。",
+      );
+    }
     return { ...aiPlanFieldsSchema.parse(fields), usedModel: config.model };
   } catch (error) {
     if (options.signal?.aborted || error instanceof APIUserAbortError) {
@@ -139,6 +173,8 @@ async function generateWithOpenAI(question: string, options: PlanningOptions = {
     if (error instanceof APIConnectionTimeoutError) {
       throw new QueryExecutionError("TIMEOUT", "AI 响应超时，请稍后重试或使用推荐问题。");
     }
+    const providerError = classifyAIProviderError(error);
+    if (providerError) throw providerError;
     throw error;
   } finally {
     // Network failures may still have been billed: retain a conservative estimate.

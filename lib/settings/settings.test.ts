@@ -19,6 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { APIConnectionTimeoutError, APIUserAbortError } from "openai/core/error";
 import type { AIConfig } from "../client-types";
 import { getAIStatus, planQuestion } from "../ai/planner";
+import { BAILIAN_QWEN_FLASH } from "../ai/bailian";
 import {
   BudgetExceededError,
   checkBudget,
@@ -190,7 +191,126 @@ describe("persistent AI settings and usage", () => {
     expect(result.plan).toMatchObject({ metric: "score", dimensions: ["term"] });
     expect(openAIStub.options).toMatchObject({ apiKey: SAVED_KEY, baseURL: "https://models.example.test/v1" });
     expect(openAIStub.create).toHaveBeenCalledOnce();
+    expect(openAIStub.create.mock.calls[0][0]).not.toHaveProperty("enable_thinking");
+    expect(openAIStub.create.mock.calls[0][0]).not.toHaveProperty("response_format");
     expect(openAIStub.parse).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { baseUrl: BAILIAN_QWEN_FLASH.baseUrl, model: "qwen3.8-flash" },
+    { baseUrl: "https://workspace-123.cn-beijing.maas.aliyuncs.com/compatible-mode/v1", model: "qwen3.8-flash" },
+    { baseUrl: BAILIAN_QWEN_FLASH.baseUrl, model: "qwen3.7-flash" },
+    { baseUrl: "https://workspace-123.cn-beijing.maas.aliyuncs.com/compatible-mode/v1", model: "qwen3.7-flash" },
+  ])("plans with Bailian JSON mode, non-thinking output and actual usage at $baseUrl using $model", async ({ baseUrl, model }) => {
+    saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, baseUrl, model, apiKey: SAVED_KEY });
+    const controller = new AbortController();
+    openAIStub.create.mockResolvedValue({
+      choices: [{ finish_reason: "stop", message: { content: JSON.stringify({
+        canAnalyze: true, metric: "score", dimension: "course", chartType: "table",
+        rationale: "按课程列出平均成绩。", clarificationQuestion: null,
+      }) } }],
+      usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
+    });
+
+    const result = await planQuestion({ question: "请把各门课的均分列成表格", datasetId: "demo" }, undefined, { signal: controller.signal });
+    expect(result).toMatchObject({ source: "external", model, plan: {
+      metric: "score", dimensions: ["course"], chartType: "table",
+    } });
+    expect(openAIStub.options).toMatchObject({ apiKey: SAVED_KEY, baseURL: baseUrl, maxRetries: 0, timeout: 20_000 });
+    expect(openAIStub.create).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      model, enable_thinking: false,
+      response_format: { type: "json_object" }, max_tokens: 500,
+      messages: expect.arrayContaining([expect.objectContaining({ role: "system", content: expect.stringContaining("JSON") })]),
+    }), { signal: controller.signal });
+    expect(openAIStub.parse).not.toHaveBeenCalled();
+    expect(getTotalCost().totalCost).toBeCloseTo(0.00045, 8);
+    expect(getCostStats().total).toBe(1);
+    const history = readState("cost-history.json", () => ({ records: [] as { usageEstimated: boolean }[] }));
+    expect(history.records[0].usageEstimated).toBe(false);
+  });
+
+  it.each(["分析学生表现", "给我每个学生的家庭收入"])("keeps Bailian clarification outside query execution for %s", async (question) => {
+    saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, apiKey: SAVED_KEY });
+    openAIStub.create.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({
+        canAnalyze: false, metric: "score", dimension: "course", chartType: "bar",
+        rationale: "问题不明确或超出当前数据能力。", clarificationQuestion: "是否改为比较各课程的平均成绩？",
+      }) } }],
+    });
+    await expect(planQuestion({ question, datasetId: "demo" })).rejects.toMatchObject({
+      name: "AIClarificationError", clarificationQuestion: "是否改为比较各课程的平均成绩？",
+    });
+    expect(getCostStats().total).toBe(1);
+  });
+
+  it.each(["chat_completions", "responses"] as const)("handles clarification with null plan fields via %s", async (apiFormat) => {
+    saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, model: "qwen3.7-flash", apiFormat, apiKey: SAVED_KEY });
+    const fields = {
+      canAnalyze: false, metric: null, dimension: null, chartType: null,
+      rationale: "当前只支持课程和学期分组，不支持学生名单。",
+      clarificationQuestion: "是否改为查看各课程的平均成绩？",
+    };
+    openAIStub.create.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(fields) } }],
+      usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
+    });
+    openAIStub.parse.mockResolvedValue({ output_parsed: fields, usage: { input_tokens: 100, output_tokens: 50, total_tokens: 150 } });
+    await expect(planQuestion({ question: "哪些同学成绩很不好", datasetId: "demo" })).rejects.toMatchObject({
+      name: "AIClarificationError", clarificationQuestion: fields.clarificationQuestion,
+    });
+    expect(getCostStats().total).toBe(1);
+    const history = readState("cost-history.json", () => ({ records: [] as { usageEstimated: boolean }[] }));
+    expect(history.records[0].usageEstimated).toBe(false);
+  });
+
+  it("accepts omitted plan fields only for a valid clarification", async () => {
+    saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, apiKey: SAVED_KEY });
+    const fields = { canAnalyze: false, rationale: "不支持学生个体名单。", clarificationQuestion: "是否按课程查看平均成绩？" };
+    openAIStub.create.mockResolvedValue({ choices: [{ message: { content: JSON.stringify(fields) } }] });
+    await expect(planQuestion({ question: "哪些同学成绩很不好", datasetId: "demo" })).rejects.toMatchObject({ name: "AIClarificationError" });
+    openAIStub.create.mockResolvedValue({ choices: [{ message: { content: JSON.stringify({ ...fields, clarificationQuestion: "" }) } }] });
+    await expect(planQuestion({ question: "哪些同学成绩很不好", datasetId: "demo" })).rejects.toMatchObject({ name: "ZodError" });
+  });
+
+  it.each(["metric", "dimension", "chartType"])("rejects a successful plan with null %s", async (field) => {
+    saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, apiKey: SAVED_KEY });
+    const fields = { canAnalyze: true, metric: "score", dimension: "course", chartType: "bar", rationale: "按课程比较成绩。", clarificationQuestion: null, [field]: null };
+    openAIStub.create.mockResolvedValue({ choices: [{ message: { content: JSON.stringify(fields) } }] });
+    await expect(planQuestion({ question: "请比较各门课的均分", datasetId: "demo" })).rejects.toMatchObject({ name: "ZodError" });
+  });
+
+  it.each([
+    { content: '{"canAnalyze":true,"metric":"household_income"}', finish_reason: "stop" },
+    { content: '```json\n{"canAnalyze":true}\n```', finish_reason: "stop" },
+    { content: null, finish_reason: "stop" },
+    { content: JSON.stringify({ canAnalyze: true, metric: "score", dimension: "course", chartType: "table", rationale: "按课程列出平均成绩。", clarificationQuestion: null }), finish_reason: "length" },
+  ])("rejects unusable Bailian output and retains billed usage: $finish_reason $content", async ({ content, finish_reason }) => {
+    saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, apiKey: SAVED_KEY });
+    openAIStub.create.mockResolvedValue({
+      choices: [{ finish_reason, message: { content } }],
+      usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
+    });
+    await expect(planQuestion({ question: "请把各门课的均分列成表格", datasetId: "demo" })).rejects.toThrow();
+    expect(getCostStats().total).toBe(1);
+    expect(getTotalCost().totalCost).toBeCloseTo(0.00045, 8);
+  });
+
+  it("reserves the Bailian request before calling and estimates usage on provider failure", async () => {
+    saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, apiKey: SAVED_KEY });
+    openAIStub.create.mockImplementationOnce(async (payload) => {
+      const expectedCost = ((Buffer.byteLength(JSON.stringify(payload), "utf8") + 512) * 2 + 500 * 5) / 1_000_000;
+      const history = readState("cost-history.json", () => ({ reservations: [] as { amount: number }[] }));
+      expect(history.reservations).toHaveLength(1);
+      expect(history.reservations[0].amount).toBeCloseTo(expectedCost, 8);
+      throw new APIConnectionTimeoutError();
+    });
+    await expect(planQuestion({ question: "请把各门课的均分列成表格", datasetId: "demo" })).rejects.toMatchObject({ code: "TIMEOUT" });
+    expect(getCostStats().total).toBe(1);
+    expect(getTotalCost().totalCost).toBeGreaterThan(0);
+
+    saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, budgets: { ...config.budgets, perRequest: 0 } });
+    await expect(planQuestion({ question: "请把各门课的均分列成表格", datasetId: "demo" })).rejects.toBeInstanceOf(BudgetExceededError);
+    expect(openAIStub.create).toHaveBeenCalledOnce();
   });
 
   it("rejects unsafe endpoint URLs and invalid custom plans", async () => {

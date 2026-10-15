@@ -1,0 +1,407 @@
+"use client";
+
+import dynamic from "next/dynamic";
+import { useEffect, useMemo, useState } from "react";
+import { Icon } from "@/components/app-icons";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { METRICS } from "@/lib/analysis/metrics";
+import type { AnalysisResult, AnalysisRow, ChartType } from "@/lib/analysis/types";
+import {
+  analysisDimensionLabel,
+  analysisSourceLabel,
+  downloadAnalysisFile,
+} from "@/lib/exports/analysis";
+
+const AnalysisChart = dynamic(
+  () => import("@/components/analysis-chart").then((module) => module.AnalysisChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="chart-loading" role="status">
+        正在准备图表…
+      </div>
+    ),
+  },
+);
+
+export type AnalysisPlanning = {
+  source: "golden_case" | "openai" | "external";
+  rationale: string;
+};
+
+const formatNumber = (value: number) => value.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
+
+function ResultTable({
+  rows,
+  result,
+  selected,
+  onSelect,
+}: {
+  rows: AnalysisRow[];
+  result: AnalysisResult;
+  selected?: string;
+  onSelect: (dimension: string) => void;
+}) {
+  return (
+    <div className="table-wrap result-table-region">
+      <table className="result-table">
+        <caption>
+          {result.metricLabel}按{analysisDimensionLabel(result)}比较，单位：{result.unit}
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">{analysisDimensionLabel(result)}</th>
+            <th scope="col">
+              {result.metricLabel}（{result.unit}）
+            </th>
+            <th scope="col">参与统计人数</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr
+              key={row.dimension}
+              className={row.dimension === selected ? "selected-row" : undefined}
+            >
+              <td>
+                <button
+                  type="button"
+                  className="table-group-button"
+                  aria-pressed={row.dimension === selected}
+                  onClick={() => onSelect(row.dimension)}
+                >
+                  {row.dimension}
+                </button>
+              </td>
+              <td className="numeric">{formatNumber(row.value)}</td>
+              <td className="numeric">{formatNumber(row.sampleSize)} 人</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export function AnalysisResultView({
+  result,
+  chartType,
+  onChartChange,
+  loading,
+  planning,
+  onReport,
+}: {
+  result: AnalysisResult | null;
+  chartType: ChartType;
+  onChartChange: (chart: ChartType) => void;
+  loading: boolean;
+  planning?: AnalysisPlanning | null;
+  onReport: (result: AnalysisResult) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("default");
+  const [selectedDimension, setSelectedDimension] = useState<string | null>(null);
+  useEffect(() => {
+    setSearch("");
+    setSort("default");
+    setSelectedDimension(null);
+  }, [result]);
+  const rows = useMemo(() => {
+    const filtered =
+      result?.rows.filter((row) =>
+        row.dimension.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()),
+      ) ?? [];
+    if (sort === "highest")
+      filtered.sort((a, b) => b.value - a.value || a.dimension.localeCompare(b.dimension));
+    if (sort === "lowest")
+      filtered.sort((a, b) => a.value - b.value || a.dimension.localeCompare(b.dimension));
+    if (sort === "name") filtered.sort((a, b) => a.dimension.localeCompare(b.dimension));
+    return filtered;
+  }, [result, search, sort]);
+  const highest = rows.reduce<AnalysisRow | null>(
+    (best, row) => (!best || row.value > best.value ? row : best),
+    null,
+  );
+  const selected = rows.find((row) => row.dimension === selectedDimension) ?? highest;
+  const dimension = result ? analysisDimensionLabel(result) : "课程";
+  const definition = Object.values(METRICS).find((metric) => metric.label === result?.metricLabel);
+  const gap = highest && selected ? Math.round((highest.value - selected.value) * 100) / 100 : 0;
+
+  return (
+    <section className="analysis-result" aria-label="分析结果" aria-busy={loading}>
+      <div className="result-section-heading">
+        <div>
+          <h2>{result ? `${result.metricLabel}对比` : "分析结果"}</h2>
+          <p>
+            {result
+              ? `按${dimension}比较 · ${result.period}`
+              : "选择指标，或用一句话描述你想了解的问题。"}
+          </p>
+        </div>
+        <div className="result-heading-actions">
+          <SegmentedControl<ChartType>
+            label="结果展示方式"
+            value={chartType}
+            onChange={onChartChange}
+            options={[
+              { value: "bar", label: "柱状图" },
+              { value: "line", label: "折线图" },
+              { value: "table", label: "表格" },
+            ]}
+          />
+          {result && result.rows.length > 0 && (
+            <button className="secondary-button" type="button" onClick={() => onReport(result)}>
+              <Icon name="file" size={15} />
+              生成报告
+            </button>
+          )}
+        </div>
+      </div>
+      <p className="sr-only" role="status">
+        {loading ? (result ? "正在更新分析结果，保留上次成功的结果。" : "正在计算，请稍候…") : ""}
+      </p>
+      {!result ? (
+        <div className="analysis-empty">
+          <Icon name="chart" size={32} />
+          <h3>{loading ? "正在读取分析结果" : "从一个问题开始"}</h3>
+          <p>
+            {loading
+              ? "计算完成后，图表与统计依据会一起显示。"
+              : "常用指标可以直接比较，推荐问题也可以直接使用。"}
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="result-filter" aria-label="筛选与排序">
+            <div className="result-filter-fields disclosure-content">
+              <label>
+                搜索分组
+                <input
+                  type="search"
+                  name="result-search"
+                  placeholder={`搜索${dimension}…`}
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </label>
+              <label>
+                结果排序
+                <select value={sort} onChange={(event) => setSort(event.target.value)}>
+                  <option value="default">分析默认顺序</option>
+                  <option value="highest">数值从高到低</option>
+                  <option value="lowest">数值从低到高</option>
+                  <option value="name">分组名称</option>
+                </select>
+              </label>
+            </div>
+            <span className="result-filter-count">
+              {rows.length} / {result.rows.length} 个分组
+            </span>
+          </div>
+          {rows.length === 0 ? (
+            <div className="analysis-empty" role="status">
+              <Icon name="search" size={28} />
+              <h3>没有符合条件的结果</h3>
+              <p>
+                {search
+                  ? "更换关键词，或清空搜索条件。"
+                  : `人数少于 ${result.minSampleSize} 人的分组不会显示，请调整分析条件。`}
+              </p>
+              {search && (
+                <button type="button" className="secondary-button" onClick={() => setSearch("")}>
+                  清空搜索
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="analysis-result-grid">
+              <div className="result-visual">
+                {chartType === "table" ? (
+                  <ResultTable
+                    rows={rows}
+                    result={result}
+                    selected={selected?.dimension}
+                    onSelect={setSelectedDimension}
+                  />
+                ) : (
+                  <AnalysisChart
+                    rows={rows}
+                    chartType={chartType}
+                    unit={result.unit}
+                    metricLabel={result.metricLabel}
+                    dimensionLabel={dimension}
+                    selectedDimension={selected?.dimension}
+                    onSelectDimension={setSelectedDimension}
+                  />
+                )}
+                {highest && (
+                  <div className="result-conclusion">
+                    <Icon name="chart" size={16} />
+                    <p>
+                      <strong>{highest.dimension}</strong> 的{result.metricLabel}最高，为{" "}
+                      <strong>
+                        {formatNumber(highest.value)} {result.unit}
+                      </strong>
+                      。{search && <span>仅比较筛选后的分组。</span>}
+                    </p>
+                  </div>
+                )}
+              </div>
+              {selected && (
+                <aside className="result-focus" aria-label="选中分组的统计详情">
+                  <div className="focus-caption">
+                    <span>当前{dimension}</span>
+                    <span>{analysisSourceLabel(result)}</span>
+                  </div>
+                  <label className="focus-group-picker">
+                    <span className="sr-only">选择查看的分组</span>
+                    <select
+                      aria-label="选择查看的分组"
+                      value={selected.dimension}
+                      onChange={(event) => setSelectedDimension(event.target.value)}
+                    >
+                      {rows.map((row) => (
+                        <option key={row.dimension} value={row.dimension}>
+                          {row.dimension}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="focus-number-block">
+                    <span>{result.metricLabel}</span>
+                    <p>
+                      <strong>{formatNumber(selected.value)}</strong>
+                      <small>{result.unit}</small>
+                    </p>
+                  </div>
+                  <dl className="focus-statistics">
+                    <div>
+                      <dt>参与统计</dt>
+                      <dd>{formatNumber(selected.sampleSize)} 人</dd>
+                    </div>
+                    <div>
+                      <dt>距可见最高值</dt>
+                      <dd>
+                        {formatNumber(gap)} {result.unit === "%" ? "个百分点" : result.unit}
+                      </dd>
+                    </div>
+                  </dl>
+                  <p className="focus-help">点击图表或表格中的分组，查看对应数值。</p>
+                </aside>
+              )}
+            </div>
+          )}
+          <div className="result-footer">
+            <p>
+              {rows.length} 个可见分组 · 每组至少 {result.minSampleSize} 人
+            </p>
+            {result.rows.length > 0 && (
+              <details
+                className="result-export result-disclosure"
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    event.currentTarget.open = false;
+                    event.currentTarget.querySelector("summary")?.focus();
+                  }
+                }}
+                onBlur={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget))
+                    event.currentTarget.open = false;
+                }}
+              >
+                <summary>
+                  <Icon name="download" size={16} />
+                  导出结果
+                  <Icon name="chevron" size={14} />
+                </summary>
+                <div className="export-options disclosure-content">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      downloadAnalysisFile(result, "csv");
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                    }}
+                  >
+                    下载 CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      downloadAnalysisFile(result, "html");
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                    }}
+                  >
+                    下载 HTML 报告
+                  </button>
+                  <button type="button" onClick={() => onReport(result)}>
+                    预览 / 打印报告
+                  </button>
+                  <p>导出全部返回分组，保留原始顺序。</p>
+                </div>
+              </details>
+            )}
+          </div>
+          <details className="result-technical result-disclosure">
+            <summary>
+              <Icon name="sliders" size={16} />
+              计算依据<span>指标口径、样本范围与 SQL</span>
+              <Icon name="chevron" size={15} />
+            </summary>
+            <div className="technical-content disclosure-content">
+              <dl>
+                <div>
+                  <dt>数据源</dt>
+                  <dd>{analysisSourceLabel(result)}</dd>
+                </div>
+                <div>
+                  <dt>计算口径</dt>
+                  <dd>{definition?.description}</dd>
+                </div>
+                <div>
+                  <dt>标准公式</dt>
+                  <dd>
+                    <code>{definition?.formula}</code>
+                  </dd>
+                </div>
+                <div>
+                  <dt>统计范围</dt>
+                  <dd>
+                    {result.period} · 按{dimension}
+                  </dd>
+                </div>
+                <div>
+                  <dt>样本与隐私</dt>
+                  <dd>
+                    仅展示聚合结果，每组至少 {result.minSampleSize} 名学生；本次过滤{" "}
+                    {result.filteredOutGroupCount}{" "}
+                    个分组。各组人数分别去重，同一学生可能出现在多个分组。
+                  </dd>
+                </div>
+                <div>
+                  <dt>查询用时</dt>
+                  <dd>{formatNumber(result.durationMs)} ms</dd>
+                </div>
+                {planning && (
+                  <div>
+                    <dt>分析方式</dt>
+                    <dd>
+                      {planning.source === "golden_case" ? "已验证的分析方式" : "AI 生成分析计划"} ·{" "}
+                      {planning.rationale}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+              {result.datasetId === "oulad" &&
+                result.metricLabel === METRICS.completion_rate.label && (
+                  <p className="technical-note">
+                    OULAD 完成率以最终结果为 Pass 或 Distinction 的记录计为完成。
+                  </p>
+                )}
+              <pre>{result.query}</pre>
+            </div>
+          </details>
+        </>
+      )}
+    </section>
+  );
+}

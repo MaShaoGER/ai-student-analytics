@@ -14,6 +14,7 @@ import { checkRateLimit, rateLimitConfigs } from "@/lib/security/rate-limit";
 import { apiError, assertSameOrigin, requireUser } from "@/lib/auth/http";
 import { AuthError } from "@/lib/auth/service";
 import { BudgetExceededError, UnknownModelPricingError } from "@/lib/security/ai-cost";
+import { AIProviderError, AI_PROVIDER_RETRY_AFTER } from "@/lib/ai/provider-errors";
 
 export const runtime = "nodejs";
 
@@ -21,6 +22,7 @@ function askHttpError(error: unknown, stage: AnalysisRecord["stage"]): AnalysisH
   const queryFailure = queryExecutionHttpError(error);
   if (queryFailure) return queryFailure;
   if (error instanceof AuthError) return { error: error.message, code: error.code, status: error.status };
+  if (error instanceof AIProviderError) return { error: error.message, code: error.code, status: error.status };
   if (error instanceof BudgetExceededError) return { error: error.message, code: "AI_BUDGET_EXCEEDED", status: 429 };
   if (error instanceof UnknownModelPricingError) return { error: error.message, code: "AI_PRICING_REQUIRED", status: 503 };
   if (error instanceof AIClarificationError) {
@@ -124,6 +126,8 @@ export async function POST(request: Request) {
     });
     if (error instanceof AuthError) return apiError(error);
     const { status, ...body } = failure;
-    return NextResponse.json(body, { status });
+    return NextResponse.json(body, { status, ...(error instanceof AIProviderError ? {
+      headers: { "Cache-Control": "no-store", "Retry-After": String(AI_PROVIDER_RETRY_AFTER) },
+    } : {}) });
   }
 }
