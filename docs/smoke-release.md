@@ -10,17 +10,20 @@
 node scripts/smoke-release.mjs
 ```
 
-| 环境变量                                     | 用途                                                                          |
-| -------------------------------------------- | ----------------------------------------------------------------------------- |
-| `SMOKE_BASE_URL`                             | 必填，候选实例根 URL，不含账号、查询参数或片段                                |
-| `SMOKE_ORIGIN`                               | 服务端配置的准确来源；默认使用 base 的来源                                    |
-| `SMOKE_USERNAME`、`SMOKE_PASSWORD`           | 必填，已有测试管理员的登录凭据                                                |
-| `SMOKE_USER_USERNAME`、`SMOKE_USER_PASSWORD` | 已有普通测试用户；成对提供才执行普通权限和跨用户归属验收                      |
-| `SMOKE_BASIC_AUTH`                           | 可选，网关 Basic Auth；接受原始 `username:password` 或完整 `Basic ...` 值     |
-| `SMOKE_CA_CERT_FILE`                         | 可选，自签名测试证书/CA 的 PEM 文件，加入系统根证书验证链                     |
-| `SMOKE_RECORDS_FILE`                         | 候选实际写入的 `analysis.jsonl` 路径；也接受 `ANALYSIS_RECORDS_FILE` 别名     |
-| `SMOKE_BASELINE_RECORDS_FILE`                | 可选，发布前只读 records 文件；要求候选保留其全部字节前缀                     |
-| `SMOKE_REQUIRE_SECURE_COOKIE`                | 默认为要求 Secure；仅本地 HTTP 开发验收可设 `0`，HTTPS origin 始终要求 Secure |
+| 环境变量                                     | 用途                                                                                           |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `SMOKE_BASE_URL`                             | 必填，候选实例根 URL，不含账号、查询参数或片段                                                 |
+| `SMOKE_ORIGIN`                               | 服务端配置的准确来源；默认使用 base 的来源                                                     |
+| `SMOKE_USERNAME`、`SMOKE_PASSWORD`           | 必填，已有测试管理员的登录凭据                                                                 |
+| `SMOKE_USER_USERNAME`、`SMOKE_USER_PASSWORD` | 已有普通测试用户；成对提供才执行普通权限和跨用户归属验收                                       |
+| `SMOKE_BASIC_AUTH`                           | 可选，网关 Basic Auth；接受原始 `username:password` 或完整 `Basic ...` 值                      |
+| `SMOKE_CA_CERT_FILE`                         | 可选，自签名测试证书/CA 的 PEM 文件，加入系统根证书验证链                                      |
+| `SMOKE_RECORDS_FILE`                         | 候选实际写入的 `analysis.jsonl` 路径；也接受 `ANALYSIS_RECORDS_FILE` 别名                      |
+| `SMOKE_BASELINE_RECORDS_FILE`                | 可选，发布前只读 records 文件；要求候选保留其全部字节前缀                                      |
+| `SMOKE_REQUIRE_SECURE_COOKIE`                | 默认为要求 Secure；仅本地 HTTP 开发验收可设 `0`，HTTPS origin 始终要求 Secure                  |
+| `SMOKE_DEMO_DATASET`                         | 默认 `expanded`，使用 `data/sample/summary.json` 核对扩充数据；旧镜像或小样例实例设为 `legacy` |
+
+`expanded` 档案验收按 `summary.json` 核对全部八张模拟数据表的记录数，并按数据字典核对字段数量；仅显式标记 `nullable` 的字段允许出现空值（未交作业日期/成绩、没有已交作业时的均分）。`legacy` 继续核对两张小样例表及零缺失。
 
 也支持旧发布控制器的 stdin JSON，字段会覆盖对应环境变量：
 

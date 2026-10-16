@@ -1,33 +1,9 @@
-/* Signed-in product surfaces share one graphite palette and a 16/12/8 radius scale. */
+/* Workbench layout; appearance tokens live in theme.css. */
 .graphite-workspace,
 .login-screen {
-  --ink: #f1f0eb;
-  --muted: #a0a19b;
-  --navy: #f1f0eb;
-  --accent: #d5e7aa;
-  --teal: #d5e7aa;
-  --teal-dark: #d5e7aa;
-  --teal-soft: #30372b;
-  --line: #ffffff13;
-  --paper: #222421;
-  --surface: #222421;
-  --surface-inset: #1b1d1b;
-  --surface-raised: #343731;
-  --background: #181a18;
-  --button-ink: #202719;
-  --success: #c6dba7;
-  --warning: #e8c699;
-  --danger: #f0aaa5;
-  --chart-primary: #d5e7aa;
-  --chart-secondary: #69755c;
-  --chart-text: #e5e9dd;
-  --chart-muted: #a0a19b;
-  --chart-grid: #ffffff12;
-  --chart-tooltip-bg: #2b2e28;
-  --chart-tooltip-border: #ffffff24;
-  background: var(--background);
   color: var(--ink);
-  font-family: "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--background);
+  font-family: inherit;
 }
 .workbench-shell {
   display: grid;
@@ -78,7 +54,7 @@
 .rail-label {
   display: block;
   margin: 0 13px 12px;
-  color: #8c8f87;
+  color: var(--muted);
   font-size: 10px;
   letter-spacing: 1.5px;
 }
@@ -101,8 +77,8 @@
   text-align: left;
 }
 .rail-nav button[aria-current="page"] {
-  background: #d5e7aa0d;
-  border-color: #d5e7aa16;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  border-color: var(--line);
   color: var(--accent);
 }
 .rail-nav small {
@@ -207,7 +183,7 @@
   min-width: 216px;
   max-width: 300px;
   padding: 12px 15px;
-  border: 1px solid #ffffff17;
+  border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--surface);
 }
@@ -499,9 +475,9 @@
   flex-direction: column;
   gap: 16px;
   padding: 22px;
-  border: 1px solid #d5e7aa1a;
+  border: 1px solid var(--line);
   border-radius: 12px;
-  background: #d5e7aa07;
+  background: color-mix(in srgb, var(--accent) 3%, transparent);
   color: var(--ink);
 }
 .focus-caption {
@@ -593,6 +569,125 @@
 .chart-frame {
   min-width: 0;
 }
+.chart-view-picker {
+  min-width: 0;
+  margin: 0 0 20px;
+}
+.chart-view-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chart-view-options button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--surface-inset);
+  color: var(--muted);
+  padding: 8px 11px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.chart-view-options button[aria-pressed="true"] {
+  background: var(--teal-soft);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: var(--accent);
+}
+.chart-view-options button:disabled {
+  opacity: 0.45;
+}
+.chart-view-description {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.8;
+  margin-top: 10px;
+  text-wrap: pretty;
+}
+.chart-key {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 16px;
+  margin: 4px 0 12px;
+  max-height: 192px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-raised) transparent;
+}
+.chart-key button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 36px;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: left;
+}
+.chart-key button[aria-pressed="true"] {
+  color: var(--ink);
+  background: var(--teal-soft);
+}
+.chart-key i {
+  flex: 0 0 7px;
+  height: 7px;
+  border-radius: 2px;
+}
+.chart-key button > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chart-key strong {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.chart-selection {
+  border-top: 1px solid var(--line);
+  padding: 12px 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.8;
+  font-variant-numeric: tabular-nums;
+}
+.chart-selection strong {
+  color: var(--accent);
+  font-weight: 500;
+}
+@media (hover: hover) {
+  .chart-view-options button:hover:not(:disabled),
+  .chart-key button:hover:not(:disabled) {
+    color: var(--ink);
+    border-color: var(--line);
+  }
+}
+@media (max-width: 540px) {
+  .chart-view-options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .chart-view-options button {
+    min-height: 44px;
+    padding: 8px 4px;
+    font-size: 11px;
+    gap: 5px;
+  }
+  .chart-key {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .chart-key button {
+    min-height: 44px;
+  }
+}
 .chart-context {
   color: var(--muted);
   font-size: 11px;
@@ -662,7 +757,7 @@
   z-index: 5;
   display: grid;
   gap: 4px;
-  border: 1px solid #ffffff26;
+  border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
   padding: 6px;
@@ -1120,7 +1215,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   width: 35px;
   height: 36px;
   padding: 9px 7px;
-  border: 1px solid #d5e7aa38;
+  border: 1px solid var(--line);
   border-radius: 10px;
   color: var(--accent);
 }
@@ -1159,9 +1254,9 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
 }
 .rail-user .avatar,
 .topbar-avatar {
-  background: #34392f;
+  background: var(--surface-inset);
   color: var(--accent);
-  border: 1px solid #ffffff0d;
+  border: 1px solid var(--line);
 }
 .rail-user {
   padding-top: 16px;
@@ -1178,7 +1273,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
 }
 .rail-manifesto strong {
   font-size: 11px;
-  color: #b5b9ac;
+  color: var(--muted);
   font-weight: 500;
 }
 .rail-manifesto p {
@@ -1189,7 +1284,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
 .rail-nav small {
   padding: 2px 6px;
   border-radius: 4px;
-  background: #ffffff08;
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
 }
 .topbar-actions {
   display: flex;
@@ -1206,7 +1301,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #ffffff1b;
+  border: 1px solid var(--line);
   border-radius: 7px;
   padding: 8px 12px;
   color: var(--ink);
@@ -1220,15 +1315,10 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   font-size: 12px;
 }
 .page-eyebrow {
-  color: #b1bc9b;
+  color: var(--muted);
   font-size: 9px;
   font-weight: 500;
   letter-spacing: 2px;
-}
-.graphite-workspace .panel {
-  border-color: var(--line);
-  box-shadow: none;
-  border-radius: 16px;
 }
 .graphite-workspace .section-kicker {
   color: var(--muted);
@@ -1261,22 +1351,22 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   opacity: 1;
 }
 .overview-metric.is-selected {
-  border-color: #d5e7aa46;
-  background: #252923;
+  border-color: var(--line);
+  background: var(--metric-soft);
 }
 .overview-metric-label {
   display: flex;
   align-items: center;
   gap: 9px;
   font-size: 12px;
-  color: #b8bbb1;
+  color: var(--ink);
 }
 .overview-metric-label > svg {
   color: var(--accent);
 }
 .metric-index {
   margin-left: auto;
-  color: #9ca491;
+  color: var(--muted);
   font-size: 9px;
   font-variant-numeric: tabular-nums;
 }
@@ -1304,7 +1394,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   width: 84px;
   height: 38px;
   flex-shrink: 1;
-  fill: #7d8c66;
+  fill: var(--metric-bar);
 }
 .overview-metric.is-selected .metric-miniature {
   fill: var(--accent);
@@ -1318,7 +1408,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   font-size: 10px;
 }
 .overview-metric-note > svg {
-  color: #c1c9b5;
+  color: var(--muted);
 }
 .overview-columns {
   display: grid;
@@ -1361,7 +1451,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   padding: 6px 10px;
   font-size: 10px;
   font-weight: 500;
-  background: #ffffff04;
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
 }
 .overview-chart-toolbar {
   display: flex;
@@ -1422,13 +1512,13 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   height: 30px;
   flex-shrink: 0;
   border-radius: 8px;
-  background: #d5e7aa0c;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
   color: var(--accent);
 }
 .overview-chart-insight p {
   flex: 1;
   font-size: 11px;
-  color: #afb4a7;
+  color: var(--muted);
   line-height: 1.8;
 }
 .overview-chart-insight strong {
@@ -1449,8 +1539,8 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   overflow: hidden;
   padding: 24px;
   border-radius: 15px;
-  background: #d5e7aa;
-  color: #2a3420;
+  background: var(--accent);
+  color: var(--surface-inset);
 }
 .ask-card-top {
   display: flex;
@@ -1458,14 +1548,14 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   justify-content: space-between;
   gap: 16px;
   font-size: 10px;
-  color: #485337;
+  color: var(--muted);
 }
 .ask-card-symbol {
   display: grid;
   place-items: center;
   width: 38px;
   height: 38px;
-  border: 1px solid #3f4e2926;
+  border: 1px solid var(--line);
   border-radius: 50%;
 }
 .overview-ask-card h2 {
@@ -1479,7 +1569,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   margin-top: 10px;
   font-size: 11px;
   line-height: 1.9;
-  color: #4d5a3b;
+  color: var(--muted);
 }
 .ask-card-button {
   display: flex;
@@ -1489,8 +1579,8 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   min-height: 42px;
   margin-top: 28px;
   padding: 10px 13px;
-  background: #2a3420;
-  color: #e6f0d0;
+  background: var(--surface-inset);
+  color: var(--ink);
   border: 0;
   border-radius: 8px;
   font-size: 11px;
@@ -1508,7 +1598,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   display: block;
   height: 150px;
   width: 70px;
-  border: 1px solid #475b2226;
+  border: 1px solid var(--line);
   border-radius: 50%;
   position: absolute;
 }
@@ -1546,7 +1636,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   border: 0;
   border-bottom: 1px solid var(--line);
   background: transparent;
-  color: #d2d5ca;
+  color: var(--ink);
   text-align: left;
   font-size: 11px;
   line-height: 1.7;
@@ -1556,7 +1646,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
 }
 .prompt-number {
   font-size: 9px;
-  color: #909b80;
+  color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 .overview-prompts > p {
@@ -1613,7 +1703,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   border-radius: 0;
   font-size: 10px;
   font-weight: 400;
-  color: #b9c4a4;
+  color: var(--muted);
 }
 .overview-ranking {
   min-width: 0;
@@ -1632,7 +1722,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   padding: 10px 8px;
   color: var(--muted);
   font-weight: 400;
-  background: #ffffff03;
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
   font-size: 10px;
 }
 .overview-ranking td {
@@ -1680,14 +1770,14 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   width: 100%;
   height: 4px;
   border-radius: 3px;
-  background: #ffffff08;
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
   overflow: hidden;
 }
 .ranking-track i {
   display: block;
   height: 100%;
   border-radius: 3px;
-  background: #aabd87;
+  background: var(--accent);
 }
 .ranking-footer {
   display: flex;
@@ -1759,15 +1849,15 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   line-height: 1.8;
 }
 .graphite-workspace .result-technical pre {
-  color: #b4bca9;
+  color: var(--muted);
 }
 .graphite-workspace .result-table th,
 .graphite-workspace .field-table th {
-  background: #ffffff04;
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
 }
 @media (hover: hover) and (pointer: fine) {
   .overview-metric:hover {
-    border-color: #d5e7aa46;
+    border-color: var(--line);
   }
   .overview-prompts > button:hover,
   .ranking-course:hover,
@@ -1775,7 +1865,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
     color: var(--accent);
   }
   .ask-card-button:hover {
-    background: #3c482e;
+    background: var(--surface-inset);
   }
 }
 @media (max-width: 1200px) {

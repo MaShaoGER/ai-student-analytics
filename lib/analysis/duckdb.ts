@@ -16,8 +16,38 @@ import {
 import { DIMENSIONS, METRICS } from "./metrics";
 
 const PROJECT_ROOT = process.cwd();
-const DEMO_ACTIVITY = path.join(PROJECT_ROOT, "data", "sample", "learning_activity.csv");
-const DEMO_OUTCOMES = path.join(PROJECT_ROOT, "data", "sample", "student_outcomes.csv");
+// Server-only override lets regression tests retain their tiny, stable fixtures.
+const DEMO_ROOT = process.env.DEMO_DATA_DIR
+  ? path.resolve(PROJECT_ROOT, process.env.DEMO_DATA_DIR)
+  : path.join(PROJECT_ROOT, "data", "sample");
+const DEMO_ACTIVITY = path.join(DEMO_ROOT, "learning_activity.csv");
+const DEMO_OUTCOMES = path.join(DEMO_ROOT, "student_outcomes.csv");
+const DEMO_TABLES = [
+  { name: "learning_activity", grain: "学生-课程-开课期-周次", path: DEMO_ACTIVITY },
+  { name: "student_outcomes", grain: "学生-课程-开课期", path: DEMO_OUTCOMES },
+  { name: "students", grain: "学生", path: path.join(DEMO_ROOT, "students.csv") },
+  {
+    name: "student_residences",
+    grain: "学生-开课期",
+    path: path.join(DEMO_ROOT, "student_residences.csv"),
+  },
+  { name: "leave_requests", grain: "请假申请", path: path.join(DEMO_ROOT, "leave_requests.csv") },
+  {
+    name: "attendance_weekly",
+    grain: "学生-课程-开课期-周次",
+    path: path.join(DEMO_ROOT, "attendance_weekly.csv"),
+  },
+  {
+    name: "assignment_submissions",
+    grain: "学生-课程-开课期-作业",
+    path: path.join(DEMO_ROOT, "assignment_submissions.csv"),
+  },
+  {
+    name: "student_term_summary",
+    grain: "学生-开课期",
+    path: path.join(DEMO_ROOT, "student_term_summary.csv"),
+  },
+];
 const OULAD = {
   assessments: path.join(PROJECT_ROOT, "oulad_raw", "assessments.csv"),
   courses: path.join(PROJECT_ROOT, "oulad_raw", "courses.csv"),
@@ -44,7 +74,8 @@ function sqlIdentifier(identifier: string): string {
 
 function csv(filePath: string, options = "") {
   const extras = options ? `, ${options}` : "";
-  return `read_csv_auto(${sqlPath(filePath)}, header=true, nullstr='?'${extras})`;
+  // OULAD uses '?'; campus CSVs also use empty cells for not-applicable values.
+  return `read_csv_auto(${sqlPath(filePath)}, header=true, nullstr=['?', '']${extras})`;
 }
 
 function dimensionExpression(plan: AnalysisPlan, alias = "") {
@@ -206,11 +237,15 @@ export async function runAnalysis(
   const query = plan.datasetId === "demo" ? queryForDemo(plan) : queryForOulad(plan);
   const minSampleSize = 3;
   const startedAt = performance.now();
-  
-  const rows = await withBoundedQueryConnection((sql) => {
-    return sql(query);
-  }, API_QUERY_LIMITS.analysis, options);
-  
+
+  const rows = await withBoundedQueryConnection(
+    (sql) => {
+      return sql(query);
+    },
+    API_QUERY_LIMITS.analysis,
+    options,
+  );
+
   const durationMs = Math.round(performance.now() - startedAt);
 
   // For tracking filtered groups, we need to count groups before HAVING clause
@@ -236,7 +271,7 @@ export async function runAnalysis(
       period:
         plan.datasetId === "demo"
           ? plan.metric === "activity"
-            ? "模拟数据全部记录（课程第 1–3 周）"
+            ? "模拟数据全部周活动记录"
             : "模拟数据全部开课期记录"
           : "OULAD 本地 CSV 全部记录",
       query: queryForDisplay(query),
@@ -247,48 +282,50 @@ export async function runAnalysis(
   };
 }
 
-export async function profileDatasets(options: QueryExecutionOptions = {}): Promise<DatasetProfile[]> {
+export async function profileDatasets(
+  options: QueryExecutionOptions = {},
+): Promise<DatasetProfile[]> {
   const demoAvailable = validateFiles("demo");
   const ouladAvailable = validateFiles("oulad");
-  const profiledTables = await withBoundedQueryConnection(async (sql) => {
-    const tables = new Map<string, Awaited<ReturnType<typeof profileTable>>>();
-    const candidates: ProfileTable[] = [
-      { name: "learning_activity", grain: "学生-课程-开课期-周次", path: DEMO_ACTIVITY },
-      { name: "student_outcomes", grain: "学生-课程-开课期", path: DEMO_OUTCOMES },
-      { name: "studentInfo", grain: "学生-课程-开课期", path: OULAD.studentInfo },
-      { name: "studentVle", grain: "学生-课程-开课期-日期-资源", path: OULAD.studentVle },
-      { name: "studentAssessment", grain: "学生-考核项", path: OULAD.studentAssessment },
-      { name: "assessments", grain: "课程-开课期-考核项", path: OULAD.assessments },
-      { name: "courses", grain: "课程-开课期", path: OULAD.courses },
-    ];
-    for (const candidate of candidates) {
-      if (fileExists(candidate.path)) tables.set(candidate.name, await profileTable(sql, candidate));
-    }
-    return tables;
-  }, API_QUERY_LIMITS.profile, options);
+  // Legacy golden fixtures only contain the original two tables.
+  const demoTables = DEMO_TABLES.filter((table, index) => index < 2 || fileExists(table.path));
+  const profiledTables = await withBoundedQueryConnection(
+    async (sql) => {
+      const tables = new Map<string, Awaited<ReturnType<typeof profileTable>>>();
+      const candidates: ProfileTable[] = [
+        ...demoTables,
+        { name: "studentInfo", grain: "学生-课程-开课期", path: OULAD.studentInfo },
+        { name: "studentVle", grain: "学生-课程-开课期-日期-资源", path: OULAD.studentVle },
+        { name: "studentAssessment", grain: "学生-考核项", path: OULAD.studentAssessment },
+        { name: "assessments", grain: "课程-开课期-考核项", path: OULAD.assessments },
+        { name: "courses", grain: "课程-开课期", path: OULAD.courses },
+      ];
+      for (const candidate of candidates) {
+        if (fileExists(candidate.path))
+          tables.set(candidate.name, await profileTable(sql, candidate));
+      }
+      return tables;
+    },
+    API_QUERY_LIMITS.profile,
+    options,
+  );
   const profiles: DatasetProfile[] = [
     {
       id: "demo",
       name: "模拟校园数据",
-      description: "9 名虚构学生、3 门课程、2 个开课期，用于快速演示和测试。",
-      source: "仓库内 data/sample，虚构数据",
+      description:
+        demoTables.length > 2
+          ? "虚构的多课程、多学期校园数据，涵盖成绩、活动、出勤、作业、请假、学生档案与住宿。数据档案提供表结构与质量，指标分析目前支持成绩、活动和课程完成率。未交作业的日期和成绩、无已交作业时的均分为空，表示不适用。"
+          : "虚构的多课程、多学期学习数据，涵盖成绩、完成结果和逐周活动。",
+      source: "本地虚构演示数据",
       available: demoAvailable,
-      tables: [
-        {
-          name: "learning_activity",
-          rows: profiledTables.get("learning_activity")?.rows ?? null,
-          grain: "学生-课程-开课期-周次",
-          status: demoAvailable ? "ready" : "not_found",
-          fields: profiledTables.get("learning_activity")?.fields,
-        },
-        {
-          name: "student_outcomes",
-          rows: profiledTables.get("student_outcomes")?.rows ?? null,
-          grain: "学生-课程-开课期",
-          status: demoAvailable ? "ready" : "not_found",
-          fields: profiledTables.get("student_outcomes")?.fields,
-        },
-      ],
+      tables: demoTables.map((table) => ({
+        name: table.name,
+        rows: profiledTables.get(table.name)?.rows ?? null,
+        grain: table.grain,
+        status: fileExists(table.path) ? "ready" : "not_found",
+        fields: profiledTables.get(table.name)?.fields,
+      })),
     },
     {
       id: "oulad",

@@ -12,7 +12,7 @@ const port = process.env.API_TEST_PORT || '3100';
 const base = `http://localhost:${port}`;
 const username = 'http.test.admin';
 const password = randomBytes(24).toString('base64url');
-const env = { ...process.env, APP_STATE_DIR: directory, ANALYSIS_RECORDS_DIR: join(directory, 'analysis-records'), APP_ORIGIN: base, ADMIN_USERNAME: username, ADMIN_PASSWORD: password,
+const env = { ...process.env, DEMO_DATA_DIR: 'data/fixtures/golden', APP_STATE_DIR: directory, ANALYSIS_RECORDS_DIR: join(directory, 'analysis-records'), APP_ORIGIN: base, ADMIN_USERNAME: username, ADMIN_PASSWORD: password,
   APP_SETTINGS_KEY: randomBytes(32).toString('base64'), OPENAI_API_KEY: '', OPENAI_MODEL: '', OPENAI_INPUT_PRICE: '', OPENAI_OUTPUT_PRICE: '',
   API_TEST_USERNAME: username, API_TEST_PASSWORD: password, API_BASE_URL: base, API_INTEGRATION: '1', NEXT_TELEMETRY_DISABLED: '1' };
 const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '--port', port], { env, stdio: ['ignore', 'pipe', 'pipe'] });

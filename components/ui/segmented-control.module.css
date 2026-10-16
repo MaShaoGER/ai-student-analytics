@@ -8,8 +8,8 @@
   max-width: 100%;
   min-width: 0;
   padding: 4px;
-  border: 1px solid var(--line, #35404d);
-  border-radius: 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
   background: var(--surface-inset, #19212c);
   vertical-align: middle;
 }
@@ -23,10 +23,9 @@
 .indicator {
   display: block;
   height: 100%;
-  border: 1px solid var(--line, #35404d);
-  border-radius: 8px;
-  background: var(--surface-raised, #344151);
-  box-shadow: 0 1px 3px #00000018;
+  border: 0;
+  border-radius: 999px;
+  background: var(--metric-soft, var(--surface-raised));
   transition: transform var(--motion-standard, 180ms)
     var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
@@ -46,7 +45,7 @@
   min-height: 36px;
   padding: 7px 15px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 999px;
   background: transparent;
   color: var(--muted, #a7b3c2);
   font: inherit;
@@ -61,11 +60,11 @@
 }
 
 .control .button[aria-pressed="true"] {
-  color: var(--ink, #eef2f6);
+  color: var(--metric-color, var(--ink));
 }
 
 .control .button:focus-visible {
-  outline: 2px solid var(--accent, #92a9cd);
+  outline: 2px solid var(--interaction, var(--accent));
   outline-offset: 2px;
 }
 
@@ -96,7 +95,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .control .button:hover:not(:disabled) {
-    color: var(--ink, #eef2f6);
+    color: var(--metric-color, var(--ink));
   }
 }
 

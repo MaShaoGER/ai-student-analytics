@@ -1,12 +1,21 @@
 import type { ReactNode } from "react";
 
 export type IconName =
+  | "sun"
+  | "moon"
+  | "messages"
   | "dashboard"
   | "database"
   | "sparkles"
   | "settings"
   | "chart"
+  | "line"
+  | "pie"
+  | "treemap"
+  | "radar"
+  | "scatter"
   | "arrow"
+  | "arrowUpRight"
   | "arrowLeft"
   | "chevron"
   | "search"
@@ -34,6 +43,19 @@ export type IconName =
   | "refresh";
 
 const shapes: Record<IconName, ReactNode> = {
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" />
+    </>
+  ),
+  moon: <path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z" />,
+  messages: (
+    <>
+      <path d="M4 3h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H7l-5 3V5a2 2 0 0 1 2-2Z" />
+      <path d="M8 19h9l5 3V9" />
+    </>
+  ),
   dashboard: (
     <>
       <rect x="3" y="3" width="7" height="7" rx="1.5" />
@@ -65,7 +87,35 @@ const shapes: Record<IconName, ReactNode> = {
       <path d="M3 3v18h18M7 17v-6M12 17V7M17 17v-9" />
     </>
   ),
+  line: <path d="M3 3v18h18M6 16l5-7 5 3 5-7" />,
+  pie: (
+    <>
+      <path d="M12 3a9 9 0 1 0 9 9h-9Z" />
+      <path d="M15 3.5V9h5.5A9 9 0 0 0 15 3.5Z" />
+    </>
+  ),
+  treemap: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M11 3v18m0-10h10m-5 0v10" />
+    </>
+  ),
+  radar: (
+    <>
+      <path d="m12 3 9 7-3.5 10h-11L3 10Z" />
+      <path d="m12 7 5 4-2 6H9l-2-6Zm0-4v4m9 3-4 1m.5 9L15 17m-8.5 3L9 17M3 10l4 1" />
+    </>
+  ),
+  scatter: (
+    <>
+      <path d="M3 3v18h18" />
+      <circle cx="8" cy="15" r="2" />
+      <circle cx="14" cy="9" r="3" />
+      <circle cx="20" cy="5" r="1" />
+    </>
+  ),
   arrow: <path d="M4 12h16m-6-6 6 6-6 6" />,
+  arrowUpRight: <path d="M5 19 19 5M5 5h14v14" />,
   arrowLeft: <path d="M20 12H4m6-6-6 6 6 6" />,
   chevron: <path d="m9 5 7 7-7 7" />,
   search: (

@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "test:api": "./scripts/test-api.sh",
     "admin:init": "node scripts/admin-init.mjs",
+    "data:demo": "node scripts/generate-demo-data.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {

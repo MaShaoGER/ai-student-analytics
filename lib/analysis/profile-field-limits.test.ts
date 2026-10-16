@@ -12,7 +12,7 @@ describe("profile dataset field limits", () => {
 
   beforeAll(async () => {
     fixtureRoot = await mkdtemp(path.join(tmpdir(), "student-profile-fields-"));
-    sampleDir = path.join(fixtureRoot, "data", "sample");
+    sampleDir = path.join(fixtureRoot, "data", "fixtures", "golden");
     await mkdir(sampleDir, { recursive: true });
     await writeFile(path.join(sampleDir, "learning_activity.csv"), "value\n1\n");
     const cwd = vi.spyOn(process, "cwd").mockReturnValue(fixtureRoot);

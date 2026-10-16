@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { SessionUser } from "@/lib/client-types";
 import { ProductBrand } from "@/components/product-brand";
 import { Icon } from "@/components/app-icons";
+import { ThemeToggle } from "@/components/ui/theme-provider";
 
 const REMEMBERED_USERNAME = "student-analytics.remembered-username";
 
@@ -70,6 +71,9 @@ export function LoginScreen({
 
   return (
     <main className="login-screen">
+      <div className="login-appearance">
+        <ThemeToggle />
+      </div>
       <section className="login-story" aria-labelledby="login-product-title">
         <div className="login-brand">
           <ProductBrand />

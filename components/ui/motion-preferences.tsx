@@ -10,7 +10,7 @@ export function MotionPreferences() {
     root.dataset.inputModality = "keyboard";
 
     function markPointer() {
-      root.dataset.inputModality = "pointer";
+      if (root.dataset.inputModality !== "pointer") root.dataset.inputModality = "pointer";
     }
 
     function markKeyboard(event: KeyboardEvent) {
@@ -19,10 +19,12 @@ export function MotionPreferences() {
     }
 
     document.addEventListener("pointerdown", markPointer, true);
+    document.addEventListener("pointermove", markPointer, { passive: true });
     document.addEventListener("keydown", markKeyboard, true);
 
     return () => {
       document.removeEventListener("pointerdown", markPointer, true);
+      document.removeEventListener("pointermove", markPointer);
       document.removeEventListener("keydown", markKeyboard, true);
       if (previousModality === undefined) delete root.dataset.inputModality;
       else root.dataset.inputModality = previousModality;

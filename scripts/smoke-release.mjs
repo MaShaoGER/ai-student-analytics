@@ -251,7 +251,26 @@ function noSecrets(value) {
   }
 }
 function configDTO(config) {
-  exactKeys(config, ["enabled", "model", "keyConfigured", "budgets", "pricing"], "AI config");
+  const currentFormat = !legacyDemo || Object.hasOwn(config, "apiFormat");
+  exactKeys(
+    config,
+    [
+      "enabled",
+      "model",
+      "keyConfigured",
+      "budgets",
+      "pricing",
+      ...(currentFormat ? ["apiFormat", "baseUrl"] : []),
+    ],
+    "AI config",
+  );
+  if (currentFormat) {
+    assert(
+      ["responses", "chat_completions"].includes(config.apiFormat) &&
+        typeof config.baseUrl === "string",
+      "AI config: invalid API format or base URL",
+    );
+  }
   assert(
     typeof config.enabled === "boolean" &&
       typeof config.keyConfigured === "boolean" &&
@@ -273,8 +292,8 @@ function configDTO(config) {
   noSecrets(config);
 }
 
-// Literal expectations copied from lib/analysis/golden-cases.ts and createPlan.
-const rows = {
+// The legacy baseline remains available for deployed images using the tiny fixture.
+const legacyRows = {
   score_course: [
     ["AAA", 79.67, 3],
     ["CCC", 70.67, 3],
@@ -303,6 +322,24 @@ const rows = {
     ["2024J", 83.33, 6],
   ],
 };
+const legacyDemo = process.env.SMOKE_DEMO_DATASET === "legacy";
+if (
+  process.env.SMOKE_DEMO_DATASET &&
+  !["expanded", "legacy"].includes(process.env.SMOKE_DEMO_DATASET)
+) {
+  console.error("FAIL input: SMOKE_DEMO_DATASET must be expanded or legacy");
+  process.exit(1);
+}
+const demoReference = legacyDemo
+  ? null
+  : JSON.parse(readFileSync(new URL("../data/sample/summary.json", import.meta.url), "utf8"));
+const rows = demoReference?.expectedRows ?? legacyRows;
+const demoCounts = demoReference?.tables ?? { learning_activity: 27, student_outcomes: 9 };
+const demoDictionary = legacyDemo
+  ? null
+  : JSON.parse(
+      readFileSync(new URL("../data/schema/data-dictionary.json", import.meta.url), "utf8"),
+    );
 const goldenCases = [
   ["score-course-top", "哪门课程平均成绩最高？", "score", "course", "bar"],
   ["score-course-compare", "比较各课程平均成绩。", "score", "course", "bar"],
@@ -390,10 +427,10 @@ function analysisDTO(json, expectedPlan) {
     "analysis: invalid metric label",
   );
   assert(
-    result.period ===
-      (expectedPlan.metric === "activity"
-        ? "模拟数据全部记录（课程第 1–3 周）"
-        : "模拟数据全部开课期记录"),
+    expectedPlan.metric === "activity"
+      ? result.period === "模拟数据全部周活动记录" ||
+          (legacyDemo && result.period === "模拟数据全部记录（课程第 1–3 周）")
+      : result.period === "模拟数据全部开课期记录",
     "analysis: invalid period",
   );
   const expectedRows = rows[`${expectedPlan.metric}_${expectedPlan.dimensions[0]}`];
@@ -750,38 +787,45 @@ async function main() {
       "session: current user does not match login",
     );
   });
-  await check("demo dataset profile: 27 activity rows and 9 outcome rows", async () => {
-    const reply = await request("/api/profile", { authenticated: true });
-    expectStatus(reply, 200, "profile");
-    expectNoStore(reply, "profile");
-    assert(Array.isArray(reply.json?.datasets), "profile: datasets missing");
-    const demo = reply.json.datasets.find((dataset) => dataset.id === "demo");
-    assert(
-      demo?.available === true && Array.isArray(demo.tables) && demo.tables.length === 2,
-      "profile: demo unavailable or invalid tables",
-    );
-    for (const [name, count, fieldCount] of [
-      ["learning_activity", 27, 5],
-      ["student_outcomes", 9, 5],
-    ]) {
-      const table = demo.tables.find((candidate) => candidate.name === name);
+  await check(
+    `demo dataset profile: ${demoCounts.learning_activity} activity rows and ${demoCounts.student_outcomes} outcome rows`,
+    async () => {
+      const reply = await request("/api/profile", { authenticated: true });
+      expectStatus(reply, 200, "profile");
+      expectNoStore(reply, "profile");
+      assert(Array.isArray(reply.json?.datasets), "profile: datasets missing");
+      const demo = reply.json.datasets.find((dataset) => dataset.id === "demo");
       assert(
-        table?.status === "ready" && table.rows === count,
-        `profile: invalid ${name} count or status`,
+        demo?.available === true &&
+          Array.isArray(demo.tables) &&
+          demo.tables.length === Object.keys(demoCounts).length,
+        "profile: demo unavailable or invalid tables",
       );
-      assert(
-        Array.isArray(table.fields) &&
-          table.fields.length === fieldCount &&
-          table.fields.every(
-            (field) =>
-              typeof field.name === "string" &&
-              typeof field.type === "string" &&
-              field.missing === 0,
-          ),
-        `profile: invalid ${name} field metadata`,
-      );
-    }
-  });
+      for (const [name, count] of Object.entries(demoCounts)) {
+        const fieldDefinitions = demoDictionary?.tables[name]?.fields;
+        const fieldCount = fieldDefinitions ? Object.keys(fieldDefinitions).length : 5;
+        const table = demo.tables.find((candidate) => candidate.name === name);
+        assert(
+          table?.status === "ready" && table.rows === count,
+          `profile: invalid ${name} count or status`,
+        );
+        assert(
+          Array.isArray(table.fields) &&
+            table.fields.length === fieldCount &&
+            table.fields.every(
+              (field) =>
+                typeof field.name === "string" &&
+                typeof field.type === "string" &&
+                Number.isInteger(field.missing) &&
+                field.missing >= 0 &&
+                field.missing <= count &&
+                (fieldDefinitions?.[field.name]?.nullable || field.missing === 0),
+            ),
+          `profile: invalid ${name} field metadata`,
+        );
+      }
+    },
+  );
   let aiConfig;
   let callsBefore;
   await check("admin users: public DTOs without credentials", async () => {

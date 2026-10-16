@@ -7,7 +7,7 @@ import { Icon } from "@/components/app-icons";
 import { LearningOverview, type OverviewResults } from "@/components/learning-overview";
 import { ProductBrand } from "@/components/product-brand";
 import { LoginScreen } from "@/components/login-screen";
-import { MotionPreferences } from "@/components/ui/motion-preferences";
+import { ThemeToggle, useTheme } from "@/components/ui/theme-provider";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { GOLDEN_CASES } from "@/lib/analysis/golden-cases";
 import { createPlan } from "@/lib/analysis/plan";
@@ -21,11 +21,11 @@ import {
 import type {
   AnalysisPlan,
   AnalysisResult,
-  ChartType,
   DataSource,
   DatasetProfile,
   Metric,
 } from "@/lib/analysis/types";
+import type { ChartViewType } from "@/lib/analysis/visualization";
 import type { SessionUser } from "@/lib/client-types";
 
 const AdminPanel = dynamic(
@@ -60,6 +60,12 @@ const pageInfo: Record<View, { title: string; description: string }> = {
 const tableNames: Record<string, string> = {
   learning_activity: "学习活动记录",
   student_outcomes: "课程学习结果",
+  students: "学生基本档案",
+  student_residences: "学期住宿信息",
+  leave_requests: "请假申请记录",
+  attendance_weekly: "逐周出勤记录",
+  assignment_submissions: "作业提交明细",
+  student_term_summary: "学生学期汇总",
   studentInfo: "学生课程信息",
   studentVle: "学习资源访问记录",
   studentAssessment: "考核成绩记录",
@@ -280,7 +286,8 @@ function ReportCenter({
   const [printError, setPrintError] = useState("");
   const selected = analyses.find((entry) => entry.key === selectedKey) ?? analyses[0];
   const result = selected?.result;
-  const html = useMemo(() => (result ? analysisReportHtml(result) : ""), [result]);
+  const { theme } = useTheme();
+  const html = useMemo(() => (result ? analysisReportHtml(result, theme) : ""), [result, theme]);
   function printReport() {
     setPrintError("");
     try {
@@ -388,20 +395,21 @@ export function Workspace() {
   const menuButton = useRef<HTMLButtonElement>(null);
   const sidebar = useRef<HTMLElement>(null);
   const pageHeading = useRef<HTMLHeadingElement>(null);
+  const drawerWasOpen = useRef(false);
   const [profiles, setProfiles] = useState<DatasetProfile[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(true);
   const [datasetId, setDatasetId] = useState<DataSource>("demo");
   const [aiStatus, setAIStatus] = useState<AIStatus>({ configured: false, enabled: false });
   const [metric, setMetric] = useState<Metric>("score");
   const [dimension, setDimension] = useState<"course" | "term">("course");
-  const [chartType, setChartType] = useState<ChartType>("bar");
+  const [chartType, setChartType] = useState<ChartViewType>("bar");
   const [overview, setOverview] = useState<OverviewResults>({});
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [browseLoading, setBrowseLoading] = useState(false);
   const [question, setQuestion] = useState("");
   const [askResult, setAskResult] = useState<AnalysisResult | null>(null);
-  const [askChart, setAskChart] = useState<ChartType>("bar");
+  const [askChart, setAskChart] = useState<ChartViewType>("bar");
   const [planning, setPlanning] = useState<AnalysisPlanning | null>(null);
   const [askLoading, setAskLoading] = useState(false);
   const [sessionAnalyses, setSessionAnalyses] = useState<SessionAnalysis[]>([]);
@@ -430,7 +438,18 @@ export function Workspace() {
     [],
   );
   useEffect(() => {
-    if (!sidebarOpen) return;
+    if (!sidebarOpen) {
+      if (drawerWasOpen.current) {
+        // Restore focus after React has removed inert from the background.
+        const target = matchMedia("(min-width: 761px)").matches ? pageHeading : menuButton;
+        target.current?.focus({ preventScroll: true });
+      }
+      drawerWasOpen.current = false;
+      return;
+    }
+    drawerWasOpen.current = true;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const desktop = window.matchMedia("(min-width: 761px)");
     const closeOnDesktop = (event: MediaQueryListEvent) => {
       if (event.matches) {
@@ -463,6 +482,7 @@ export function Workspace() {
     }
     document.addEventListener("keydown", onKeyDown);
     return () => {
+      document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", onKeyDown);
       desktop.removeEventListener("change", closeOnDesktop);
     };
@@ -780,12 +800,134 @@ export function Workspace() {
       </button>
     </div>
   );
+  const navigation = (
+    <nav className="workspace-nav" aria-label="主要功能">
+      {(
+        [
+          ["overview", "学习全景"],
+          ["analysis", "指标分析"],
+          ["question", "一句话分析"],
+          ["data", "数据"],
+          ["reports", "分析报告"],
+        ] as const
+      ).map(([key, label]) => {
+        const active =
+          key === "question"
+            ? view === "analysis" && mode === "question"
+            : key === "analysis"
+              ? view === "analysis" && mode === "metrics"
+              : view === key;
+        return (
+          <button
+            type="button"
+            key={key}
+            aria-current={active ? "page" : undefined}
+            onClick={() => {
+              if (key === "question" || key === "analysis") {
+                changeMode(key === "question" ? "question" : "metrics");
+                navigate("analysis");
+              } else navigate(key);
+            }}
+          >
+            {key === "overview" && <Icon name="dashboard" size={16} />}
+            <span>{label}</span>
+            {key === "reports" && sessionAnalyses.length > 0 && (
+              <small>{sessionAnalyses.length}</small>
+            )}
+          </button>
+        );
+      })}
+    </nav>
+  );
+  const pageHeader = (
+    <div className="page-introduction">
+      <span className="page-eyebrow">
+        {view === "overview" ? `你好，${user.displayName}` : "学习数据工作台"}
+      </span>
+      <h1 ref={pageHeading} tabIndex={-1} id="workspace-heading">
+        {currentPage.title}
+      </h1>
+      <p>{currentPage.description}</p>
+    </div>
+  );
+  const sourcePicker = showDataset && (
+    <label className="workbench-source">
+      <span>
+        <Icon name="database" size={14} />
+        当前数据源
+      </span>
+      <select
+        aria-label="选择当前数据源"
+        value={datasetId}
+        disabled={profilesLoading}
+        onChange={(event) => changeSource(event.target.value as DataSource)}
+      >
+        {profiles.length === 0 ? (
+          <option value="demo">{profilesLoading ? "正在读取…" : "暂无可用数据"}</option>
+        ) : (
+          profiles.map((profile) => (
+            <option key={profile.id} value={profile.id} disabled={!profile.available}>
+              {profile.name}
+              {!profile.available ? "（未导入）" : ""}
+            </option>
+          ))
+        )}
+      </select>
+    </label>
+  );
   return (
-    <div className="graphite-workspace workbench-shell">
-      <MotionPreferences />
+    <div className="graphite-workspace workbench-shell" data-view={view}>
       <a className="skip-link" href="#main-content">
         跳到主要内容
       </a>
+      <header className="workbench-header" inert={sidebarOpen}>
+        <div className="header-brand-group">
+          <button
+            type="button"
+            className="workbench-menu icon-button"
+            ref={menuButton}
+            aria-label="打开导航"
+            aria-expanded={sidebarOpen}
+            aria-controls="workspace-navigation"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Icon name="menu" size={20} />
+          </button>
+          <button type="button" className="workbench-brand" onClick={() => navigate("overview")}>
+            <ProductBrand />
+          </button>
+        </div>
+        <div className="desktop-navigation">{navigation}</div>
+        <div className="topbar-actions">
+          <ThemeToggle />
+          {user.role === "admin" && (
+            <button
+              type="button"
+              className="icon-button header-settings"
+              aria-label="系统管理"
+              onClick={() => navigate("admin")}
+            >
+              <Icon name="sliders" size={18} />
+            </button>
+          )}
+          <button
+            type="button"
+            className="avatar topbar-avatar"
+            aria-label="打开个人设置"
+            onClick={() => navigate("account")}
+          >
+            {user.displayName.slice(0, 1)}
+          </button>
+          <button
+            type="button"
+            className="icon-button header-logout"
+            aria-label="退出登录"
+            onClick={() => void logout()}
+          >
+            <Icon name="logout" size={17} />
+          </button>
+        </div>
+      </header>
       {sidebarOpen && (
         <button
           type="button"
@@ -800,196 +942,58 @@ export function Workspace() {
       <aside
         id="workspace-navigation"
         ref={sidebar}
-        className={"workbench-rail" + (sidebarOpen ? " is-open" : "")}
+        className="workbench-drawer"
+        hidden={!sidebarOpen}
         aria-label="工作台导航"
         role={sidebarOpen ? "dialog" : undefined}
         aria-modal={sidebarOpen || undefined}
       >
-        <button type="button" className="workbench-brand" onClick={() => navigate("overview")}>
-          <ProductBrand />
-        </button>
-        <div className="rail-section">
-          <span className="rail-label">工作区</span>
-          <nav className="rail-nav" aria-label="主要功能">
-            {(
-              [
-                ["overview", "dashboard", "学习全景"],
-                ["analysis", "chart", "指标分析"],
-                ["data", "database", "数据"],
-              ] as const
-            ).map(([key, icon, label]) => (
-              <button
-                type="button"
-                key={key}
-                aria-current={
-                  view === key && (key !== "analysis" || mode === "metrics") ? "page" : undefined
-                }
-                onClick={() => {
-                  if (key === "analysis") changeMode("metrics");
-                  navigate(key);
-                }}
-              >
-                <Icon name={icon} size={18} />
-                <span>{label}</span>
-              </button>
-            ))}
-            <button
-              type="button"
-              aria-current={view === "analysis" && mode === "question" ? "page" : undefined}
-              onClick={() => {
-                changeMode("question");
-                navigate("analysis");
-              }}
-            >
-              <Icon name="sparkles" size={18} />
-              <span>一句话分析</span>
-              <span className="rail-ai-tag">AI</span>
-            </button>
-          </nav>
+        <div className="drawer-heading">
+          <strong>工作台导航</strong>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="关闭导航"
+            onClick={() => {
+              setSidebarOpen(false);
+              menuButton.current?.focus();
+            }}
+          >
+            <Icon name="close" size={18} />
+          </button>
         </div>
-        <div className="rail-section">
-          <span className="rail-label">分析成果</span>
-          <nav className="rail-nav" aria-label="分析成果">
-            <button
-              type="button"
-              aria-current={view === "reports" ? "page" : undefined}
-              onClick={() => navigate("reports")}
-            >
-              <Icon name="file" size={18} />
-              <span>分析报告</span>
-              <small>{sessionAnalyses.length}</small>
+        {navigation}
+        <div className="drawer-actions">
+          {user.role === "admin" && (
+            <button type="button" className="secondary-button" onClick={() => navigate("admin")}>
+              <Icon name="settings" size={17} />
+              系统管理
             </button>
-          </nav>
-        </div>
-        <div className="rail-bottom">
-          <div className="rail-manifesto">
-            <Icon name="shield" size={19} />
-            <strong>让教学决策，有据可依</strong>
-            <p>从学习记录，到每一个更好的决定。</p>
-          </div>
-          <div className="rail-section">
-            <span className="rail-label">设置</span>
-            <nav className="rail-nav" aria-label="设置">
-              {user.role === "admin" && (
-                <button
-                  type="button"
-                  aria-current={view === "admin" ? "page" : undefined}
-                  onClick={() => navigate("admin")}
-                >
-                  <Icon name="settings" size={18} />
-                  <span>系统管理</span>
-                </button>
-              )}
-              <button
-                type="button"
-                aria-current={view === "account" ? "page" : undefined}
-                onClick={() => navigate("account")}
-              >
-                <Icon name="users" size={18} />
-                <span>个人设置</span>
-              </button>
-            </nav>
-          </div>
-          <div className="rail-user">
-            <span className="avatar">{user.displayName.slice(0, 1)}</span>
-            <span>
-              <strong>{user.displayName}</strong>
-              <small>{user.role === "admin" ? "管理员" : "分析用户"}</small>
-            </span>
-          </div>
-          <button type="button" className="rail-logout" onClick={() => void logout()}>
-            <Icon name="logout" size={16} />
+          )}
+          <button type="button" className="secondary-button" onClick={() => navigate("account")}>
+            <Icon name="users" size={17} />
+            个人设置
+          </button>
+          <button type="button" className="secondary-button" onClick={() => void logout()}>
+            <Icon name="logout" size={17} />
             退出登录
           </button>
         </div>
       </aside>
       <div className="workbench-main" inert={sidebarOpen}>
-        <header className="workbench-topbar">
-          <div>
-            <button
-              type="button"
-              className="workbench-menu icon-button"
-              ref={menuButton}
-              aria-label="打开导航"
-              aria-expanded={sidebarOpen}
-              aria-controls="workspace-navigation"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Icon name="menu" size={21} />
-            </button>
-            <span>工作台</span>
-            <Icon name="chevron" size={13} />
-            <strong>{currentPage.title}</strong>
-          </div>
-          <div className="topbar-actions">
-            <span className="topbar-status">
-              <span className="status-dot" />
-              学习数据工作台
-            </span>
-            <button
-              type="button"
-              className="topbar-ask"
-              onClick={() => {
-                changeMode("question");
-                navigate("analysis");
-              }}
-            >
-              <Icon name="sparkles" size={15} />
-              发起分析
-            </button>
-            <button
-              type="button"
-              className="avatar topbar-avatar"
-              aria-label="打开个人设置"
-              onClick={() => navigate("account")}
-            >
-              {user.displayName.slice(0, 1)}
-            </button>
-          </div>
-        </header>
         <main id="main-content" className="workbench-content" aria-labelledby="workspace-heading">
-          <div className="workbench-page-heading">
-            <div>
-              <span className="page-eyebrow">
-                {view === "overview"
-                  ? "YOUR LEARNING OBSERVATORY"
-                  : "EXPLORE · UNDERSTAND · DISCOVER"}
-              </span>
-              <h1 ref={pageHeading} tabIndex={-1} id="workspace-heading">
-                {currentPage.title}
-              </h1>
-              <p>{currentPage.description}</p>
+          {view !== "overview" && (
+            <div className="workbench-page-heading">
+              {pageHeader}
+              {sourcePicker}
             </div>
-            {showDataset && (
-              <label className="workbench-source">
-                <span>
-                  <Icon name="database" size={14} />
-                  当前数据源
-                </span>
-                <select
-                  aria-label="选择当前数据源"
-                  value={datasetId}
-                  disabled={profilesLoading}
-                  onChange={(event) => changeSource(event.target.value as DataSource)}
-                >
-                  {profiles.length === 0 ? (
-                    <option value="demo">{profilesLoading ? "正在读取…" : "暂无可用数据"}</option>
-                  ) : (
-                    profiles.map((profile) => (
-                      <option key={profile.id} value={profile.id} disabled={!profile.available}>
-                        {profile.name}
-                        {!profile.available ? "（未导入）" : ""}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </label>
-            )}
-          </div>
+          )}
           <div key={view} className="view-surface">
             {view !== "analysis" && notice}
             {view === "overview" && (
               <LearningOverview
+                heading={pageHeader}
+                sourceControl={sourcePicker}
                 results={overview}
                 loading={overviewLoading && canRun}
                 profile={selectedProfile}
@@ -1011,7 +1015,11 @@ export function Workspace() {
               />
             )}
             {view === "analysis" && (
-              <section className="panel analysis-workspace" aria-label="学习分析工作区">
+              <section
+                className="panel analysis-workspace metric-scope"
+                data-metric={mode === "metrics" ? metric : undefined}
+                aria-label="学习分析工作区"
+              >
                 <div className="analysis-workspace-controls">
                   {mode === "metrics" ? (
                     <>

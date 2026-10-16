@@ -68,7 +68,10 @@ export function escapeHtml(value: string | number): string {
   );
 }
 
-export function analysisReportHtml(result: AnalysisResult): string {
+export function analysisReportHtml(
+  result: AnalysisResult,
+  theme: "light" | "dark" = "light",
+): string {
   const h = escapeHtml;
   const dimension = analysisDimensionLabel(result);
   const highest = result.rows.reduce<AnalysisResult["rows"][number] | null>(
@@ -83,6 +86,12 @@ export function analysisReportHtml(result: AnalysisResult): string {
       ? `本次因样本不足过滤 ${result.filteredOutGroupCount} 个分组。`
       : "";
   const max = Math.max(...result.rows.map((row) => row.value), 1);
+  const metricColors =
+    result.unit === "%"
+      ? ["#21836c", "#dbf0e9", "#7ad8b8", "#253e35"]
+      : result.unit === "次"
+        ? ["#8a62d2", "#ece3fa", "#c2a4ff", "#3d3252"]
+        : ["#397ed5", "#dfebfb", "#88baff", "#293b50"];
   const rows = result.rows
     .map((row) => {
       const width = Math.min(100, Math.max(0, (row.value / max) * 100));
@@ -90,11 +99,13 @@ export function analysisReportHtml(result: AnalysisResult): string {
     })
     .join("");
   return `<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="zh-CN" data-theme="${theme === "dark" ? "dark" : "light"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
 <title>${h(result.metricLabel)}分析报告 · 学析台</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#f4f7fa;color:#24384e;font:14px/1.7 system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}main{max-width:920px;margin:24px auto;padding:38px;background:white}h1{font-size:26px;margin:8px 0 20px}h2{font-size:18px;margin:28px 0 12px}.brand{color:#308970;font-weight:600}.note{color:#62748a;font-size:12px}.summary{padding:16px;background:#eff7f3;border-left:4px solid #308970}dl{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px}dl div{border-bottom:1px solid #e5ebf0;padding:10px 0}dt{font-size:12px;color:#62748a}dd{margin:3px 0;overflow-wrap:anywhere}table{border-collapse:collapse;width:100%;font-size:13px}caption{text-align:left;font-weight:600;padding:10px 0}th,td{padding:10px;border-bottom:1px solid #e5ebf0;text-align:left;overflow-wrap:anywhere}thead{background:#eff3f7}.bar{height:10px;background:#308970;min-width:1px}td:last-child{width:22%}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.7 ui-monospace,monospace;background:#f4f7fa;padding:16px}footer{border-top:1px solid #e5ebf0;padding-top:18px;margin-top:28px}@media(max-width:600px){main{margin:0;padding:24px 16px}dl{grid-template-columns:1fr}}@page{size:A4;margin:16mm}@media print{body{background:#fff}main{max-width:none;margin:0;padding:0}thead{display:table-header-group}tr,dl div,.summary{break-inside:avoid}.bar,.summary,thead{print-color-adjust:exact;-webkit-print-color-adjust:exact}h2{break-after:avoid}}
+:root{color-scheme:light;--bg:#e9ebe3;--paper:#f8f9f4;--ink:#252820;--muted:#62675a;--line:#25282018;--inset:#e9ece2;--metric:${metricColors[0]};--metric-soft:${metricColors[1]}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#1a1b19;--paper:#252623;--ink:#f0f2e9;--muted:#b2b8a8;--line:#f0f2e918;--inset:#1e201c;--metric:${metricColors[2]};--metric-soft:${metricColors[3]}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.7 "Avenir Next",system-ui,"PingFang SC","Microsoft YaHei",sans-serif}main{max-width:920px;margin:24px auto;padding:38px;background:var(--paper);border-radius:32px}h1{font-size:26px;margin:18px 0 20px;font-weight:500}h2{font-size:18px;margin:28px 0 12px;font-weight:500}.brand{display:inline-block;padding:6px 12px;border-radius:999px;background:#e6f436;color:#272c0f;font-size:12px;font-weight:500}.note{color:var(--muted);font-size:12px}.summary{padding:16px 20px;background:var(--metric-soft);border-radius:16px}dl{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px}dl div{border-bottom:1px solid var(--line);padding:10px 0}dt{font-size:12px;color:var(--muted)}dd{margin:3px 0;overflow-wrap:anywhere}table{border-collapse:collapse;width:100%;font-size:13px}caption{text-align:left;font-weight:500;padding:10px 0}th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;overflow-wrap:anywhere}thead{background:var(--inset)}.bar{height:10px;border-radius:999px;background:var(--metric);min-width:1px}td:last-child{width:22%}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.7 ui-monospace,monospace;background:var(--inset);padding:16px;border-radius:16px}footer{border-top:1px solid var(--line);padding-top:18px;margin-top:28px}@media(max-width:600px){main{margin:0;padding:24px 16px;border-radius:24px}dl{grid-template-columns:1fr}}@page{size:A4;margin:16mm}@media print{:root,:root[data-theme="dark"]{color-scheme:light;--paper:#fff;--ink:#252820;--muted:#62675a;--line:#25282018;--inset:#e9ece2;--metric:${metricColors[0]};--metric-soft:${metricColors[1]}}body{background:#fff}main{max-width:none;margin:0;padding:0;border-radius:0}thead{display:table-header-group}tr,dl div,.summary{break-inside:avoid}.bar,.summary,thead{print-color-adjust:exact;-webkit-print-color-adjust:exact}h2{break-after:avoid}}
 </style></head><body><main>
 <span class="brand">学析台 · 学习数据分析报告</span><h1>${h(result.metricLabel)}按${h(dimension)}比较</h1>
 <p class="summary">${h(insight)}</p>

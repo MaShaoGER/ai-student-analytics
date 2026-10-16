@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTheme } from "@/components/ui/theme-provider";
 import * as echarts from "echarts";
-import type { AnalysisRow, ChartType } from "@/lib/analysis/types";
-
-function escapeHtml(value: string) {
-  return value.replace(
-    /[&<>"']/g,
-    (character) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!,
-  );
-}
+import type { AnalysisRow } from "@/lib/analysis/types";
+import { buildChartOption, type ChartColors } from "@/lib/analysis/chart-options";
+import {
+  chartColorIndex,
+  formatChartNumber,
+  resolveChartView,
+  type ChartViewType,
+  type ChartComparison,
+} from "@/lib/analysis/visualization";
 
 export function AnalysisChart({
   rows,
@@ -20,18 +21,28 @@ export function AnalysisChart({
   dimensionLabel,
   selectedDimension,
   onSelectDimension,
+  comparison,
 }: {
   rows: AnalysisRow[];
-  chartType: ChartType;
+  chartType: ChartViewType;
   unit: string;
   metricLabel: string;
   dimensionLabel: string;
   selectedDimension?: string;
   onSelectDimension?: (dimension: string) => void;
+  comparison?: ChartComparison;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
-  const isTable = chartType === "table";
+  const lastView = useRef<ChartViewType | undefined>(undefined);
+  const { theme } = useTheme();
+  const view = resolveChartView(chartType, unit, rows);
+  const isTable = view === "table";
+  const showKey = ["pie", "treemap", "radar", "scatter"].includes(view);
+  const multicolor =
+    (["pie", "treemap"].includes(view) && rows.length > 6) ||
+    (view === "scatter" && Boolean(comparison));
+  const total = rows.reduce((sum, row) => sum + row.value, 0);
   const highest = rows.reduce<AnalysisRow | undefined>(
     (best, row) => (!best || row.value > best.value ? row : best),
     undefined,
@@ -44,13 +55,10 @@ export function AnalysisChart({
 
     const chart = echarts.init(root);
     chartRef.current = chart;
-    const observer = new ResizeObserver(() => chart.resize());
-    observer.observe(root);
-
     return () => {
-      observer.disconnect();
       chart.dispose();
       chartRef.current = null;
+      lastView.current = undefined;
     };
   }, [isTable]);
 
@@ -60,9 +68,22 @@ export function AnalysisChart({
     if (!root || !chart || isTable) return;
 
     const styles = getComputedStyle(root);
-    const token = (name: string, fallback: string) =>
-      styles.getPropertyValue(name).trim() || fallback;
-    const colors = {
+    // ECharts' color parser does not understand CSS color-mix / Color 4 values.
+    // Resolve the shared CSS palette once per update before passing it to canvas.
+    const colorCanvas = document.createElement("canvas");
+    colorCanvas.width = colorCanvas.height = 1;
+    const colorContext = colorCanvas.getContext("2d", { willReadFrequently: true });
+    const token = (name: string, fallback: string) => {
+      const value = styles.getPropertyValue(name).trim() || fallback;
+      if (echarts.color.parse(value) || !colorContext || !CSS.supports("color", value))
+        return value;
+      colorContext.clearRect(0, 0, 1, 1);
+      colorContext.fillStyle = value;
+      colorContext.fillRect(0, 0, 1, 1);
+      const [r, g, b, a] = colorContext.getImageData(0, 0, 1, 1).data;
+      return `rgba(${r},${g},${b},${a / 255})`;
+    };
+    const colors: ChartColors = {
       primary: token("--chart-primary", "#9aacc8"),
       neutral: token("--chart-secondary", "#69717d"),
       text: token("--chart-text", "#d7dde6"),
@@ -70,110 +91,90 @@ export function AnalysisChart({
       grid: token("--chart-grid", "#383e47"),
       tooltip: token("--chart-tooltip-bg", "#252b34"),
       border: token("--chart-tooltip-border", "#4b5564"),
+      surface: token("--paper", "#222421"),
+      palette: Array.from({ length: 10 }, (_, index) =>
+        token(`--chart-${multicolor ? "multi-" : ""}category-${index + 1}`, "#88baff"),
+      ),
     };
-    const data = rows.map((row) => ({
-      name: row.dimension,
-      value: row.value,
-      itemStyle: {
-        color: row.dimension === selected?.dimension ? colors.primary : colors.neutral,
-      },
-    }));
-    const series: echarts.SeriesOption =
-      chartType === "line"
-        ? {
-            type: "line",
-            data,
-            smooth: false,
-            symbol: "circle",
-            symbolSize: (_value, params) =>
-              rows[params.dataIndex]?.dimension === selected?.dimension ? 9 : 6,
-            lineStyle: { width: 2, color: colors.primary },
-            itemStyle: { borderWidth: 2, borderColor: colors.primary },
-            emphasis: { disabled: true, scale: false },
-          }
-        : {
-            type: "bar",
-            data,
-            barMaxWidth: 58,
-            itemStyle: { borderRadius: [5, 5, 2, 2] },
-            label: {
-              show: rows.length <= 12,
-              position: "top",
-              color: colors.text,
-              fontSize: 12,
-              distance: 10,
-              formatter: (params) => rows[params.dataIndex]?.value.toLocaleString("zh-CN") ?? "",
-            },
-            emphasis: { disabled: true },
-          };
-
-    chart.setOption(
-      {
-        // Keep values in place while people read and compare them. Motion belongs to
-        // the surrounding controls; canvas geometry does not need a new entrance.
-        animation: false,
-        color: [colors.primary],
-        textStyle: { fontFamily: styles.fontFamily },
-        grid: { top: 38, right: 20, bottom: 20, left: 8, containLabel: true },
-        tooltip: {
-          trigger: "axis",
-          confine: true,
-          transitionDuration: 0,
-          axisPointer: { type: "line", lineStyle: { color: colors.neutral, type: "dashed" } },
-          backgroundColor: colors.tooltip,
-          borderColor: colors.border,
-          borderWidth: 1,
-          padding: [12, 14],
-          textStyle: { color: colors.text, fontSize: 13, lineHeight: 22 },
-          extraCssText: "border-radius: 10px; box-shadow: none;",
-          formatter: (params: unknown) => {
-            const items = Array.isArray(params) ? params : [params];
-            const first = items[0] as { dataIndex?: number } | undefined;
-            const row = first?.dataIndex === undefined ? undefined : rows[first.dataIndex];
-            if (!row) return "";
-            return `<strong>${escapeHtml(row.dimension)}</strong><br/>${escapeHtml(metricLabel)}：${row.value.toLocaleString("zh-CN")} ${escapeHtml(unit)}<br/>参与统计：${row.sampleSize.toLocaleString("zh-CN")} 人`;
-          },
+    const draw = () => {
+      const option = buildChartOption({
+        rows,
+        chartType: view,
+        unit,
+        metricLabel,
+        selectedDimension: selected?.dimension,
+        colors,
+        fontFamily: styles.fontFamily,
+        compact: root.clientWidth < 460,
+        comparison,
+      });
+      chart.setOption(
+        {
+          ...option,
+          animation:
+            !matchMedia("(prefers-reduced-motion: reduce)").matches &&
+            document.documentElement.dataset.inputModality === "pointer",
+          animationDuration: 0,
+          animationDurationUpdate: 180,
+          animationEasingUpdate: "cubicOut",
         },
-        xAxis: {
-          type: "category",
-          data: rows.map((row) => row.dimension),
-          axisLabel: {
-            color: colors.muted,
-            fontSize: 12,
-            margin: 14,
-            interval: 0,
-            hideOverlap: true,
-            rotate: rows.length > 5 || rows.some((row) => row.dimension.length > 8) ? 28 : 0,
-          },
-          axisLine: { lineStyle: { color: colors.grid } },
-          axisTick: { show: false },
-        },
-        yAxis: {
-          type: "value",
-          axisLabel: { color: colors.muted, fontSize: 12 },
-          splitLine: { lineStyle: { color: colors.grid, type: "dashed" } },
-          axisLine: { show: false },
-        },
-        series: [series],
-      },
-      { notMerge: true },
-    );
+        { notMerge: lastView.current !== view },
+      );
+      lastView.current = view;
+    };
+    draw();
+    // Recalculate label density when the panel crosses a responsive breakpoint.
+    let width = root.clientWidth;
+    let height = root.clientHeight;
+    const layoutObserver = new ResizeObserver(() => {
+      if (root.clientWidth === width && root.clientHeight === height) return;
+      width = root.clientWidth;
+      height = root.clientHeight;
+      chart.resize();
+      draw();
+    });
+    layoutObserver.observe(root);
 
     chart.off("click");
     if (onSelectDimension) {
       chart.on("click", (params) => {
-        const row = rows[params.dataIndex];
-        if (params.componentType === "series" && row) onSelectDimension(row.dimension);
+        // Treemap indices include an implicit root; radar uses one polygon for all
+        // groups. Resolve names instead of treating every dataIndex as a row.
+        if (view === "radar" && params.componentType === "series") return;
+        const row = rows.find((row) => row.dimension === params.name);
+        if (row) onSelectDimension(row.dimension);
       });
     }
-    if (document.activeElement === root && selected) {
-      chart.dispatchAction({
-        type: "showTip",
-        seriesIndex: 0,
-        dataIndex: rows.indexOf(selected),
-      });
-    }
-  }, [chartType, isTable, rows, unit, metricLabel, selected, onSelectDimension]);
+    return () => layoutObserver.disconnect();
+  }, [
+    view,
+    isTable,
+    rows,
+    unit,
+    metricLabel,
+    selected,
+    onSelectDimension,
+    comparison,
+    theme,
+    multicolor,
+  ]);
+
+  const showSelectedTip = () => {
+    if (!selected) return;
+    chartRef.current?.dispatchAction({
+      type: "showTip",
+      seriesIndex: 0,
+      dataIndex:
+        view === "radar"
+          ? 0
+          : view === "treemap"
+            ? rows.indexOf(selected) + 1
+            : rows.indexOf(selected),
+    });
+  };
+  useEffect(() => {
+    if (document.activeElement === rootRef.current) showSelectedTip();
+  });
 
   if (isTable) return null;
 
@@ -191,6 +192,9 @@ export function AnalysisChart({
     <div className="chart-frame">
       <div className="chart-context">
         {metricLabel} · 按{dimensionLabel} · 单位：{unit}
+        {(view === "pie" || view === "treemap") &&
+          ` · 可见合计 ${formatChartNumber(total)} ${unit}`}
+        {view === "radar" && (unit === "%" || unit === "分") && " · 各轴刻度 0–100"}
       </div>
       <div
         ref={rootRef}
@@ -198,14 +202,7 @@ export function AnalysisChart({
         role={onSelectDimension ? "group" : "img"}
         aria-label={summary}
         tabIndex={onSelectDimension ? 0 : undefined}
-        onFocus={() => {
-          if (!selected) return;
-          chartRef.current?.dispatchAction({
-            type: "showTip",
-            seriesIndex: 0,
-            dataIndex: rows.indexOf(selected),
-          });
-        }}
+        onFocus={showSelectedTip}
         onBlur={() => chartRef.current?.dispatchAction({ type: "hideTip" })}
         onKeyDown={(event) => {
           if (!onSelectDimension || rows.length === 0) return;
@@ -233,6 +230,43 @@ export function AnalysisChart({
           onSelectDimension(rows[next].dimension);
         }}
       />
+      {showKey && (
+        <div className="chart-key" role="group" aria-label="图例与分组选择">
+          {rows.map((row) => (
+            <button
+              type="button"
+              key={row.dimension}
+              disabled={!onSelectDimension}
+              aria-pressed={row.dimension === selected?.dimension}
+              onClick={() => onSelectDimension?.(row.dimension)}
+            >
+              <i
+                aria-hidden="true"
+                style={{
+                  background:
+                    view === "pie" || view === "treemap"
+                      ? `var(--chart-${multicolor ? "multi-" : ""}category-${chartColorIndex(row.dimension, 10) + 1})`
+                      : row.dimension === selected?.dimension
+                        ? "var(--chart-primary)"
+                        : "var(--chart-secondary)",
+                }}
+              />
+              <span title={row.dimension}>{row.dimension}</span>
+              <strong>
+                {view === "pie" || view === "treemap"
+                  ? `${formatChartNumber(total ? (row.value / total) * 100 : 0)}%`
+                  : `${formatChartNumber(row.value)} ${unit}`}
+              </strong>
+            </button>
+          ))}
+        </div>
+      )}
+      {showKey && selected && (
+        <p className="chart-selection" role="status">
+          <strong>{selected.dimension}</strong> · {formatChartNumber(selected.value)} {unit} ·{" "}
+          {formatChartNumber(selected.sampleSize)} 人参与
+        </p>
+      )}
     </div>
   );
 }

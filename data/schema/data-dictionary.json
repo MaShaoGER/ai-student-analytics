@@ -1,15 +1,19 @@
 {
-  "version": 1,
+  "version": 2,
   "dataset": "student_learning_demo",
-  "description": "用于演示的虚构学生学习数据，不包含真实个人信息。",
+  "description": "用于开发和演示的虚构校园学生数据，不包含真实个人信息；包括学习、出勤、作业、请假与住宿。",
   "tables": {
     "learning_activity": {
       "grain": "学生-课程-开课期-周次",
       "fields": {
-        "id_student": { "type": "string", "description": "匿名学生编号", "sensitive": true },
+        "id_student": {
+          "type": "string",
+          "description": "匿名学生编号；跨表关联键",
+          "sensitive": true
+        },
         "code_module": {
           "type": "string",
-          "description": "课程代码",
+          "description": "模拟课程唯一中文名称",
           "analysisDimension": "course"
         },
         "code_presentation": {
@@ -17,17 +21,27 @@
           "description": "开课期代码",
           "analysisDimension": "term"
         },
-        "week": { "type": "integer", "description": "相对课程开始周次" },
-        "activity_count": { "type": "integer", "description": "该周学习资源访问次数" }
+        "week": {
+          "type": "integer",
+          "description": "相对课程开始周次"
+        },
+        "activity_count": {
+          "type": "integer",
+          "description": "该周学习资源访问次数"
+        }
       }
     },
     "student_outcomes": {
       "grain": "学生-课程-开课期",
       "fields": {
-        "id_student": { "type": "string", "description": "匿名学生编号", "sensitive": true },
+        "id_student": {
+          "type": "string",
+          "description": "匿名学生编号；跨表关联键",
+          "sensitive": true
+        },
         "code_module": {
           "type": "string",
-          "description": "课程代码",
+          "description": "模拟课程唯一中文名称",
           "analysisDimension": "course"
         },
         "code_presentation": {
@@ -35,8 +49,439 @@
           "description": "开课期代码",
           "analysisDimension": "term"
         },
-        "score": { "type": "number", "description": "0 到 100 的课程成绩" },
-        "completed": { "type": "integer", "description": "是否完成课程，1 是，0 否" }
+        "score": {
+          "type": "number",
+          "description": "0 到 100 的课程成绩"
+        },
+        "completed": {
+          "type": "integer",
+          "description": "是否完成课程，1 是，0 否"
+        },
+        "scheduled_sessions": {
+          "type": "integer",
+          "description": "应到课时数；每门课每周 2 课时，每课时 45 分钟"
+        },
+        "attended_sessions": {
+          "type": "integer",
+          "description": "实际出勤课时数，等于正常到课 + 迟到 + 早退"
+        },
+        "present_sessions": {
+          "type": "integer",
+          "description": "正常到课课时数；不含迟到与早退"
+        },
+        "late_sessions": {
+          "type": "integer",
+          "description": "迟到课时数，计入实际出勤"
+        },
+        "early_leave_sessions": {
+          "type": "integer",
+          "description": "早退课时数，计入实际出勤"
+        },
+        "excused_sessions": {
+          "type": "integer",
+          "description": "已批准且覆盖上课日期的请假缺席课时数，未计入实际出勤"
+        },
+        "absent_sessions": {
+          "type": "integer",
+          "description": "无有效已批准请假的旷课课时数"
+        },
+        "attendance_rate": {
+          "type": "number",
+          "description": "出勤率（0–100%）= 实际出勤课时 / 应到课时 × 100；请假计入分母"
+        },
+        "assignment_count": {
+          "type": "integer",
+          "description": "应交作业数；每门课程 8 次作业"
+        },
+        "submitted_assignments": {
+          "type": "integer",
+          "description": "已交作业数，包含按时提交与迟交"
+        },
+        "on_time_assignments": {
+          "type": "integer",
+          "description": "按时提交作业数"
+        },
+        "late_assignments": {
+          "type": "integer",
+          "description": "迟交作业数"
+        },
+        "missing_assignments": {
+          "type": "integer",
+          "description": "未交作业数"
+        },
+        "homework_completion_rate": {
+          "type": "number",
+          "description": "作业完成率（0–100%）= 已交 / 应交 × 100；不同于课程完成率"
+        },
+        "on_time_submission_rate": {
+          "type": "number",
+          "description": "作业按时提交率（0–100%）= 按时提交 / 应交 × 100"
+        },
+        "average_homework_score": {
+          "type": "number",
+          "description": "已提交作业的平均成绩（0–100）；没有已交作业时为空",
+          "nullable": true
+        }
+      }
+    },
+    "students": {
+      "grain": "学生",
+      "fields": {
+        "id_student": {
+          "type": "string",
+          "description": "匿名学生编号；跨表关联键",
+          "sensitive": true
+        },
+        "student_name": {
+          "type": "string",
+          "description": "虚构显示名，如模拟学生0001",
+          "sensitive": true
+        },
+        "gender": {
+          "type": "string",
+          "description": "模拟性别，用于住宿一致性检查，不用于生成学习表现",
+          "sensitive": true
+        },
+        "enrollment_year": {
+          "type": "integer",
+          "description": "入学年份，统一为 2023 年，覆盖四个在读学期"
+        },
+        "college": {
+          "type": "string",
+          "description": "所属学院"
+        },
+        "major": {
+          "type": "string",
+          "description": "所属专业，共 4 个专业"
+        },
+        "class_name": {
+          "type": "string",
+          "description": "行政班级，每班 40 人，共 30 个班"
+        },
+        "student_status": {
+          "type": "string",
+          "description": "学籍状态；课程未完成不代表学籍退学"
+        }
+      }
+    },
+    "student_residences": {
+      "grain": "学生-开课期",
+      "fields": {
+        "id_student": {
+          "type": "string",
+          "description": "匿名学生编号；跨表关联键",
+          "sensitive": true
+        },
+        "code_presentation": {
+          "type": "string",
+          "description": "开课期代码",
+          "analysisDimension": "term"
+        },
+        "residence_type": {
+          "type": "string",
+          "description": "校内住宿或校外住宿"
+        },
+        "campus": {
+          "type": "string",
+          "description": "住宿校区；校外住宿为不适用"
+        },
+        "dorm_building": {
+          "type": "string",
+          "description": "虚构宿舍楼；校外住宿为不适用",
+          "sensitive": true
+        },
+        "room_number": {
+          "type": "string",
+          "description": "虚构宿舍房间号；校外住宿为不适用",
+          "sensitive": true
+        },
+        "bed_number": {
+          "type": "integer",
+          "description": "床位号 1–4；校外住宿为 0，表示不适用",
+          "sensitive": true
+        },
+        "room_capacity": {
+          "type": "integer",
+          "description": "宿舍核定人数为 4；校外住宿为 0，表示不适用"
+        },
+        "commute_minutes": {
+          "type": "integer",
+          "description": "模拟单程通学时间，单位为分钟"
+        }
+      }
+    },
+    "leave_requests": {
+      "grain": "请假申请",
+      "fields": {
+        "leave_id": {
+          "type": "string",
+          "description": "请假申请唯一编号"
+        },
+        "id_student": {
+          "type": "string",
+          "description": "匿名学生编号；跨表关联键",
+          "sensitive": true
+        },
+        "code_presentation": {
+          "type": "string",
+          "description": "开课期代码",
+          "analysisDimension": "term"
+        },
+        "leave_type": {
+          "type": "string",
+          "description": "粗粒度请假类型：病假、事假、公假、其他；不含病情或具体事由",
+          "sensitive": true
+        },
+        "request_date": {
+          "type": "date",
+          "description": "申请日期，早于开始日期"
+        },
+        "start_date": {
+          "type": "date",
+          "description": "请假开始日期，含当天"
+        },
+        "end_date": {
+          "type": "date",
+          "description": "请假结束日期，含当天"
+        },
+        "start_week": {
+          "type": "integer",
+          "description": "相对该学期开学的开始周次 1–16"
+        },
+        "end_week": {
+          "type": "integer",
+          "description": "相对该学期开学的结束周次；当前申请不跨周"
+        },
+        "duration_days": {
+          "type": "integer",
+          "description": "请假天数，包含首尾日期"
+        },
+        "approval_status": {
+          "type": "string",
+          "description": "已批准、未批准或已撤回；只有已批准会联动出勤"
+        }
+      }
+    },
+    "attendance_weekly": {
+      "grain": "学生-课程-开课期-周次",
+      "fields": {
+        "id_student": {
+          "type": "string",
+          "description": "匿名学生编号；跨表关联键",
+          "sensitive": true
+        },
+        "code_module": {
+          "type": "string",
+          "description": "模拟课程唯一中文名称",
+          "analysisDimension": "course"
+        },
+        "code_presentation": {
+          "type": "string",
+          "description": "开课期代码",
+          "analysisDimension": "term"
+        },
+        "week": {
+          "type": "integer",
+          "description": "周次 1–16"
+        },
+        "class_date": {
+          "type": "date",
+          "description": "本课程该周上课日期；三门课分别安排周一、周三、周五，各 2 课时"
+        },
+        "scheduled_sessions": {
+          "type": "integer",
+          "description": "应到课时数；每门课每周 2 课时，每课时 45 分钟"
+        },
+        "present_sessions": {
+          "type": "integer",
+          "description": "正常到课课时数；不含迟到与早退"
+        },
+        "late_sessions": {
+          "type": "integer",
+          "description": "迟到课时数，计入实际出勤"
+        },
+        "early_leave_sessions": {
+          "type": "integer",
+          "description": "早退课时数，计入实际出勤"
+        },
+        "excused_sessions": {
+          "type": "integer",
+          "description": "已批准且覆盖上课日期的请假缺席课时数，未计入实际出勤"
+        },
+        "absent_sessions": {
+          "type": "integer",
+          "description": "无有效已批准请假的旷课课时数"
+        },
+        "late_minutes": {
+          "type": "integer",
+          "description": "该周迟到总分钟数，每次 1–20 分钟"
+        },
+        "early_leave_minutes": {
+          "type": "integer",
+          "description": "该周早退总分钟数，每次 1–20 分钟"
+        },
+        "attendance_rate": {
+          "type": "number",
+          "description": "出勤率（0–100%）= 实际出勤课时 / 应到课时 × 100；请假计入分母"
+        }
+      }
+    },
+    "assignment_submissions": {
+      "grain": "学生-课程-开课期-作业",
+      "fields": {
+        "id_student": {
+          "type": "string",
+          "description": "匿名学生编号；跨表关联键",
+          "sensitive": true
+        },
+        "code_module": {
+          "type": "string",
+          "description": "模拟课程唯一中文名称",
+          "analysisDimension": "course"
+        },
+        "code_presentation": {
+          "type": "string",
+          "description": "开课期代码",
+          "analysisDimension": "term"
+        },
+        "assignment_id": {
+          "type": "string",
+          "description": "课程-学期内作业唯一编号，与学生编号组成提交主键"
+        },
+        "assignment_no": {
+          "type": "integer",
+          "description": "作业序号 1–8"
+        },
+        "due_week": {
+          "type": "integer",
+          "description": "截止周次，依次为 2、4、6、8、10、12、14、16"
+        },
+        "due_date": {
+          "type": "date",
+          "description": "作业截止日期；截止周周五；按日判断迟交"
+        },
+        "submitted_date": {
+          "type": "date",
+          "description": "提交日期；未交时为空；迟交可晚于课程最后一天",
+          "nullable": true
+        },
+        "submission_status": {
+          "type": "string",
+          "description": "按时提交、迟交或未交"
+        },
+        "days_late": {
+          "type": "integer",
+          "description": "迟交天数 1–7；按时提交或未交为 0，需结合状态判断"
+        },
+        "assignment_score": {
+          "type": "number",
+          "description": "已提交作业成绩 0–100，未交为空，空值不等于零分",
+          "nullable": true
+        }
+      }
+    },
+    "student_term_summary": {
+      "grain": "学生-开课期",
+      "fields": {
+        "id_student": {
+          "type": "string",
+          "description": "匿名学生编号；跨表关联键",
+          "sensitive": true
+        },
+        "code_presentation": {
+          "type": "string",
+          "description": "开课期代码",
+          "analysisDimension": "term"
+        },
+        "course_count": {
+          "type": "integer",
+          "description": "选课数，每学期 3 门"
+        },
+        "completed_course_count": {
+          "type": "integer",
+          "description": "完成课程数，不等同于及格课程数"
+        },
+        "average_score": {
+          "type": "number",
+          "description": "本学期三门课程的平均成绩"
+        },
+        "scheduled_sessions": {
+          "type": "integer",
+          "description": "应到课时数；每门课每周 2 课时，每课时 45 分钟"
+        },
+        "attended_sessions": {
+          "type": "integer",
+          "description": "实际出勤课时数，等于正常到课 + 迟到 + 早退"
+        },
+        "present_sessions": {
+          "type": "integer",
+          "description": "正常到课课时数；不含迟到与早退"
+        },
+        "late_sessions": {
+          "type": "integer",
+          "description": "迟到课时数，计入实际出勤"
+        },
+        "early_leave_sessions": {
+          "type": "integer",
+          "description": "早退课时数，计入实际出勤"
+        },
+        "excused_sessions": {
+          "type": "integer",
+          "description": "已批准且覆盖上课日期的请假缺席课时数，未计入实际出勤"
+        },
+        "absent_sessions": {
+          "type": "integer",
+          "description": "无有效已批准请假的旷课课时数"
+        },
+        "attendance_rate": {
+          "type": "number",
+          "description": "出勤率（0–100%）= 实际出勤课时 / 应到课时 × 100；请假计入分母"
+        },
+        "assignment_count": {
+          "type": "integer",
+          "description": "应交作业数；每门课程 8 次作业"
+        },
+        "submitted_assignments": {
+          "type": "integer",
+          "description": "已交作业数，包含按时提交与迟交"
+        },
+        "on_time_assignments": {
+          "type": "integer",
+          "description": "按时提交作业数"
+        },
+        "late_assignments": {
+          "type": "integer",
+          "description": "迟交作业数"
+        },
+        "missing_assignments": {
+          "type": "integer",
+          "description": "未交作业数"
+        },
+        "homework_completion_rate": {
+          "type": "number",
+          "description": "作业完成率（0–100%）= 已交 / 应交 × 100；不同于课程完成率"
+        },
+        "on_time_submission_rate": {
+          "type": "number",
+          "description": "作业按时提交率（0–100%）= 按时提交 / 应交 × 100"
+        },
+        "average_homework_score": {
+          "type": "number",
+          "description": "已提交作业的平均成绩（0–100）；没有已交作业时为空",
+          "nullable": true
+        },
+        "leave_request_count": {
+          "type": "integer",
+          "description": "学期请假申请数，按申请去重，不按课程重复计算"
+        },
+        "approved_leave_count": {
+          "type": "integer",
+          "description": "学期已批准请假申请数"
+        },
+        "approved_leave_days": {
+          "type": "integer",
+          "description": "学期已批准请假天数；生成数据的申请互不重叠"
+        }
       }
     }
   }

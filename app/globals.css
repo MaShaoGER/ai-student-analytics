@@ -29,14 +29,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-.graphite-workspace {
-  --button-ink: #152238;
-  --teal-dark: #a8bfeb;
-  --success: #a7d9c2;
-  --warning: #e3c18b;
-  --danger: #f0aaa5;
-  color-scheme: dark;
-}
+
 * {
   box-sizing: border-box;
 }

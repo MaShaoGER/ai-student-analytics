@@ -1,8 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Icon, type IconName } from "@/components/app-icons";
+import { ChartViewPicker } from "@/components/chart-view-picker";
+import { resolveChartView, type ChartViewType } from "@/lib/analysis/visualization";
 import { METRICS } from "@/lib/analysis/metrics";
 import { GOLDEN_CASES } from "@/lib/analysis/golden-cases";
 import type { AnalysisResult, DatasetProfile, Metric } from "@/lib/analysis/types";
@@ -47,6 +49,8 @@ function MetricBars({ result }: { result?: AnalysisResult }) {
 }
 
 export function LearningOverview({
+  heading,
+  sourceControl,
   results,
   loading,
   profile,
@@ -56,6 +60,8 @@ export function LearningOverview({
   onData,
   onReport,
 }: {
+  heading: ReactNode;
+  sourceControl: ReactNode;
   results: OverviewResults;
   loading: boolean;
   profile?: DatasetProfile;
@@ -67,12 +73,27 @@ export function LearningOverview({
 }) {
   const [metric, setMetric] = useState<Metric>("score");
   const [selected, setSelected] = useState<string>();
+  const [chartViews, setChartViews] = useState<Partial<Record<Metric, ChartViewType>>>({});
   const result = results[metric];
   const score = highest(results.score);
   const completion = highest(results.completion_rate);
   const activity = results.activity?.rows.reduce((total, row) => total + row.value, 0);
   const leading = highest(result);
   const ranked = [...(result?.rows ?? [])].sort((a, b) => b.value - a.value);
+  const chartView = chartViews[metric] ?? "bar";
+  const comparisonResult = results[metric === "activity" ? "score" : "activity"];
+  // Pair metrics by group name only when both results cover the same visible groups.
+  const comparison =
+    comparisonResult &&
+    result?.rows.every((row) =>
+      comparisonResult.rows.some((other) => other.dimension === row.dimension),
+    )
+      ? {
+          rows: comparisonResult.rows,
+          metricLabel: comparisonResult.metricLabel,
+          unit: comparisonResult.unit,
+        }
+      : undefined;
   const cards: {
     label: string;
     value?: number;
@@ -111,39 +132,47 @@ export function LearningOverview({
     },
   ];
   return (
-    <div className="learning-overview">
-      <section className="overview-metrics" aria-label="学习表现速览">
-        {cards.map((card, index) => (
-          <button
-            className={`overview-metric${metric === card.metric ? " is-selected" : ""}`}
-            type="button"
-            key={card.metric}
-            aria-pressed={metric === card.metric}
-            disabled={!results[card.metric]}
-            onClick={() => {
-              setMetric(card.metric);
-              setSelected(undefined);
-            }}
-          >
-            <span className="overview-metric-label">
-              <Icon name={card.icon} size={16} />
-              {card.label}
-              <span className="metric-index">0{index + 1}</span>
-            </span>
-            <span className="overview-metric-body">
-              <span className="overview-metric-value">
-                {loading ? "—" : card.value === undefined ? "暂无" : number(card.value)}
-                <small>{card.unit}</small>
+    <div className="learning-overview metric-scope" data-metric={metric}>
+      <div className="overview-hero">
+        {heading}
+        <section className="overview-metrics" aria-label="学习表现速览">
+          {cards.map((card, index) => (
+            <button
+              className={`overview-metric${metric === card.metric ? " is-selected" : ""}`}
+              type="button"
+              key={card.metric}
+              data-metric={card.metric}
+              aria-pressed={metric === card.metric}
+              disabled={!results[card.metric]}
+              onClick={() => {
+                setMetric(card.metric);
+                setSelected(undefined);
+              }}
+            >
+              <span className="overview-metric-label">
+                <Icon name={card.icon} size={16} />
+                {card.label}
+                <span className="metric-index">0{index + 1}</span>
               </span>
-              <MetricBars result={card.result} />
-            </span>
-            <span className="overview-metric-note">
-              {card.note}
-              <Icon name="arrow" size={14} />
-            </span>
-          </button>
-        ))}
-      </section>
+              <span className="overview-metric-body">
+                <span className="overview-metric-value">
+                  {loading ? "—" : card.value === undefined ? "暂无" : number(card.value)}
+                  <small>{card.unit}</small>
+                </span>
+                <MetricBars result={card.result} />
+              </span>
+              <span className="overview-metric-note">
+                {card.note}
+                <Icon name="arrowUpRight" size={14} />
+              </span>
+            </button>
+          ))}
+        </section>
+      </div>
+      <div className="overview-toolbar">
+        {sourceControl}
+        <p>{result?.rows.length ?? 0} 门可见课程 · 指标均由当前数据计算</p>
+      </div>
       <div className="overview-columns">
         <div className="overview-primary">
           <section className="panel overview-chart-panel" aria-busy={loading}>
@@ -152,9 +181,13 @@ export function LearningOverview({
                 <span className="section-kicker">LEARNING PERFORMANCE</span>
                 <h2>课程表现，一眼看清</h2>
               </div>
-              <button className="secondary-button" type="button" onClick={() => onExplore(metric)}>
-                详细分析
-                <Icon name="arrow" size={15} />
+              <button
+                className="icon-button"
+                aria-label="详细分析"
+                type="button"
+                onClick={() => onExplore(metric)}
+              >
+                <Icon name="arrowUpRight" size={15} />
               </button>
             </div>
             <div className="overview-chart-toolbar">
@@ -162,6 +195,7 @@ export function LearningOverview({
                 {(["score", "activity", "completion_rate"] as const).map((value) => (
                   <button
                     key={value}
+                    data-metric={value}
                     type="button"
                     aria-pressed={metric === value}
                     onClick={() => {
@@ -178,15 +212,28 @@ export function LearningOverview({
                 {result?.rows.length ?? 0} 门可见课程
               </span>
             </div>
+            <ChartViewPicker
+              value={chartView}
+              onChange={(value) => setChartViews((current) => ({ ...current, [metric]: value }))}
+              rows={result?.rows ?? []}
+              unit={result?.unit ?? METRICS[metric].unit}
+              includeTable={false}
+              scatterDescription={
+                comparison
+                  ? `每个气泡代表一门课程。横轴：${comparison.metricLabel}；纵轴：${result?.metricLabel}。气泡面积表示人数，关联不代表因果。`
+                  : undefined
+              }
+            />
             {result?.rows.length ? (
               <AnalysisChart
                 rows={result.rows}
-                chartType="bar"
+                chartType={resolveChartView(chartView, result.unit, result.rows)}
                 unit={result.unit}
                 metricLabel={result.metricLabel}
                 dimensionLabel="课程"
                 selectedDimension={selected}
                 onSelectDimension={setSelected}
+                comparison={comparison}
               />
             ) : (
               <div className="analysis-empty" role="status">
@@ -205,7 +252,7 @@ export function LearningOverview({
                     <strong>
                       {number(leading.value)} {result?.unit}
                     </strong>
-                    。<span>点击图柱查看各组数据。</span>
+                    。<span>点击图形或图例，查看各组数据。</span>
                   </>
                 ) : (
                   "每一份洞察，都从可追溯的数据开始。"
@@ -278,7 +325,7 @@ export function LearningOverview({
               <span>各组人数分别去重，不能相加作为总人数。</span>
               <button className="text-button" type="button" onClick={() => onExplore(metric)}>
                 查看全部
-                <Icon name="arrow" size={14} />
+                <Icon name="arrowUpRight" size={14} />
               </button>
             </div>
           </section>
@@ -289,20 +336,20 @@ export function LearningOverview({
               <span className="ask-card-symbol">
                 <Icon name="sparkles" size={23} />
               </span>
-              <span>从问题到洞察</span>
+              <span>AI 分析助手</span>
             </div>
             <h2>
-              数据里的答案，
+              好的分析，
               <br />
-              问一句就好。
+              从一个问题开始。
             </h2>
             <p>
-              用自然语言描述问题，
+              用日常语言提问，
               <br />
-              让分析从你的好奇心开始。
+              把好奇心变成有依据的结论。
             </p>
             <button className="ask-card-button" type="button" onClick={() => onQuestion()}>
-              一句话分析
+              开始提问
               <Icon name="arrow" size={18} />
             </button>
             <div className="ask-card-art" aria-hidden="true">
@@ -314,9 +361,9 @@ export function LearningOverview({
             </div>
           </section>
           <section className="panel overview-prompts">
-            <div className="overview-panel-heading">
-              <h2>从这里开始探索</h2>
-              <Icon name="arrow" size={16} />
+            <div className="overview-panel-heading overview-panel-heading-inline">
+              <h2>试着问问</h2>
+              <Icon name="messages" size={17} />
             </div>
             {[GOLDEN_CASES[0], GOLDEN_CASES[3], GOLDEN_CASES[6]].map((item, index) => (
               <button
@@ -327,7 +374,7 @@ export function LearningOverview({
               >
                 <span className="prompt-number">0{index + 1}</span>
                 <span>{item.question}</span>
-                <Icon name="chevron" size={14} />
+                <Icon name="arrow" size={14} />
               </button>
             ))}
             <p>
@@ -338,8 +385,15 @@ export function LearningOverview({
           <section className="panel overview-source-card">
             <div className="source-card-label">
               <Icon name="database" size={17} />
-              <span>数据档案</span>
-              <span className={canRun ? "status-dot" : "status-dot is-muted"} />
+              <span>数据概况</span>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="查看数据档案"
+                onClick={onData}
+              >
+                <Icon name="arrowUpRight" size={16} />
+              </button>
             </div>
             <h3>{profile?.name ?? "正在读取数据"}</h3>
             <div className="source-card-stats">

@@ -19,7 +19,7 @@ describe("MVP boundary cases (B01–B10)", () => {
 
   beforeAll(async () => {
     fixtureRoot = await mkdtemp(path.join(tmpdir(), "student-analytics-boundary-"));
-    const sampleDir = path.join(fixtureRoot, "data", "sample");
+    const sampleDir = path.join(fixtureRoot, "data", "fixtures", "golden");
     await mkdir(sampleDir, { recursive: true });
     // Isolated synthetic data: one group at the threshold, one below it,
     // and one with a quoted name. No live project data is changed.

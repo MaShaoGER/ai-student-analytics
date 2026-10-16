@@ -78,7 +78,7 @@ describe("demo DuckDB analysis", () => {
       { dimension: "BBB", value: 67.67, sampleSize: 3 },
     ]);
     expect(result.query).toContain("read_csv_auto");
-    expect(result.query).toContain("./data/sample/student_outcomes.csv");
+    expect(result.query).toContain("./data/fixtures/golden/student_outcomes.csv");
     expect(result.query).not.toContain(process.cwd());
   });
 

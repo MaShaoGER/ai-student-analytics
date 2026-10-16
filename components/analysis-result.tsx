@@ -3,9 +3,10 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/app-icons";
-import { SegmentedControl } from "@/components/ui/segmented-control";
+import { ChartViewPicker } from "@/components/chart-view-picker";
 import { METRICS } from "@/lib/analysis/metrics";
-import type { AnalysisResult, AnalysisRow, ChartType } from "@/lib/analysis/types";
+import type { AnalysisResult, AnalysisRow } from "@/lib/analysis/types";
+import { resolveChartView, type ChartViewType } from "@/lib/analysis/visualization";
 import {
   analysisDimensionLabel,
   analysisSourceLabel,
@@ -92,8 +93,8 @@ export function AnalysisResultView({
   onReport,
 }: {
   result: AnalysisResult | null;
-  chartType: ChartType;
-  onChartChange: (chart: ChartType) => void;
+  chartType: ChartViewType;
+  onChartChange: (chart: ChartViewType) => void;
   loading: boolean;
   planning?: AnalysisPlanning | null;
   onReport: (result: AnalysisResult) => void;
@@ -126,9 +127,17 @@ export function AnalysisResultView({
   const dimension = result ? analysisDimensionLabel(result) : "课程";
   const definition = Object.values(METRICS).find((metric) => metric.label === result?.metricLabel);
   const gap = highest && selected ? Math.round((highest.value - selected.value) * 100) / 100 : 0;
+  const activeChart = resolveChartView(chartType, result?.unit ?? "", rows);
 
   return (
-    <section className="analysis-result" aria-label="分析结果" aria-busy={loading}>
+    <section
+      className="analysis-result metric-scope"
+      data-metric={
+        result?.unit === "%" ? "completion_rate" : result?.unit === "次" ? "activity" : "score"
+      }
+      aria-label="分析结果"
+      aria-busy={loading}
+    >
       <div className="result-section-heading">
         <div>
           <h2>{result ? `${result.metricLabel}对比` : "分析结果"}</h2>
@@ -139,16 +148,6 @@ export function AnalysisResultView({
           </p>
         </div>
         <div className="result-heading-actions">
-          <SegmentedControl<ChartType>
-            label="结果展示方式"
-            value={chartType}
-            onChange={onChartChange}
-            options={[
-              { value: "bar", label: "柱状图" },
-              { value: "line", label: "折线图" },
-              { value: "table", label: "表格" },
-            ]}
-          />
           {result && result.rows.length > 0 && (
             <button className="secondary-button" type="button" onClick={() => onReport(result)}>
               <Icon name="file" size={15} />
@@ -172,6 +171,12 @@ export function AnalysisResultView({
         </div>
       ) : (
         <>
+          <ChartViewPicker
+            value={chartType}
+            onChange={onChartChange}
+            rows={rows}
+            unit={result.unit}
+          />
           <div className="result-filter" aria-label="筛选与排序">
             <div className="result-filter-fields disclosure-content">
               <label>
@@ -216,7 +221,7 @@ export function AnalysisResultView({
           ) : (
             <div className="analysis-result-grid">
               <div className="result-visual">
-                {chartType === "table" ? (
+                {activeChart === "table" ? (
                   <ResultTable
                     rows={rows}
                     result={result}
@@ -226,7 +231,7 @@ export function AnalysisResultView({
                 ) : (
                   <AnalysisChart
                     rows={rows}
-                    chartType={chartType}
+                    chartType={activeChart}
                     unit={result.unit}
                     metricLabel={result.metricLabel}
                     dimensionLabel={dimension}

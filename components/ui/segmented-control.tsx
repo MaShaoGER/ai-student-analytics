@@ -35,6 +35,7 @@ export function SegmentedControl<Value extends string>({
       role="group"
       aria-label={label}
       aria-disabled={disabled || undefined}
+      data-metric={value}
       data-disabled={disabled || undefined}
       onPointerDownCapture={() => {
         document.documentElement.dataset.inputModality = "pointer";
@@ -58,6 +59,7 @@ export function SegmentedControl<Value extends string>({
           key={option.value}
           type="button"
           className={styles.button}
+          data-metric={option.value}
           aria-pressed={option.value === value}
           disabled={disabled}
           onClick={(event) => {
