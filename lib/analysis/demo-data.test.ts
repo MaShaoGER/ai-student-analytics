@@ -56,7 +56,7 @@ describe("expanded fictional demo dataset", () => {
       outcomes: 14400,
       activities: 230400,
       students: 1200,
-      courses: 10,
+      courses: 18,
       terms: 4,
       duplicate_outcomes: 0,
       broken_enrollments: 0,
@@ -71,6 +71,50 @@ describe("expanded fictional demo dataset", () => {
     ]) {
       expect(counts[key]).toBeGreaterThan(0);
     }
+  });
+
+  it("covers the added subjects in every term with three distinct courses per student", async () => {
+    const rows = await withBoundedQueryConnection(
+      (sql) =>
+        sql(`
+        SELECT code_module AS course, code_presentation AS term,
+               COUNT(DISTINCT id_student) AS students
+        FROM read_csv_auto('data/sample/student_outcomes.csv') GROUP BY ALL
+      `),
+      API_QUERY_LIMITS.profile,
+    );
+    expect(rows).toHaveLength(18 * 4);
+    expect(new Set(rows.map((row) => row.course)).size).toBe(18);
+    for (const course of [
+      "大学语文",
+      "大学英语",
+      "线性代数",
+      "大学物理",
+      "体育与健康",
+      "人工智能基础",
+      "软件工程",
+      "信息安全基础",
+    ]) {
+      expect(
+        rows
+          .filter((row) => row.course === course)
+          .map((row) => row.term)
+          .sort(),
+      ).toEqual([...summary.terms].sort());
+    }
+    for (const row of rows) expect(Number(row.students)).toBeGreaterThanOrEqual(199);
+    const [enrollments] = await withBoundedQueryConnection(
+      (sql) =>
+        sql(`
+        SELECT COUNT(*) AS invalid FROM (
+          SELECT id_student, code_presentation
+          FROM read_csv_auto('data/sample/student_outcomes.csv')
+          GROUP BY ALL HAVING COUNT(DISTINCT code_module) <> 3
+        )
+      `),
+      API_QUERY_LIMITS.profile,
+    );
+    expect(Number(enrollments.invalid)).toBe(0);
   });
 
   it.each(GOLDEN_CASES)(
@@ -106,7 +150,7 @@ describe("expanded fictional demo dataset", () => {
       ],
     });
     expect(result.rows).toHaveLength(1);
-    expect(result.rows[0]).toMatchObject({ dimension: "高等数学 / 2025J", sampleSize: 360 });
+    expect(result.rows[0]).toMatchObject({ dimension: "高等数学 / 2025J", sampleSize: 200 });
     expect(result.rows[0].value).toBeGreaterThan(0);
     expect(result.rows[0].value).toBeLessThan(100);
   });

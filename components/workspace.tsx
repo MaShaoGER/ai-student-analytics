@@ -9,6 +9,7 @@ import { ProductBrand } from "@/components/product-brand";
 import { LoginScreen } from "@/components/login-screen";
 import { ThemeToggle, useTheme } from "@/components/ui/theme-provider";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { ScoreDistribution } from "@/components/score-distribution";
 import { GOLDEN_CASES } from "@/lib/analysis/golden-cases";
 import { createPlan } from "@/lib/analysis/plan";
 import { METRICS } from "@/lib/analysis/metrics";
@@ -27,6 +28,18 @@ import type {
 } from "@/lib/analysis/types";
 import type { ChartViewType } from "@/lib/analysis/visualization";
 import type { SessionUser } from "@/lib/client-types";
+
+const CourseRelations = dynamic(() => import("@/components/course-relations").then((module) => module.CourseRelations), {
+  loading: () => <div className="workbench-loading" role="status">正在打开学科关联…</div>,
+});
+
+const CoursePanorama = dynamic(() => import("@/components/course-panorama").then((module) => module.CoursePanorama), {
+  loading: () => <div className="workbench-loading" role="status">正在打开学科全景…</div>,
+});
+
+const ChartStudio = dynamic(() => import("@/components/chart-studio").then((module) => module.ChartStudio), {
+  loading: () => <div className="workbench-loading" role="status">正在打开图表工坊…</div>,
+});
 
 const AdminPanel = dynamic(
   () => import("@/components/admin-panel").then((module) => module.AdminPanel),
@@ -73,7 +86,7 @@ const tableNames: Record<string, string> = {
   courses: "课程信息",
 };
 const metricCopy: Record<Metric, string> = {
-  score: "比较不同课程或学期的平均成绩，了解整体表现。",
+  score: "在关联全景中联动查看同一人群，或切换成绩分布、均分对比与学科关联。",
   activity: "比较学习资源的访问次数，了解学习活动情况。",
   completion_rate: "查看课程完成情况，比较不同分组的完成比例。",
 };
@@ -401,6 +414,8 @@ export function Workspace() {
   const [datasetId, setDatasetId] = useState<DataSource>("demo");
   const [aiStatus, setAIStatus] = useState<AIStatus>({ configured: false, enabled: false });
   const [metric, setMetric] = useState<Metric>("score");
+  const [scoreView, setScoreView] = useState<"panorama" | "distribution" | "comparison" | "relations">("panorama");
+  const [analysisView, setAnalysisView] = useState<"standard" | "studio">("standard");
   const [dimension, setDimension] = useState<"course" | "term">("course");
   const [chartType, setChartType] = useState<ChartViewType>("bar");
   const [overview, setOverview] = useState<OverviewResults>({});
@@ -421,6 +436,11 @@ export function Workspace() {
   const selectedProfile = profiles.find((profile) => profile.id === datasetId);
   const canRun = !profilesLoading && Boolean(selectedProfile?.available);
   const aiReady = aiStatus.configured && aiStatus.enabled;
+  const showDistribution = mode === "metrics" && metric === "score" && scoreView === "distribution";
+  const showRelations = mode === "metrics" && metric === "score" && scoreView === "relations";
+  const showPanorama = mode === "metrics" && metric === "score" && scoreView === "panorama";
+  const showChartStudio = mode === "metrics" && analysisView === "studio";
+  const showSpecialScore = showDistribution || showRelations || showPanorama || showChartStudio;
 
   const rememberResult = useCallback((result: AnalysisResult) => {
     if (!result.rows.length) return;
@@ -622,7 +642,10 @@ export function Workspace() {
     return () => controller.abort();
   }, [user, datasetId, canRun, api, rememberResult]);
   useEffect(() => {
-    if (!user || view !== "analysis" || mode !== "metrics" || !canRun) return;
+    if (!user || view !== "analysis" || mode !== "metrics" || !canRun || showSpecialScore) {
+      setBrowseLoading(false);
+      return;
+    }
     const controller = new AbortController();
     const current = generation.current;
     setBrowseLoading(true);
@@ -654,7 +677,19 @@ export function Workspace() {
         if (!controller.signal.aborted && current === generation.current) setBrowseLoading(false);
       });
     return () => controller.abort();
-  }, [user, view, mode, datasetId, metric, dimension, canRun, api, refreshCount, rememberResult]);
+  }, [
+    user,
+    view,
+    mode,
+    datasetId,
+    metric,
+    dimension,
+    canRun,
+    api,
+    refreshCount,
+    rememberResult,
+    showSpecialScore,
+  ]);
 
   function changeSource(value: DataSource) {
     generation.current++;
@@ -999,7 +1034,9 @@ export function Workspace() {
                 profile={selectedProfile}
                 canRun={canRun}
                 onExplore={(nextMetric) => {
+                  setAnalysisView("standard");
                   setMetric(nextMetric);
+                  setScoreView("comparison");
                   setDimension("course");
                   setChartType("bar");
                   changeMode("metrics");
@@ -1021,7 +1058,16 @@ export function Workspace() {
                 aria-label="学习分析工作区"
               >
                 <div className="analysis-workspace-controls">
-                  {mode === "metrics" ? (
+                  {mode === "metrics" && (
+                    <div className="control-field">
+                      <span>分析方式</span>
+                      <SegmentedControl label="分析方式" value={analysisView} onChange={setAnalysisView}
+                        options={[{ value: "standard", label: "指标分析" }, { value: "studio", label: "图表工坊" }]} />
+                    </div>
+                  )}
+                  {mode === "metrics" ? showChartStudio ? (
+                    <p className="analysis-control-help">五种交互图表，支持项目数据、CSV、JSON 与自由字段映射。输入数据后自动生成。</p>
+                  ) : (
                     <>
                       <div className="control-field metric-control">
                         <span>统计指标</span>
@@ -1031,45 +1077,66 @@ export function Workspace() {
                           onChange={setMetric}
                           disabled={!canRun}
                           options={[
-                            { value: "score", label: "平均成绩" },
+                            { value: "score", label: "成绩" },
                             { value: "activity", label: "活跃次数" },
                             { value: "completion_rate", label: "完成率" },
                           ]}
                         />
                       </div>
-                      <label className="control-field dimension-control">
-                        <span>比较维度</span>
-                        <span className="dimension-select">
-                          <select
-                            aria-label="比较维度"
-                            value={dimension}
-                            onChange={(event) => {
-                              const next = event.target.value as "course" | "term";
-                              setDimension(next);
-                              setChartType(next === "term" ? "line" : "bar");
-                            }}
+                      {metric === "score" && (
+                        <div className="control-field">
+                          <span>分析视图</span>
+                          <SegmentedControl
+                            label="成绩分析视图"
+                            value={scoreView}
+                            onChange={setScoreView}
                             disabled={!canRun}
-                          >
-                            <option value="course">课程</option>
-                            <option value="term">学期</option>
-                          </select>
-                          <Icon name="chevron" size={14} />
-                        </span>
-                      </label>
-                      <button
-                        type="button"
-                        className="secondary-button analysis-refresh"
-                        data-loading={loading || undefined}
-                        aria-busy={loading}
-                        disabled={!canRun || loading}
-                        onClick={() => setRefreshCount((count) => count + 1)}
-                      >
-                        <span className="refresh-feedback" aria-hidden="true">
-                          <Icon name="refresh" size={16} />
-                          <span className="spinner" />
-                        </span>
-                        刷新结果
-                      </button>
+                            options={[
+                              { value: "panorama", label: "关联全景" },
+                              { value: "distribution", label: "成绩分布" },
+                              { value: "comparison", label: "均分对比" },
+                              { value: "relations", label: "学科关联" },
+                            ]}
+                          />
+                        </div>
+                      )}
+                      {!showSpecialScore && (
+                        <label className="control-field dimension-control">
+                          <span>比较维度</span>
+                          <span className="dimension-select">
+                            <select
+                              aria-label="比较维度"
+                              value={dimension}
+                              onChange={(event) => {
+                                const next = event.target.value as "course" | "term";
+                                setDimension(next);
+                                setChartType(next === "term" ? "line" : "bar");
+                              }}
+                              disabled={!canRun}
+                            >
+                              <option value="course">课程</option>
+                              <option value="term">学期</option>
+                            </select>
+                            <Icon name="chevron" size={14} />
+                          </span>
+                        </label>
+                      )}
+                      {!showSpecialScore && (
+                        <button
+                          type="button"
+                          className="secondary-button analysis-refresh"
+                          data-loading={loading || undefined}
+                          aria-busy={loading}
+                          disabled={!canRun || loading}
+                          onClick={() => setRefreshCount((count) => count + 1)}
+                        >
+                          <span className="refresh-feedback" aria-hidden="true">
+                            <Icon name="refresh" size={16} />
+                            <span className="spinner" />
+                          </span>
+                          刷新结果
+                        </button>
+                      )}
                       <p className="analysis-control-help">{metricCopy[metric]}</p>
                     </>
                   ) : (
@@ -1153,20 +1220,32 @@ export function Workspace() {
                 </div>
                 <div className="analysis-notices">
                   {notice}
-                  {!profilesLoading && !canRun && (
+                  {!showChartStudio && !profilesLoading && !canRun && (
                     <div className="notice notice-warning" role="status">
                       当前数据源不可用，请选择其他数据源或联系管理员检查数据文件。
                     </div>
                   )}
                 </div>
-                <AnalysisResultView
-                  result={visibleResult}
-                  chartType={mode === "metrics" ? chartType : askChart}
-                  onChartChange={mode === "metrics" ? setChartType : setAskChart}
-                  loading={loading}
-                  planning={mode === "question" ? planning : null}
-                  onReport={previewReport}
-                />
+                {showChartStudio ? (
+                  <ChartStudio key={datasetId} datasetId={datasetId} api={api} />
+                ) : showPanorama ? (
+                  canRun ? <CoursePanorama key={datasetId} datasetId={datasetId} api={api} /> : null
+                ) : showRelations ? (
+                  canRun ? <CourseRelations key={datasetId} datasetId={datasetId} api={api} /> : null
+                ) : showDistribution ? (
+                  canRun ? (
+                    <ScoreDistribution key={datasetId} datasetId={datasetId} api={api} />
+                  ) : null
+                ) : (
+                  <AnalysisResultView
+                    result={visibleResult}
+                    chartType={mode === "metrics" ? chartType : askChart}
+                    onChartChange={mode === "metrics" ? setChartType : setAskChart}
+                    loading={loading}
+                    planning={mode === "question" ? planning : null}
+                    onReport={previewReport}
+                  />
+                )}
               </section>
             )}
             {view === "data" && (

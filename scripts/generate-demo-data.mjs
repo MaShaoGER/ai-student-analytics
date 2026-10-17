@@ -30,6 +30,14 @@ const courses = [
   { name: "概率与统计", scoreOffset: -4, activityFactor: 0.85 },
   { name: "数据可视化", scoreOffset: 7, activityFactor: 1.2 },
   { name: "项目实践", scoreOffset: 3, activityFactor: 1.5 },
+  { name: "大学语文", scoreOffset: 5, activityFactor: 0.75 },
+  { name: "大学英语", scoreOffset: -1, activityFactor: 1.05 },
+  { name: "线性代数", scoreOffset: -8, activityFactor: 0.85 },
+  { name: "大学物理", scoreOffset: -6, activityFactor: 0.9 },
+  { name: "体育与健康", scoreOffset: 12, activityFactor: 0.55 },
+  { name: "人工智能基础", scoreOffset: -4, activityFactor: 1.3 },
+  { name: "软件工程", scoreOffset: 2, activityFactor: 1.2 },
+  { name: "信息安全基础", scoreOffset: -3, activityFactor: 1.1 },
 ];
 const terms = ["2024B", "2024J", "2025B", "2025J"];
 const behaviors = [
@@ -80,7 +88,8 @@ for (let student = 0; student < 1200; student++) {
   for (let termIndex = 0; termIndex < terms.length; termIndex++) {
     const term = terms[termIndex];
     for (let slot = 0; slot < 3; slot++) {
-      const course = courses[(student + termIndex * 2 + slot * 3) % courses.length];
+      // A stride coprime to 18 connects course pairs across the full catalog.
+      const course = courses[(student + termIndex * 2 + slot * 5) % courses.length];
       const inactive = behavior === "inactive" || (student === 0 && termIndex === 0 && slot === 0);
       const perfect = student === 1 && termIndex === 0 && slot === 0;
       const dropout = inactive || (!perfect && random() < (behavior === "declining" ? 0.32 : 0.07));

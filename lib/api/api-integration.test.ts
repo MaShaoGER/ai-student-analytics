@@ -63,6 +63,7 @@ integration("authenticated application HTTP API", () => {
   it("rejects unauthenticated data and admin requests", async () => {
     for (const path of [
       "/api/profile",
+      "/api/course-panorama?datasetId=demo",
       "/api/ai/status",
       "/api/ai/cost",
       "/api/admin/users",
@@ -149,6 +150,41 @@ integration("authenticated application HTTP API", () => {
     ]);
   });
 
+  it("provides uncached, aggregate-only course panorama data to ordinary users", async () => {
+    const response = await request("/api/course-panorama?datasetId=demo", {}, userCookie);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    const payload = await response.json();
+    expect(payload.selection).toBeNull();
+    expect(payload.minSampleSize).toBe(3);
+    expect(payload.columns.length).toBeGreaterThan(0);
+    for (const column of payload.columns) {
+      expect(column.baseline.count).toBeGreaterThanOrEqual(3);
+      expect(column.baseline.bins).toHaveLength(20);
+      expect(column.baseline.bins.reduce((sum: number, count: number) => sum + count, 0)).toBe(
+        column.baseline.count,
+      );
+    }
+    expect(JSON.stringify(payload)).not.toContain("id_student");
+  });
+
+  it("rejects invalid and unavailable panorama cohorts over HTTP", async () => {
+    for (const parameters of [
+      "threshold=0",
+      "source=A",
+      "source=A&target=A",
+      "source=missing&target=other",
+    ]) {
+      const response = await request(
+        `/api/course-panorama?datasetId=demo&${parameters}`,
+        {},
+        userCookie,
+      );
+      expect(response.status).toBe(400);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+    }
+  });
+
   it("returns 400 for an invalid analysis and 422 for an empty result", async () => {
     const plan = createPlan({
       datasetId: "demo",
@@ -202,13 +238,21 @@ integration("authenticated application HTTP API", () => {
   it("persists empty and invalid requests with accurate context and authenticated ownership", () => {
     const records = loadAnalysisRecords();
     const empty = records.find((record) => record.errorCode === "NO_DATA");
-    expect(empty).toMatchObject({ datasetId: "demo", metricId: "score", requestSource: "analysis" });
+    expect(empty).toMatchObject({
+      datasetId: "demo",
+      metricId: "score",
+      requestSource: "analysis",
+    });
     expect(empty?.userId).toBeTruthy();
     expect(empty?.result.rowCount).toBe(0);
     const invalid = records.find((record) => record.errorCode === "INVALID_PLAN");
     expect(invalid).toMatchObject({ datasetId: "demo", metricId: null, plan: null });
     const invalidQuestion = records.find((record) => record.errorCode === "INVALID_QUESTION");
-    expect(invalidQuestion).toMatchObject({ datasetId: "demo", metricId: null, requestSource: "ask" });
+    expect(invalidQuestion).toMatchObject({
+      datasetId: "demo",
+      metricId: null,
+      requestSource: "ask",
+    });
     expect(invalidQuestion?.userId).toBeTruthy();
     expect(JSON.stringify(records)).not.toContain(password);
   });

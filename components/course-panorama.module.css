@@ -1,0 +1,418 @@
+.panel {
+  min-width: 0;
+  padding: 32px;
+}
+.heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.heading h2 {
+  margin: 8px 0;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.8px;
+}
+.heading p,
+.note,
+.context,
+.notes p,
+.chartHint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.heading p {
+  margin: 0;
+}
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 16px;
+  padding-bottom: 20px;
+  margin: 24px 0 0;
+  border-bottom: 1px solid var(--line);
+}
+.filters label {
+  width: 160px;
+  max-width: 100%;
+}
+.filters select {
+  width: 100%;
+}
+.context {
+  margin: 0 0 8px auto;
+}
+.cohortStrip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 0 8px;
+}
+.cohort {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.muted {
+  color: var(--muted);
+}
+.cohortName {
+  max-width: 100%;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--button-ink);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 24px;
+  align-items: start;
+}
+.figure {
+  min-width: 0;
+  margin: 0;
+}
+.chartViewport {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.chart {
+  display: block;
+  max-width: none;
+  overflow: visible;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.chart text {
+  fill: var(--ink);
+}
+.chart .axis {
+  fill: var(--muted);
+  font-size: 11px;
+}
+.plotHeading {
+  font-size: 12px;
+  font-weight: 600;
+}
+.courseLabel {
+  font-size: 12px;
+}
+.guide {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.mean {
+  font-size: 18px;
+  font-weight: 600;
+}
+.passRate {
+  font-size: 12px;
+}
+.ribbon {
+  transition: opacity 160ms ease-out;
+}
+.ribbonTarget {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 6px 0 0 44px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.legend > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend i {
+  display: inline-block;
+  width: 12px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--score);
+}
+.legend .referenceSwatch {
+  background: var(--muted);
+  opacity: 0.65;
+}
+.chartHint {
+  min-height: 44px;
+  margin: 10px 0 0;
+}
+.sidebar {
+  min-width: 0;
+  border-left: 1px solid var(--line);
+  padding: 22px 0 0 20px;
+}
+.relationSelect {
+  width: 100%;
+}
+.relationSelect select {
+  width: 100%;
+  min-width: 0;
+  font-size: 12px;
+}
+.sidebarNote {
+  color: var(--muted);
+  font-size: 11px;
+  margin: 10px 0 14px;
+}
+.pathList {
+  display: grid;
+  gap: 6px;
+}
+.path {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 54px;
+  text-align: left;
+  padding: 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  box-shadow: none;
+  font: inherit;
+}
+.path:hover {
+  background: var(--surface-inset);
+  transform: none;
+  box-shadow: none;
+}
+.path[aria-pressed="true"] {
+  background: var(--score-soft);
+}
+.path:disabled {
+  cursor: wait;
+}
+.pathRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.pathRow > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pathRow strong {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.pathTrack {
+  display: block;
+  height: 3px;
+  margin-top: 8px;
+  border-radius: 2px;
+  background: var(--line);
+}
+.pathTrack > span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--score);
+}
+.detail {
+  border-top: 1px solid var(--line);
+  padding: 22px 0 0;
+  margin-top: 24px;
+}
+.detailName {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.detailNumber {
+  font-size: 38px;
+  line-height: 1.3;
+  letter-spacing: -1px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  margin-top: 10px;
+}
+.detailNumber > span {
+  font-size: 12px;
+  margin-left: 6px;
+  color: var(--muted);
+  letter-spacing: 0;
+}
+.detail p {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.9;
+  margin: 8px 0 0;
+}
+.notes {
+  border-top: 1px solid var(--line);
+  margin-top: 14px;
+  padding-top: 12px;
+}
+.numericDetails {
+  border-top: 1px solid var(--line);
+  margin-top: 12px;
+  padding-top: 14px;
+  font-size: 12px;
+}
+.numericDetails summary {
+  width: fit-content;
+  padding: 8px 0;
+  cursor: pointer;
+  color: var(--ink);
+}
+.tableViewport {
+  max-width: 100%;
+  overflow-x: auto;
+  margin-top: 12px;
+}
+.tableViewport table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.tableViewport caption {
+  text-align: left;
+  padding-bottom: 12px;
+  color: var(--muted);
+}
+.tableViewport th,
+.tableViewport td {
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+}
+.tableViewport th:first-child {
+  text-align: left;
+  min-width: 140px;
+  font-weight: 500;
+}
+.notes p {
+  margin: 4px 0;
+  font-size: 11px;
+}
+.empty {
+  display: grid;
+  place-items: center;
+  min-height: 320px;
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+@media (max-width: 1000px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sidebar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0 24px;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding: 20px 0 0;
+  }
+  .relationSelect,
+  .sidebarNote {
+    grid-column: 1 / -1;
+  }
+  .detail {
+    margin-top: 0;
+    border-top: 0;
+    padding: 8px 0 0;
+  }
+}
+@media (max-width: 760px) {
+  .panel {
+    padding: 24px 18px;
+  }
+  .heading h2 {
+    font-size: 23px;
+  }
+  .filters {
+    gap: 12px;
+  }
+  .filters label {
+    flex: 1;
+    min-width: 110px;
+  }
+  .context {
+    width: 100%;
+    margin-left: 0;
+  }
+  .sidebar {
+    gap: 0 16px;
+  }
+  .detailNumber {
+    font-size: 32px;
+  }
+  .relationSelect select,
+  .filters select {
+    font-size: 16px;
+  }
+}
+@media (max-width: 460px) {
+  .panel {
+    padding: 22px 12px;
+  }
+  .heading {
+    gap: 12px;
+  }
+  .heading h2 {
+    font-size: 21px;
+  }
+  .filters label {
+    min-width: 90px;
+  }
+  .sidebar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pathList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .detail {
+    margin-top: 18px;
+    border-top: 1px solid var(--line);
+    padding: 16px 8px 0;
+  }
+  .pathRow {
+    gap: 6px;
+  }
+  .cohortStrip {
+    gap: 4px;
+  }
+  .cohortStrip > button {
+    min-height: 44px;
+  }
+  .legend {
+    margin-left: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ribbon {
+    transition: none;
+  }
+}
