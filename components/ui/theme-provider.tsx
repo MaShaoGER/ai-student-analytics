@@ -57,8 +57,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(() => ({ theme, setTheme }), [theme, setTheme]);
   return (
     <ThemeContext.Provider value={value}>
-      <MotionPreferences />
-      {children}
+      <MotionPreferences>{children}</MotionPreferences>
     </ThemeContext.Provider>
   );
 }

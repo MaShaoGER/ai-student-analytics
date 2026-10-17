@@ -33,7 +33,7 @@
 .auto > span {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--corner-radius);
   background: var(--success);
 }
 .types {
@@ -50,7 +50,7 @@
   padding: 20px;
   background: transparent;
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: var(--corner-radius);
   color: var(--ink);
   text-align: left;
   min-width: 0;
@@ -142,7 +142,7 @@
   background: var(--surface-inset);
   color: var(--ink);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: var(--corner-radius);
   padding: 16px;
   font:
     13px/1.8 ui-monospace,
@@ -229,7 +229,7 @@
   gap: 24px;
   padding: 20px;
   background: var(--surface-inset);
-  border-radius: 16px;
+  border-radius: var(--corner-radius);
   margin-top: 16px;
 }
 .selection select {
@@ -342,7 +342,7 @@
   }
   .types button {
     padding: 16px;
-    border-radius: 16px;
+    border-radius: var(--corner-radius);
     gap: 8px;
   }
   .types button:last-child {

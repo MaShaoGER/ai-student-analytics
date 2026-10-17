@@ -70,7 +70,7 @@ export function buildChartOption({
       borderColor: colors.border,
       padding: [12, 14],
       textStyle: { color: colors.text, fontSize: 12, lineHeight: 22 },
-      extraCssText: "border-radius: 10px; box-shadow: none; max-width: 100%; white-space: normal;",
+      extraCssText: "border-radius: 0; box-shadow: none; max-width: 100%; white-space: normal;",
       formatter: (params: unknown) => {
         if (view === "radar")
           return `<strong>${escapeHtml(metricLabel)}</strong><br/>${rows.map((row) => `${escapeHtml(row.dimension)}：${number(row.value)} ${escapeHtml(unit)}`).join("<br/>")}`;
@@ -108,7 +108,7 @@ export function buildChartOption({
           avoidLabelOverlap: true,
           label: { show: false },
           labelLine: { show: false },
-          itemStyle: { borderRadius: 5, borderWidth: 2, borderColor: colors.surface },
+          itemStyle: { borderRadius: 0, borderWidth: 2, borderColor: colors.surface },
           emphasis: { scale: false, itemStyle: { opacity: 1 } },
           data,
         },
@@ -171,7 +171,7 @@ export function buildChartOption({
           right: 0,
           top: 16,
           bottom: 16,
-          itemStyle: { borderWidth: 3, gapWidth: 4, borderColor: colors.surface, borderRadius: 6 },
+          itemStyle: { borderWidth: 3, gapWidth: 4, borderColor: colors.surface, borderRadius: 0 },
           label: {
             show: true,
             color: colors.surface,
@@ -309,9 +309,11 @@ export function buildChartOption({
       color: colors.muted,
       fontSize: 11,
       margin: 14,
-      interval: 0,
+      interval: compact ? "auto" : 0,
       hideOverlap: true,
-      rotate: rows.length > 5 || rows.some((row) => row.dimension.length > 8) ? 28 : 0,
+      rotate:
+        !compact && (rows.length > 5 || rows.some((row) => row.dimension.length > 8)) ? 28 : 0,
+      formatter: (value: string) => (compact && value.length > 4 ? `${value.slice(0, 4)}…` : value),
     },
   };
   const series: SeriesOption =
@@ -330,9 +332,9 @@ export function buildChartOption({
           type: "bar",
           data,
           barMaxWidth: 58,
-          itemStyle: { borderRadius: [5, 5, 2, 2] },
+          itemStyle: { borderRadius: 0 },
           label: {
-            show: rows.length <= 12,
+            show: rows.length <= (compact ? 5 : 12),
             position: "top",
             color: colors.text,
             fontSize: 12,

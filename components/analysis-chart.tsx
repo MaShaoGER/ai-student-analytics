@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useMotionPreferences } from "@/components/ui/motion-preferences";
 import { useTheme } from "@/components/ui/theme-provider";
 import * as echarts from "echarts";
 import type { AnalysisRow } from "@/lib/analysis/types";
@@ -36,6 +37,7 @@ export function AnalysisChart({
   const chartRef = useRef<echarts.ECharts | null>(null);
   const lastView = useRef<ChartViewType | undefined>(undefined);
   const { theme } = useTheme();
+  const { enabled: motionEnabled, reduced: reducedMotion } = useMotionPreferences();
   const view = resolveChartView(chartType, unit, rows);
   const isTable = view === "table";
   const showKey = ["pie", "treemap", "radar", "scatter"].includes(view);
@@ -112,10 +114,11 @@ export function AnalysisChart({
         {
           ...option,
           animation:
-            !matchMedia("(prefers-reduced-motion: reduce)").matches &&
+            motionEnabled &&
+            !reducedMotion &&
             document.documentElement.dataset.inputModality === "pointer",
           animationDuration: 0,
-          animationDurationUpdate: 180,
+          animationDurationUpdate: 240,
           animationEasingUpdate: "cubicOut",
         },
         { notMerge: lastView.current !== view },
@@ -157,6 +160,8 @@ export function AnalysisChart({
     comparison,
     theme,
     multicolor,
+    motionEnabled,
+    reducedMotion,
   ]);
 
   const showSelectedTip = () => {

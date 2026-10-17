@@ -41,7 +41,7 @@ function MetricBars({ result }: { result?: AnalysisResult }) {
           y={36 - (value / max) * 30}
           width={Math.max(2, 100 / values.length - 5)}
           height={Math.max(2, (value / max) * 30)}
-          rx="2"
+          rx="0"
         />
       ))}
     </svg>
@@ -72,6 +72,7 @@ export function LearningOverview({
   onReport: (result: AnalysisResult) => void;
 }) {
   const [metric, setMetric] = useState<Metric>("score");
+  const [question, setQuestion] = useState("");
   const [selected, setSelected] = useState<string>();
   const [chartViews, setChartViews] = useState<Partial<Record<Metric, ChartViewType>>>({});
   const result = results[metric];
@@ -134,7 +135,13 @@ export function LearningOverview({
   return (
     <div className="learning-overview metric-scope" data-metric={metric}>
       <div className="overview-hero">
-        {heading}
+        <div className="overview-introduction">
+          {heading}
+          <div className="overview-toolbar">
+            {sourceControl}
+            <p>{result?.rows.length ?? 0} 门可见课程 · 当前数据计算</p>
+          </div>
+        </div>
         <section className="overview-metrics" aria-label="学习表现速览">
           {cards.map((card, index) => (
             <button
@@ -161,6 +168,18 @@ export function LearningOverview({
                 </span>
                 <MetricBars result={card.result} />
               </span>
+              {card.metric === "score" && card.value !== undefined && !loading && (
+                <span
+                  className="score-calibration"
+                  role="meter"
+                  aria-label="最高课程均分"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={card.value}
+                >
+                  <i style={{ width: `${Math.min(100, Math.max(0, card.value))}%` }} />
+                </span>
+              )}
               <span className="overview-metric-note">
                 {card.note}
                 <Icon name="arrowUpRight" size={14} />
@@ -169,17 +188,22 @@ export function LearningOverview({
           ))}
         </section>
       </div>
-      <div className="overview-toolbar">
-        {sourceControl}
-        <p>{result?.rows.length ?? 0} 门可见课程 · 指标均由当前数据计算</p>
+      <div className="overview-section-bar">
+        <span>
+          <small>A—01</small>课程表现，一眼看清
+        </span>
+        <button className="text-button" type="button" onClick={() => onExplore(metric)}>
+          进入详细分析
+          <Icon name="arrowUpRight" size={15} />
+        </button>
       </div>
       <div className="overview-columns">
         <div className="overview-primary">
           <section className="panel overview-chart-panel" aria-busy={loading}>
             <div className="overview-panel-heading">
               <div>
-                <span className="section-kicker">LEARNING PERFORMANCE</span>
-                <h2>课程表现，一眼看清</h2>
+                <span className="section-kicker">COURSE PERFORMANCE</span>
+                <h2>课程信号</h2>
               </div>
               <button
                 className="icon-button"
@@ -348,39 +372,53 @@ export function LearningOverview({
               <br />
               把好奇心变成有依据的结论。
             </p>
-            <button className="ask-card-button" type="button" onClick={() => onQuestion()}>
-              开始提问
-              <Icon name="arrow" size={18} />
-            </button>
-            <div className="ask-card-art" aria-hidden="true">
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-            </div>
-          </section>
-          <section className="panel overview-prompts">
-            <div className="overview-panel-heading overview-panel-heading-inline">
-              <h2>试着问问</h2>
-              <Icon name="messages" size={17} />
-            </div>
-            {[GOLDEN_CASES[0], GOLDEN_CASES[3], GOLDEN_CASES[6]].map((item, index) => (
-              <button
-                type="button"
-                key={item.id}
-                disabled={!canRun}
-                onClick={() => onQuestion(item.question)}
+            <div className="overview-terminal">
+              <div className="terminal-label">Q / 01 — QUESTION INPUT</div>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  onQuestion(question.trim() || undefined);
+                }}
               >
-                <span className="prompt-number">0{index + 1}</span>
-                <span>{item.question}</span>
-                <Icon name="arrow" size={14} />
-              </button>
-            ))}
-            <p>
-              <Icon name="check" size={13} />
-              推荐问题可直接分析，无需 AI 连接
-            </p>
+                <input
+                  aria-label="输入分析问题"
+                  placeholder="你想了解什么？"
+                  value={question}
+                  onChange={(event) => setQuestion(event.target.value)}
+                  maxLength={1000}
+                />
+                <button
+                  className="ask-card-button"
+                  aria-label="开始提问"
+                  type="submit"
+                  disabled={!canRun}
+                >
+                  <Icon name="arrowUpRight" size={18} />
+                </button>
+              </form>
+            </div>
+            <section className="overview-prompts">
+              <div className="overview-panel-heading overview-panel-heading-inline">
+                <h2>试着问问</h2>
+                <Icon name="messages" size={17} />
+              </div>
+              {[GOLDEN_CASES[0], GOLDEN_CASES[3], GOLDEN_CASES[6]].map((item, index) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  disabled={!canRun}
+                  onClick={() => onQuestion(item.question)}
+                >
+                  <span className="prompt-number">0{index + 1}</span>
+                  <span>{item.question}</span>
+                  <Icon name="arrow" size={14} />
+                </button>
+              ))}
+              <p>
+                <Icon name="check" size={13} />
+                推荐问题可直接分析，无需 AI 连接
+              </p>
+            </section>
           </section>
           <section className="panel overview-source-card">
             <div className="source-card-label">

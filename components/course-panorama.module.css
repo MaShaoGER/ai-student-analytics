@@ -68,7 +68,7 @@
 .cohortName {
   max-width: 100%;
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: var(--corner-radius);
   background: var(--accent);
   color: var(--button-ink);
   font-weight: 500;
@@ -146,7 +146,7 @@
   display: inline-block;
   width: 12px;
   height: 5px;
-  border-radius: 1px;
+  border-radius: var(--corner-radius);
   background: var(--score);
 }
 .legend .referenceSwatch {
@@ -187,7 +187,7 @@
   text-align: left;
   padding: 10px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--corner-radius);
   background: transparent;
   color: var(--ink);
   box-shadow: none;
@@ -226,13 +226,13 @@
   display: block;
   height: 3px;
   margin-top: 8px;
-  border-radius: 2px;
+  border-radius: var(--corner-radius);
   background: var(--line);
 }
 .pathTrack > span {
   display: block;
   height: 100%;
-  border-radius: 2px;
+  border-radius: var(--corner-radius);
   background: var(--score);
 }
 .detail {

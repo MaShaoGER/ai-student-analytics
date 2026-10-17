@@ -17,7 +17,7 @@
   left: 12px;
   z-index: 100;
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: var(--corner-radius, 0);
   background: var(--accent);
   color: var(--button-ink);
   transform: translateY(calc(-100% - 20px));
@@ -70,7 +70,7 @@
   min-height: 43px;
   padding: 11px 13px;
   border: 1px solid transparent;
-  border-radius: 9px;
+  border-radius: var(--corner-radius, 0);
   background: transparent;
   color: var(--muted);
   font-size: 13px;
@@ -184,7 +184,7 @@
   max-width: 300px;
   padding: 12px 15px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--corner-radius, 0);
   background: var(--surface);
 }
 .workbench-source > span {
@@ -197,7 +197,7 @@
 .workbench-source select {
   width: 100%;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--corner-radius, 0);
   padding: 1px 20px 1px 0;
   background: transparent;
   color: var(--ink);
@@ -242,7 +242,7 @@
 .control-field textarea {
   min-height: 46px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--corner-radius, 0);
   background: var(--surface-inset);
   color: var(--ink);
   padding: 10px 14px;
@@ -261,7 +261,7 @@
 .status-dot {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--corner-radius, 0);
   background: var(--success);
 }
 .status-dot.is-muted {
@@ -275,7 +275,7 @@
   padding: 24px;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: var(--corner-radius, 0);
 }
 .metric-control {
   flex: 1;
@@ -345,7 +345,7 @@
 }
 .question-presets button {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--corner-radius, 0);
   background: var(--surface-inset);
   color: var(--ink);
   padding: 8px 10px;
@@ -360,7 +360,7 @@
   margin-top: 24px;
   padding: 24px 24px 0;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: var(--corner-radius, 0);
   background: var(--surface);
   min-width: 0;
 }
@@ -409,7 +409,7 @@
   gap: 8px;
   list-style: none;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: var(--corner-radius, 0);
 }
 .result-disclosure > summary::-webkit-details-marker {
   display: none;
@@ -458,7 +458,7 @@
   min-width: 0;
   min-height: 40px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--corner-radius, 0);
   padding: 8px 10px;
   background: var(--surface);
   color: var(--ink);
@@ -476,7 +476,7 @@
   gap: 16px;
   padding: 22px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--corner-radius, 0);
   background: color-mix(in srgb, var(--accent) 3%, transparent);
   color: var(--ink);
 }
@@ -495,7 +495,7 @@
   max-width: 240px;
   min-height: 40px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--corner-radius, 0);
   background: transparent;
   color: var(--ink);
   padding: 0 20px 0 0;
@@ -585,7 +585,7 @@
   gap: 7px;
   min-height: 40px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--corner-radius, 0);
   background: var(--surface-inset);
   color: var(--muted);
   padding: 8px 11px;
@@ -625,7 +625,7 @@
   min-height: 36px;
   padding: 7px 8px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--corner-radius, 0);
   background: transparent;
   color: var(--muted);
   font-size: 11px;
@@ -638,7 +638,7 @@
 .chart-key i {
   flex: 0 0 7px;
   height: 7px;
-  border-radius: 2px;
+  border-radius: var(--corner-radius, 0);
 }
 .chart-key button > span {
   overflow: hidden;
@@ -696,7 +696,7 @@
 .chart {
   width: 100%;
   height: 310px;
-  border-radius: 8px;
+  border-radius: var(--corner-radius, 0);
 }
 .result-conclusion {
   display: flex;
@@ -758,7 +758,7 @@
   display: grid;
   gap: 4px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--corner-radius, 0);
   background: var(--surface);
   padding: 6px;
   box-shadow: 0 8px 24px #0003;
@@ -766,7 +766,7 @@
 .export-options button {
   min-height: 38px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--corner-radius, 0);
   padding: 8px 10px;
   background: transparent;
   color: var(--ink);
@@ -810,7 +810,7 @@
   margin: 0;
   padding: 16px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--corner-radius, 0);
   background: var(--surface-inset);
 }
 .technical-content dl > div {
@@ -830,7 +830,7 @@
 .technical-content pre {
   padding: 16px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--corner-radius, 0);
   background: var(--surface-inset);
   color: var(--muted);
   white-space: pre-wrap;
@@ -868,7 +868,7 @@
   padding: 6px 8px;
   margin: -6px -8px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--corner-radius, 0);
   background: transparent;
   color: inherit;
   text-align: left;
@@ -915,7 +915,7 @@
   margin: 24px 0;
   padding: 16px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--corner-radius, 0);
   background: var(--surface-inset);
   font-size: 12px;
   color: var(--muted);
@@ -1034,7 +1034,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
     width: 240px;
     max-width: calc(100vw - 24px);
     border: 1px solid var(--line);
-    border-radius: 16px;
+    border-radius: var(--corner-radius, 0);
     z-index: 50;
   }
   .workbench-backdrop {
@@ -1216,12 +1216,12 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   height: 36px;
   padding: 9px 7px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--corner-radius, 0);
   color: var(--accent);
 }
 .product-brand-mark i {
   width: 4px;
-  border-radius: 2px;
+  border-radius: var(--corner-radius, 0);
   background: currentColor;
 }
 .product-brand-mark i:nth-child(1) {
@@ -1283,7 +1283,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
 }
 .rail-nav small {
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--corner-radius, 0);
   background: color-mix(in srgb, var(--ink) 3%, transparent);
 }
 .topbar-actions {
@@ -1302,7 +1302,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   align-items: center;
   gap: 8px;
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: var(--corner-radius, 0);
   padding: 8px 12px;
   color: var(--ink);
   background: var(--surface);
@@ -1345,7 +1345,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   color: var(--ink);
   text-align: left;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: var(--corner-radius, 0);
 }
 .overview-metric:disabled {
   opacity: 1;
@@ -1447,7 +1447,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
 }
 .overview-panel-heading .secondary-button {
   min-height: 33px;
-  border-radius: 7px;
+  border-radius: var(--corner-radius, 0);
   padding: 6px 10px;
   font-size: 10px;
   font-weight: 500;
@@ -1489,7 +1489,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
 .overview-chart-legend i {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--corner-radius, 0);
   background: var(--accent);
 }
 .overview-chart-panel .chart {
@@ -1511,7 +1511,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   width: 30px;
   height: 30px;
   flex-shrink: 0;
-  border-radius: 8px;
+  border-radius: var(--corner-radius, 0);
   background: color-mix(in srgb, var(--accent) 5%, transparent);
   color: var(--accent);
 }
@@ -1538,7 +1538,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   isolation: isolate;
   overflow: hidden;
   padding: 24px;
-  border-radius: 15px;
+  border-radius: var(--corner-radius, 0);
   background: var(--accent);
   color: var(--surface-inset);
 }
@@ -1556,7 +1556,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   width: 38px;
   height: 38px;
   border: 1px solid var(--line);
-  border-radius: 50%;
+  border-radius: var(--corner-radius, 0);
 }
 .overview-ask-card h2 {
   margin-top: 24px;
@@ -1582,7 +1582,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   background: var(--surface-inset);
   color: var(--ink);
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--corner-radius, 0);
   font-size: 11px;
 }
 .ask-card-art {
@@ -1599,7 +1599,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   height: 150px;
   width: 70px;
   border: 1px solid var(--line);
-  border-radius: 50%;
+  border-radius: var(--corner-radius, 0);
   position: absolute;
 }
 .ask-card-art i:nth-child(2) {
@@ -1700,7 +1700,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   margin-top: 20px;
   padding: 12px 0 0;
   border-top: 1px solid var(--line);
-  border-radius: 0;
+  border-radius: var(--corner-radius, 0);
   font-size: 10px;
   font-weight: 400;
   color: var(--muted);
@@ -1732,7 +1732,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
 .overview-ranking th:first-child {
   text-align: left;
   width: 29%;
-  border-radius: 5px 0 0 5px;
+  border-radius: var(--corner-radius, 0);
 }
 .overview-ranking th:nth-child(2),
 .overview-ranking th:nth-child(3) {
@@ -1740,7 +1740,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
 }
 .overview-ranking th:last-child {
   width: 23%;
-  border-radius: 0 5px 5px 0;
+  border-radius: var(--corner-radius, 0);
 }
 .overview-ranking td:last-child {
   padding-left: 20px;
@@ -1769,14 +1769,14 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   display: block;
   width: 100%;
   height: 4px;
-  border-radius: 3px;
+  border-radius: var(--corner-radius, 0);
   background: color-mix(in srgb, var(--ink) 3%, transparent);
   overflow: hidden;
 }
 .ranking-track i {
   display: block;
   height: 100%;
-  border-radius: 3px;
+  border-radius: var(--corner-radius, 0);
   background: var(--accent);
 }
 .ranking-footer {
@@ -1834,7 +1834,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
 .graphite-workspace .result-section-heading [role="group"],
 .graphite-workspace .admin-tabs [role="group"] {
   padding: 3px;
-  border-radius: 9px;
+  border-radius: var(--corner-radius, 0);
 }
 .graphite-workspace .result-section-heading [role="group"] button {
   font-size: 11px;

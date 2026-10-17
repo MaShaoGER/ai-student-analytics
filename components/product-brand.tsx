@@ -6,6 +6,7 @@ export function ProductBrand() {
         <i />
         <i />
         <i />
+        <i />
       </span>
       <span className="product-brand-wordmark">
         学析台<small>LEARNING INSIGHTS</small>

@@ -1,5 +1,8 @@
 "use client";
 
+import { NavigationIndicator } from "@/components/ui/navigation-indicator";
+import { MotionToggle } from "@/components/ui/motion-preferences";
+
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnalysisResultView, type AnalysisPlanning } from "@/components/analysis-result";
@@ -221,6 +224,11 @@ function AccountPanel({ user, expire }: { user: SessionUser; expire: () => void 
         <div className="account-note">
           <Icon name="shield" size={19} />
           <span>你的账号权限由管理员统一管理。</span>
+        </div>
+        <div className="account-appearance">
+          <h3>外观与动效</h3>
+          <ThemeToggle />
+          <MotionToggle />
         </div>
       </section>
       <section className="panel password-panel">
@@ -837,6 +845,7 @@ export function Workspace() {
   );
   const navigation = (
     <nav className="workspace-nav" aria-label="主要功能">
+      <NavigationIndicator activeKey={`${view}-${mode}`} />
       {(
         [
           ["overview", "学习全景"],
@@ -877,10 +886,18 @@ export function Workspace() {
   const pageHeader = (
     <div className="page-introduction">
       <span className="page-eyebrow">
-        {view === "overview" ? `你好，${user.displayName}` : "学习数据工作台"}
+        {view === "overview" ? "01 / LEARNING OVERVIEW" : "学析台 / LEARNING WORKSPACE"}
       </span>
       <h1 ref={pageHeading} tabIndex={-1} id="workspace-heading">
-        {currentPage.title}
+        {view === "overview" ? (
+          <>
+            学习，
+            <br />
+            有迹可循。
+          </>
+        ) : (
+          currentPage.title
+        )}
       </h1>
       <p>{currentPage.description}</p>
     </div>
@@ -915,6 +932,17 @@ export function Workspace() {
       <a className="skip-link" href="#main-content">
         跳到主要内容
       </a>
+      <div className="instrument-rail" aria-hidden="true">
+        <span className="instrument-mark">
+          <i />
+          <i />
+          <i />
+          <i />
+        </span>
+        <span className="rail-wordmark">LEARNING INTELLIGENCE</span>
+        <span className="rail-end">↗</span>
+        <span className="rail-hatch" />
+      </div>
       <header className="workbench-header" inert={sidebarOpen}>
         <div className="header-brand-group">
           <button
@@ -1030,7 +1058,7 @@ export function Workspace() {
                 heading={pageHeader}
                 sourceControl={sourcePicker}
                 results={overview}
-                loading={overviewLoading && canRun}
+                loading={profilesLoading || (overviewLoading && canRun)}
                 profile={selectedProfile}
                 canRun={canRun}
                 onExplore={(nextMetric) => {

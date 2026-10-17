@@ -67,7 +67,7 @@
 }
 .detail {
   background: var(--surface-inset);
-  border-radius: 20px;
+  border-radius: var(--corner-radius);
   padding: 24px;
 }
 .detail h3 {
@@ -138,7 +138,7 @@
   padding: 12px 8px;
   background: transparent;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--corner-radius);
   text-align: left;
   color: var(--ink);
 }
@@ -187,7 +187,7 @@
   min-height: 40px;
   padding: 8px 12px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--corner-radius);
   background: transparent;
   color: var(--ink);
   font-size: 12px;

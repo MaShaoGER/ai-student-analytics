@@ -80,7 +80,7 @@
   display: block;
   width: 16px;
   height: 12px;
-  border-radius: 1px;
+  border-radius: var(--corner-radius);
 }
 .panel [data-level="0"] {
   --cell-color: var(--surface-inset);
@@ -249,7 +249,7 @@
   min-height: 64px;
   padding: 16px 20px;
   margin-top: 16px;
-  border-radius: 16px;
+  border-radius: var(--corner-radius);
   background: var(--surface-inset);
   font-size: 12px;
   color: var(--muted);
