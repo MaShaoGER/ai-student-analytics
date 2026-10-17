@@ -1920,3 +1920,18 @@ html[data-motion="off"] button:active {
     overflow-y: auto;
   }
 }
+
+/* Conversation content scrolls with its heading; only navigation and composer stay put. */
+.workbench-shell[data-conversation="true"] > .workbench-header {
+  position: sticky;
+  top: 0;
+  z-index: 85;
+  align-self: start;
+  background: var(--paper);
+}
+.workbench-shell[data-conversation="true"] .workbench-content {
+  padding-bottom: calc(
+    var(--chat-composer-height, 184px) + var(--chat-keyboard-inset, 0px) +
+      env(safe-area-inset-bottom, 0px) + 48px
+  );
+}

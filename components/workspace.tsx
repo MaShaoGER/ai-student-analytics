@@ -5,14 +5,15 @@ import { MotionToggle } from "@/components/ui/motion-preferences";
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AnalysisResultView, type AnalysisPlanning } from "@/components/analysis-result";
+import { AnalysisResultView } from "@/components/analysis-result";
 import { Icon } from "@/components/app-icons";
 import { LearningOverview, type OverviewResults } from "@/components/learning-overview";
 import { LoginScreen } from "@/components/login-screen";
 import { ThemeToggle, useTheme } from "@/components/ui/theme-provider";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { ScoreDistribution } from "@/components/score-distribution";
-import { GOLDEN_CASES } from "@/lib/analysis/golden-cases";
+import { ConversationWorkspace, type ConversationTurn } from "@/components/ai-conversation";
+import type { ChatIntent, ChatResponse } from "@/lib/ai/chat-types";
 import { createPlan } from "@/lib/analysis/plan";
 import { METRICS } from "@/lib/analysis/metrics";
 import {
@@ -455,8 +456,10 @@ export function Workspace() {
   const [browseLoading, setBrowseLoading] = useState(false);
   const [question, setQuestion] = useState("");
   const [askResult, setAskResult] = useState<AnalysisResult | null>(null);
-  const [askChart, setAskChart] = useState<ChartViewType>("bar");
-  const [planning, setPlanning] = useState<AnalysisPlanning | null>(null);
+  const [chatMessages, setChatMessages] = useState<ConversationTurn[]>([]);
+  const [chatContext, setChatContext] = useState<ChatIntent | null>(null);
+  const [expandedChartId, setExpandedChartId] = useState<string | null>(null);
+  const [pendingQuestion, setPendingQuestion] = useState("");
   const [askLoading, setAskLoading] = useState(false);
   const [sessionAnalyses, setSessionAnalyses] = useState<SessionAnalysis[]>([]);
   const [selectedReportKey, setSelectedReportKey] = useState("");
@@ -504,7 +507,9 @@ export function Workspace() {
     setAskResult(null);
     setSessionAnalyses([]);
     setSelectedReportKey("");
-    setPlanning(null);
+    setChatMessages([]);
+    setChatContext(null);
+    setExpandedChartId(null);
     setQuestion("");
     setError(null);
     setAskLoading(false);
@@ -683,7 +688,9 @@ export function Workspace() {
     setOverviewLoading(true);
     setAnalysis(null);
     setAskResult(null);
-    setPlanning(null);
+    setChatMessages([]);
+    setChatContext(null);
+    setExpandedChartId(null);
     setAskLoading(false);
     setBrowseLoading(false);
     setError(null);
@@ -735,11 +742,11 @@ export function Workspace() {
       setError("请写下 2–500 字的分析问题。");
       return;
     }
-    if (!canRun) return;
-    askPending.current?.abort();
+    if ((!canRun && !aiReady) || askPending.current) return;
     const controller = new AbortController();
     askPending.current = controller;
     setQuestion(nextQuestion);
+    setPendingQuestion(trimmed);
     setAskLoading(true);
     setError(null);
     const current = generation.current;
@@ -748,17 +755,35 @@ export function Workspace() {
       askPending.current === controller &&
       current === generation.current;
     try {
-      const payload = (await api("/api/ask", {
+      const payload = (await api("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ question: trimmed, datasetId }),
+        body: JSON.stringify({
+          question: trimmed,
+          datasetId,
+          history: chatMessages.slice(-12).map(({ role, content }) => ({ role, content })),
+          context: chatContext,
+        }),
         signal: controller.signal,
-      })) as { result: AnalysisResult; plan: AnalysisPlan; planning: AnalysisPlanning };
+      })) as ChatResponse;
       if (!isCurrent()) return;
-      setAskResult(payload.result);
-      setAskChart(payload.plan.chartType);
-      setPlanning(payload.planning);
-      rememberResult(payload.result);
+      setChatContext(payload.context);
+      const turnId = crypto.randomUUID();
+      setChatMessages((previous) =>
+        [
+          ...previous,
+          { id: `${turnId}-user`, role: "user" as const, content: trimmed },
+          { id: turnId, role: "assistant" as const, content: payload.answer, response: payload },
+        ].slice(-40),
+      );
+      setQuestion((draft) => (draft === nextQuestion ? "" : draft));
+      if (payload.artifact) {
+        setExpandedChartId(turnId);
+        if (payload.artifact.kind === "analysis") {
+          setAskResult(payload.artifact.result);
+          rememberResult(payload.artifact.result);
+        }
+      }
     } catch (requestError) {
       if (isCurrent())
         setError(requestError instanceof Error ? requestError.message : "分析失败，请稍后重试。");
@@ -767,6 +792,38 @@ export function Workspace() {
         askPending.current = null;
         setAskLoading(false);
       }
+    }
+  }
+  function changeChatView(id: string, chart: ChartViewType | "heatmap") {
+    const selected = chatMessages.find((message) => message.id === id);
+    const artifact = selected?.response?.artifact;
+    if (
+      !artifact ||
+      (artifact.kind === "analysis" && chart === "heatmap") ||
+      (artifact.kind === "distribution" && chart !== "table" && chart !== "heatmap")
+    )
+      return;
+    const updated =
+      artifact.kind === "analysis" && chart !== "heatmap"
+        ? { ...artifact, view: chart }
+        : artifact.kind === "distribution" && (chart === "table" || chart === "heatmap")
+          ? { ...artifact, view: chart }
+          : artifact;
+    setChatMessages((previous) =>
+      previous.map((message) =>
+        message.id === id && message.response
+          ? { ...message, response: { ...message.response, artifact: updated } }
+          : message,
+      ),
+    );
+    const latestArtifact = [...chatMessages]
+      .reverse()
+      .find((message) => message.response?.artifact);
+    if (latestArtifact?.id === id && chatContext) {
+      if (chatContext.kind === "analysis" && chart !== "heatmap")
+        setChatContext({ ...chatContext, view: chart });
+      if (chatContext.kind === "distribution" && (chart === "table" || chart === "heatmap"))
+        setChatContext({ ...chatContext, view: chart });
     }
   }
   if (bootLoading)
@@ -804,7 +861,7 @@ export function Workspace() {
     );
   const currentPage =
     view === "analysis" && mode === "question"
-      ? { title: "一句话分析", description: "用一个问题，探索学习数据中的教学线索。" }
+      ? { title: "一句话分析", description: "连续提问、核对数据，把教学线索追问清楚。" }
       : pageInfo[view];
   const activeResult = mode === "metrics" ? analysis : askResult;
   const visibleResult = activeResult?.datasetId === datasetId ? activeResult : null;
@@ -912,7 +969,11 @@ export function Workspace() {
     </label>
   );
   return (
-    <div className="graphite-workspace workbench-shell" data-view={view}>
+    <div
+      className="graphite-workspace workbench-shell"
+      data-view={view}
+      data-conversation={(view === "analysis" && mode === "question") || undefined}
+    >
       <a className="skip-link" href="#main-content">
         跳到主要内容
       </a>
@@ -1037,218 +1098,172 @@ export function Workspace() {
                 onReport={previewReport}
               />
             )}
-            {view === "analysis" && (
-              <section
-                className="panel analysis-workspace metric-scope"
-                data-metric={mode === "metrics" ? metric : undefined}
-                aria-label="学习分析工作区"
-              >
-                <div className="analysis-workspace-controls">
-                  {mode === "metrics" && (
-                    <div className="control-field">
-                      <span>分析方式</span>
-                      <SegmentedControl
-                        label="分析方式"
-                        value={analysisView}
-                        onChange={setAnalysisView}
-                        options={[
-                          { value: "standard", label: "指标分析" },
-                          { value: "studio", label: "图表工坊" },
-                        ]}
-                      />
-                    </div>
-                  )}
-                  {mode === "metrics" ? (
-                    showChartStudio ? (
-                      <p className="analysis-control-help">
-                        五种交互图表，支持项目数据、CSV、JSON 与自由字段映射。输入数据后自动生成。
-                      </p>
-                    ) : (
-                      <>
-                        <div className="control-field metric-control">
-                          <span>统计指标</span>
-                          <SegmentedControl<Metric>
-                            label="统计指标"
-                            value={metric}
-                            onChange={setMetric}
-                            disabled={!canRun}
-                            options={[
-                              { value: "score", label: "成绩" },
-                              { value: "activity", label: "活跃次数" },
-                              { value: "completion_rate", label: "完成率" },
-                            ]}
-                          />
-                        </div>
-                        {metric === "score" && (
-                          <div className="control-field">
-                            <span>分析视图</span>
-                            <SegmentedControl
-                              label="成绩分析视图"
-                              value={scoreView}
-                              onChange={setScoreView}
+            {view === "analysis" &&
+              (mode === "question" ? (
+                <ConversationWorkspace
+                  messages={chatMessages}
+                  question={question}
+                  loading={askLoading}
+                  pendingQuestion={pendingQuestion}
+                  aiReady={aiReady}
+                  canRun={canRun}
+                  expandedChartId={expandedChartId}
+                  onQuestionChange={setQuestion}
+                  onAsk={(next) => void ask(next)}
+                  onExpandChart={setExpandedChartId}
+                  onChartChange={changeChatView}
+                  onReport={previewReport}
+                  onConfigure={user.role === "admin" ? () => navigate("admin") : undefined}
+                  notice={notice}
+                  onStop={() => {
+                    askPending.current?.abort();
+                    askPending.current = null;
+                    setAskLoading(false);
+                  }}
+                  onClear={() => {
+                    setChatMessages([]);
+                    setChatContext(null);
+                    setExpandedChartId(null);
+                    setAskResult(null);
+                    setQuestion("");
+                    setError(null);
+                    window.scrollTo({ top: 0, behavior: "instant" });
+                  }}
+                />
+              ) : (
+                <section
+                  className="panel analysis-workspace metric-scope"
+                  data-metric={mode === "metrics" ? metric : undefined}
+                  aria-label="学习分析工作区"
+                >
+                  <div className="analysis-workspace-controls">
+                    {mode === "metrics" && (
+                      <div className="control-field">
+                        <span>分析方式</span>
+                        <SegmentedControl
+                          label="分析方式"
+                          value={analysisView}
+                          onChange={setAnalysisView}
+                          options={[
+                            { value: "standard", label: "指标分析" },
+                            { value: "studio", label: "图表工坊" },
+                          ]}
+                        />
+                      </div>
+                    )}
+                    {mode === "metrics" ? (
+                      showChartStudio ? (
+                        <p className="analysis-control-help">
+                          五种交互图表，支持项目数据、CSV、JSON 与自由字段映射。输入数据后自动生成。
+                        </p>
+                      ) : (
+                        <>
+                          <div className="control-field metric-control">
+                            <span>统计指标</span>
+                            <SegmentedControl<Metric>
+                              label="统计指标"
+                              value={metric}
+                              onChange={setMetric}
                               disabled={!canRun}
                               options={[
-                                { value: "panorama", label: "关联全景" },
-                                { value: "distribution", label: "成绩分布" },
-                                { value: "comparison", label: "均分对比" },
-                                { value: "relations", label: "学科关联" },
+                                { value: "score", label: "成绩" },
+                                { value: "activity", label: "活跃次数" },
+                                { value: "completion_rate", label: "完成率" },
                               ]}
                             />
                           </div>
-                        )}
-                        {!showSpecialScore && (
-                          <label className="control-field dimension-control">
-                            <span>比较维度</span>
-                            <span className="dimension-select">
-                              <select
-                                aria-label="比较维度"
-                                value={dimension}
-                                onChange={(event) => {
-                                  const next = event.target.value as "course" | "term";
-                                  setDimension(next);
-                                  setChartType(next === "term" ? "line" : "bar");
-                                }}
+                          {metric === "score" && (
+                            <div className="control-field">
+                              <span>分析视图</span>
+                              <SegmentedControl
+                                label="成绩分析视图"
+                                value={scoreView}
+                                onChange={setScoreView}
                                 disabled={!canRun}
-                              >
-                                <option value="course">课程</option>
-                                <option value="term">学期</option>
-                              </select>
-                              <Icon name="chevron" size={14} />
-                            </span>
-                          </label>
-                        )}
-                        {!showSpecialScore && (
-                          <button
-                            type="button"
-                            className="secondary-button analysis-refresh"
-                            data-loading={loading || undefined}
-                            aria-busy={loading}
-                            disabled={!canRun || loading}
-                            onClick={() => setRefreshCount((count) => count + 1)}
-                          >
-                            <span className="refresh-feedback" aria-hidden="true">
-                              <Icon name="refresh" size={16} />
-                              <span className="spinner" />
-                            </span>
-                            刷新结果
-                          </button>
-                        )}
-                        <p className="analysis-control-help">{metricCopy[metric]}</p>
-                      </>
-                    )
-                  ) : (
-                    <div className="question-controls disclosure-content">
-                      <p className="analysis-availability question-availability">
-                        <span className={aiReady ? "status-dot" : "status-dot is-muted"} />
-                        {aiReady ? "自由提问已开启" : "推荐问题可直接使用"}
-                      </p>
-                      <form
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          void ask();
-                        }}
-                      >
-                        <label className="control-field" htmlFor="analysis-question">
-                          <span>分析问题</span>
-                          <textarea
-                            id="analysis-question"
-                            name="analysis-question"
-                            maxLength={500}
-                            value={question}
-                            placeholder="例如：哪门课程平均成绩最高？"
-                            onChange={(event) => setQuestion(event.target.value)}
-                            onKeyDown={(event) => {
-                              if (
-                                event.key === "Enter" &&
-                                !event.shiftKey &&
-                                !event.nativeEvent.isComposing
-                              ) {
-                                event.preventDefault();
-                                void ask();
-                              }
-                            }}
-                          />
-                        </label>
-                        <div className="question-actions">
-                          <span>{question.length}/500 · Enter 分析，Shift + Enter 换行</span>
-                          <button
-                            type="submit"
-                            className="primary-button"
-                            disabled={askLoading || !canRun || question.trim().length < 2}
-                          >
-                            {askLoading ? (
-                              <span className="spinner" />
-                            ) : (
-                              <Icon name="sparkles" size={16} />
-                            )}
-                            {askLoading ? "正在分析…" : "开始分析"}
-                          </button>
-                        </div>
-                      </form>
-                      <div className="question-presets">
-                        <span>推荐问题</span>
-                        {[GOLDEN_CASES[0], GOLDEN_CASES[3], GOLDEN_CASES[6]].map((item) => (
-                          <button
-                            type="button"
-                            key={item.id}
-                            disabled={askLoading || !canRun}
-                            onClick={() => void ask(item.question)}
-                          >
-                            {item.question}
-                          </button>
-                        ))}
-                      </div>
-                      {!aiReady && (
-                        <p className="analysis-control-help">
-                          推荐问题无需连接 AI。自由提问需要管理员开启并配置 AI。
-                          {user.role === "admin" && (
+                                options={[
+                                  { value: "panorama", label: "关联全景" },
+                                  { value: "distribution", label: "成绩分布" },
+                                  { value: "comparison", label: "均分对比" },
+                                  { value: "relations", label: "学科关联" },
+                                ]}
+                              />
+                            </div>
+                          )}
+                          {!showSpecialScore && (
+                            <label className="control-field dimension-control">
+                              <span>比较维度</span>
+                              <span className="dimension-select">
+                                <select
+                                  aria-label="比较维度"
+                                  value={dimension}
+                                  onChange={(event) => {
+                                    const next = event.target.value as "course" | "term";
+                                    setDimension(next);
+                                    setChartType(next === "term" ? "line" : "bar");
+                                  }}
+                                  disabled={!canRun}
+                                >
+                                  <option value="course">课程</option>
+                                  <option value="term">学期</option>
+                                </select>
+                                <Icon name="chevron" size={14} />
+                              </span>
+                            </label>
+                          )}
+                          {!showSpecialScore && (
                             <button
                               type="button"
-                              className="text-button"
-                              onClick={() => navigate("admin")}
+                              className="secondary-button analysis-refresh"
+                              data-loading={loading || undefined}
+                              aria-busy={loading}
+                              disabled={!canRun || loading}
+                              onClick={() => setRefreshCount((count) => count + 1)}
                             >
-                              去设置
+                              <span className="refresh-feedback" aria-hidden="true">
+                                <Icon name="refresh" size={16} />
+                                <span className="spinner" />
+                              </span>
+                              刷新结果
                             </button>
                           )}
-                        </p>
-                      )}
-                    </div>
+                          <p className="analysis-control-help">{metricCopy[metric]}</p>
+                        </>
+                      )
+                    ) : null}
+                  </div>
+                  <div className="analysis-notices">
+                    {notice}
+                    {!showChartStudio && !profilesLoading && !canRun && (
+                      <div className="notice notice-warning" role="status">
+                        当前数据源不可用，请选择其他数据源或联系管理员检查数据文件。
+                      </div>
+                    )}
+                  </div>
+                  {showChartStudio ? (
+                    <ChartStudio key={datasetId} datasetId={datasetId} api={api} />
+                  ) : showPanorama ? (
+                    canRun ? (
+                      <CoursePanorama key={datasetId} datasetId={datasetId} api={api} />
+                    ) : null
+                  ) : showRelations ? (
+                    canRun ? (
+                      <CourseRelations key={datasetId} datasetId={datasetId} api={api} />
+                    ) : null
+                  ) : showDistribution ? (
+                    canRun ? (
+                      <ScoreDistribution key={datasetId} datasetId={datasetId} api={api} />
+                    ) : null
+                  ) : (
+                    <AnalysisResultView
+                      result={visibleResult}
+                      chartType={chartType}
+                      onChartChange={setChartType}
+                      loading={loading}
+                      onReport={previewReport}
+                    />
                   )}
-                </div>
-                <div className="analysis-notices">
-                  {notice}
-                  {!showChartStudio && !profilesLoading && !canRun && (
-                    <div className="notice notice-warning" role="status">
-                      当前数据源不可用，请选择其他数据源或联系管理员检查数据文件。
-                    </div>
-                  )}
-                </div>
-                {showChartStudio ? (
-                  <ChartStudio key={datasetId} datasetId={datasetId} api={api} />
-                ) : showPanorama ? (
-                  canRun ? (
-                    <CoursePanorama key={datasetId} datasetId={datasetId} api={api} />
-                  ) : null
-                ) : showRelations ? (
-                  canRun ? (
-                    <CourseRelations key={datasetId} datasetId={datasetId} api={api} />
-                  ) : null
-                ) : showDistribution ? (
-                  canRun ? (
-                    <ScoreDistribution key={datasetId} datasetId={datasetId} api={api} />
-                  ) : null
-                ) : (
-                  <AnalysisResultView
-                    result={visibleResult}
-                    chartType={mode === "metrics" ? chartType : askChart}
-                    onChartChange={mode === "metrics" ? setChartType : setAskChart}
-                    loading={loading}
-                    planning={mode === "question" ? planning : null}
-                    onReport={previewReport}
-                  />
-                )}
-              </section>
-            )}
+                </section>
+              ))}
             {view === "data" && (
               <section className="panel dataset-workspace">
                 <div className="dataset-heading">
