@@ -1,10 +1,10 @@
 .panel {
-  --density-1: #dfecf7;
-  --density-2: #b7d5ed;
-  --density-3: #87b7dc;
-  --density-4: #5295c7;
-  --density-5: #286da9;
-  --density-6: #104878;
+  --density-1: color-mix(in srgb, var(--score) 14%, var(--paper));
+  --density-2: color-mix(in srgb, var(--score) 28%, var(--paper));
+  --density-3: color-mix(in srgb, var(--score) 43%, var(--paper));
+  --density-4: color-mix(in srgb, var(--score) 60%, var(--paper));
+  --density-5: color-mix(in srgb, var(--score) 78%, var(--paper));
+  --density-6: var(--score);
   min-width: 0;
   padding: 32px;
 }

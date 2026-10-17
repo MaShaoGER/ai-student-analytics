@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { relationKey } from "@/lib/analysis/course-relations";
+import { courseColorTokens } from "@/lib/analysis/course-colors";
 import type { CoursePanoramaData } from "@/lib/analysis/course-panorama";
 import styles from "./course-panorama.module.css";
 
@@ -51,6 +52,10 @@ export function CoursePanoramaChart({
   const columnWidth = (width - left - right) / Math.max(1, columns.length);
   const x = (index: number) => left + columnWidth * (index + 0.5);
   const courseIndex = new Map(columns.map((column, index) => [column.course, index]));
+  const courseColors = courseColorTokens(data.courses.map((item) => item.name));
+  const subjectColor = (name: string) => `var(${courseColors.get(name) ?? "--score"})`;
+  const ribbonGradient = (source: string, target: string) =>
+    `${gradient}-${courseIndex.get(source)}-${courseIndex.get(target)}`;
   const maxCount = Math.max(1, ...data.relations.map((item) => item.belowCount));
   const maxBin = Math.max(1, ...columns.flatMap((column) => column.baseline.bins));
   const shown = data.relations.slice(0, MAX_RIBBONS);
@@ -75,10 +80,20 @@ export function CoursePanoramaChart({
           aria-label={`${data.term}学科关联全景。当前${selection ? `${selection.source}与${selection.target}共同未达标的${number(selection.count)}名学生` : "全体学生"}。各科按相同顺序展示成绩分布、均分、及格率与有效人数。可用右侧关联选择器和按钮查看相同数据。`}
         >
           <defs>
-            <linearGradient id={gradient} x1="0" x2="1" y1="0" y2="0">
-              <stop offset="0%" stopColor="var(--score)" />
-              <stop offset="100%" stopColor="var(--score-bar)" />
-            </linearGradient>
+            {shown.map((item) => (
+              <linearGradient
+                key={relationKey(item)}
+                id={ribbonGradient(item.source, item.target)}
+                gradientUnits="userSpaceOnUse"
+                x1={x(courseIndex.get(item.source)!)}
+                x2={x(courseIndex.get(item.target)!)}
+                y1={168}
+                y2={168}
+              >
+                <stop offset="0%" stopColor={subjectColor(item.source)} />
+                <stop offset="100%" stopColor={subjectColor(item.target)} />
+              </linearGradient>
+            ))}
           </defs>
           <text x={0} y={24} className={styles.plotHeading}>
             共同薄弱关联
@@ -100,9 +115,9 @@ export function CoursePanoramaChart({
                 <path
                   d={path}
                   fill="none"
-                  stroke={`url(#${gradient})`}
+                  stroke={`url(#${ribbonGradient(item.source, item.target)})`}
                   strokeWidth={ribbonWidth}
-                  opacity={activeKey ? (key === activeKey ? 0.85 : 0.1) : 0.3}
+                  opacity={activeKey ? (key === activeKey ? 0.85 : 0.08) : 0.38}
                   className={styles.ribbon}
                 />
                 <path
@@ -112,7 +127,9 @@ export function CoursePanoramaChart({
                   strokeWidth={Math.max(6, ribbonWidth)}
                   className={styles.ribbonTarget}
                   style={{ pointerEvents: disabled ? "none" : "stroke" }}
-                  onPointerEnter={() => setHovered(key)}
+                  onPointerEnter={(event) => {
+                    if (event.pointerType !== "touch") setHovered(key);
+                  }}
                   onPointerLeave={() => setHovered("")}
                   onClick={() => {
                     setHovered("");
@@ -144,8 +161,8 @@ export function CoursePanoramaChart({
                   y={168}
                   width={Math.min(50, columnWidth * 0.68)}
                   height={6}
-                  rx={2}
-                  fill="var(--score)"
+                  rx={0}
+                  fill={subjectColor(column.course)}
                   opacity={involved ? 1 : 0.3}
                 />
                 <text x={x(index)} y={197} textAnchor="middle" className={styles.courseLabel}>
@@ -206,7 +223,7 @@ export function CoursePanoramaChart({
                       y={y((bin + 1) * 5) + 0.6}
                       width={5}
                       height={8.8}
-                      rx={1}
+                      rx={0}
                       fill="var(--muted)"
                       opacity={count ? 0.15 + (0.6 * count) / maxBin : 0.05}
                     >
@@ -220,8 +237,8 @@ export function CoursePanoramaChart({
                     y={y((bin + 1) * 5) + 0.6}
                     width={barWidth}
                     height={8.8}
-                    rx={1.5}
-                    fill="var(--score)"
+                    rx={0}
+                    fill={subjectColor(column.course)}
                     opacity={count ? 0.2 + (0.8 * count) / maxBin : 0.045}
                   >
                     <title>{`${column.course}${selection ? "选中人群" : "全体"}：${bin * 5}至${(bin + 1) * 5}分，${number(count)}人${bin < 19 ? "（不含区间上界）" : "（含100分）"}`}</title>
@@ -259,7 +276,7 @@ export function CoursePanoramaChart({
                   y={616}
                   width={passWidth}
                   height={4}
-                  rx={2}
+                  rx={0}
                   fill="var(--line)"
                 />
                 {current && (
@@ -268,8 +285,8 @@ export function CoursePanoramaChart({
                     y={616}
                     width={(passWidth * current.passRate) / 100}
                     height={4}
-                    rx={2}
-                    fill="var(--score)"
+                    rx={0}
+                    fill={subjectColor(column.course)}
                   />
                 )}
                 {selection && (
@@ -312,6 +329,7 @@ export function CoursePanoramaChart({
           </span>
         )}
         <span>黑线＝均分 · 及格率按 60 分计算</span>
+        <span>颜色＝学科 · 深浅＝分段人数（各科共用人数刻度）</span>
       </figcaption>
       <p className={styles.chartHint}>
         {hoverRelation

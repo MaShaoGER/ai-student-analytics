@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as echarts from "echarts";
 import { useTheme } from "@/components/ui/theme-provider";
 import { relationKey, type CourseRelationData } from "@/lib/analysis/course-relations";
+import { courseColorTokens } from "@/lib/analysis/course-colors";
 import styles from "./course-relations.module.css";
 
 export function CourseRelationChart({
@@ -22,6 +23,8 @@ export function CourseRelationChart({
   const root = useRef<HTMLDivElement>(null);
   const chart = useRef<echarts.ECharts | null>(null);
   const { theme } = useTheme();
+  const colors = useRef(new Map<string, string>());
+  const [hovered, setHovered] = useState({ key: "", course: "" });
   const callbacks = useRef({ onCourse, onRelation });
   useEffect(() => {
     callbacks.current = { onCourse, onRelation };
@@ -37,6 +40,15 @@ export function CourseRelationChart({
         callbacks.current.onRelation(item.relationId);
       } else if (params.name) callbacks.current.onCourse(params.name);
     });
+    instance.on("mouseover", (params) => {
+      if (!matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+      const edge = params.data as { relationId?: string };
+      setHovered({
+        key: params.dataType === "edge" ? (edge.relationId ?? "") : "",
+        course: params.dataType === "edge" ? "" : (params.name ?? ""),
+      });
+    });
+    instance.on("mouseout", () => setHovered({ key: "", course: "" }));
     return () => {
       instance.dispose();
       chart.current = null;
@@ -61,9 +73,9 @@ export function CourseRelationChart({
       const [r, g, b, a] = context.getImageData(0, 0, 1, 1).data;
       return `rgba(${r},${g},${b},${a / 255})`;
     };
-    const palette = Array.from({ length: 10 }, (_, index) =>
-      color(`--chart-multi-category-${index + 1}`),
-    );
+    const tokens = courseColorTokens(data.courses.map((item) => item.name));
+    const palette = new Map([...tokens].map(([name, token]) => [name, color(token)]));
+    colors.current = palette;
     const connected = new Set(data.relations.flatMap((item) => [item.source, item.target]));
     const draw = () => {
       const compact = element.clientWidth < 420;
@@ -93,6 +105,7 @@ export function CourseRelationChart({
           },
           series: [
             {
+              id: "course-relations",
               type: "chord",
               radius: compact
                 ? element.clientWidth < 290
@@ -110,45 +123,101 @@ export function CourseRelationChart({
                     ? (params.name.match(/.{1,4}/gu) ?? [params.name]).join("\n")
                     : params.name,
               },
-              itemStyle: { borderWidth: 0, borderRadius: 1 },
+              itemStyle: { borderWidth: 0, borderRadius: 0 },
               lineStyle: { color: "gradient", opacity: 0.28 },
-              emphasis: { focus: "adjacency", lineStyle: { opacity: 0.8 } },
+              // Selection and hover share the controlled focus below; native emphasis
+              // would add an independent brightening/blur state on top of it.
+              emphasis: { disabled: true },
               data: nodes.map((item) => ({
                 name: item.name,
                 itemStyle: {
-                  color:
-                    palette[
-                      data.courses.findIndex((course) => course.name === item.name) % palette.length
-                    ],
-                  opacity: !course || course === item.name ? 1 : 0.45,
+                  color: palette.get(item.name),
+                  opacity: 1,
                 },
               })),
-              links: data.relations.map((item) => {
-                const active = !course || item.source === course || item.target === course;
-                return {
-                  source: item.source,
-                  target: item.target,
-                  value: item.belowCount,
-                  relationId: relationKey(item),
-                  lineStyle: {
-                    opacity: relationKey(item) === selectedKey ? 0.8 : active ? 0.32 : 0.035,
-                  },
-                };
-              }),
+              links: data.relations.map((item) => ({
+                id: relationKey(item),
+                source: item.source,
+                target: item.target,
+                value: item.belowCount,
+                relationId: relationKey(item),
+              })),
             },
           ],
         },
-        { notMerge: true },
+        { notMerge: false },
       );
     };
     draw();
     const observer = new ResizeObserver(() => {
       instance.resize();
-      draw();
+      const compact = element.clientWidth < 420;
+      instance.setOption({
+        series: [
+          {
+            id: "course-relations",
+            radius: compact
+              ? element.clientWidth < 290
+                ? ["49%", "55%"]
+                : ["56%", "62%"]
+              : ["70%", "76%"],
+            label: {
+              distance: compact ? 5 : 9,
+              formatter: (params: { name: string }) =>
+                compact ? (params.name.match(/.{1,4}/gu) ?? [params.name]).join("\n") : params.name,
+            },
+          },
+        ],
+      });
     });
     observer.observe(element);
     return () => observer.disconnect();
-  }, [data, course, selectedKey, theme]);
+  }, [data, theme]);
+
+  useEffect(() => {
+    const instance = chart.current;
+    if (!instance) return;
+    const key = selectedKey || hovered.key;
+    const pair = data.relations.find((item) => relationKey(item) === key);
+    const subject = course || hovered.course;
+    const involved = (name: string) =>
+      pair ? pair.source === name || pair.target === name : !subject || subject === name;
+    const connected = new Set(data.relations.flatMap((item) => [item.source, item.target]));
+    instance.setOption({
+      series: [
+        {
+          id: "course-relations",
+          data: data.courses
+            .filter((item) => connected.has(item.name))
+            .map((item) => ({
+              name: item.name,
+              itemStyle: {
+                color: colors.current.get(item.name),
+                opacity: involved(item.name) ? 1 : 0.28,
+              },
+            })),
+          links: data.relations.map((item) => ({
+            id: relationKey(item),
+            source: item.source,
+            target: item.target,
+            value: item.belowCount,
+            relationId: relationKey(item),
+            lineStyle: {
+              opacity: pair
+                ? relationKey(item) === key
+                  ? 0.82
+                  : 0.035
+                : subject
+                  ? item.source === subject || item.target === subject
+                    ? 0.52
+                    : 0.035
+                  : 0.32,
+            },
+          })),
+        },
+      ],
+    });
+  }, [data, course, selectedKey, hovered, theme]);
 
   return (
     <div

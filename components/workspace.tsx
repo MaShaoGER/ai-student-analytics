@@ -8,7 +8,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnalysisResultView, type AnalysisPlanning } from "@/components/analysis-result";
 import { Icon } from "@/components/app-icons";
 import { LearningOverview, type OverviewResults } from "@/components/learning-overview";
-import { ProductBrand } from "@/components/product-brand";
 import { LoginScreen } from "@/components/login-screen";
 import { ThemeToggle, useTheme } from "@/components/ui/theme-provider";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -32,17 +31,38 @@ import type {
 import type { ChartViewType } from "@/lib/analysis/visualization";
 import type { SessionUser } from "@/lib/client-types";
 
-const CourseRelations = dynamic(() => import("@/components/course-relations").then((module) => module.CourseRelations), {
-  loading: () => <div className="workbench-loading" role="status">正在打开学科关联…</div>,
-});
+const CourseRelations = dynamic(
+  () => import("@/components/course-relations").then((module) => module.CourseRelations),
+  {
+    loading: () => (
+      <div className="workbench-loading" role="status">
+        正在打开学科关联…
+      </div>
+    ),
+  },
+);
 
-const CoursePanorama = dynamic(() => import("@/components/course-panorama").then((module) => module.CoursePanorama), {
-  loading: () => <div className="workbench-loading" role="status">正在打开学科全景…</div>,
-});
+const CoursePanorama = dynamic(
+  () => import("@/components/course-panorama").then((module) => module.CoursePanorama),
+  {
+    loading: () => (
+      <div className="workbench-loading" role="status">
+        正在打开学科全景…
+      </div>
+    ),
+  },
+);
 
-const ChartStudio = dynamic(() => import("@/components/chart-studio").then((module) => module.ChartStudio), {
-  loading: () => <div className="workbench-loading" role="status">正在打开图表工坊…</div>,
-});
+const ChartStudio = dynamic(
+  () => import("@/components/chart-studio").then((module) => module.ChartStudio),
+  {
+    loading: () => (
+      <div className="workbench-loading" role="status">
+        正在打开图表工坊…
+      </div>
+    ),
+  },
+);
 
 const AdminPanel = dynamic(
   () => import("@/components/admin-panel").then((module) => module.AdminPanel),
@@ -71,7 +91,7 @@ const pageInfo: Record<View, { title: string; description: string }> = {
   data: { title: "数据", description: "查看当前数据源、字段与可用范围。" },
   reports: { title: "本次分析", description: "预览和导出本次会话中的分析结果。" },
   admin: { title: "系统管理", description: "配置 AI 连接、使用预算与工作台账号。" },
-  account: { title: "个人设置", description: "查看账号信息，管理登录密码。" },
+  account: { title: "设置", description: "查看账号信息，管理登录密码与工作台偏好。" },
 };
 const tableNames: Record<string, string> = {
   learning_activity: "学习活动记录",
@@ -413,16 +433,19 @@ export function Workspace() {
   const [view, setView] = useState<View>("overview");
   const [mode, setMode] = useState<AnalysisMode>("metrics");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const menuButton = useRef<HTMLButtonElement>(null);
   const sidebar = useRef<HTMLElement>(null);
   const pageHeading = useRef<HTMLHeadingElement>(null);
-  const drawerWasOpen = useRef(false);
+  const logoutDialog = useRef<HTMLDialogElement>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
   const [profiles, setProfiles] = useState<DatasetProfile[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(true);
   const [datasetId, setDatasetId] = useState<DataSource>("demo");
   const [aiStatus, setAIStatus] = useState<AIStatus>({ configured: false, enabled: false });
   const [metric, setMetric] = useState<Metric>("score");
-  const [scoreView, setScoreView] = useState<"panorama" | "distribution" | "comparison" | "relations">("panorama");
+  const [scoreView, setScoreView] = useState<
+    "panorama" | "distribution" | "comparison" | "relations"
+  >("panorama");
   const [analysisView, setAnalysisView] = useState<"standard" | "studio">("standard");
   const [dimension, setDimension] = useState<"course" | "term">("course");
   const [chartType, setChartType] = useState<ChartViewType>("bar");
@@ -466,56 +489,6 @@ export function Workspace() {
     [],
   );
   useEffect(() => {
-    if (!sidebarOpen) {
-      if (drawerWasOpen.current) {
-        // Restore focus after React has removed inert from the background.
-        const target = matchMedia("(min-width: 761px)").matches ? pageHeading : menuButton;
-        target.current?.focus({ preventScroll: true });
-      }
-      drawerWasOpen.current = false;
-      return;
-    }
-    drawerWasOpen.current = true;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const desktop = window.matchMedia("(min-width: 761px)");
-    const closeOnDesktop = (event: MediaQueryListEvent) => {
-      if (event.matches) {
-        setSidebarOpen(false);
-        pageHeading.current?.focus({ preventScroll: true });
-      }
-    };
-    desktop.addEventListener("change", closeOnDesktop);
-    const controls = () =>
-      Array.from(
-        sidebar.current?.querySelectorAll<HTMLElement>("a[href],button:not(:disabled)") ?? [],
-      );
-    controls()[0]?.focus();
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setSidebarOpen(false);
-        menuButton.current?.focus();
-      } else if (event.key === "Tab") {
-        const elements = controls();
-        const first = elements[0];
-        const last = elements[elements.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last?.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first?.focus();
-        }
-      }
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", onKeyDown);
-      desktop.removeEventListener("change", closeOnDesktop);
-    };
-  }, [sidebarOpen]);
-  useEffect(() => {
     if (!user) return;
     pageHeading.current?.focus({ preventScroll: true });
     window.scrollTo(0, 0);
@@ -536,6 +509,8 @@ export function Workspace() {
     setError(null);
     setAskLoading(false);
     setBrowseLoading(false);
+    sidebar.current?.hidePopover();
+    logoutDialog.current?.close();
     setSidebarOpen(false);
     setMode("metrics");
     setView("overview");
@@ -720,8 +695,7 @@ export function Workspace() {
       setAskLoading(false);
     }
     setView(next);
-    if (sidebarOpen) menuButton.current?.focus();
-    setSidebarOpen(false);
+    sidebar.current?.hidePopover();
     setError(null);
   }
   function changeMode(next: AnalysisMode) {
@@ -737,12 +711,22 @@ export function Workspace() {
     setSelectedReportKey(analysisKey(result));
     navigate("reports");
   }
+  function requestLogout() {
+    sidebar.current?.hidePopover();
+    setLogoutError("");
+    logoutDialog.current?.showModal();
+  }
   async function logout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    setLogoutError("");
     try {
       await api("/api/auth/logout", { method: "POST" });
       expire();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "退出失败，请重试。");
+      setLogoutError(requestError instanceof Error ? requestError.message : "退出失败，请重试。");
+    } finally {
+      setLoggingOut(false);
     }
   }
   async function ask(nextQuestion = question) {
@@ -932,118 +916,92 @@ export function Workspace() {
       <a className="skip-link" href="#main-content">
         跳到主要内容
       </a>
-      <div className="instrument-rail" aria-hidden="true">
-        <span className="instrument-mark">
-          <i />
-          <i />
-          <i />
-          <i />
-        </span>
-        <span className="rail-wordmark">LEARNING INTELLIGENCE</span>
-        <span className="rail-end">↗</span>
-        <span className="rail-hatch" />
-      </div>
-      <header className="workbench-header" inert={sidebarOpen}>
-        <div className="header-brand-group">
+      <aside className="instrument-rail" aria-label="工作台工具">
+        <div className="rail-content">
           <button
             type="button"
-            className="workbench-menu icon-button"
-            ref={menuButton}
-            aria-label="打开导航"
+            className="rail-brand"
+            aria-label="返回学习全景"
+            onClick={() => navigate("overview")}
+          >
+            <span className="instrument-mark" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+              <i />
+            </span>
+          </button>
+          <button
+            type="button"
+            className="rail-menu icon-button"
+            aria-label={sidebarOpen ? "收起导航" : "打开导航"}
             aria-expanded={sidebarOpen}
             aria-controls="workspace-navigation"
-            onClick={() => setSidebarOpen(true)}
+            popoverTarget="workspace-navigation"
           >
             <Icon name="menu" size={20} />
           </button>
-          <button type="button" className="workbench-brand" onClick={() => navigate("overview")}>
-            <ProductBrand />
-          </button>
-        </div>
-        <div className="desktop-navigation">{navigation}</div>
-        <div className="topbar-actions">
-          <ThemeToggle />
-          {user.role === "admin" && (
+          <span className="rail-wordmark" aria-hidden="true">
+            LEARNING INTELLIGENCE
+          </span>
+          <div className="rail-actions">
+            <ThemeToggle compact />
             <button
               type="button"
-              className="icon-button header-settings"
-              aria-label="系统管理"
-              onClick={() => navigate("admin")}
+              className="icon-button"
+              aria-label="打开设置"
+              title="设置"
+              onClick={() => navigate(user.role === "admin" ? "admin" : "account")}
             >
-              <Icon name="sliders" size={18} />
+              <Icon name="settings" size={18} />
             </button>
-          )}
-          <button
-            type="button"
-            className="avatar topbar-avatar"
-            aria-label="打开个人设置"
-            onClick={() => navigate("account")}
-          >
-            {user.displayName.slice(0, 1)}
-          </button>
-          <button
-            type="button"
-            className="icon-button header-logout"
-            aria-label="退出登录"
-            onClick={() => void logout()}
-          >
-            <Icon name="logout" size={17} />
-          </button>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="退出登录"
+              title="退出登录"
+              onClick={requestLogout}
+            >
+              <Icon name="logout" size={18} />
+            </button>
+          </div>
+          <span className="rail-hatch" aria-hidden="true" />
         </div>
+      </aside>
+      <header className="workbench-header">
+        <div className="desktop-navigation">{navigation}</div>
+        <span className="mobile-workspace-title">
+          学析台<small>{currentPage.title}</small>
+        </span>
       </header>
-      {sidebarOpen && (
-        <button
-          type="button"
-          className="workbench-backdrop"
-          aria-label="关闭导航"
-          onClick={() => {
-            setSidebarOpen(false);
-            menuButton.current?.focus();
-          }}
-        />
-      )}
       <aside
         id="workspace-navigation"
         ref={sidebar}
         className="workbench-drawer"
-        hidden={!sidebarOpen}
+        popover="auto"
+        onToggle={(event) => setSidebarOpen(event.newState === "open")}
         aria-label="工作台导航"
-        role={sidebarOpen ? "dialog" : undefined}
-        aria-modal={sidebarOpen || undefined}
       >
         <div className="drawer-heading">
-          <strong>工作台导航</strong>
+          <span className="drawer-label">导航 / NAVIGATION</span>
           <button
             type="button"
             className="icon-button"
             aria-label="关闭导航"
-            onClick={() => {
-              setSidebarOpen(false);
-              menuButton.current?.focus();
-            }}
+            popoverTarget="workspace-navigation"
+            popoverTargetAction="hide"
+            autoFocus
           >
             <Icon name="close" size={18} />
           </button>
         </div>
         {navigation}
-        <div className="drawer-actions">
-          {user.role === "admin" && (
-            <button type="button" className="secondary-button" onClick={() => navigate("admin")}>
-              <Icon name="settings" size={17} />
-              系统管理
-            </button>
-          )}
-          <button type="button" className="secondary-button" onClick={() => navigate("account")}>
-            <Icon name="users" size={17} />
-            个人设置
-          </button>
-          <button type="button" className="secondary-button" onClick={() => void logout()}>
-            <Icon name="logout" size={17} />
-            退出登录
-          </button>
+        <div className="drawer-footnote">
+          <Icon name="shield" size={14} />
+          <span>学析台 · 学习数据分析</span>
         </div>
       </aside>
-      <div className="workbench-main" inert={sidebarOpen}>
+      <div className="workbench-main">
         <main id="main-content" className="workbench-content" aria-labelledby="workspace-heading">
           {view !== "overview" && (
             <div className="workbench-page-heading">
@@ -1089,84 +1047,95 @@ export function Workspace() {
                   {mode === "metrics" && (
                     <div className="control-field">
                       <span>分析方式</span>
-                      <SegmentedControl label="分析方式" value={analysisView} onChange={setAnalysisView}
-                        options={[{ value: "standard", label: "指标分析" }, { value: "studio", label: "图表工坊" }]} />
+                      <SegmentedControl
+                        label="分析方式"
+                        value={analysisView}
+                        onChange={setAnalysisView}
+                        options={[
+                          { value: "standard", label: "指标分析" },
+                          { value: "studio", label: "图表工坊" },
+                        ]}
+                      />
                     </div>
                   )}
-                  {mode === "metrics" ? showChartStudio ? (
-                    <p className="analysis-control-help">五种交互图表，支持项目数据、CSV、JSON 与自由字段映射。输入数据后自动生成。</p>
-                  ) : (
-                    <>
-                      <div className="control-field metric-control">
-                        <span>统计指标</span>
-                        <SegmentedControl<Metric>
-                          label="统计指标"
-                          value={metric}
-                          onChange={setMetric}
-                          disabled={!canRun}
-                          options={[
-                            { value: "score", label: "成绩" },
-                            { value: "activity", label: "活跃次数" },
-                            { value: "completion_rate", label: "完成率" },
-                          ]}
-                        />
-                      </div>
-                      {metric === "score" && (
-                        <div className="control-field">
-                          <span>分析视图</span>
-                          <SegmentedControl
-                            label="成绩分析视图"
-                            value={scoreView}
-                            onChange={setScoreView}
+                  {mode === "metrics" ? (
+                    showChartStudio ? (
+                      <p className="analysis-control-help">
+                        五种交互图表，支持项目数据、CSV、JSON 与自由字段映射。输入数据后自动生成。
+                      </p>
+                    ) : (
+                      <>
+                        <div className="control-field metric-control">
+                          <span>统计指标</span>
+                          <SegmentedControl<Metric>
+                            label="统计指标"
+                            value={metric}
+                            onChange={setMetric}
                             disabled={!canRun}
                             options={[
-                              { value: "panorama", label: "关联全景" },
-                              { value: "distribution", label: "成绩分布" },
-                              { value: "comparison", label: "均分对比" },
-                              { value: "relations", label: "学科关联" },
+                              { value: "score", label: "成绩" },
+                              { value: "activity", label: "活跃次数" },
+                              { value: "completion_rate", label: "完成率" },
                             ]}
                           />
                         </div>
-                      )}
-                      {!showSpecialScore && (
-                        <label className="control-field dimension-control">
-                          <span>比较维度</span>
-                          <span className="dimension-select">
-                            <select
-                              aria-label="比较维度"
-                              value={dimension}
-                              onChange={(event) => {
-                                const next = event.target.value as "course" | "term";
-                                setDimension(next);
-                                setChartType(next === "term" ? "line" : "bar");
-                              }}
+                        {metric === "score" && (
+                          <div className="control-field">
+                            <span>分析视图</span>
+                            <SegmentedControl
+                              label="成绩分析视图"
+                              value={scoreView}
+                              onChange={setScoreView}
                               disabled={!canRun}
-                            >
-                              <option value="course">课程</option>
-                              <option value="term">学期</option>
-                            </select>
-                            <Icon name="chevron" size={14} />
-                          </span>
-                        </label>
-                      )}
-                      {!showSpecialScore && (
-                        <button
-                          type="button"
-                          className="secondary-button analysis-refresh"
-                          data-loading={loading || undefined}
-                          aria-busy={loading}
-                          disabled={!canRun || loading}
-                          onClick={() => setRefreshCount((count) => count + 1)}
-                        >
-                          <span className="refresh-feedback" aria-hidden="true">
-                            <Icon name="refresh" size={16} />
-                            <span className="spinner" />
-                          </span>
-                          刷新结果
-                        </button>
-                      )}
-                      <p className="analysis-control-help">{metricCopy[metric]}</p>
-                    </>
+                              options={[
+                                { value: "panorama", label: "关联全景" },
+                                { value: "distribution", label: "成绩分布" },
+                                { value: "comparison", label: "均分对比" },
+                                { value: "relations", label: "学科关联" },
+                              ]}
+                            />
+                          </div>
+                        )}
+                        {!showSpecialScore && (
+                          <label className="control-field dimension-control">
+                            <span>比较维度</span>
+                            <span className="dimension-select">
+                              <select
+                                aria-label="比较维度"
+                                value={dimension}
+                                onChange={(event) => {
+                                  const next = event.target.value as "course" | "term";
+                                  setDimension(next);
+                                  setChartType(next === "term" ? "line" : "bar");
+                                }}
+                                disabled={!canRun}
+                              >
+                                <option value="course">课程</option>
+                                <option value="term">学期</option>
+                              </select>
+                              <Icon name="chevron" size={14} />
+                            </span>
+                          </label>
+                        )}
+                        {!showSpecialScore && (
+                          <button
+                            type="button"
+                            className="secondary-button analysis-refresh"
+                            data-loading={loading || undefined}
+                            aria-busy={loading}
+                            disabled={!canRun || loading}
+                            onClick={() => setRefreshCount((count) => count + 1)}
+                          >
+                            <span className="refresh-feedback" aria-hidden="true">
+                              <Icon name="refresh" size={16} />
+                              <span className="spinner" />
+                            </span>
+                            刷新结果
+                          </button>
+                        )}
+                        <p className="analysis-control-help">{metricCopy[metric]}</p>
+                      </>
+                    )
                   ) : (
                     <div className="question-controls disclosure-content">
                       <p className="analysis-availability question-availability">
@@ -1257,9 +1226,13 @@ export function Workspace() {
                 {showChartStudio ? (
                   <ChartStudio key={datasetId} datasetId={datasetId} api={api} />
                 ) : showPanorama ? (
-                  canRun ? <CoursePanorama key={datasetId} datasetId={datasetId} api={api} /> : null
+                  canRun ? (
+                    <CoursePanorama key={datasetId} datasetId={datasetId} api={api} />
+                  ) : null
                 ) : showRelations ? (
-                  canRun ? <CourseRelations key={datasetId} datasetId={datasetId} api={api} /> : null
+                  canRun ? (
+                    <CourseRelations key={datasetId} datasetId={datasetId} api={api} />
+                  ) : null
                 ) : showDistribution ? (
                   canRun ? (
                     <ScoreDistribution key={datasetId} datasetId={datasetId} api={api} />
@@ -1326,7 +1299,12 @@ export function Workspace() {
             {view === "admin" && user.role === "admin" && (
               <AdminPanel user={user} onSessionExpired={expire} />
             )}
-            {view === "account" && <AccountPanel user={user} expire={expire} />}
+            {view === "account" && (
+              <>
+                <div className="settings-section-label">我的账号</div>
+                <AccountPanel user={user} expire={expire} />
+              </>
+            )}
           </div>
           <footer className="workbench-footer">
             <span>学析台 · 学习数据分析</span>
@@ -1337,6 +1315,43 @@ export function Workspace() {
           </footer>
         </main>
       </div>
+      <dialog
+        ref={logoutDialog}
+        className="logout-confirmation"
+        aria-labelledby="logout-title"
+        aria-describedby="logout-description"
+        onCancel={(event) => {
+          if (loggingOut) event.preventDefault();
+        }}
+      >
+        <span className="page-eyebrow">SESSION / 退出确认</span>
+        <h2 id="logout-title">退出当前账号？</h2>
+        <p id="logout-description">退出后需要重新登录才能继续使用工作台。</p>
+        {logoutError && (
+          <p className="notice notice-error" role="alert">
+            {logoutError}
+          </p>
+        )}
+        <div className="logout-confirmation-actions">
+          <button
+            type="button"
+            className="secondary-button"
+            autoFocus
+            disabled={loggingOut}
+            onClick={() => logoutDialog.current?.close()}
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            className="primary-button"
+            disabled={loggingOut}
+            onClick={() => void logout()}
+          >
+            {loggingOut ? "正在退出…" : "退出登录"}
+          </button>
+        </div>
+      </dialog>
     </div>
   );
 }

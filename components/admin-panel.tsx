@@ -12,6 +12,8 @@ import type {
 } from "@/lib/client-types";
 import { Icon } from "@/components/app-icons";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { ThemeToggle } from "@/components/ui/theme-provider";
+import { MotionToggle } from "@/components/ui/motion-preferences";
 import { BAILIAN_QWEN_FLASH, isBailianQwenFlash } from "@/lib/ai/bailian";
 import { ZHIPU_GLM_FLASH, isZhipuGLMFlash } from "@/lib/ai/zhipu";
 
@@ -920,6 +922,11 @@ export function AdminPanel({
               <div className="notice notice-info">
                 <Icon name="shield" />
                 <span>你的账号可以管理 AI 设置和普通用户，请妥善保管登录信息。</span>
+              </div>
+              <div className="account-appearance">
+                <h3>外观与动效</h3>
+                <ThemeToggle />
+                <MotionToggle />
               </div>
             </section>
             <form className="panel" onSubmit={changePassword} aria-busy={changingPassword}>

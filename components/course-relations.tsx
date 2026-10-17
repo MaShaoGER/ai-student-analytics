@@ -67,6 +67,11 @@ export function CourseRelations({
     setSelection("");
   };
 
+  const selectRelation = (key: string) => {
+    setCourse("");
+    setSelection((previous) => (previous === key ? "" : key));
+  };
+
   return (
     <section
       className={`analysis-result ${styles.panel}`}
@@ -165,12 +170,9 @@ export function CourseRelations({
                   <CourseRelationChart
                     data={current}
                     course={activeCourse}
-                    selectedKey={selected ? relationKey(selected) : undefined}
+                    selectedKey={selection || undefined}
                     onCourse={focusCourse}
-                    onRelation={(key) => {
-                      if (!relations.some((item) => relationKey(item) === key)) setCourse("");
-                      setSelection(key);
-                    }}
+                    onRelation={selectRelation}
                   />
                   <p className={styles.caption}>外圈为学科 · 连带为共同未达标人数 · 颜色区分学科</p>
                 </div>
@@ -207,8 +209,8 @@ export function CourseRelations({
                         <li key={relationKey(item)}>
                           <button
                             type="button"
-                            aria-pressed={selected === item}
-                            onClick={() => setSelection(relationKey(item))}
+                            aria-pressed={selection === relationKey(item)}
+                            onClick={() => selectRelation(relationKey(item))}
                           >
                             <span className={styles.rank}>
                               {String(index + 1).padStart(2, "0")}
@@ -233,7 +235,7 @@ export function CourseRelations({
               <div className={styles.coursePicker} role="group" aria-label="聚焦学科">
                 <button
                   type="button"
-                  aria-pressed={!activeCourse}
+                  aria-pressed={!activeCourse && !selection}
                   onClick={() => {
                     setCourse("");
                     setSelection("");

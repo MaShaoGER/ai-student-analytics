@@ -289,3 +289,11 @@
     padding: 40px 8px;
   }
 }
+
+/* Preserve the SVG paths; only their opacity retargets during focus changes. */
+.chart path {
+  transition:
+    fill-opacity var(--motion-standard) var(--ease-out),
+    stroke-opacity var(--motion-standard) var(--ease-out),
+    opacity var(--motion-standard) var(--ease-out);
+}

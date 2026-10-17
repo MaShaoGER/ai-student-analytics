@@ -123,7 +123,7 @@
   font-size: 12px;
 }
 .ribbon {
-  transition: opacity 160ms ease-out;
+  transition: opacity var(--motion-standard) var(--ease-out);
 }
 .ribbonTarget {
   cursor: pointer;

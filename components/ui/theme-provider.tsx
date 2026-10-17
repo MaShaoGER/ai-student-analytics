@@ -64,8 +64,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 export const useTheme = () => useContext(ThemeContext);
 
-export function ThemeToggle() {
+export function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const { theme, setTheme } = useTheme();
+  if (compact) {
+    const label = theme === "light" ? "切换到深色模式" : "切换到浅色模式";
+    return (
+      <button
+        type="button"
+        className="icon-button rail-theme-toggle"
+        aria-label={label}
+        title={label}
+        onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+      >
+        <Icon name={theme === "light" ? "sun" : "moon"} size={18} />
+      </button>
+    );
+  }
   return (
     <div className="theme-toggle" role="group" aria-label="外观模式">
       {(["light", "dark"] as const).map((value) => (
