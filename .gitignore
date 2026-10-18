@@ -35,3 +35,6 @@ oulad.zip
 oulad_raw/*.csv
 *.parquet
 *.arrow
+
+# Local visual QA / demo artifacts
+output/
