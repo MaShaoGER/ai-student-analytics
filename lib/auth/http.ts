@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createHash } from "node:crypto";
 import type { SessionUser } from "../client-types";
-import { updateState } from "../settings/storage";
 import { AuthError, getSessionUser } from "./service";
 
 export const cookieName = "analytics_session";
@@ -49,30 +47,18 @@ export function clearSessionCookie(response: NextResponse, request: Request): vo
   setSessionCookie(response, "", 0, request);
 }
 
-type LoginAttempts = Record<string, number[]>;
-const initialAttempts = (): LoginAttempts => ({});
-/** Persistent global and account limits cannot be bypassed by changing proxy headers. */
-export function limitLogin(username: string): void {
-  const account = createHash("sha256").update(username.trim().toLowerCase()).digest("hex");
-  updateState("login-attempts.json", initialAttempts, (state) => {
-    const cutoff = Date.now() - 15 * 60 * 1000;
-    for (const key of Object.keys(state)) {
-      state[key] = state[key].filter((timestamp) => timestamp > cutoff);
-      if (!state[key].length) delete state[key];
-    }
-    const global = state.global ?? [];
-    const individual = state[account] ?? [];
-    if (global.length >= 100 || individual.length >= 10) throw new AuthError(429, "LOGIN_RATE_LIMIT", "登录尝试过于频繁，请 15 分钟后重试。");
-    state.global = [...global, Date.now()];
-    state[account] = [...individual, Date.now()];
-  });
-}
-
 export function apiError(error: unknown): NextResponse {
   if (error instanceof AuthError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.status, headers: { "Cache-Control": "no-store", ...(error.status === 429 ? { "Retry-After": "900" } : {}) } });
-  if (error instanceof z.ZodError || error instanceof SyntaxError) return NextResponse.json({ error: "提交内容不完整或格式不正确，请检查后重试。", code: "INVALID_INPUT" }, { status: 400 });
-  // Do not log whole errors: upstream API errors can contain request credentials.
-  return NextResponse.json({ error: "系统暂时无法完成操作，请联系管理员检查服务端配置。", code: "SYSTEM_ERROR" }, { status: 500 });
+  if (error instanceof z.ZodError || error instanceof SyntaxError) return NextResponse.json({ error: "提交内容不完整或格式不正确，请检查后重试。", code: "INVALID_INPUT" }, { status: 400, headers: { "Cache-Control": "no-store" } });
+  // Do not log messages: upstream API errors can contain credentials or user text.
+  console.error("API 请求处理失败", safeErrorDetails(error));
+  return NextResponse.json({ error: "系统暂时无法完成操作，请联系管理员检查服务端配置。", code: "SYSTEM_ERROR" }, { status: 500, headers: { "Cache-Control": "no-store" } });
+}
+
+function safeErrorDetails(error: unknown): { name: string; code?: string } {
+  if (!(error instanceof Error)) return { name: typeof error };
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" ? { name: error.name, code } : { name: error.name };
 }
 
 export function noStoreJson(value: unknown): NextResponse {

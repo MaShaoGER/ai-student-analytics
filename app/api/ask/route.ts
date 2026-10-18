@@ -11,14 +11,23 @@ import {
 } from "@/lib/ai/planner";
 import { analysisRecordContext, saveAnalysisAudit } from "@/lib/records";
 import { checkRateLimit, rateLimitConfigs } from "@/lib/security/rate-limit";
+import {
+  readJsonBody,
+  REQUEST_TOO_LARGE_CODE,
+  REQUEST_TOO_LARGE_MESSAGE,
+  RequestBodyTooLargeError,
+} from "@/lib/security/request-body";
 import { apiError, assertSameOrigin, requireUser } from "@/lib/auth/http";
 import { AuthError } from "@/lib/auth/service";
 import { BudgetExceededError, UnknownModelPricingError } from "@/lib/security/ai-cost";
 import { AIProviderError, AI_PROVIDER_RETRY_AFTER } from "@/lib/ai/provider-errors";
 
 export const runtime = "nodejs";
+const MAX_REQUEST_BODY_BYTES = 64 * 1024;
 
 function askHttpError(error: unknown, stage: AnalysisRecord["stage"]): AnalysisHttpError & { clarificationQuestion?: string } {
+  if (error instanceof RequestBodyTooLargeError)
+    return { error: REQUEST_TOO_LARGE_MESSAGE, code: REQUEST_TOO_LARGE_CODE, status: 413 };
   const queryFailure = queryExecutionHttpError(error);
   if (queryFailure) return queryFailure;
   if (error instanceof AuthError) return { error: error.message, code: error.code, status: error.status };
@@ -70,7 +79,7 @@ export async function POST(request: Request) {
   let stage: AnalysisRecord["stage"] = "validation";
   const startedAt = performance.now();
   try {
-    const payload: unknown = await request.json();
+    const payload: unknown = await readJsonBody(request, { maxBytes: MAX_REQUEST_BODY_BYTES });
     // Question input has no metric yet; never infer one before a plan exists.
     context = { ...analysisRecordContext(payload), metricId: null, plan: null };
     const input = planQuestionInputSchema.parse(payload);
@@ -126,8 +135,13 @@ export async function POST(request: Request) {
     });
     if (error instanceof AuthError) return apiError(error);
     const { status, ...body } = failure;
-    return NextResponse.json(body, { status, ...(error instanceof AIProviderError ? {
-      headers: { "Cache-Control": "no-store", "Retry-After": String(AI_PROVIDER_RETRY_AFTER) },
-    } : {}) });
+    return NextResponse.json(body, {
+      status,
+      ...(error instanceof AIProviderError
+        ? { headers: { "Cache-Control": "no-store", "Retry-After": String(AI_PROVIDER_RETRY_AFTER) } }
+        : status === 413
+          ? { headers: { "Cache-Control": "no-store" } }
+          : {}),
+    });
   }
 }

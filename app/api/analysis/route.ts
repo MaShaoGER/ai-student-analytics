@@ -5,9 +5,16 @@ import { analysisPlanSchema, type AnalysisRecord } from "@/lib/analysis/types";
 import { noDataHttpError, queryExecutionHttpError } from "@/lib/analysis/http-errors";
 import { analysisRecordContext, saveAnalysisAudit } from "@/lib/records";
 import { checkRateLimit, rateLimitConfigs } from "@/lib/security/rate-limit";
+import {
+  readJsonBody,
+  REQUEST_TOO_LARGE_CODE,
+  REQUEST_TOO_LARGE_MESSAGE,
+  RequestBodyTooLargeError,
+} from "@/lib/security/request-body";
 import { apiError, assertSameOrigin, requireUser } from "@/lib/auth/http";
 
 export const runtime = "nodejs";
+const MAX_REQUEST_BODY_BYTES = 64 * 1024;
 
 export async function POST(request: Request) {
   let userId: string;
@@ -38,7 +45,7 @@ export async function POST(request: Request) {
   let stage: AnalysisRecord["stage"] = "validation";
   const startedAt = performance.now();
   try {
-    const payload: unknown = await request.json();
+    const payload: unknown = await readJsonBody(request, { maxBytes: MAX_REQUEST_BODY_BYTES });
     context = analysisRecordContext(payload);
     const plan = analysisPlanSchema.parse(payload);
     stage = "execution";
@@ -73,9 +80,11 @@ export async function POST(request: Request) {
     return NextResponse.json(analysis);
   } catch (error) {
     const failure = queryExecutionHttpError(error) ?? (
-      error instanceof z.ZodError || (stage === "validation" && error instanceof SyntaxError)
-        ? { error: "分析计划不合法，请检查指标、聚合方式、维度和返回条数。", code: "INVALID_PLAN", status: 400 }
-        : { error: "分析执行失败，请稍后重试或联系管理员检查数据源。", code: "ANALYSIS_FAILED", status: 500 }
+      error instanceof RequestBodyTooLargeError
+        ? { error: REQUEST_TOO_LARGE_MESSAGE, code: REQUEST_TOO_LARGE_CODE, status: 413 }
+        : error instanceof z.ZodError || (stage === "validation" && error instanceof SyntaxError)
+          ? { error: "分析计划不合法，请检查指标、聚合方式、维度和返回条数。", code: "INVALID_PLAN", status: 400 }
+          : { error: "分析执行失败，请稍后重试或联系管理员检查数据源。", code: "ANALYSIS_FAILED", status: 500 }
     );
     await saveAnalysisAudit({
       ...context,
@@ -86,6 +95,9 @@ export async function POST(request: Request) {
       errorCode: failure.code,
       errorMessage: failure.error,
     });
-    return NextResponse.json({ error: failure.error, code: failure.code }, { status: failure.status });
+    return NextResponse.json(
+      { error: failure.error, code: failure.code },
+      { status: failure.status, ...(failure.status === 413 ? { headers: { "Cache-Control": "no-store" } } : {}) },
+    );
   }
 }

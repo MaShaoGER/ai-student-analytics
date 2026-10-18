@@ -124,6 +124,65 @@ describe("analysis API classification and persisted audit", () => {
     expect(loadAnalysisRecords()[0]).toMatchObject({ datasetId: null, metricId: null, plan: null, stage: "validation" });
   });
 
+  it.each(["analysis", "ask"] as const)("rejects an oversized %s body with 413 and audits the failure", async (endpoint) => {
+    const oversized = "x".repeat(70_000);
+    const payload = endpoint === "analysis"
+      ? { ...plan, padding: oversized }
+      : { question, datasetId: "oulad", padding: oversized };
+    const response = await (endpoint === "analysis" ? postAnalysis : postAsk)(request(endpoint, payload));
+    expect(response.status).toBe(413);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({
+      error: "请求内容过大，请缩小查询范围后重试。",
+      code: "REQUEST_TOO_LARGE",
+    });
+    expect(runAnalysis).not.toHaveBeenCalled();
+    expect(loadAnalysisRecords()).toEqual([
+      expect.objectContaining({
+        requestSource: endpoint,
+        stage: "validation",
+        errorCode: "REQUEST_TOO_LARGE",
+        datasetId: null,
+        metricId: null,
+      }),
+    ]);
+  });
+
+  it("enforces the filter size limits without changing valid requests", async () => {
+    const atLimit = await postAnalysis(request("analysis", {
+      ...plan,
+      filters: [
+        { field: "course", op: "eq", value: "x".repeat(200) },
+        { field: "term", op: "in", value: Array.from({ length: 50 }, (_, index) => `term-${index}`) },
+      ],
+    }));
+    expect(atLimit.status).toBe(200);
+
+    for (const filters of [
+      [{ field: "course", op: "eq", value: "x".repeat(201) }],
+      [{ field: "course", op: "in", value: Array.from({ length: 51 }, (_, index) => `course-${index}`) }],
+      [{ field: "course", op: "in", value: ["x".repeat(201)] }],
+    ]) {
+      const response = await postAnalysis(request("analysis", { ...plan, filters }));
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({ code: "INVALID_PLAN" });
+    }
+    expect(runAnalysis).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns a no-store 429 when the profile rate limit is exhausted", async () => {
+    vi.mocked(checkRateLimit).mockReturnValue({ allowed: false, remaining: 0, resetAfter: 1_200 });
+    const response = await getProfile(new Request("http://localhost/api/profile"));
+    expect(response.status).toBe(429);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("retry-after")).toBe("2");
+    expect(await response.json()).toEqual({
+      error: "请求过于频繁，请稍后再试。",
+      code: "RATE_LIMIT_EXCEEDED",
+    });
+    expect(profileDatasets).not.toHaveBeenCalled();
+  });
+
   it("records an invalid question without persisting its text or a supplied fake metric", async () => {
     const response = await postAsk(request("ask", { question: "x", datasetId: "oulad", metric: "score", apiKey: privateValue }));
     expect(response.status).toBe(400);

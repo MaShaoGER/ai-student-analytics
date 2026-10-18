@@ -6,11 +6,11 @@ export const chartTypeSchema = z.enum(["line", "bar", "table"]);
 export const dataSourceSchema = z.enum(["demo", "oulad"]);
 
 export const filterSchema = z.discriminatedUnion("op", [
-  z.object({ field: dimensionSchema, op: z.literal("eq"), value: z.string().min(1) }),
+  z.object({ field: dimensionSchema, op: z.literal("eq"), value: z.string().min(1).max(200) }),
   z.object({
     field: dimensionSchema,
     op: z.literal("in"),
-    value: z.array(z.string().min(1)).min(1),
+    value: z.array(z.string().min(1).max(200)).min(1).max(50),
   }),
 ]);
 

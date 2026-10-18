@@ -1,4 +1,5 @@
-import { existsSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { API_QUERY_LIMITS } from "../security/query-limits";
 import {
@@ -199,6 +200,53 @@ type ProfileTable = {
   grain: string;
   path: string;
 };
+
+/**
+ * Dataset profiles run many DESCRIBE/aggregate queries over local CSVs, so the
+ * route serves a short-lived in-process snapshot. The cache is valid only for
+ * the exact path+mtime+size signature of every profiling input, which makes a
+ * replaced CSV invalidate it immediately.
+ */
+export const PROFILE_CACHE_TTL_MS = 30_000;
+const PROFILE_INPUT_PATHS = [...DEMO_TABLES.map((table) => table.path), ...Object.values(OULAD)];
+
+export type ProfileCacheEntry = {
+  signature: string;
+  expiresAt: number;
+  profiles: DatasetProfile[];
+};
+
+type FileSignature = { mtimeMs: number; size: number };
+
+function defaultFileSignature(filePath: string): FileSignature | null {
+  try {
+    const stats = statSync(/* turbopackIgnore: true */ filePath);
+    return { mtimeMs: stats.mtimeMs, size: stats.size };
+  } catch {
+    return null;
+  }
+}
+
+export function profileCacheSignature(
+  paths: readonly string[] = PROFILE_INPUT_PATHS,
+  statFile: (filePath: string) => FileSignature | null = defaultFileSignature,
+): string {
+  const parts = paths.map((filePath) => {
+    const signature = statFile(filePath);
+    return `${filePath}\u0000${signature ? `${signature.mtimeMs}\u0000${signature.size}` : "missing"}`;
+  });
+  return createHash("sha256").update(parts.join("\n")).digest("hex");
+}
+
+export function readProfileCache(
+  entry: ProfileCacheEntry | null | undefined,
+  signature: string,
+  now: number,
+): DatasetProfile[] | null {
+  return entry && entry.signature === signature && entry.expiresAt > now ? entry.profiles : null;
+}
+
+let profileCache: ProfileCacheEntry | null = null;
 
 async function profileTable(
   sql: (query: string) => Promise<Record<string, unknown>[]>,
@@ -628,6 +676,13 @@ export async function chartStudioData(
 export async function profileDatasets(
   options: QueryExecutionOptions = {},
 ): Promise<DatasetProfile[]> {
+  const signature = profileCacheSignature();
+  const cacheNow = Date.now();
+  // Cancellation must stay observable even when a warm snapshot exists.
+  const cached = options.signal?.aborted
+    ? null
+    : readProfileCache(profileCache, signature, cacheNow);
+  if (cached) return cached;
   const demoAvailable = validateFiles("demo");
   const ouladAvailable = validateFiles("oulad");
   // Legacy golden fixtures only contain the original two tables.
@@ -715,5 +770,6 @@ export async function profileDatasets(
       ],
     },
   ];
+  profileCache = { signature, expiresAt: cacheNow + PROFILE_CACHE_TTL_MS, profiles };
   return profiles;
 }
