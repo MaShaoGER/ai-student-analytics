@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as echarts from "echarts";
+import { useMotionPreferences } from "@/components/ui/motion-preferences";
 import { useTheme } from "@/components/ui/theme-provider";
 import { relationKey, type CourseRelationData } from "@/lib/analysis/course-relations";
 import { courseColorTokens } from "@/lib/analysis/course-colors";
@@ -23,7 +24,12 @@ export function CourseRelationChart({
   const root = useRef<HTMLDivElement>(null);
   const chart = useRef<echarts.ECharts | null>(null);
   const { theme } = useTheme();
+  const { enabled: motionEnabled, reduced: reducedMotion } = useMotionPreferences();
   const colors = useRef(new Map<string, string>());
+  // The first paint grows the chord as one group; later filter/focus/hover updates
+  // keep the previous behavior and are carried by the CSS path transitions.
+  const drawn = useRef(false);
+  const skipFocusAnimation = useRef(true);
   const [hovered, setHovered] = useState({ key: "", course: "" });
   const callbacks = useRef({ onCourse, onRelation });
   useEffect(() => {
@@ -52,6 +58,10 @@ export function CourseRelationChart({
     return () => {
       instance.dispose();
       chart.current = null;
+      // A re-created ECharts instance paints a fresh series, so its first draw is
+      // an entrance again (React StrictMode in dev recreates effects once).
+      drawn.current = false;
+      skipFocusAnimation.current = true;
     };
   }, []);
 
@@ -77,12 +87,29 @@ export function CourseRelationChart({
     const palette = new Map([...tokens].map(([name, token]) => [name, color(token)]));
     colors.current = palette;
     const connected = new Set(data.relations.flatMap((item) => [item.source, item.target]));
+    const motion = motionEnabled && !reducedMotion;
+    const firstDraw = !drawn.current;
+    drawn.current = true;
+    // The first draw is page presentation, so it animates regardless of input
+    // modality; later redraws are interaction feedback and need a pointer.
+    const entrance =
+      motion && (firstDraw || document.documentElement.dataset.inputModality === "pointer");
+    if (entrance) skipFocusAnimation.current = true;
     const draw = () => {
       const compact = element.clientWidth < 420;
       const nodes = data.courses.filter((item) => connected.has(item.name));
       instance.setOption(
         {
-          animation: false,
+          animation: entrance,
+          animationDuration: entrance ? 760 : 0,
+          animationDurationUpdate: 0,
+          animationEasing: "cubicOut",
+          animationEasingUpdate: "cubicOut",
+          animationDelay: entrance
+            ? (dataIndex: number) =>
+                Number.isFinite(dataIndex) ? Math.min(dataIndex * 32, 420) : 0
+            : 0,
+          animationDelayUpdate: 0,
           textStyle: { fontFamily: css.fontFamily },
           tooltip: {
             trigger: "item",
@@ -172,11 +199,14 @@ export function CourseRelationChart({
     });
     observer.observe(element);
     return () => observer.disconnect();
-  }, [data, theme]);
+  }, [data, theme, motionEnabled, reducedMotion]);
 
   useEffect(() => {
     const instance = chart.current;
     if (!instance) return;
+    // The focus sync that immediately follows an entrance must not cancel it.
+    const firstSync = skipFocusAnimation.current;
+    skipFocusAnimation.current = false;
     const key = selectedKey || hovered.key;
     const pair = data.relations.find((item) => relationKey(item) === key);
     const subject = course || hovered.course;
@@ -184,6 +214,7 @@ export function CourseRelationChart({
       pair ? pair.source === name || pair.target === name : !subject || subject === name;
     const connected = new Set(data.relations.flatMap((item) => [item.source, item.target]));
     instance.setOption({
+      ...(firstSync ? {} : { animation: false }),
       series: [
         {
           id: "course-relations",
@@ -223,6 +254,7 @@ export function CourseRelationChart({
     <div
       ref={root}
       className={styles.chart}
+      data-enter="fade"
       role="img"
       aria-label={`${data.term}学科学习薄弱关联弦图，连带宽度表示两科都低于${data.threshold}分的人数。共${data.relations.length}组关系。可通过下方课程按钮和关联列表查看相同数据。`}
     />

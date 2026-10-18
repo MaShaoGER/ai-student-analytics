@@ -1,0 +1,467 @@
+.conversation {
+  min-width: 0;
+  padding: 24px 28px 0;
+}
+.availability {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.transcript {
+  min-width: 0;
+  min-height: 120px;
+}
+.empty,
+.message {
+  padding: 24px 0;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+  scroll-margin-top: calc(var(--chat-header-height, 64px) + 20px);
+}
+.empty > p,
+.messageText {
+  max-width: 110ch;
+  white-space: pre-wrap;
+  line-height: 1.8;
+  margin: 12px 0 0;
+}
+.empty > p {
+  color: var(--muted);
+}
+.speaker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.speaker strong {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 600;
+}
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  background: var(--surface-inset);
+}
+.avatar[data-role="assistant"] {
+  background: var(--sage);
+  border-color: var(--sage);
+}
+.pending {
+  scroll-margin-top: calc(var(--chat-header-height, 64px) + 20px);
+}
+.pendingStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 0;
+  color: var(--muted);
+}
+.chartAttachment {
+  margin-top: 20px;
+  min-width: 0;
+  border: 1px solid var(--line);
+}
+.chartToggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 16px;
+  background: var(--surface-inset);
+  color: var(--ink);
+  border: 0;
+  text-align: left;
+}
+.chartToggle > span {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.chartToggle small {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.chartToggle > svg:last-child {
+  flex: 0 0 auto;
+}
+.chartToggle[aria-expanded="true"] > svg:last-child {
+  transform: rotate(90deg);
+}
+.composerDock {
+  position: fixed;
+  z-index: 80;
+  left: calc(var(--rail-start) + var(--rail-width) + 28px);
+  right: calc(var(--rail-start) + 28px);
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px) + var(--chat-keyboard-inset, 0px));
+}
+.composerDock > :global(.notice) {
+  margin: 0 0 8px;
+}
+.composer {
+  padding: 12px 16px;
+  background: var(--instrument-bg);
+  color: var(--instrument-ink);
+  border: 1px solid var(--line);
+}
+.composerHeading {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.composerHeading > label {
+  font-size: 12px;
+  color: var(--instrument-muted);
+}
+.composerTools {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.composerTools > button,
+.presets > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0;
+  font: inherit;
+  font-size: 11px;
+  color: var(--instrument-ink);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.presets {
+  position: static;
+}
+.presets > summary {
+  list-style: none;
+}
+.presets > summary::-webkit-details-marker {
+  display: none;
+}
+.presets > div {
+  position: absolute;
+  max-height: min(280px, 40dvh);
+  overflow-y: auto;
+  right: 0;
+  bottom: calc(100% + 12px);
+  width: min(300px, calc(100vw - var(--rail-width) - 48px));
+  padding: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-raised);
+  color: var(--ink);
+}
+.presets button {
+  display: block;
+  text-align: left;
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+}
+.composer textarea {
+  display: block;
+  width: 100%;
+  min-height: 52px;
+  max-height: 144px;
+  margin: 8px 0;
+  padding: 4px 0;
+  resize: none;
+  overflow-y: auto;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  color: var(--instrument-ink);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.composer textarea::placeholder {
+  color: var(--instrument-muted);
+}
+.composer:focus-within {
+  border-color: var(--accent);
+}
+.composerActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.composerActions > span {
+  color: var(--instrument-muted);
+  font-size: 11px;
+}
+.send,
+.stop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 36px;
+  padding: 8px;
+  border: 0;
+  background: var(--accent);
+  color: var(--button-ink);
+}
+.send svg {
+  transform: rotate(-90deg);
+}
+.stop {
+  padding-inline: 12px;
+  font-size: 12px;
+}
+.composer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.composer button:focus-visible,
+.presets summary:focus-visible,
+.chartToggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.results {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.evidence {
+  padding: 20px 24px;
+  background: var(--surface-inset);
+  border-left: 3px solid var(--sage);
+}
+.evidence strong {
+  font-size: 13px;
+}
+.evidence ul {
+  padding-left: 20px;
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.evidence li + li {
+  margin-top: 8px;
+}
+.distribution {
+  min-width: 0;
+  padding: 24px;
+}
+.resultHeading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+.resultHeading h2 {
+  margin: 8px 0;
+}
+.resultHeading p,
+.note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.suggestions {
+  margin-top: 16px;
+}
+.actions,
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.actions button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+.search {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  max-width: 320px;
+  margin: 20px 0;
+}
+.search input {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--corner-radius);
+  background: var(--surface-inset);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+}
+.search input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.tableScroll {
+  max-width: 100%;
+  overflow: auto;
+  overscroll-behavior-x: contain;
+  border: 1px solid var(--line);
+}
+.table {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.table caption {
+  text-align: left;
+  padding: 12px;
+  color: var(--muted);
+}
+.table th,
+.table td {
+  border: 1px solid var(--line);
+  padding: 10px 8px;
+  text-align: right;
+  white-space: nowrap;
+}
+.table th {
+  font-weight: 500;
+  background: var(--surface-inset);
+}
+.table th:first-child {
+  position: sticky;
+  left: 0;
+  text-align: left;
+  z-index: 1;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.table td[data-level="1"] {
+  background: color-mix(in srgb, var(--sage) 15%, var(--paper));
+}
+.table td[data-level="2"] {
+  background: color-mix(in srgb, var(--sage) 30%, var(--paper));
+}
+.table td[data-level="3"] {
+  background: color-mix(in srgb, var(--sage) 45%, var(--paper));
+}
+.table td[data-level="4"] {
+  background: color-mix(in srgb, var(--sage) 60%, var(--paper));
+}
+.table td[data-level="5"] {
+  background: color-mix(in srgb, var(--sage) 80%, var(--paper));
+}
+.table td[data-level="6"] {
+  background: var(--sage);
+}
+/* ---- 动效：消息、附件展开、等待反馈 ------------------------------------
+   消息、空状态、输入区的入场由 app/motion.css 的声明式 [data-enter] 承担；
+   这里只补对话页独有的部分，全部只动画 transform / opacity。
+   .conversation 是 fixed 输入区的祖先，永远不加 transform / animation。 */
+.chartToggle > svg:last-child {
+  transition: transform 200ms var(--ease-out);
+}
+.attachmentBody {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 320ms var(--enter-ease);
+}
+.attachmentBody[data-state="closing"] {
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+}
+/* 新展开的图表从上方 + 透明度进入；收起走 .attachmentBody[data-state="closing"]。 */
+@starting-style {
+  .attachmentBody[data-state="open"] {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+/* 等待回复 / 图表加载：轻量呼吸，不做位移或循环大幅动画。 */
+@keyframes pending-breathe {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+html[data-motion="on"][data-input-modality="pointer"] .pendingStatus {
+  animation: pending-breathe 1400ms ease-in-out 240ms infinite alternate;
+}
+html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
+  animation: pending-breathe 1200ms ease-in-out 120ms infinite alternate;
+}
+.loadingHint {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+@media (max-width: 600px) {
+  .distribution,
+  .evidence {
+    padding: 16px;
+  }
+  .conversation {
+    padding: 20px 16px 0;
+  }
+  .composerDock {
+    left: calc(var(--rail-start) + var(--rail-width) + 12px);
+    right: calc(var(--rail-start) + 12px);
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px) + var(--chat-keyboard-inset, 0px));
+  }
+  .composer {
+    padding: 10px 12px;
+  }
+  .composer textarea {
+    font-size: 16px;
+  }
+  .composerTools {
+    gap: 12px;
+  }
+  .shortcut {
+    display: none;
+  }
+  .send,
+  .stop {
+    min-height: 40px;
+  }
+  .chartToggle {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px;
+  }
+  .chartToggle > span {
+    flex-basis: calc(100% - 28px);
+  }
+  .chartToggle small {
+    margin-left: 25px;
+  }
+  .search input {
+    font-size: 16px;
+  }
+}

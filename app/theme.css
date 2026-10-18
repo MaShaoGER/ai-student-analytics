@@ -737,25 +737,24 @@ summary {
   margin: 0;
 }
 .overview-introduction {
-  padding: 28px;
+  padding: 26px 28px 36px;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding-bottom: 44px;
   background-image: var(--tone-bands);
   background-size: 100% 16px;
   background-position: bottom;
   background-repeat: no-repeat;
 }
 .overview-introduction .page-eyebrow {
-  padding-bottom: 14px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--line);
 }
 .overview-introduction .page-introduction h1 {
-  font-size: clamp(40px, 4vw, 58px);
-  margin: 22px 0 18px;
-  letter-spacing: -2px;
-  line-height: 1.15;
+  font-size: clamp(38px, 3.7vw, 54px);
+  margin: 18px 0 14px;
+  letter-spacing: -1.8px;
+  line-height: 1.12;
 }
 .overview-toolbar {
   display: flex;
@@ -764,7 +763,7 @@ summary {
   justify-content: space-between;
   gap: 14px;
   margin-top: auto;
-  padding-top: 26px;
+  padding-top: 20px;
 }
 .overview-toolbar .workbench-source {
   min-width: 150px;
@@ -786,20 +785,34 @@ summary {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 12px;
-  padding: 22px;
+  gap: 10px;
+  padding: 18px 22px;
   background: transparent;
   border: 0;
   color: var(--ink);
   min-width: 0;
 }
 .overview-metric.is-selected {
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+.overview-metric.is-selected .metric-index {
+  color: var(--accent);
+}
+/* A reserved marker slot keeps labels aligned; only the active metric fills it. */
+.overview-metric-label::before {
+  content: "";
+  flex: 0 0 6px;
+  width: 6px;
+  height: 6px;
   background: transparent;
+}
+.overview-metric.is-selected .overview-metric-label::before {
+  background: var(--accent);
 }
 .overview-metric:first-child {
   grid-column: 1 / -1;
   border-bottom: 1px solid var(--line);
-  padding: 24px 28px 22px;
+  padding: 20px 26px 18px;
 }
 .overview-metric:last-child {
   border-left: 1px solid var(--line);
@@ -830,18 +843,18 @@ summary {
   display: block;
 }
 .overview-metric-value {
-  font-size: clamp(25px, 2.5vw, 36px);
+  font-size: clamp(24px, 2.2vw, 32px);
   color: var(--ink);
   font-weight: 600;
-  letter-spacing: -1.3px;
+  letter-spacing: -1.2px;
   line-height: 1.1;
   white-space: normal;
   overflow-wrap: anywhere;
 }
 .overview-metric:first-child .overview-metric-value {
-  font-size: clamp(70px, 7.5vw, 110px);
+  font-size: clamp(64px, 6.8vw, 98px);
   font-weight: 700;
-  letter-spacing: -5px;
+  letter-spacing: -4.5px;
 }
 .overview-metric-value small {
   font-size: 12px;
@@ -868,7 +881,7 @@ summary {
   height: 5px;
   background: color-mix(in srgb, var(--ink) 15%, transparent);
   position: relative;
-  margin: 5px 0 8px;
+  margin: 2px 0 6px;
 }
 .score-calibration > i {
   display: block;
@@ -891,8 +904,14 @@ summary {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
-  padding: 14px 28px;
+  padding: 9px 28px;
   border-block: 1px solid var(--ink);
+}
+.overview-section-bar .text-button {
+  min-height: 32px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
 }
 .overview-section-bar > span {
   display: flex;
@@ -944,26 +963,36 @@ summary {
   background: var(--paper);
   color: var(--ink);
   border: 0;
-  padding: 24px 26px 10px;
+  padding: 20px 26px 8px;
   min-width: 0;
 }
 .overview-panel-heading h2 {
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 600;
+  line-height: 1.2;
   letter-spacing: -0.5px;
 }
 .overview-panel-heading .section-kicker {
   display: block;
-  font-size: 10px;
-  line-height: 1.6;
+  font-size: 9px;
+  line-height: 1.5;
   color: var(--muted);
 }
 .overview-panel-heading .section-kicker + h2 {
-  margin-top: 7px;
+  margin-top: 5px;
+}
+.overview-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 .overview-chart-toolbar {
-  margin: 18px 0 12px;
-  padding-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0 0;
+  padding-bottom: 10px;
   flex-wrap: wrap;
 }
 .overview-metric-tabs {
@@ -975,8 +1004,8 @@ summary {
 }
 .overview-metric-tabs button {
   border: 0;
-  min-height: 36px;
-  padding: 8px 10px;
+  min-height: 32px;
+  padding: 6px 10px;
   background: transparent;
   color: var(--muted);
   font-size: 11px;
@@ -987,18 +1016,55 @@ summary {
   box-shadow: none;
 }
 .overview-chart-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-size: 10px;
+  white-space: nowrap;
 }
 .overview-chart-legend i {
-  background: var(--accent);
+  background: var(--sage);
+}
+.overview-chart-panel .chart-view-picker {
+  margin: 0;
+  min-width: 0;
+}
+.overview-chart-panel .chart-view-options {
+  gap: 4px;
 }
 .overview-chart-panel .chart-view-options button {
+  min-height: 32px;
+  padding: 5px 8px;
   font-size: 11px;
-  padding: 7px 10px;
+  gap: 5px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
 }
 .overview-chart-panel .chart-view-options button[aria-pressed="true"] {
   background: var(--sage);
+  border-color: transparent;
   color: var(--button-ink);
+}
+/* The chart-type description stays available to assistive tech but yields its
+   row to the chart itself; the same text is in each control's title. */
+.overview-chart-panel .chart-view-description {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.overview-chart-panel .chart-context {
+  display: none;
+}
+.overview-chart-panel .chart {
+  height: 300px;
+  margin-top: 8px;
 }
 .chart-view-options button[aria-pressed="true"] {
   background: var(--sage-soft);
@@ -1012,6 +1078,10 @@ summary {
   border-color: var(--line);
   background: transparent;
   color: var(--muted);
+  padding: 12px 0;
+}
+.overview-chart-insight p {
+  line-height: 1.7;
 }
 .insight-icon {
   background: transparent;
@@ -1561,7 +1631,7 @@ html[data-motion="on"][data-input-modality="pointer"] button:enabled:active {
     background: var(--surface-inset);
     color: var(--ink);
   }
-  .overview-metric:hover:not(:disabled) {
+  .overview-metric:hover:not(:disabled):not(.is-selected) {
     background: color-mix(in srgb, var(--ink) 4%, transparent);
   }
   .overview-prompts > button:hover {
@@ -1918,5 +1988,119 @@ html[data-motion="off"] button:active {
   }
   .rail-content {
     overflow-y: auto;
+  }
+}
+
+/* Conversation content scrolls with its heading; only navigation and composer stay put. */
+.workbench-shell[data-conversation="true"] > .workbench-header {
+  position: sticky;
+  top: 0;
+  z-index: 85;
+  align-self: start;
+  background: var(--paper);
+}
+.workbench-shell[data-conversation="true"] .workbench-content {
+  padding-bottom: calc(
+    var(--chat-composer-height, 184px) + var(--chat-keyboard-inset, 0px) +
+      env(safe-area-inset-bottom, 0px) + 48px
+  );
+}
+
+/* Homepage density pass: keep the editorial grid, shorten the run-up to the
+   chart so the primary data visual is visible on the first screen. */
+.overview-chart-panel .chart-view-picker {
+  position: relative;
+}
+@media (max-width: 900px) {
+  .overview-introduction .page-introduction h1 {
+    font-size: 40px;
+  }
+  .overview-metric {
+    padding: 16px 18px;
+  }
+  .overview-metric:first-child {
+    padding: 18px 22px 16px;
+  }
+  .overview-chart-panel .chart {
+    height: 280px;
+  }
+  /* Keep six chart-type choices on one scrollable line instead of a ragged
+     5 + 1 wrap at tablet widths. */
+  .overview-chart-toolbar .chart-view-picker {
+    width: 100%;
+  }
+  .overview-chart-toolbar .chart-view-options {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .overview-chart-toolbar .chart-view-options::-webkit-scrollbar {
+    display: none;
+  }
+  .overview-chart-toolbar .chart-view-options button {
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 6px 9px;
+  }
+}
+@media (max-width: 760px) {
+  .overview-introduction {
+    min-height: 0;
+    padding: 22px 20px 28px;
+  }
+  .overview-introduction .page-introduction h1 {
+    font-size: 36px;
+    letter-spacing: -1.2px;
+  }
+  .overview-introduction .page-introduction p {
+    font-size: 12px;
+  }
+  .overview-toolbar {
+    padding-top: 16px;
+  }
+  .overview-metric:first-child .overview-metric-value {
+    font-size: 64px;
+    letter-spacing: -3px;
+  }
+  .overview-section-bar {
+    padding: 8px 20px;
+  }
+  .overview-section-bar .text-button {
+    min-height: 30px;
+  }
+  .overview-chart-panel {
+    padding: 18px 16px 6px;
+  }
+  .overview-chart-panel .chart {
+    height: 260px;
+  }
+  .overview-chart-toolbar {
+    gap: 10px;
+  }
+  .overview-chart-toolbar .chart-view-options button {
+    min-height: 44px;
+    padding: 7px 10px;
+  }
+}
+@media (max-width: 460px) {
+  .overview-introduction {
+    padding: 20px 18px 26px;
+  }
+  .overview-introduction .page-introduction h1 {
+    font-size: 34px;
+  }
+  .overview-metric:first-child {
+    padding: 16px 18px 14px;
+  }
+  .overview-metric:first-child .overview-metric-value {
+    font-size: 58px;
+    letter-spacing: -2.5px;
+  }
+  .overview-metric-value {
+    font-size: 26px;
+  }
+  .overview-chart-panel .chart {
+    height: 240px;
   }
 }

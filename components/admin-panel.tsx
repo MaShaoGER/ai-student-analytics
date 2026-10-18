@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from "react";
 import type {
   AIBudgets,
   AIConfig,
@@ -11,6 +18,7 @@ import type {
   SessionUser,
 } from "@/lib/client-types";
 import { Icon } from "@/components/app-icons";
+import { AnimatedNumber, useCountUp } from "@/components/ui/animated-number";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { ThemeToggle } from "@/components/ui/theme-provider";
 import { MotionToggle } from "@/components/ui/motion-preferences";
@@ -19,6 +27,8 @@ import { ZHIPU_GLM_FLASH, isZhipuGLMFlash } from "@/lib/ai/zhipu";
 
 type AdminTab = "ai" | "users" | "account";
 type Feedback = { kind: "success" | "error"; message: string } | null;
+/** Inline custom properties carry entrance delays defined by app/motion.css. */
+type MotionStyle = CSSProperties & { [key: `--${string}`]: string };
 type ConfigDraft = {
   enabled: boolean;
   apiFormat: AIConfig["apiFormat"];
@@ -80,9 +90,12 @@ function FeedbackNotice({ feedback }: { feedback: Feedback }) {
   );
 }
 
-function costLabel(value: string | undefined): string {
-  if (value === undefined || !Number.isFinite(Number(value))) return "—";
-  return `$${Number(value).toFixed(4)}`;
+/** Cost labels keep their fixed 4-decimal shape while counting from zero. */
+function AnimatedCost({ value }: { value?: string }) {
+  const amount = value === undefined || !Number.isFinite(Number(value)) ? undefined : Number(value);
+  const display = useCountUp(amount);
+  if (amount === undefined) return <>—</>;
+  return <>${(display ?? amount).toFixed(4)}</>;
 }
 
 function createdLabel(value: string): string {
@@ -399,7 +412,12 @@ export function AdminPanel({
 
   return (
     <div className="admin-panel">
-      <nav className="admin-tabs" aria-label="管理设置">
+      <nav
+        className="admin-tabs"
+        aria-label="管理设置"
+        data-enter="rise-sm"
+        style={{ "--enter-delay": "20ms" } as MotionStyle}
+      >
         <SegmentedControl<AdminTab>
           label="管理分类"
           value={tab}
@@ -414,7 +432,11 @@ export function AdminPanel({
 
       {tab === "ai" && (
         <>
-          <div className="admin-intro">
+          <div
+            className="admin-intro"
+            data-enter="rise-sm"
+            style={{ "--enter-delay": "60ms" } as MotionStyle}
+          >
             <div>
               <h2>让 AI 按你的设置工作</h2>
               <p>在这里连接模型、控制用量，再开放给工作台用户。</p>
@@ -447,11 +469,22 @@ export function AdminPanel({
               </button>
             </div>
           ) : (
-            <div className="admin-config-layout">
+            <div
+              className="admin-config-layout"
+              data-enter="fade"
+              style={
+                {
+                  "--enter-delay": "100ms",
+                  "--enter-dur": "var(--motion-enter-fast)",
+                } as MotionStyle
+              }
+            >
               <form
                 className="panel admin-config-main"
                 onSubmit={saveConfig}
                 aria-busy={saving || testing}
+                data-enter-group="rise"
+                style={{ "--enter-group-delay": "160ms" } as MotionStyle}
               >
                 <div className="admin-form-section">
                   <div className="admin-section-heading">
@@ -654,7 +687,11 @@ export function AdminPanel({
                     </div>
                     <Icon name="sliders" size={21} />
                   </div>
-                  <div className="admin-budget-grid">
+                  <div
+                    className="admin-budget-grid"
+                    data-enter-group="rise"
+                    style={{ "--enter-group-delay": "360ms" } as MotionStyle}
+                  >
                     {budgetFields.map(({ key, label }) => (
                       <div className="form-field" key={key}>
                         <label htmlFor={`admin-budget-${key}`}>{label}（USD）</label>
@@ -690,31 +727,39 @@ export function AdminPanel({
                   <span>{hasChanges ? "有尚未保存的修改" : "当前设置已保存"}</span>
                 </div>
               </form>
-              <aside className="admin-config-side">
+              <aside
+                className="admin-config-side"
+                data-enter-group="rise"
+                style={{ "--enter-group-delay": "240ms" } as MotionStyle}
+              >
                 <section className="panel">
                   <div className="panel-header">
                     <h3 className="panel-title">用量与费用</h3>
                     <span className="badge badge-muted">估算</span>
                   </div>
-                  <div className="admin-stats">
+                  <div
+                    className="admin-stats"
+                    data-enter-group="rise"
+                    style={{ "--enter-group-delay": "380ms" } as MotionStyle}
+                  >
                     <div className="admin-stat">
                       <span>累计调用</span>
                       <strong>
-                        {stats?.totalCalls ?? "—"}
+                        <AnimatedNumber value={stats?.totalCalls} fallback="—" />
                         <small> 次</small>
                       </strong>
                     </div>
                     <div className="admin-stat">
                       <span>近 24 小时</span>
                       <strong>
-                        {costLabel(stats?.last24Hours.totalCost)}
+                        <AnimatedCost value={stats?.last24Hours.totalCost} />
                         <small> USD</small>
                       </strong>
                     </div>
                     <div className="admin-stat">
                       <span>近 1 小时</span>
                       <strong>
-                        {costLabel(stats?.lastHour.totalCost)}
+                        <AnimatedCost value={stats?.lastHour.totalCost} />
                         <small> USD</small>
                       </strong>
                     </div>
@@ -759,7 +804,11 @@ export function AdminPanel({
 
       {tab === "users" && (
         <>
-          <div className="admin-intro">
+          <div
+            className="admin-intro"
+            data-enter="rise-sm"
+            style={{ "--enter-delay": "60ms" } as MotionStyle}
+          >
             <div>
               <h2>为团队开通访问账号</h2>
               <p>普通用户可以查看与分析数据，系统设置只向管理员开放。</p>
@@ -767,7 +816,11 @@ export function AdminPanel({
             <span className="badge badge-muted">按角色开放功能</span>
           </div>
           <FeedbackNotice feedback={userFeedback} />
-          <div className="admin-user-layout">
+          <div
+            className="admin-user-layout"
+            data-enter-group="rise"
+            style={{ "--enter-group-delay": "140ms" } as MotionStyle}
+          >
             <section className="panel">
               <div className="panel-header">
                 <h3 className="panel-title">已创建的账号</h3>
@@ -789,7 +842,11 @@ export function AdminPanel({
                   正在读取账号列表…
                 </div>
               ) : (
-                <div className="admin-user-list">
+                <div
+                  className="admin-user-list"
+                  data-enter-group="rise"
+                  style={{ "--enter-group-delay": "300ms" } as MotionStyle}
+                >
                   {users.length === 0 ? (
                     <div className="admin-state">还没有读取到账号，请刷新重试。</div>
                   ) : (
@@ -904,14 +961,22 @@ export function AdminPanel({
 
       {tab === "account" && (
         <>
-          <div className="admin-intro">
+          <div
+            className="admin-intro"
+            data-enter="rise-sm"
+            style={{ "--enter-delay": "60ms" } as MotionStyle}
+          >
             <div>
               <h2>管理你的登录信息</h2>
               <p>定期更新密码，保护工作台和团队数据。</p>
             </div>
           </div>
           <FeedbackNotice feedback={passwordFeedback} />
-          <div className="admin-user-layout">
+          <div
+            className="admin-user-layout"
+            data-enter-group="rise"
+            style={{ "--enter-group-delay": "140ms" } as MotionStyle}
+          >
             <section className="panel admin-account-card">
               <div className="admin-user-avatar">
                 {(user.displayName || user.username).slice(0, 1)}

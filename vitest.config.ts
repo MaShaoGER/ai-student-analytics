@@ -5,7 +5,7 @@ export default defineConfig({
   resolve: { alias: { "@": fileURLToPath(new URL(".", import.meta.url)) } },
   // Operational CLI fixtures run separately with node --test.
   test: {
-    exclude: [...configDefaults.exclude, "scripts/recovery.test.mjs"],
+    exclude: [...configDefaults.exclude, "**/.next/**", "scripts/recovery.test.mjs"],
     env: { DEMO_DATA_DIR: "data/fixtures/golden" },
   },
 });

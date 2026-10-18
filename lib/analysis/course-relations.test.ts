@@ -95,6 +95,13 @@ describe("course relations from deduplicated student scores", () => {
     expect(new Set(result.relations.map((r) => `${r.source}/${r.target}`)).size).toBe(66);
     expect(result.relations.every((r) => r.source < r.target && r.belowCount === 3)).toBe(true);
   });
+  it("keeps explicitly requested courses inside the bounded graph", async () => {
+    const result = await query({ datasetId: "demo", term: "2023J", courses: ["C12"] });
+    expect(result.courses.some((course) => course.name === "C12")).toBe(true);
+    expect(result.courses).toHaveLength(12);
+    const escaped = await query({ datasetId: "demo", term: "2023J", courses: ["' OR 1=1 --"] });
+    expect(escaped.courses).toHaveLength(12);
+  });
   it("filters and ranks relationships without changing their denominators", async () => {
     const result = await query({ datasetId: "demo", term: "2023J" });
     expect(visibleRelations(result.relations, "C00")).toHaveLength(11);

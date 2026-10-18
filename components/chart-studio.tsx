@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type CSSProperties } from "react";
 import { Icon } from "@/components/app-icons";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { StudioChart } from "@/components/studio-chart";
 import {
@@ -116,7 +117,11 @@ export function ChartStudio({
 
   return (
     <section className={`analysis-result ${styles.studio}`} aria-labelledby="chart-studio-heading">
-      <div className={styles.heading}>
+      <div
+        className={styles.heading}
+        data-enter="rise"
+        style={{ "--enter-delay": "40ms" } as CSSProperties}
+      >
         <div>
           <span className="section-kicker">CHART STUDIO</span>
           <h2 id="chart-studio-heading">把数据，变成可以探索的图</h2>
@@ -127,7 +132,13 @@ export function ChartStudio({
           自动绘图
         </span>
       </div>
-      <div className={styles.types} role="group" aria-label="图表工坊图表类型">
+      <div
+        className={styles.types}
+        role="group"
+        aria-label="图表工坊图表类型"
+        data-enter-group="rise"
+        style={{ "--enter-group-delay": "120ms" } as CSSProperties}
+      >
         {STUDIO_CHARTS.map((item, i) => (
           <button
             type="button"
@@ -144,7 +155,11 @@ export function ChartStudio({
           </button>
         ))}
       </div>
-      <div className={styles.sourceBar}>
+      <div
+        className={styles.sourceBar}
+        data-enter-group="fade"
+        style={{ "--enter-group-delay": "240ms" } as CSSProperties}
+      >
         <div className="control-field">
           <span>数据来源</span>
           <SegmentedControl
@@ -233,7 +248,12 @@ export function ChartStudio({
         ) : null}
       </div>
       {source === "project" && error && (
-        <div className="notice notice-error" role="alert">
+        <div
+          className="notice notice-error"
+          role="alert"
+          data-enter="rise-sm"
+          style={{ "--enter-delay": "60ms" } as CSSProperties}
+        >
           {error}
           <button
             type="button"
@@ -245,21 +265,36 @@ export function ChartStudio({
         </div>
       )}
       {fileError && (
-        <p className="notice notice-error" role="alert">
+        <p
+          className="notice notice-error"
+          role="alert"
+          data-enter="rise-sm"
+          style={{ "--enter-delay": "60ms" } as CSSProperties}
+        >
           {fileError}
         </p>
       )}
       <div className={styles.workspace} data-editor={source === "custom"}>
         {source === "custom" && (
-          <aside className={styles.editor} aria-label="图表数据输入">
+          <aside
+            className={styles.editor}
+            aria-label="图表数据输入"
+            data-enter="slide-left"
+            style={{ "--enter-delay": "80ms" } as CSSProperties}
+          >
             <div className={styles.editorHeading}>
               <h3>输入数据</h3>
               <span>
-                {input !== debouncedInput
-                  ? "正在更新…"
-                  : table
-                    ? `${table.rows.length.toLocaleString("zh-CN")} 行 · ${table.columns.length} 列`
-                    : "CSV / TSV / JSON"}
+                {input !== debouncedInput ? (
+                  "正在更新…"
+                ) : table ? (
+                  <>
+                    <AnimatedNumber value={table.rows.length} /> 行 ·{" "}
+                    <AnimatedNumber value={table.columns.length} /> 列
+                  </>
+                ) : (
+                  "CSV / TSV / JSON"
+                )}
               </span>
             </div>
             <label className="sr-only" htmlFor="studio-data-input">
@@ -301,7 +336,11 @@ export function ChartStudio({
             )}
           </aside>
         )}
-        <div className={styles.visual}>
+        <div
+          className={styles.visual}
+          data-enter="panel"
+          style={{ "--enter-delay": "320ms" } as CSSProperties}
+        >
           <div className={styles.visualHeading}>
             <div>
               <h3>{chartInfo.label}</h3>
@@ -314,7 +353,12 @@ export function ChartStudio({
           </div>
           {table && (
             <>
-              <div className={styles.mapping}>
+              <div
+                className={styles.mapping}
+                key={`${type}:${source}`}
+                data-enter-group="rise"
+                style={{ "--enter-group-delay": "80ms" } as CSSProperties}
+              >
                 {STUDIO_FIELD_ROLES[type]
                   .filter((role) => !(summaryBox && role.key === "value"))
                   .map((role) => (
@@ -370,7 +414,11 @@ export function ChartStudio({
                 )}
               </div>
               {summaryBox && (
-                <p className={styles.hint}>
+                <p
+                  className={styles.hint}
+                  data-enter="fade"
+                  style={{ "--enter-delay": "160ms" } as CSSProperties}
+                >
                   已识别五数概要，自动使用最小值、下四分位数、中位数、上四分位数、最大值。
                 </p>
               )}
@@ -381,8 +429,14 @@ export function ChartStudio({
                 densityMode={densityMode}
                 aggregate={aggregate}
               />
-              <details className={styles.preview}>
-                <summary>查看输入数据 · {table.rows.length.toLocaleString("zh-CN")} 行</summary>
+              <details
+                className={styles.preview}
+                data-enter="rise-sm"
+                style={{ "--enter-delay": "360ms" } as CSSProperties}
+              >
+                <summary>
+                  查看输入数据 · <AnimatedNumber value={table.rows.length} /> 行
+                </summary>
                 <div>
                   <table>
                     <thead>
@@ -392,7 +446,7 @@ export function ChartStudio({
                         ))}
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody data-enter-group="fade">
                       {table.rows.slice(0, 10).map((row, i) => (
                         <tr key={i}>
                           {table.columns.map((column) => (
@@ -408,7 +462,12 @@ export function ChartStudio({
             </>
           )}
           {!table && (
-            <div className={styles.empty} role="status">
+            <div
+              className={styles.empty}
+              role="status"
+              data-enter="rise"
+              style={{ "--enter-delay": "200ms" } as CSSProperties}
+            >
               <Icon name="chart" size={30} />
               <h3>
                 {loading && source === "project"

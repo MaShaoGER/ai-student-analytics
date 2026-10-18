@@ -14,7 +14,15 @@ export function MotionPreferences({ children }: { children?: ReactNode }) {
   const [enabled, updateEnabled] = useState(true);
   const [reduced, setReduced] = useState(false);
   const setEnabled = (value: boolean) => {
-    document.documentElement.dataset.motion = value && !reduced ? "on" : "off";
+    const root = document.documentElement;
+    if (value) {
+      // Enabling motion must not replay the entrance of elements that are already
+      // on screen; the guard clears on the next view change so new pages still animate.
+      root.dataset.motionReplayGuard = "on";
+    } else {
+      delete root.dataset.motionReplayGuard;
+    }
+    root.dataset.motion = value && !reduced ? "on" : "off";
     updateEnabled(value);
     try {
       localStorage.setItem(STORAGE_KEY, value ? "on" : "off");

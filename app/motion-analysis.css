@@ -1,0 +1,52 @@
+/* 指标分析页动效（由 analysis 动效任务维护；总规范见 app/motion.css 与 docs/motion-system.md）。
+   通用入场/错峰/骨架能力复用 [data-enter] / [data-enter-group] / .motion-skeleton，
+   入场延迟优先写在组件内联变量里；本文件只补该页专属的容器尺寸与无法内联的少量时序。 */
+
+/* ---- 图表异步加载占位（dynamic import 的图表 chunk） ------------------- */
+.chart-loading-skeleton {
+  width: min(100%, 460px);
+  height: 180px;
+  margin-top: 4px;
+}
+
+/* ---- 首次加载：图表区 + 焦点栏的骨架轮廓，避免空状态只有一句占位文案 --- */
+.analysis-skeleton {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 190px;
+  gap: 24px;
+  width: min(100%, 720px);
+  margin-top: 8px;
+  pointer-events: none;
+}
+.analysis-skeleton-chart,
+.analysis-skeleton-focus {
+  height: 150px;
+}
+
+/* ---- 结果表：表头先淡入，数据行随后按 data-enter-group 60ms 错峰 ------- */
+html[data-motion="on"] .analysis-result .result-table > thead {
+  animation: enter-fade var(--motion-enter-fast) var(--enter-ease) both;
+}
+/* 键盘模态与 app/motion.css 的入场约定保持一致：呈现类动画保留、时长归一。 */
+html[data-motion="on"]:not([data-input-modality="pointer"]) .analysis-result .result-table > thead {
+  animation-duration: var(--motion-enter) !important;
+}
+
+/* ---- 图表容器：异步画布加载时先占住图表高度，就绪后底部内容不跳动 ------- */
+/* .chart 高度为 310px（760px 以下 260px），加上图表上下文行约 18px。 */
+.analysis-result .result-visual :is(.chart-frame, .chart-loading) {
+  min-height: 328px;
+}
+
+@media (max-width: 760px) {
+  .analysis-skeleton {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .analysis-skeleton-focus {
+    display: none;
+  }
+  .analysis-result .result-visual :is(.chart-frame, .chart-loading) {
+    min-height: 278px;
+  }
+}

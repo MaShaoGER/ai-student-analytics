@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import type { SessionUser } from "@/lib/client-types";
 import { ProductBrand } from "@/components/product-brand";
 import { Icon } from "@/components/app-icons";
 import { ThemeToggle } from "@/components/ui/theme-provider";
 
 const REMEMBERED_USERNAME = "student-analytics.remembered-username";
+
+/** Inline custom properties carry entrance delays defined by app/motion.css. */
+type MotionStyle = CSSProperties & { [key: `--${string}`]: string };
 
 export function LoginScreen({
   onLogin,
@@ -71,14 +74,22 @@ export function LoginScreen({
 
   return (
     <main className="login-screen">
-      <div className="login-appearance">
+      <div className="login-appearance" data-enter="fade">
         <ThemeToggle />
       </div>
       <section className="login-story" aria-labelledby="login-product-title">
-        <div className="login-brand">
+        <div
+          className="login-brand"
+          data-enter="rise-sm"
+          style={{ "--enter-delay": "30ms" } as MotionStyle}
+        >
           <ProductBrand />
         </div>
-        <div className="login-story-copy">
+        <div
+          className="login-story-copy"
+          data-enter-group="rise"
+          style={{ "--enter-group-delay": "120ms" } as MotionStyle}
+        >
           <span className="login-eyebrow">
             <i aria-hidden="true" />
             让教学决策，有据可依
@@ -98,8 +109,15 @@ export function LoginScreen({
           className="login-signals"
           role="img"
           aria-label="学习记录汇聚为教学洞察的概念示意，非真实统计图表"
+          data-enter="fade"
+          style={{ "--enter-delay": "260ms" } as MotionStyle}
         >
-          <div className="login-signals-heading" aria-hidden="true">
+          <div
+            className="login-signals-heading"
+            aria-hidden="true"
+            data-enter="fade"
+            style={{ "--enter-delay": "360ms" } as MotionStyle}
+          >
             <span>LEARNING SIGNALS</span>
             <span>
               从记录到洞察
@@ -114,14 +132,17 @@ export function LoginScreen({
             </defs>
             <rect width="600" height="200" fill="url(#signal-grid)" />
             <path
+              pathLength={1}
               className="signal-path signal-path-muted"
               d="M0 166C65 166 79 145 130 145S206 170 260 143 330 110 385 105 478 80 532 82 576 58 600 58"
             />
             <path
+              pathLength={1}
               className="signal-path signal-path-secondary"
               d="M0 135C58 135 74 90 130 90S207 124 260 105 333 142 385 115 472 119 532 67 580 85 600 85"
             />
             <path
+              pathLength={1}
               className="signal-path signal-path-primary"
               d="M0 172C57 172 80 152 130 152S207 76 260 76 330 102 385 82 475 31 532 31 578 20 600 20"
             />
@@ -137,13 +158,22 @@ export function LoginScreen({
             <circle cx="532" cy="31" r="5" className="signal-point" />
             <circle cx="532" cy="31" r="13" stroke="currentColor" opacity=".2" />
           </svg>
-          <div className="login-signal-labels" aria-hidden="true">
+          <div
+            className="login-signal-labels"
+            aria-hidden="true"
+            data-enter-group="fade"
+            style={{ "--enter-group-delay": "560ms" } as MotionStyle}
+          >
             <span>学习记录</span>
             <span>课程表现</span>
             <span>教学洞察</span>
           </div>
         </div>
-        <div className="login-story-features">
+        <div
+          className="login-story-features"
+          data-enter-group="rise"
+          style={{ "--enter-group-delay": "600ms" } as MotionStyle}
+        >
           <span>
             <Icon name="chart" size={16} />
             多维数据分析
@@ -160,12 +190,24 @@ export function LoginScreen({
       </section>
 
       <section className="login-form-area" aria-labelledby="login-title">
-        <div className="login-access-label">
+        <div
+          className="login-access-label"
+          data-enter="fade"
+          style={{ "--enter-delay": "80ms" } as MotionStyle}
+        >
           <Icon name="lock" size={13} />
           你的学习分析空间
         </div>
-        <div className="login-form-card">
-          <div className="login-heading">
+        <div
+          className="login-form-card"
+          data-enter="slide-right"
+          style={{ "--enter-delay": "160ms" } as MotionStyle}
+        >
+          <div
+            className="login-heading"
+            data-enter-group="rise"
+            style={{ "--enter-group-delay": "280ms" } as MotionStyle}
+          >
             <span className="login-eyebrow">WELCOME BACK</span>
             <h2 id="login-title">欢迎回来</h2>
             <p>登录账号，继续你的探索与发现。</p>
@@ -182,7 +224,13 @@ export function LoginScreen({
               <span>{error}</span>
             </div>
           )}
-          <form className="login-form" onSubmit={handleLogin} aria-busy={loading}>
+          <form
+            className="login-form"
+            onSubmit={handleLogin}
+            aria-busy={loading}
+            data-enter-group="rise"
+            style={{ "--enter-group-delay": "380ms" } as MotionStyle}
+          >
             <div className="form-field">
               <label className="login-field-label" htmlFor="login-username">
                 账号<span aria-hidden="true">由管理员分配</span>
@@ -244,12 +292,20 @@ export function LoginScreen({
               {loading ? <span className="spinner" /> : <Icon name="arrow" size={18} />}
             </button>
           </form>
-          <p className="login-secure-note">
+          <p
+            className="login-secure-note"
+            data-enter="fade"
+            style={{ "--enter-delay": "640ms" } as MotionStyle}
+          >
             <Icon name="lock" size={15} />
             账号由管理员创建，登录后按权限开放功能。
           </p>
         </div>
-        <div className="login-footer">
+        <div
+          className="login-footer"
+          data-enter="fade"
+          style={{ "--enter-delay": "700ms" } as MotionStyle}
+        >
           <span>学析台 · 从数据到洞察</span>
           <span>LEARNING INSIGHTS WORKSPACE</span>
         </div>

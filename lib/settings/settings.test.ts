@@ -17,8 +17,10 @@ import { fileURLToPath } from "node:url";
 import { ModuleKind, ScriptTarget, transpileModule } from "typescript";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { APIConnectionTimeoutError, APIUserAbortError } from "openai/core/error";
+import { z } from "zod";
 import type { AIConfig } from "../client-types";
-import { getAIStatus, planQuestion } from "../ai/planner";
+import { generateStructured, getAIStatus, planQuestion } from "../ai/planner";
+import { converse } from "../ai/conversation";
 import { BAILIAN_QWEN_FLASH } from "../ai/bailian";
 import {
   BudgetExceededError,
@@ -95,6 +97,91 @@ describe("persistent AI settings and usage", () => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
     rmSync(stateDir, { recursive: true, force: true });
+  });
+
+  it.each(["responses", "chat_completions"] as const)(
+    "executes conversation planning, real aggregate query and explanation using %s",
+    async (apiFormat) => {
+      saveAIConfig({ ...config, apiFormat, apiKey: SAVED_KEY });
+      const decision = {
+        action: "analysis",
+        tool: null, courses: null, terms: null, dimensions: null, threshold: null,
+        message: "按指定课程和学期查询。",
+        metric: "score",
+        dimension: "course",
+        course: "AAA",
+        term: "2024J",
+        binWidth: null,
+        view: "table",
+        sortBy: "value",
+        sortDirection: "desc",
+        limit: 20,
+      };
+      const explanation = {
+        answer: "这些结果只描述当前课程学期，不能据此推断教学原因。",
+        suggestions: ["按学期比较"],
+      };
+      if (apiFormat === "responses") {
+        openAIStub.parse
+          .mockReset()
+          .mockResolvedValueOnce({
+            output_parsed: decision,
+            usage: { input_tokens: 200, output_tokens: 100, total_tokens: 300 },
+          })
+          .mockResolvedValueOnce({
+            output_parsed: explanation,
+            usage: { input_tokens: 250, output_tokens: 100, total_tokens: 350 },
+          });
+      } else {
+        openAIStub.create
+          .mockResolvedValueOnce({
+            choices: [{ message: { content: JSON.stringify(decision) } }],
+            usage: { prompt_tokens: 200, completion_tokens: 100, total_tokens: 300 },
+          })
+          .mockResolvedValueOnce({
+            choices: [{ message: { content: JSON.stringify(explanation) } }],
+            usage: { prompt_tokens: 250, completion_tokens: 100, total_tokens: 350 },
+          });
+      }
+      const result = await converse({
+        question: "只看AAA课程在2024J的平均成绩，用表格显示并解读",
+        datasetId: "demo",
+      });
+      expect(result.kind).toBe("result");
+      expect(result.answer).toContain(explanation.answer);
+      expect(result.answer).toContain("79.67");
+      expect(result.artifact).toMatchObject({
+        kind: "analysis",
+        view: "table",
+        result: { rows: [{ dimension: "AAA", sampleSize: 3 }] },
+      });
+      expect(result.facts.join(" ")).toContain("79.67");
+      const calls =
+        apiFormat === "responses" ? openAIStub.parse.mock.calls : openAIStub.create.mock.calls;
+      expect(calls).toHaveLength(2);
+      expect(JSON.stringify(calls[1][0])).toContain("79.67");
+      expect(getCostStats().total).toBe(2);
+      const cost = readState("cost-history.json", () => ({
+        records: [] as { endpoint: string }[],
+      }));
+      expect(cost.records.map((record) => record.endpoint)).toEqual(["chat-plan", "chat-explain"]);
+    },
+  );
+
+  it("applies the remaining conversation request budget before attempting another model call", async () => {
+    saveAIConfig({ ...config, apiKey: SAVED_KEY });
+    await expect(
+      generateStructured(
+        "解释一下",
+        "只解释方法。",
+        z.object({ answer: z.string() }),
+        { budgetContext: { spent: config.budgets.perRequest } },
+        "chat-explain",
+        900,
+      ),
+    ).rejects.toBeInstanceOf(BudgetExceededError);
+    expect(openAIStub.parse).not.toHaveBeenCalled();
+    expect(getCostStats().total).toBe(0);
   });
 
   it("encrypts saved keys, exposes only configuration status, and keeps state files private", () => {

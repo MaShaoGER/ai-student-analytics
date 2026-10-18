@@ -1,0 +1,373 @@
+/* ==========================================================================
+   学析台 · 统一动效系统（Lead 维护）
+   - 声明式入场：[data-enter="rise|rise-sm|panel|fade|wipe|slide-left|slide-right|scale"]
+     配合 style={{ "--enter-delay": "120ms", "--enter-dur": "620ms" }} 使用；
+   - 分组错峰：[data-enter-group="rise|fade"] 的子元素按 60ms 阶梯依次入场；
+   - 生长条：[data-grow] + style={{ "--fill": 0.75 }}，用于进度条/分布条；
+   - 骨架屏：[data-skeleton] / .motion-skeleton；
+   - 全局控件反馈、页面切换淡入、主题圆形揭示、导航抽屉动效统一在此定义。
+   所有入场动效遵循 data-motion 与系统减少动态效果；键盘用户不受动画阻塞。
+   ========================================================================== */
+:root {
+  --enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --enter-ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --check-ease: cubic-bezier(0.65, 0, 0.35, 1);
+  --motion-enter-fast: 480ms;
+  --motion-enter: 620ms;
+  --motion-enter-slow: 760ms;
+}
+
+/* ---- 入场关键帧 -------------------------------------------------------- */
+@keyframes enter-rise {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes enter-rise-sm {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes enter-panel {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes enter-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes enter-wipe {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes enter-slide-left {
+  from {
+    opacity: 0;
+    transform: translateX(-36px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes enter-slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(36px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes enter-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.982) translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+@keyframes enter-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(var(--fill, 0));
+  }
+}
+@keyframes enter-view {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes enter-drawer-item {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes motion-skeleton-pulse {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 0.8;
+  }
+}
+
+/* ---- 声明式入场 -------------------------------------------------------- */
+html[data-motion="on"] [data-enter] {
+  animation-duration: var(--enter-dur, var(--motion-enter));
+  animation-delay: var(--enter-delay, 0ms);
+  animation-timing-function: var(--enter-ease);
+  animation-fill-mode: both;
+}
+html[data-motion="on"] [data-enter="rise"] {
+  animation-name: enter-rise;
+}
+html[data-motion="on"] [data-enter="rise-sm"] {
+  animation-name: enter-rise-sm;
+}
+html[data-motion="on"] [data-enter="panel"] {
+  animation-name: enter-panel;
+}
+html[data-motion="on"] [data-enter="fade"] {
+  animation-name: enter-fade;
+  animation-duration: var(--enter-dur, var(--motion-enter-fast));
+}
+html[data-motion="on"] [data-enter="wipe"] {
+  animation-name: enter-wipe;
+}
+html[data-motion="on"] [data-enter="slide-left"] {
+  animation-name: enter-slide-left;
+}
+html[data-motion="on"] [data-enter="slide-right"] {
+  animation-name: enter-slide-right;
+}
+html[data-motion="on"] [data-enter="scale"] {
+  animation-name: enter-scale;
+}
+/* 页面/视图切换：外层只做淡入，避免 transform 影响 fixed 输入区；内容由 data-enter 承接。 */
+html[data-motion="on"] .view-surface {
+  animation: enter-view 320ms var(--ease-out) both;
+}
+
+/* ---- 分组错峰 ---------------------------------------------------------- */
+html[data-motion="on"] [data-enter-group] > * {
+  animation-duration: var(--enter-dur, var(--motion-enter-fast));
+  animation-timing-function: var(--enter-ease);
+  animation-fill-mode: both;
+}
+html[data-motion="on"] [data-enter-group="rise"] > * {
+  animation-name: enter-rise-sm;
+}
+html[data-motion="on"] [data-enter-group="fade"] > * {
+  animation-name: enter-fade;
+}
+html[data-motion="on"] [data-enter-group] > :nth-child(1) {
+  animation-delay: var(--enter-group-delay, 0ms);
+}
+html[data-motion="on"] [data-enter-group] > :nth-child(2) {
+  animation-delay: calc(var(--enter-group-delay, 0ms) + 60ms);
+}
+html[data-motion="on"] [data-enter-group] > :nth-child(3) {
+  animation-delay: calc(var(--enter-group-delay, 0ms) + 120ms);
+}
+html[data-motion="on"] [data-enter-group] > :nth-child(4) {
+  animation-delay: calc(var(--enter-group-delay, 0ms) + 180ms);
+}
+html[data-motion="on"] [data-enter-group] > :nth-child(5) {
+  animation-delay: calc(var(--enter-group-delay, 0ms) + 240ms);
+}
+html[data-motion="on"] [data-enter-group] > :nth-child(6) {
+  animation-delay: calc(var(--enter-group-delay, 0ms) + 300ms);
+}
+html[data-motion="on"] [data-enter-group] > :nth-child(7) {
+  animation-delay: calc(var(--enter-group-delay, 0ms) + 360ms);
+}
+html[data-motion="on"] [data-enter-group] > :nth-child(8) {
+  animation-delay: calc(var(--enter-group-delay, 0ms) + 420ms);
+}
+html[data-motion="on"] [data-enter-group] > :nth-child(n + 9) {
+  animation-delay: calc(var(--enter-group-delay, 0ms) + 450ms);
+}
+
+/* ---- 生长条 ------------------------------------------------------------ */
+[data-grow] {
+  width: 100%;
+  transform-origin: left center;
+  transform: scaleX(var(--fill, 0));
+}
+html[data-motion="on"] [data-grow] {
+  animation: enter-grow var(--enter-dur, 720ms) var(--enter-ease) var(--enter-delay, 0ms) both;
+}
+
+/* 关闭→重新开启交互动效时，已经渲染的页面不重播入场（下一次视图切换恢复正常）。 */
+html[data-motion-replay-guard] [data-enter],
+html[data-motion-replay-guard] [data-enter-group] > *,
+html[data-motion-replay-guard] [data-grow] {
+  animation: none !important;
+}
+
+/* ---- 骨架屏 ------------------------------------------------------------ */
+[data-skeleton],
+.motion-skeleton {
+  display: inline-block;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+}
+html[data-motion="on"] :is([data-skeleton], .motion-skeleton) {
+  --enter-dur: 800ms;
+  animation: motion-skeleton-pulse 800ms ease-in-out infinite alternate;
+}
+
+/* 页面加载/视图切换的入场属于内容呈现而非交互反馈，键盘模态下仍保留；
+   交互反馈类过渡仍要求 pointer，保持既有"键盘即时响应"约定。 */
+html[data-motion="on"]:not([data-input-modality="pointer"]) [data-enter],
+html[data-motion="on"]:not([data-input-modality="pointer"]) [data-enter-group] > *,
+html[data-motion="on"]:not([data-input-modality="pointer"]) [data-grow] {
+  animation-duration: var(--enter-dur, var(--motion-enter)) !important;
+}
+html[data-motion="on"]:not([data-input-modality="pointer"]) .view-surface {
+  animation-duration: 320ms !important;
+}
+
+/* ---- 全局控件反馈 ------------------------------------------------------ */
+html[data-motion="on"][data-input-modality="pointer"] :is(button, summary, a) {
+  transition:
+    transform 150ms var(--ease-out),
+    background-color 200ms var(--ease-out),
+    color 200ms var(--ease-out),
+    border-color 200ms var(--ease-out),
+    opacity 200ms var(--ease-out);
+}
+html[data-motion="on"][data-input-modality="pointer"] :is(button, summary):enabled:active {
+  transform: scale(0.97);
+}
+html[data-motion="on"][data-input-modality="pointer"] .overview-metric:enabled:active {
+  transform: scale(0.995);
+}
+html[data-motion="on"][data-input-modality="pointer"]
+  :is(.text-button, .ask-card-button)
+  > .app-icon:last-child {
+  transition: transform 160ms var(--ease-out);
+}
+
+/* ---- 导航抽屉（全站） -------------------------------------------------- */
+.workbench-drawer {
+  transform: translateX(-30px);
+  transition:
+    transform 240ms var(--ease-in-out),
+    opacity 160ms var(--ease-out),
+    display 240ms allow-discrete,
+    overlay 240ms allow-discrete;
+}
+.workbench-drawer:popover-open {
+  transform: translateX(0);
+  transition:
+    transform 460ms var(--ease-drawer),
+    opacity 240ms var(--ease-out),
+    display 460ms allow-discrete,
+    overlay 460ms allow-discrete;
+}
+@starting-style {
+  .workbench-drawer:popover-open {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+}
+html[data-motion="on"][data-input-modality="pointer"]
+  .workbench-drawer:popover-open
+  .drawer-heading {
+  animation: enter-fade 300ms var(--ease-out) 60ms both;
+}
+html[data-motion="on"][data-input-modality="pointer"]
+  .workbench-drawer:popover-open
+  .workspace-nav
+  button {
+  animation: enter-drawer-item 400ms var(--enter-ease) both;
+}
+html[data-motion="on"][data-input-modality="pointer"]
+  .workbench-drawer:popover-open
+  .workspace-nav
+  button:nth-child(1) {
+  animation-delay: 80ms;
+}
+html[data-motion="on"][data-input-modality="pointer"]
+  .workbench-drawer:popover-open
+  .workspace-nav
+  button:nth-child(2) {
+  animation-delay: 130ms;
+}
+html[data-motion="on"][data-input-modality="pointer"]
+  .workbench-drawer:popover-open
+  .workspace-nav
+  button:nth-child(3) {
+  animation-delay: 180ms;
+}
+html[data-motion="on"][data-input-modality="pointer"]
+  .workbench-drawer:popover-open
+  .workspace-nav
+  button:nth-child(4) {
+  animation-delay: 230ms;
+}
+html[data-motion="on"][data-input-modality="pointer"]
+  .workbench-drawer:popover-open
+  .workspace-nav
+  button:nth-child(5) {
+  animation-delay: 280ms;
+}
+html[data-motion="on"][data-input-modality="pointer"]
+  .workbench-drawer:popover-open
+  .drawer-footnote {
+  animation: enter-fade 320ms var(--ease-out) 300ms both;
+}
+
+/* ---- 主题圆形揭示（全站，含登录页） ------------------------------------ */
+html[data-theme-switch]::view-transition-old(root),
+html[data-theme-switch]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+html[data-theme-switch]::view-transition-new(root) {
+  animation: theme-reveal 700ms var(--check-ease) both;
+}
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0 at var(--theme-switch-x, 50%) var(--theme-switch-y, 50%));
+  }
+  to {
+    clip-path: circle(
+      var(--theme-switch-radius, 120vmax) at var(--theme-switch-x, 50%) var(--theme-switch-y, 50%)
+    );
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme-switch]::view-transition-new(root) {
+    animation: none;
+  }
+}
+
+/* ---- 首页骨架尺寸 ------------------------------------------------------ */
+.overview-metric-value .metric-pending {
+  width: clamp(120px, 46%, 300px);
+  height: 0.6em;
+  vertical-align: 0.02em;
+}
+.overview-metric:first-child .overview-metric-value .metric-pending {
+  width: clamp(180px, 52%, 380px);
+  height: 0.58em;
+}

@@ -73,6 +73,81 @@ integration("authenticated application HTTP API", () => {
     }
     expect((await request("/api/analysis", { method: "POST", body: "{}" }, "")).status).toBe(401);
     expect((await request("/api/ask", { method: "POST", body: "{}" }, "")).status).toBe(401);
+    expect((await request("/api/chat", { method: "POST", body: "{}" }, "")).status).toBe(401);
+  });
+
+  it("runs a native conversational result and a scoped followup without an AI connection", async () => {
+    const first = await request(
+      "/api/chat",
+      {
+        method: "POST",
+        body: JSON.stringify({ question: "哪门课程平均成绩最高？", datasetId: "demo" }),
+      },
+      userCookie,
+    );
+    expect(first.status).toBe(200);
+    expect(first.headers.get("cache-control")).toBe("no-store");
+    const result = await first.json();
+    expect(result.kind).toBe("result");
+    expect(result.artifact.result.rows[0]).toMatchObject({ dimension: "AAA", value: 79.67 });
+    const followup = await request(
+      "/api/chat",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          question: "改成表格",
+          datasetId: "demo",
+          context: result.context,
+          history: [
+            { role: "user", content: "哪门课程平均成绩最高？" },
+            { role: "assistant", content: result.answer },
+          ],
+        }),
+      },
+      userCookie,
+    );
+    expect(followup.status).toBe(200);
+    const table = await followup.json();
+    expect(table.artifact.view).toBe("table");
+    expect(table.artifact.result.rows).toEqual(result.artifact.result.rows);
+    expect(table.context.metric).toBe("score");
+    expect(table.planning.source).toBe("local");
+  });
+
+  it("preserves distribution scope when changing score bin width through conversation", async () => {
+    const response = await request(
+      "/api/chat",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          question: "按10分一档",
+          datasetId: "demo",
+          context: {
+            kind: "distribution",
+            course: "AAA",
+            term: "2024J",
+            binWidth: 5,
+            view: "heatmap",
+          },
+        }),
+      },
+      userCookie,
+    );
+    expect(response.status).toBe(200);
+    const result = await response.json();
+    expect(result.artifact).toMatchObject({
+      kind: "distribution",
+      course: "AAA",
+      term: "2024J",
+      binWidth: 10,
+    });
+    expect(
+      result.artifact.data.groups.every(
+        (group: { course: string; term: string }) =>
+          group.course === "AAA" && group.term === "2024J",
+      ),
+    ).toBe(true);
+    expect(result.facts.join(" ")).toContain("按 10 分一档");
   });
 
   it("returns a public session DTO without credentials", async () => {

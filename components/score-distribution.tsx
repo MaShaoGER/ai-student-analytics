@@ -9,6 +9,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { Icon } from "@/components/app-icons";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
   distributionRows,
@@ -30,6 +31,7 @@ export function ScoreDistribution({
   api: (url: string, options?: RequestInit) => Promise<ScoreDistributionData>;
 }) {
   const [data, setData] = useState<ScoreDistributionData | null>(null);
+  const [dataEpoch, setDataEpoch] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
@@ -46,7 +48,12 @@ export function ScoreDistribution({
     setError("");
     api(`/api/score-distribution?datasetId=${datasetId}`, { signal: controller.signal })
       .then((payload) => {
-        if (!controller.signal.aborted) setData(payload);
+        if (!controller.signal.aborted) {
+          setData(payload);
+          // A fresh payload is the moment data lands: bump the epoch so the heatmap
+          // rows remount and replay their staged entrance instead of mutating in place.
+          setDataEpoch((value) => value + 1);
+        }
       })
       .catch((reason: unknown) => {
         if (!controller.signal.aborted)
@@ -120,7 +127,11 @@ export function ScoreDistribution({
       aria-labelledby="score-distribution-heading"
       aria-busy={loading}
     >
-      <div className={styles.heading}>
+      <div
+        className={styles.heading}
+        data-enter="rise"
+        style={{ "--enter-delay": "40ms" } as CSSProperties}
+      >
         <div>
           <span className="section-kicker">SCORE DISTRIBUTION</span>
           <h2 id="score-distribution-heading">每一门学科，成绩落在哪里</h2>
@@ -137,7 +148,11 @@ export function ScoreDistribution({
         </button>
       </div>
 
-      <div className={styles.filters}>
+      <div
+        className={styles.filters}
+        data-enter-group="rise"
+        style={{ "--enter-group-delay": "140ms" } as CSSProperties}
+      >
         <label className="control-field">
           <span>学期</span>
           <select
@@ -196,7 +211,12 @@ export function ScoreDistribution({
       </div>
 
       {error && (
-        <div className="notice notice-error" role="alert">
+        <div
+          className="notice notice-error"
+          role="alert"
+          data-enter="rise-sm"
+          style={{ "--enter-delay": "80ms" } as CSSProperties}
+        >
           {error} {data && "仍显示上次成功的数据。"}
           <button
             type="button"
@@ -209,9 +229,19 @@ export function ScoreDistribution({
       )}
       {rows.length ? (
         <>
-          <div className={styles.chartMeta}>
+          <div
+            className={styles.chartMeta}
+            data-enter="fade"
+            style={{ "--enter-delay": "40ms" } as CSSProperties}
+          >
             <p>
-              <strong>{rows.length}</strong> 门学科 <span>·</span> <strong>{number(total)}</strong>{" "}
+              <strong>
+                <AnimatedNumber value={rows.length} decimals={0} />
+              </strong>{" "}
+              门学科 <span>·</span>{" "}
+              <strong>
+                <AnimatedNumber value={total} decimals={0} />
+              </strong>{" "}
               条成绩记录
             </p>
             <div
@@ -235,13 +265,19 @@ export function ScoreDistribution({
             色块表示选课{countLabel}。聚焦色块后，用左右方向键切换分数段，上下方向键切换学科，Home
             和 End 跳到首尾分数段。
           </p>
-          <p className={styles.scrollHint}>左右滑动查看全部分数段，学科名称固定在左侧。</p>
+          <p
+            className={styles.scrollHint}
+            data-enter="fade"
+            style={{ "--enter-delay": "80ms" } as CSSProperties}
+          >
+            左右滑动查看全部分数段，学科名称固定在左侧。
+          </p>
           <div className={styles.scroll} ref={chart}>
             <table className={styles.chart} aria-describedby="distribution-keyboard-help">
               <caption className="sr-only">
                 {activeTerm || "全部学期"}各学科成绩分布，每 {width} 分一格
               </caption>
-              <thead>
+              <thead data-enter="fade" style={{ "--enter-delay": "80ms" } as CSSProperties}>
                 <tr>
                   <th scope="col" className={styles.subject}>
                     学科
@@ -263,7 +299,12 @@ export function ScoreDistribution({
                   </th>
                 </tr>
               </thead>
-              <tbody onMouseLeave={() => setHovered(null)}>
+              <tbody
+                key={`${dataEpoch}|${activeTerm}|${course}|${width}`}
+                data-enter-group="fade"
+                style={{ "--enter-group-delay": "140ms" } as CSSProperties}
+                onMouseLeave={() => setHovered(null)}
+              >
                 {rows.map((row, rowIndex) => (
                   <tr key={row.course} data-active={active?.course === row.course || undefined}>
                     <th scope="row" className={styles.subject}>
@@ -272,7 +313,14 @@ export function ScoreDistribution({
                     <td className={styles.stripCell}>
                       <div
                         className={styles.strip}
-                        style={{ "--bin-count": 100 / width } as CSSProperties}
+                        data-enter="wipe"
+                        style={
+                          {
+                            "--bin-count": 100 / width,
+                            "--enter-delay": `${140 + Math.min(rowIndex, 7) * 60}ms`,
+                            "--enter-dur": "480ms",
+                          } as CSSProperties
+                        }
                       >
                         {row.bins.map((count, bin) => (
                           <button
@@ -311,7 +359,14 @@ export function ScoreDistribution({
               </tbody>
             </table>
           </div>
-          <div className={styles.detail} role="status" aria-live="polite" aria-atomic="true">
+          <div
+            className={styles.detail}
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            data-enter="rise-sm"
+            style={{ "--enter-delay": "620ms" } as CSSProperties}
+          >
             {hasDetail ? (
               <>
                 <strong>{activeRow.course}</strong>
@@ -328,7 +383,11 @@ export function ScoreDistribution({
               </>
             )}
           </div>
-          <p className={styles.note}>
+          <p
+            className={styles.note}
+            data-enter="fade"
+            style={{ "--enter-delay": "700ms" } as CSSProperties}
+          >
             各学科使用相同色阶，空白表示 0 {unit}。
             {activeTerm
               ? "同一学生在同一学科、学期只计一次。"
@@ -341,7 +400,12 @@ export function ScoreDistribution({
           </p>
         </>
       ) : (
-        <div className={styles.empty} role="status">
+        <div
+          className={styles.empty}
+          role="status"
+          data-enter="rise"
+          style={{ "--enter-delay": "120ms" } as CSSProperties}
+        >
           <Icon name="chart" size={30} />
           <h3>{loading ? "正在读取各学科成绩…" : "暂无可展示的成绩分布"}</h3>
           <p>

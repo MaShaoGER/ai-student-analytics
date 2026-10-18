@@ -2,17 +2,19 @@
 # Start an isolated HTTP test server: no real accounts, settings or provider calls.
 set -euo pipefail
 node --input-type=module <<'JS'
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { spawn } from 'node:child_process';
 const directory = mkdtempSync(join(tmpdir(), 'analytics-http-test-'));
+const originalTsconfig = readFileSync('tsconfig.json', 'utf8');
+const originalNextEnv = readFileSync('next-env.d.ts', 'utf8');
 const port = process.env.API_TEST_PORT || '3100';
 const base = `http://localhost:${port}`;
 const username = 'http.test.admin';
 const password = randomBytes(24).toString('base64url');
-const env = { ...process.env, DEMO_DATA_DIR: 'data/fixtures/golden', APP_STATE_DIR: directory, ANALYSIS_RECORDS_DIR: join(directory, 'analysis-records'), APP_ORIGIN: base, ADMIN_USERNAME: username, ADMIN_PASSWORD: password,
+const env = { ...process.env, NEXT_DIST_DIR: '.next/api-test', DEMO_DATA_DIR: 'data/fixtures/golden', APP_STATE_DIR: directory, ANALYSIS_RECORDS_DIR: join(directory, 'analysis-records'), APP_ORIGIN: base, ADMIN_USERNAME: username, ADMIN_PASSWORD: password,
   APP_SETTINGS_KEY: randomBytes(32).toString('base64'), OPENAI_API_KEY: '', OPENAI_MODEL: '', OPENAI_INPUT_PRICE: '', OPENAI_OUTPUT_PRICE: '',
   API_TEST_USERNAME: username, API_TEST_PASSWORD: password, API_BASE_URL: base, API_INTEGRATION: '1', NEXT_TELEMETRY_DISABLED: '1' };
 const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '--port', port], { env, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -43,6 +45,15 @@ try {
   stop();
   await Promise.race([stopped, new Promise(resolve => setTimeout(resolve, 4000))]);
   if (!exited) server.kill('SIGKILL');
+  // Next writes dist-specific type includes. Restore only those generated changes,
+  // never concurrent edits to the user's compiler configuration.
+  const currentTsconfig = JSON.parse(readFileSync('tsconfig.json', 'utf8'));
+  const originalConfig = JSON.parse(originalTsconfig);
+  const originalIncludes = originalConfig.include || [];
+  currentTsconfig.include = (currentTsconfig.include || []).filter(value =>
+    !value.startsWith('.next/api-test/') || originalIncludes.includes(value));
+  if (JSON.stringify(currentTsconfig) === JSON.stringify(originalConfig)) writeFileSync('tsconfig.json', originalTsconfig);
+  if (readFileSync('next-env.d.ts', 'utf8').includes('.next/api-test/')) writeFileSync('next-env.d.ts', originalNextEnv);
   rmSync(directory, { recursive: true, force: true });
 }
 JS

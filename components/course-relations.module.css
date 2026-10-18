@@ -297,3 +297,11 @@
     stroke-opacity var(--motion-standard) var(--ease-out),
     opacity var(--motion-standard) var(--ease-out);
 }
+html[data-motion="off"] .chart path {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart path {
+    transition: none;
+  }
+}

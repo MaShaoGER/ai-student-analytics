@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import { useMotionPreferences } from "@/components/ui/motion-preferences";
 import { relationKey } from "@/lib/analysis/course-relations";
 import { courseColorTokens } from "@/lib/analysis/course-colors";
 import type { CoursePanoramaData } from "@/lib/analysis/course-panorama";
@@ -30,6 +31,11 @@ export function CoursePanoramaChart({
   const viewport = useRef<HTMLDivElement>(null);
   const [availableWidth, setAvailableWidth] = useState(0);
   const [hovered, setHovered] = useState("");
+  const { enabled: motionEnabled, reduced: reducedMotion } = useMotionPreferences();
+  // The draw-in belongs to the moment data first paints: every element mounted in
+  // this window animates once, then the class drops so filter/focus updates stay
+  // instant instead of replaying the entrance.
+  const [entering, setEntering] = useState(true);
   const gradient = `panorama-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   useEffect(() => {
     const element = viewport.current;
@@ -40,6 +46,14 @@ export function CoursePanoramaChart({
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
+  useEffect(() => {
+    if (!motionEnabled || reducedMotion) {
+      setEntering(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setEntering(false), 1800);
+    return () => window.clearTimeout(timer);
+  }, [motionEnabled, reducedMotion]);
 
   const { columns, selection } = data;
   const selectedKey = selection ? JSON.stringify([selection.source, selection.target]) : "";
@@ -69,10 +83,10 @@ export function CoursePanoramaChart({
   const hoverRelation = data.relations.find((item) => relationKey(item) === hovered);
 
   return (
-    <figure className={styles.figure}>
+    <figure className={styles.figure} data-enter="fade">
       <div ref={viewport} className={styles.chartViewport} aria-label="可横向滚动的学科全景图">
         <svg
-          className={styles.chart}
+          className={`${styles.chart}${entering ? ` ${styles.entering}` : ""}`}
           width={width}
           height={670}
           viewBox={`0 0 ${width} 670`}
@@ -103,7 +117,7 @@ export function CoursePanoramaChart({
               ? `展示前 ${MAX_RIBBONS} 组及当前关联 · 带宽＝人数`
               : "带宽＝共同未达标人数"}
           </text>
-          {shown.map((item) => {
+          {shown.map((item, index) => {
             const key = relationKey(item);
             const a = courseIndex.get(item.source)!,
               b = courseIndex.get(item.target)!;
@@ -111,13 +125,22 @@ export function CoursePanoramaChart({
             const path = `M ${x(a)} 168 C ${x(a)} ${curve} ${x(b)} ${curve} ${x(b)} 168`;
             const ribbonWidth = (item.belowCount / maxCount) * 22;
             return (
-              <g key={key}>
+              <g
+                key={key}
+                className={styles.ribbonGroup}
+                style={
+                  {
+                    "--enter-delay": `${120 + Math.min(index * 48, 384)}ms`,
+                  } as CSSProperties
+                }
+              >
                 <path
                   d={path}
                   fill="none"
                   stroke={`url(#${ribbonGradient(item.source, item.target)})`}
                   strokeWidth={ribbonWidth}
                   opacity={activeKey ? (key === activeKey ? 0.85 : 0.08) : 0.38}
+                  pathLength={1}
                   className={styles.ribbon}
                 />
                 <path
@@ -154,7 +177,15 @@ export function CoursePanoramaChart({
               Math.max(2, Math.min(6, Math.floor(columnWidth / 13))),
             );
             return (
-              <g key={column.course}>
+              <g
+                key={column.course}
+                className={styles.columnGroup}
+                style={
+                  {
+                    "--enter-delay": `${160 + Math.min(index * 55, 440)}ms`,
+                  } as CSSProperties
+                }
+              >
                 <line x1={x(index)} x2={x(index)} y1={232} y2={655} className={styles.guide} />
                 <rect
                   x={x(index) - Math.min(25, columnWidth * 0.34)}
@@ -182,8 +213,16 @@ export function CoursePanoramaChart({
           <text x={width - right} y={262} textAnchor="end" className={styles.axis}>
             每格 5 分 · 虚线为 {data.threshold} 分未达标线
           </text>
-          {ticks.map((tick) => (
-            <g key={tick}>
+          {ticks.map((tick, index) => (
+            <g
+              key={tick}
+              className={styles.frameGroup}
+              style={
+                {
+                  "--enter-delay": `${60 + index * 30}ms`,
+                } as CSSProperties
+              }
+            >
               <line
                 x1={left - 6}
                 x2={width - right}
@@ -205,6 +244,8 @@ export function CoursePanoramaChart({
             strokeWidth={1}
             strokeDasharray="3 4"
             opacity={0.7}
+            className={styles.threshold}
+            style={{ "--enter-delay": "120ms" } as CSSProperties}
           />
           <text x={left - 12} y={chartTop - 10} textAnchor="end" className={styles.axis}>
             分
@@ -214,7 +255,15 @@ export function CoursePanoramaChart({
             const barWidth = Math.min(36, columnWidth * 0.44);
             const passWidth = Math.min(54, columnWidth * 0.72);
             return (
-              <g key={column.course}>
+              <g
+                key={column.course}
+                className={styles.columnGroup}
+                style={
+                  {
+                    "--enter-delay": `${160 + Math.min(index * 55, 440)}ms`,
+                  } as CSSProperties
+                }
+              >
                 {selection &&
                   column.baseline.bins.map((count, bin) => (
                     <rect
@@ -240,6 +289,7 @@ export function CoursePanoramaChart({
                     rx={0}
                     fill={subjectColor(column.course)}
                     opacity={count ? 0.2 + (0.8 * count) / maxBin : 0.045}
+                    className={styles.bar}
                   >
                     <title>{`${column.course}${selection ? "选中人群" : "全体"}：${bin * 5}至${(bin + 1) * 5}分，${number(count)}人${bin < 19 ? "（不含区间上界）" : "（含100分）"}`}</title>
                   </rect>
@@ -287,6 +337,7 @@ export function CoursePanoramaChart({
                     height={4}
                     rx={0}
                     fill={subjectColor(column.course)}
+                    className={styles.passFill}
                   />
                 )}
                 {selection && (
@@ -317,7 +368,11 @@ export function CoursePanoramaChart({
           </text>
         </svg>
       </div>
-      <figcaption className={styles.legend}>
+      <figcaption
+        className={styles.legend}
+        data-enter="rise-sm"
+        style={{ "--enter-delay": "220ms" } as CSSProperties}
+      >
         <span>
           <i />
           {selection ? "选中人群" : "全体学生"}
@@ -331,10 +386,16 @@ export function CoursePanoramaChart({
         <span>黑线＝均分 · 及格率按 60 分计算</span>
         <span>颜色＝学科 · 深浅＝分段人数（各科共用人数刻度）</span>
       </figcaption>
-      <p className={styles.chartHint}>
+      <p
+        className={styles.chartHint}
+        data-enter="fade"
+        style={{ "--enter-delay": "320ms" } as CSSProperties}
+      >
         {hoverRelation
           ? `${hoverRelation.source} × ${hoverRelation.target}：${number(hoverRelation.belowCount)} / ${number(hoverRelation.commonCount)} 人共同未达标（${hoverRelation.rate}%）`
-          : "点选连接带查看同一人群；学科较多时可左右滚动，各层始终对齐。"}
+          : disabled
+            ? "当前统计快照；学科较多时可左右滚动，各层始终对齐。"
+            : "点选连接带查看同一人群；学科较多时可左右滚动，各层始终对齐。"}
       </p>
     </figure>
   );
