@@ -1,5 +1,14 @@
 # 开发续接记录
 
+## 审计后加固：依赖升级 / 安全 / 工程化 / 前端可用性（2026-10-18，本地未提交）
+
+- 依据同日整体审计（`output/audit/OVERALL-2026-10-18.md`，4 个并行子代理 + Lead 实测）实施第一批 P0/P1：Lead 升级 `next@16.4.2`（原 16.3.5，`pnpm audit --prod` 由 9 项生产漏洞归零）并用 `pnpm update source-map-js` 修复 postcss 传递漏洞（1.2.1→1.2.2）；`engines.node` 改为 `>=22`、新增 `.nvmrc`（22），`pnpm-lock.yaml` 同步。
+- 后端（task-5，子代理 backend-hardening）：新增 `lib/auth/login-attempts.ts` 重写登录限流——只统计失败，账号 15 分钟 10 次 + 客户端 15 分钟 100 次，成功登录清零，取消“单一全局 100 次桶”；实测未认证攻击者 100 次失败只封锁其自身客户端，其他客户端合法登录仍 200，账号 10 次失败仍按原契约 429（message/code/Retry-After 不变）。`/api/profile` 接入限流并加 30s 进程内快照（key 为全部相关 CSV 的路径+mtimeMs+size），实测重复请求 2.39s→0.003s 且响应一致。新增 `lib/security/request-body.ts`，analysis/ask 请求体上限 64KB（超限 413 `REQUEST_TOO_LARGE`），`filterSchema` 收口（eq≤200、in≤50×200）；`apiError` 400/500 带 no-store，未知 500 只记录 `{name, code}`；`/api/auth/password` 加 strict 限流。
+- 工程化（task-6，子代理 infra-hardening）：`next.config.ts` 增加 `poweredByHeader:false`、4 个安全头（nosniff / Referrer-Policy / X-Frame-Options / Permissions-Policy，暂不加 CSP/HSTS）、`outputFileTracingExcludes` 排除 oulad/zip/output/docs/scripts/*.md/fixtures/tsbuildinfo；新增 `scripts/prepare-standalone-native.mjs` 并由 `postbuild` 自动执行，修复 macOS standalone 缺 `libduckdb.dylib` 导致全部 DuckDB API 500（本地实测修复后登录/分析/画像全链路 200）。standalone 由 632MB 降到 86MB（含 112MB dylib 后 197MB），`data/sample` 保留。新增 `.github/workflows/ci.yml`（typecheck/test/recovery/build/audit + HTTP job）、`test:recovery` 与 `postbuild` 脚本、`.prettierignore`、`.next-*/` 忽略；`vitest.config.ts` 增加 `.next-*`/standalone/output 排除与 15s 超时；README/数据字典/架构/部署文档同步 Node 22、实际技术栈、18 门课程与 `/api/chat`。另加 `allowedDevOrigins:["127.0.0.1"]` 便于本地 127.0.0.1 访问。
+- 前端（task-7，子代理 frontend-fixes）：`workspace.tsx` 统一网络错误文案（TypeError→中文提示、Abort 静默、服务端 message 原样）并移除 `/api/ai/status` 对 `view` 的依赖（仅离开 admin 刷新一次）；新增 `app/icon.svg` 与 openGraph/themeColor；reduced-motion 下动效开关 disabled 且如实显示“已跟随系统关闭”；≤600px 控件统一 16px；新增 `--muted-on-sage`/`--accent-ink` token（浅色对比度 3.81→5.91、选中态 1.93–2.65→4.96–6.8，深色无回退）；≤360px 指标卡单列修复 `5,220,398` 断行。浏览器实测 1512/390/320 浅/深主题、断网、动效开关、favicon 无 404，28 张截图在 `output/impl/frontend/`。
+- 验证：`pnpm typecheck` 通过；`pnpm test` 433 passed / 23 skipped（新增 27 条）；`pnpm test:api` 23 passed；`pnpm test:recovery` 15/15；隔离生产构建成功且 4 个安全头齐全、无 x-powered-by；本地 dev 已在 `http://localhost:3000` 重启（Next 16.4.2）。构建/HTTP 测试会自动改写 `tsconfig.json`/`next-env.d.ts`，本次已还原，工作区仅保留有意改动。
+- 未做：Docker 运行时加固（USER/HEALTHCHECK/资源限制/日志轮转）、CSP/HSTS、全仓 prettier/ESLint/coverage、ECharts 按需与 zod 移出客户端 bundle、移动抽屉焦点治理；公网演示仍为 10-16 旧镜像 + 自签证书，比赛交付物（视频/PDF/checklist/LICENSE）仍未开始。以上见 `output/impl/OVERALL.md` 与审计报告。
+
 ## 主页优化与全站统一动效合并归档（2026-10-18）
 
 - 从 `codex/ai-chart-capabilities` 的 `c375dea` 新建测试分支 `test/ui-home-preview`，保留当时未提交的 AI 能力代码；在该分支完成三轮提交：`7a03280`（主页首屏密度与图表可读性）、`6be335c`（主页激进入场动画与主题圆形揭示）、`8d7c4f1`（全站统一动效系统）。合并前创建备份分支 `backup/test-ui-home-preview-20261018`，随后以 `--no-ff` 合并为 `main` 的 `a673ae8`。
