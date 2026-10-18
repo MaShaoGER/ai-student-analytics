@@ -26,3 +26,4 @@ scripts
 !scripts/
 scripts/*
 !scripts/admin-init.mjs
+!scripts/prepare-standalone-native.mjs
