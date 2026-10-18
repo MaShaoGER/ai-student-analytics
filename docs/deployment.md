@@ -15,7 +15,7 @@
 ## 本地开发环境
 
 ### 环境要求
-- Node.js 20.9+
+- Node.js 22 LTS
 - pnpm 11+
 - DuckDB（通过 npm 自动安装，需要编译原生模块）
 
@@ -201,7 +201,7 @@ console.table((await response.json()).result?.rows);
 解决方案：
 - 确认本机有 C++ 编译工具（macOS: `xcode-select --install`）
 - 删除 `node_modules` 和 `pnpm-lock.yaml`，重新安装
-- 检查 Node.js 版本是否为 20.9+
+- 检查 Node.js 版本是否为 22 LTS
 
 ### Docker 构建失败
 症状：`docker compose build` 时 DuckDB 原生模块编译失败

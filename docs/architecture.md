@@ -6,9 +6,9 @@
 浏览器
   -> 服务端会话登录与角色校验
   -> Next.js 工作台（手动指标、固定问题或自然语言）
-  -> POST /api/ask
+  -> POST /api/ask（单轮分析）或 POST /api/chat（连续对话，最多携带 12 条历史）
   -> 固定问题映射或 OpenAI Responses API 结构化输出
-  -> Zod 校验 AnalysisPlan v1
+  -> Zod 校验 AnalysisPlan v1（/api/chat 另校验 ChatIntent 与工具白名单）
   -> 固定 SQL 模板
   -> DuckDB 读取受控 CSV
   -> 结果行 + 统计周期 + 只读 SQL

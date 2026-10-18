@@ -26,7 +26,7 @@ CSV/Excel 上传导入仍属于后续计划。测试环境已于 2026-10-13 发�
 
 ## 本地运行
 
-环境要求：Node.js 20.9+、pnpm 11+。
+环境要求：Node.js 22 LTS、pnpm 11+。
 
 ```bash
 pnpm install
@@ -49,8 +49,12 @@ pnpm dev
 ```bash
 pnpm typecheck
 pnpm test
+node --test scripts/recovery.test.mjs
 pnpm build
+pnpm test:api
 ```
+
+`pnpm test:api` 会启动隔离的本地服务并执行 HTTP 集成回归，需要 bash 与空闲的 3100 端口。
 
 首次部署时必须使用带有 DuckDB 原生依赖的 Node.js 服务端运行时，不能把分析模块打包到浏览器端。
 
@@ -70,15 +74,14 @@ docker compose up --build
 
 正式开发时优先使用 OULAD 子集和自建模拟数据，公开仓库不要放入真实学生个人信息、API 密钥或未经授权的数据。
 
-## 计划技术栈
+## 实际技术栈
 
-- Next.js 14+、TypeScript、Tailwind CSS、shadcn/ui；
-- Supabase PostgreSQL 和 Storage；
-- DuckDB 数据分析引擎；
-- Vercel AI SDK 或 OpenAI SDK；
+- Next.js 16（App Router）、React 19、TypeScript、自定义 CSS；
+- DuckDB 数据分析引擎（`@duckdb/node-api` 原生依赖）；
+- OpenAI SDK（Responses 与兼容 Chat Completions 协议）；
 - Zod 结构校验；
-- ECharts 图表；
-- pnpm 和 Docker Compose。
+- ECharts 6 图表；
+- pnpm 11 和 Docker Compose。
 
 ## 开发原则
 

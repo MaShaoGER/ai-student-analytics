@@ -13,12 +13,14 @@
     "test:api": "./scripts/test-api.sh",
     "admin:init": "node scripts/admin-init.mjs",
     "data:demo": "node scripts/generate-demo-data.mjs",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test:recovery": "node --test scripts/recovery.test.mjs",
+    "postbuild": "node scripts/prepare-standalone-native.mjs"
   },
   "dependencies": {
     "@duckdb/node-api": "^1.5.5-r.5",
     "echarts": "^6.0.0",
-    "next": "^16.3.5",
+    "next": "^16.4.2",
     "openai": "^7.20.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -33,6 +35,6 @@
     "vitest": "^3.2.4"
   },
   "engines": {
-    "node": ">=20.9.0"
+    "node": ">=22"
   }
 }

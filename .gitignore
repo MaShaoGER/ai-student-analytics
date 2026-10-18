@@ -6,10 +6,16 @@
 # Node / Next.js
 node_modules/
 .next/
+.next-*/
 out/
 dist/
 coverage/
 *.tsbuildinfo
+
+# Test and release artifacts
+playwright-report/
+test-results/
+.playwright-cli/
 
 # Python
 __pycache__/

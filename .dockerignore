@@ -1,10 +1,18 @@
 .git
 .next
+.next-*
 node_modules
 coverage
 oulad.zip
 oulad_raw/*.csv
+output
+playwright-report
+test-results
+.github
+.interface-design
+参考.af
 *.log
+*.tsbuildinfo
 
 # Keep runtime secrets out of the image build context.
 .env

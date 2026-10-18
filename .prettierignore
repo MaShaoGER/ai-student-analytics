@@ -1,0 +1,14 @@
+# Dependencies and build output
+node_modules/
+.next*/
+output/
+coverage/
+pnpm-lock.yaml
+
+# Large datasets and generated runtime state
+oulad_raw/
+data/
+records/
+
+# Hand-written documentation is reviewed as prose, not reformatted
+*.md
