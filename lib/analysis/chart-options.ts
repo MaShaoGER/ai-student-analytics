@@ -307,13 +307,26 @@ export function buildChartOption({
     splitLine: { show: false },
     axisLabel: {
       color: colors.muted,
-      fontSize: 11,
-      margin: 14,
-      interval: compact ? "auto" : 0,
+      fontSize: compact ? 10 : 11,
+      margin: 12,
+      // Long course lists get every second/third label at full size instead of
+      // cramped rotated or truncated names; hideOverlap guards the tight cases.
+      // Narrow charts tilt the reduced label set so more groups stay identifiable.
+      interval: compact
+        ? rows.length > 8
+          ? 2
+          : "auto"
+        : Math.max(0, Math.ceil(rows.length / 12) - 1),
       hideOverlap: true,
-      rotate:
-        !compact && (rows.length > 5 || rows.some((row) => row.dimension.length > 8)) ? 28 : 0,
-      formatter: (value: string) => (compact && value.length > 4 ? `${value.slice(0, 4)}…` : value),
+      rotate: compact
+        ? rows.length > 8
+          ? 32
+          : 0
+        : rows.length > 12
+          ? 0
+          : rows.length > 5
+            ? 28
+            : 0,
     },
   };
   const series: SeriesOption =
