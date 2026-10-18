@@ -1,9 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Icon, type IconName } from "@/components/app-icons";
 import { ChartViewPicker } from "@/components/chart-view-picker";
+import { useMotionPreferences } from "@/components/ui/motion-preferences";
 import { resolveChartView, type ChartViewType } from "@/lib/analysis/visualization";
 import { METRICS } from "@/lib/analysis/metrics";
 import { GOLDEN_CASES } from "@/lib/analysis/golden-cases";
@@ -37,6 +38,72 @@ const leaderGap = (result?: AnalysisResult) => {
 // selector already shows, so the hero can state the period in one short line.
 const scopeLabel = (period?: string) =>
   period ? period.replace(/^模拟数据/, "").replace(/^OULAD 本地 CSV /, "") : "";
+
+// Data motion belongs to the moment results land: the hero counts up once, then
+// holds still. Keyboard, reduced-motion and the local motion switch keep it inert.
+const COUNT_UP_MS = 900;
+const countUpAllowed = () => {
+  const root = document.documentElement;
+  // Page-load number motion is presentation, not interaction feedback, so it is
+  // not tied to pointer modality; the local motion switch and OS setting still win.
+  return root.dataset.motion === "on" && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+};
+function useCountUp(value: number | undefined) {
+  const { enabled, reduced } = useMotionPreferences();
+  const [display, setDisplay] = useState<number | undefined>(value);
+  useLayoutEffect(() => {
+    if (value === undefined) {
+      setDisplay(undefined);
+      return;
+    }
+    if (!enabled || reduced || !countUpAllowed()) {
+      setDisplay(value);
+      return;
+    }
+    // Count from zero every time a fresh value mounts: page entry, view return and
+    // data-source switches all get the same take-off.
+    setDisplay(0);
+    let frame = 0;
+    const started = performance.now();
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - started) / COUNT_UP_MS);
+      // Strong ease-out: numbers sprint away from zero and settle under the eye.
+      setDisplay(value * (1 - Math.pow(1 - progress, 5)));
+      if (progress < 1) frame = requestAnimationFrame(tick);
+      else setDisplay(value);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value, enabled, reduced]);
+  return display;
+}
+
+function MetricNumber({
+  value,
+  loading,
+  unit,
+  decimals = 0,
+}: {
+  value?: number;
+  loading: boolean;
+  unit: string;
+  decimals?: number;
+}) {
+  const display = useCountUp(loading ? undefined : value);
+  const shown = display === undefined ? undefined : decimals === 0 ? Math.round(display) : display;
+  return (
+    <span className="overview-metric-value">
+      {loading ? (
+        <span className="metric-pending" aria-hidden="true" />
+      ) : value === undefined ? (
+        "暂无"
+      ) : (
+        number(shown ?? value)
+      )}
+      {!loading && <small>{unit}</small>}
+    </span>
+  );
+}
 
 // Miniatures show the returned course groups, rather than invented trends.
 function MetricBars({ result }: { result?: AnalysisResult }) {
@@ -189,10 +256,12 @@ export function LearningOverview({
                 <span className="metric-index">0{index + 1}</span>
               </span>
               <span className="overview-metric-body">
-                <span className="overview-metric-value">
-                  {loading ? "—" : card.value === undefined ? "暂无" : number(card.value)}
-                  <small>{card.unit}</small>
-                </span>
+                <MetricNumber
+                  loading={loading}
+                  value={card.value}
+                  unit={card.unit}
+                  decimals={card.metric === "activity" ? 0 : 2}
+                />
                 <MetricBars result={card.result} />
               </span>
               {card.metric === "score" && card.value !== undefined && !loading && (
@@ -203,8 +272,15 @@ export function LearningOverview({
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={card.value}
+                  key={card.value}
                 >
-                  <i style={{ width: `${Math.min(100, Math.max(0, card.value))}%` }} />
+                  <i
+                    style={
+                      {
+                        "--fill": Math.min(1, Math.max(0, card.value / 100)),
+                      } as CSSProperties
+                    }
+                  />
                 </span>
               )}
               <span className="overview-metric-note">
@@ -287,6 +363,7 @@ export function LearningOverview({
                 selectedDimension={selected}
                 onSelectDimension={setSelected}
                 comparison={comparison}
+                entrance
               />
             ) : (
               <div className="analysis-empty" role="status">
@@ -298,7 +375,7 @@ export function LearningOverview({
               <span className="insight-icon">
                 <Icon name="sparkles" size={17} />
               </span>
-              <p>
+              <p key={metric}>
                 {leading ? (
                   <>
                     最高 <strong>{leading.dimension}</strong>{" "}
@@ -348,9 +425,9 @@ export function LearningOverview({
                     <th scope="col">分布</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody key={metric}>
                   {ranked.slice(0, 5).map((row, index) => (
-                    <tr key={row.dimension}>
+                    <tr key={row.dimension} style={{ "--row": index } as CSSProperties}>
                       <td>
                         <button
                           className="ranking-course"
@@ -369,9 +446,13 @@ export function LearningOverview({
                       <td>
                         <span className="ranking-track">
                           <i
-                            style={{
-                              width: `${leading?.value ? Math.max(1, (row.value / leading.value) * 100) : 0}%`,
-                            }}
+                            style={
+                              {
+                                "--fill": leading?.value
+                                  ? Math.max(0.04, Math.min(1, row.value / leading.value))
+                                  : 0,
+                              } as CSSProperties
+                            }
                           />
                         </span>
                       </td>

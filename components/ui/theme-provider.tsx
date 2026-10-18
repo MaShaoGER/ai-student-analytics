@@ -5,8 +5,15 @@ import { Icon } from "@/components/app-icons";
 import { MotionPreferences } from "@/components/ui/motion-preferences";
 
 type Theme = "light" | "dark";
+type ThemeOrigin = { x: number; y: number };
+type ViewTransitionDocument = Document & {
+  startViewTransition?: (callback: () => void) => { finished: Promise<void> };
+};
 const STORAGE_KEY = "student-analytics.appearance";
-const ThemeContext = createContext<{ theme: Theme; setTheme: (theme: Theme) => void }>({
+const ThemeContext = createContext<{
+  theme: Theme;
+  setTheme: (theme: Theme, origin?: ThemeOrigin) => void;
+}>({
   theme: "light",
   setTheme: () => {},
 });
@@ -19,8 +26,36 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     updateTheme(next);
   }, []);
   const setTheme = useCallback(
-    (next: Theme) => {
-      applyTheme(next);
+    (next: Theme, origin?: ThemeOrigin) => {
+      const root = document.documentElement;
+      const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const transition = (document as ViewTransitionDocument).startViewTransition;
+      // The circular reveal is an occasional delight reserved for the homepage.
+      const onHomepage = Boolean(document.querySelector(".learning-overview"));
+      if (!transition || reduce || root.dataset.motion !== "on" || !onHomepage) {
+        applyTheme(next);
+      } else {
+        const x = origin?.x ?? innerWidth / 2;
+        const y = origin?.y ?? innerHeight / 2;
+        root.style.setProperty("--theme-switch-x", `${x}px`);
+        root.style.setProperty("--theme-switch-y", `${y}px`);
+        root.style.setProperty(
+          "--theme-switch-radius",
+          `${Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y))}px`,
+        );
+        root.dataset.themeSwitch = "on";
+        try {
+          const viewTransition = transition.call(document, () => applyTheme(next));
+          viewTransition.finished
+            .catch(() => {})
+            .finally(() => {
+              delete root.dataset.themeSwitch;
+            });
+        } catch {
+          delete root.dataset.themeSwitch;
+          applyTheme(next);
+        }
+      }
       try {
         localStorage.setItem(STORAGE_KEY, next);
       } catch {
@@ -64,6 +99,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 export const useTheme = () => useContext(ThemeContext);
 
+/** Prefer the click point; keyboard activation reveals from the control itself. */
+function originFrom(event: React.MouseEvent<HTMLButtonElement>): ThemeOrigin {
+  if (event.detail !== 0) return { x: event.clientX, y: event.clientY };
+  const rect = event.currentTarget.getBoundingClientRect();
+  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+}
+
 export function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const { theme, setTheme } = useTheme();
   if (compact) {
@@ -74,7 +116,7 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
         className="icon-button rail-theme-toggle"
         aria-label={label}
         title={label}
-        onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+        onClick={(event) => setTheme(theme === "light" ? "dark" : "light", originFrom(event))}
       >
         <Icon name={theme === "light" ? "sun" : "moon"} size={18} />
       </button>
@@ -88,7 +130,7 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
           type="button"
           aria-label={value === "light" ? "浅色模式" : "深色模式"}
           aria-pressed={theme === value}
-          onClick={() => setTheme(value)}
+          onClick={(event) => setTheme(value, originFrom(event))}
         >
           <Icon name={value === "light" ? "sun" : "moon"} size={16} />
           <span>{value === "light" ? "浅色" : "深色"}</span>

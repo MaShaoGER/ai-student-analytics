@@ -23,6 +23,7 @@ export function AnalysisChart({
   selectedDimension,
   onSelectDimension,
   comparison,
+  entrance = false,
 }: {
   rows: AnalysisRow[];
   chartType: ChartViewType;
@@ -32,10 +33,12 @@ export function AnalysisChart({
   selectedDimension?: string;
   onSelectDimension?: (dimension: string) => void;
   comparison?: ChartComparison;
+  entrance?: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
   const lastView = useRef<ChartViewType | undefined>(undefined);
+  const lastDataKey = useRef<string | undefined>(undefined);
   const { theme } = useTheme();
   const { enabled: motionEnabled, reduced: reducedMotion } = useMotionPreferences();
   const view = resolveChartView(chartType, unit, rows);
@@ -61,6 +64,7 @@ export function AnalysisChart({
       chart.dispose();
       chartRef.current = null;
       lastView.current = undefined;
+      lastDataKey.current = undefined;
     };
   }, [isTable]);
 
@@ -110,20 +114,37 @@ export function AnalysisChart({
         compact: root.clientWidth < 460,
         comparison,
       });
+      const dataKey = `${view}|${unit}|${metricLabel}|${rows
+        .map((row) => `${row.dimension}:${row.value}:${row.sampleSize}`)
+        .join("|")}`;
+      const dataChanged = lastDataKey.current !== undefined && lastDataKey.current !== dataKey;
+      // The first draw is page presentation and animates regardless of input
+      // modality; later updates are interaction feedback and need a pointer.
+      const initialDraw = lastView.current === undefined;
+      const animated =
+        motionEnabled &&
+        !reducedMotion &&
+        (initialDraw || document.documentElement.dataset.inputModality === "pointer");
+      // The homepage opts into an aggressive entrance: bars grow in sequence and
+      // metric/view switches animate the whole series instead of snapping.
       chart.setOption(
         {
           ...option,
-          animation:
-            motionEnabled &&
-            !reducedMotion &&
-            document.documentElement.dataset.inputModality === "pointer",
-          animationDuration: 0,
-          animationDurationUpdate: 240,
+          animation: animated,
+          animationDuration: entrance && animated ? 760 : 0,
+          animationDurationUpdate: animated ? (entrance && dataChanged ? 560 : 240) : 0,
+          animationEasing: "cubicOut",
           animationEasingUpdate: "cubicOut",
+          animationDelay:
+            entrance && animated ? (dataIndex: number) => Math.min(dataIndex * 32, 420) : 0,
+          animationDelayUpdate: 0,
         },
-        { notMerge: lastView.current !== view },
+        // On the homepage a different data set re-enters from scratch instead of
+        // morphing between unrelated courses, so the staggered draw reads clearly.
+        { notMerge: lastView.current !== view || (entrance && dataChanged) },
       );
       lastView.current = view;
+      lastDataKey.current = dataKey;
     };
     draw();
     // Recalculate label density when the panel crosses a responsive breakpoint.
