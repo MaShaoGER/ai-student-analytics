@@ -1,6 +1,7 @@
 import type { DataSource } from "./types";
 
 export type StudioChartType = "sankey" | "boxplot" | "heatmap" | "density" | "dumbbell";
+export type StudioRelationshipMetric = "activity" | "attendance" | "absence" | "unexcused";
 export type StudioRow = Record<string, string | number | null>;
 export type StudioTable = { columns: string[]; rows: StudioRow[]; description: string };
 export type StudioProjectData = {

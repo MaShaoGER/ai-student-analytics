@@ -95,7 +95,11 @@ export async function POST(request: Request) {
         ? artifact.result.rows.length
         : artifact?.kind === "distribution"
           ? artifact.data.groups.length
-          : 0,
+          : artifact?.kind === "studio"
+            ? artifact.table.rows.length
+            : artifact?.kind === "relations" || artifact?.kind === "panorama"
+              ? artifact.data.relations.length
+              : 0,
       artifact?.kind === "analysis" ? artifact.result.period : "",
     );
     return noStoreJson(response);

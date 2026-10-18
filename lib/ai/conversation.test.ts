@@ -22,6 +22,11 @@ const distribution = {
 };
 const decision = {
   action: "analysis",
+  tool: null,
+  courses: null,
+  terms: null,
+  dimensions: null,
+  threshold: null,
   message: "按课程查看平均成绩。",
   metric: "score",
   dimension: "course",
@@ -102,7 +107,7 @@ describe("conversational analysis", () => {
   it("forwards context and history but gives the planner only catalog labels", async () => {
     const history = [{ role: "user", content: "看看数学" }];
     const response = await converse(
-      { question: "只看上学期", datasetId: "demo", context, history },
+      { question: "只看上学期，画图并解读", datasetId: "demo", context, history },
       {},
       deps,
     );
@@ -117,7 +122,7 @@ describe("conversational analysis", () => {
       kind: "analysis",
       filters: [
         { field: "course", op: "eq", value: "数学" },
-        { field: "term", op: "eq", value: "2024J" },
+        { field: "term", op: "eq", value: "2024B" },
       ],
     });
     const explanation = JSON.parse(generate.mock.calls[1][0]);
@@ -333,7 +338,11 @@ describe("conversational analysis", () => {
       .mockReset()
       .mockResolvedValueOnce({ fields: decision, usedModel: "fixture" })
       .mockRejectedValue(new BudgetExceededError("单次", 1, 0.5));
-    const response = await converse({ question: "看看数学的成绩", datasetId: "demo" }, {}, deps);
+    const response = await converse(
+      { question: "看看数学的成绩图并解读", datasetId: "demo" },
+      {},
+      deps,
+    );
     expect(response.kind).toBe("result");
     expect(response.artifact?.kind).toBe("analysis");
     expect(response.warning).toContain("保留真实统计");
@@ -347,7 +356,11 @@ describe("conversational analysis", () => {
         fields: { answer: "共999999人，最高100%。", suggestions: [] },
         usedModel: "fixture",
       });
-    const response = await converse({ question: "看看数学的成绩", datasetId: "demo" }, {}, deps);
+    const response = await converse(
+      { question: "看看数学的成绩图并解读", datasetId: "demo" },
+      {},
+      deps,
+    );
     expect(response.answer).not.toContain("999999");
     expect(response.facts.join(" ")).toContain("73.5");
     expect(response.artifact?.kind).toBe("analysis");
@@ -386,7 +399,7 @@ describe("conversational analysis", () => {
       });
     await expect(
       converse(
-        { question: "看看数学成绩", datasetId: "demo" },
+        { question: "看看数学成绩图并解读", datasetId: "demo" },
         { signal: controller.signal },
         deps,
       ),

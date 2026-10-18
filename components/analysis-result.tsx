@@ -1,8 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Icon } from "@/components/app-icons";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { ChartViewPicker } from "@/components/chart-view-picker";
 import { METRICS } from "@/lib/analysis/metrics";
 import type { AnalysisResult, AnalysisRow } from "@/lib/analysis/types";
@@ -19,7 +20,8 @@ const AnalysisChart = dynamic(
     ssr: false,
     loading: () => (
       <div className="chart-loading" role="status">
-        正在准备图表…
+        <span>正在准备图表…</span>
+        <span className="motion-skeleton chart-loading-skeleton" aria-hidden="true" />
       </div>
     ),
   },
@@ -32,6 +34,10 @@ export type AnalysisPlanning = {
 
 const formatNumber = (value: number) => value.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
 
+// Entrance choreography follows the shared motion system: each region mounts with
+// its own delay, so data arriving later still enters in a controlled order.
+const enterAt = (delay: number) => ({ "--enter-delay": `${delay}ms` }) as CSSProperties;
+
 function ResultTable({
   rows,
   result,
@@ -43,6 +49,9 @@ function ResultTable({
   selected?: string;
   onSelect: (dimension: string) => void;
 }) {
+  // Re-mount rows only when the underlying data changes (not on search/sort), so
+  // the staggered entrance replays for fresh results while typing stays immediate.
+  const dataKey = result.rows.map((row) => `${row.dimension}:${row.value}`).join("|");
   return (
     <div className="table-wrap result-table-region">
       <table className="result-table">
@@ -58,7 +67,11 @@ function ResultTable({
             <th scope="col">参与统计人数</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody
+          key={dataKey}
+          data-enter-group="rise"
+          style={{ "--enter-group-delay": "180ms" } as CSSProperties}
+        >
           {rows.map((row) => (
             <tr
               key={row.dimension}
@@ -128,6 +141,12 @@ export function AnalysisResultView({
   const definition = Object.values(METRICS).find((metric) => metric.label === result?.metricLabel);
   const gap = highest && selected ? Math.round((highest.value - selected.value) * 100) / 100 : 0;
   const activeChart = resolveChartView(chartType, result?.unit ?? "", rows);
+  // Counts animate on data arrival; while the user searches, the visible number
+  // must respond immediately, so those counts render as plain text.
+  const animateCounts = search.trim() === "";
+  // Activity is a sum of whole events, so its count-up must stay integer; scores
+  // and percentages may legitimately carry two decimals.
+  const valueDecimals = result?.unit === "次" ? 0 : 2;
 
   return (
     <section
@@ -137,8 +156,9 @@ export function AnalysisResultView({
       }
       aria-label="分析结果"
       aria-busy={loading}
+      data-enter="fade"
     >
-      <div className="result-section-heading">
+      <div className="result-section-heading" data-enter="rise-sm" style={enterAt(60)}>
         <div>
           <h2>{result ? `${result.metricLabel}对比` : "分析结果"}</h2>
           <p>
@@ -160,7 +180,7 @@ export function AnalysisResultView({
         {loading ? (result ? "正在更新分析结果，保留上次成功的结果。" : "正在计算，请稍候…") : ""}
       </p>
       {!result ? (
-        <div className="analysis-empty">
+        <div className="analysis-empty" data-enter="fade" style={enterAt(80)}>
           <Icon name="chart" size={32} />
           <h3>{loading ? "正在读取分析结果" : "从一个问题开始"}</h3>
           <p>
@@ -168,16 +188,29 @@ export function AnalysisResultView({
               ? "计算完成后，图表与统计依据会一起显示。"
               : "常用指标可以直接比较，推荐问题也可以直接使用。"}
           </p>
+          {loading && (
+            <div className="analysis-skeleton" aria-hidden="true">
+              <span className="motion-skeleton analysis-skeleton-chart" />
+              <span className="motion-skeleton analysis-skeleton-focus" />
+            </div>
+          )}
         </div>
       ) : (
         <>
-          <ChartViewPicker
-            value={chartType}
-            onChange={onChartChange}
-            rows={rows}
-            unit={result.unit}
-          />
-          <div className="result-filter" aria-label="筛选与排序">
+          <div className="result-chart-picker" data-enter="rise-sm" style={enterAt(120)}>
+            <ChartViewPicker
+              value={chartType}
+              onChange={onChartChange}
+              rows={rows}
+              unit={result.unit}
+            />
+          </div>
+          <div
+            className="result-filter"
+            aria-label="筛选与排序"
+            data-enter="fade"
+            style={enterAt(160)}
+          >
             <div className="result-filter-fields disclosure-content">
               <label>
                 搜索分组
@@ -200,11 +233,17 @@ export function AnalysisResultView({
               </label>
             </div>
             <span className="result-filter-count">
-              {rows.length} / {result.rows.length} 个分组
+              {animateCounts ? <AnimatedNumber value={rows.length} decimals={0} /> : rows.length} /{" "}
+              {animateCounts ? (
+                <AnimatedNumber value={result.rows.length} decimals={0} />
+              ) : (
+                result.rows.length
+              )}{" "}
+              个分组
             </span>
           </div>
           {rows.length === 0 ? (
-            <div className="analysis-empty" role="status">
+            <div className="analysis-empty" role="status" data-enter="fade" style={enterAt(200)}>
               <Icon name="search" size={28} />
               <h3>没有符合条件的结果</h3>
               <p>
@@ -220,7 +259,7 @@ export function AnalysisResultView({
             </div>
           ) : (
             <div className="analysis-result-grid">
-              <div className="result-visual">
+              <div className="result-visual" data-enter="panel" style={enterAt(200)}>
                 {activeChart === "table" ? (
                   <ResultTable
                     rows={rows}
@@ -237,10 +276,11 @@ export function AnalysisResultView({
                     dimensionLabel={dimension}
                     selectedDimension={selected?.dimension}
                     onSelectDimension={setSelectedDimension}
+                    entrance
                   />
                 )}
                 {highest && (
-                  <div className="result-conclusion">
+                  <div className="result-conclusion" data-enter="fade" style={enterAt(420)}>
                     <Icon name="chart" size={16} />
                     <p>
                       <strong>{highest.dimension}</strong> 的{result.metricLabel}最高，为{" "}
@@ -253,7 +293,18 @@ export function AnalysisResultView({
                 )}
               </div>
               {selected && (
-                <aside className="result-focus" aria-label="选中分组的统计详情">
+                <aside
+                  className="result-focus"
+                  aria-label="选中分组的统计详情"
+                  data-enter="slide-right"
+                  data-enter-group="rise"
+                  style={
+                    {
+                      "--enter-delay": "260ms",
+                      "--enter-group-delay": "320ms",
+                    } as CSSProperties
+                  }
+                >
                   <div className="focus-caption">
                     <span>当前{dimension}</span>
                     <span>{analysisSourceLabel(result)}</span>
@@ -275,19 +326,24 @@ export function AnalysisResultView({
                   <div className="focus-number-block">
                     <span>{result.metricLabel}</span>
                     <p>
-                      <strong>{formatNumber(selected.value)}</strong>
+                      <strong>
+                        <AnimatedNumber value={selected.value} decimals={valueDecimals} />
+                      </strong>
                       <small>{result.unit}</small>
                     </p>
                   </div>
                   <dl className="focus-statistics">
                     <div>
                       <dt>参与统计</dt>
-                      <dd>{formatNumber(selected.sampleSize)} 人</dd>
+                      <dd>
+                        <AnimatedNumber value={selected.sampleSize} decimals={0} /> 人
+                      </dd>
                     </div>
                     <div>
                       <dt>距可见最高值</dt>
                       <dd>
-                        {formatNumber(gap)} {result.unit === "%" ? "个百分点" : result.unit}
+                        <AnimatedNumber value={gap} decimals={valueDecimals} />{" "}
+                        {result.unit === "%" ? "个百分点" : result.unit}
                       </dd>
                     </div>
                   </dl>
@@ -297,12 +353,15 @@ export function AnalysisResultView({
             </div>
           )}
           <div className="result-footer">
-            <p>
-              {rows.length} 个可见分组 · 每组至少 {result.minSampleSize} 人
+            <p data-enter="fade" style={enterAt(460)}>
+              {animateCounts ? <AnimatedNumber value={rows.length} decimals={0} /> : rows.length}{" "}
+              个可见分组 · 每组至少 {result.minSampleSize} 人
             </p>
             {result.rows.length > 0 && (
               <details
                 className="result-export result-disclosure"
+                data-enter="rise-sm"
+                style={enterAt(500)}
                 onKeyDown={(event) => {
                   if (event.key === "Escape") {
                     event.currentTarget.open = false;
@@ -319,7 +378,11 @@ export function AnalysisResultView({
                   导出结果
                   <Icon name="chevron" size={14} />
                 </summary>
-                <div className="export-options disclosure-content">
+                <div
+                  className="export-options disclosure-content"
+                  data-enter="rise-sm"
+                  style={{ "--enter-delay": "0ms", "--enter-dur": "320ms" } as CSSProperties}
+                >
                   <button
                     type="button"
                     onClick={(event) => {
@@ -346,13 +409,21 @@ export function AnalysisResultView({
               </details>
             )}
           </div>
-          <details className="result-technical result-disclosure">
+          <details
+            className="result-technical result-disclosure"
+            data-enter="fade"
+            style={enterAt(540)}
+          >
             <summary>
               <Icon name="sliders" size={16} />
               计算依据<span>指标口径、样本范围与 SQL</span>
               <Icon name="chevron" size={15} />
             </summary>
-            <div className="technical-content disclosure-content">
+            <div
+              className="technical-content disclosure-content"
+              data-enter="fade"
+              style={{ "--enter-delay": "0ms", "--enter-dur": "320ms" } as CSSProperties}
+            >
               <dl>
                 <div>
                   <dt>数据源</dt>

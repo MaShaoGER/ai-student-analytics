@@ -1,10 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { Icon, type IconName } from "@/components/app-icons";
 import { ChartViewPicker } from "@/components/chart-view-picker";
-import { useMotionPreferences } from "@/components/ui/motion-preferences";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { resolveChartView, type ChartViewType } from "@/lib/analysis/visualization";
 import { METRICS } from "@/lib/analysis/metrics";
 import { GOLDEN_CASES } from "@/lib/analysis/golden-cases";
@@ -39,45 +39,6 @@ const leaderGap = (result?: AnalysisResult) => {
 const scopeLabel = (period?: string) =>
   period ? period.replace(/^模拟数据/, "").replace(/^OULAD 本地 CSV /, "") : "";
 
-// Data motion belongs to the moment results land: the hero counts up once, then
-// holds still. Keyboard, reduced-motion and the local motion switch keep it inert.
-const COUNT_UP_MS = 900;
-const countUpAllowed = () => {
-  const root = document.documentElement;
-  // Page-load number motion is presentation, not interaction feedback, so it is
-  // not tied to pointer modality; the local motion switch and OS setting still win.
-  return root.dataset.motion === "on" && !matchMedia("(prefers-reduced-motion: reduce)").matches;
-};
-function useCountUp(value: number | undefined) {
-  const { enabled, reduced } = useMotionPreferences();
-  const [display, setDisplay] = useState<number | undefined>(value);
-  useLayoutEffect(() => {
-    if (value === undefined) {
-      setDisplay(undefined);
-      return;
-    }
-    if (!enabled || reduced || !countUpAllowed()) {
-      setDisplay(value);
-      return;
-    }
-    // Count from zero every time a fresh value mounts: page entry, view return and
-    // data-source switches all get the same take-off.
-    setDisplay(0);
-    let frame = 0;
-    const started = performance.now();
-    const tick = (now: number) => {
-      const progress = Math.min(1, (now - started) / COUNT_UP_MS);
-      // Strong ease-out: numbers sprint away from zero and settle under the eye.
-      setDisplay(value * (1 - Math.pow(1 - progress, 5)));
-      if (progress < 1) frame = requestAnimationFrame(tick);
-      else setDisplay(value);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [value, enabled, reduced]);
-  return display;
-}
-
 function MetricNumber({
   value,
   loading,
@@ -89,16 +50,12 @@ function MetricNumber({
   unit: string;
   decimals?: number;
 }) {
-  const display = useCountUp(loading ? undefined : value);
-  const shown = display === undefined ? undefined : decimals === 0 ? Math.round(display) : display;
   return (
     <span className="overview-metric-value">
       {loading ? (
-        <span className="metric-pending" aria-hidden="true" />
-      ) : value === undefined ? (
-        "暂无"
+        <span className="motion-skeleton metric-pending" aria-hidden="true" />
       ) : (
-        number(shown ?? value)
+        <AnimatedNumber value={value} decimals={decimals} fallback="暂无" />
       )}
       {!loading && <small>{unit}</small>}
     </span>
@@ -228,7 +185,11 @@ export function LearningOverview({
       <div className="overview-hero">
         <div className="overview-introduction">
           {heading}
-          <div className="overview-toolbar">
+          <div
+            className="overview-toolbar"
+            data-enter="rise-sm"
+            style={{ "--enter-delay": "260ms" } as CSSProperties}
+          >
             {sourceControl}
             <p title={result?.period}>
               {result?.rows.length ?? 0} 门可见课程
@@ -243,6 +204,12 @@ export function LearningOverview({
               type="button"
               key={card.metric}
               data-metric={card.metric}
+              data-enter={index === 0 ? "scale" : "rise"}
+              style={
+                {
+                  "--enter-delay": `${[120, 230, 300][index] ?? 300}ms`,
+                } as CSSProperties
+              }
               aria-pressed={metric === card.metric}
               disabled={!results[card.metric]}
               onClick={() => {
@@ -275,9 +242,11 @@ export function LearningOverview({
                   key={card.value}
                 >
                   <i
+                    data-grow
                     style={
                       {
                         "--fill": Math.min(1, Math.max(0, card.value / 100)),
+                        "--enter-delay": "260ms",
                       } as CSSProperties
                     }
                   />
@@ -291,7 +260,11 @@ export function LearningOverview({
           ))}
         </section>
       </div>
-      <div className="overview-section-bar">
+      <div
+        className="overview-section-bar"
+        data-enter="wipe"
+        style={{ "--enter-delay": "340ms" } as CSSProperties}
+      >
         <span>
           <small>A—01</small>课程表现，一眼看清
         </span>
@@ -302,7 +275,12 @@ export function LearningOverview({
       </div>
       <div className="overview-columns">
         <div className="overview-primary">
-          <section className="panel overview-chart-panel" aria-busy={loading}>
+          <section
+            className="panel overview-chart-panel"
+            aria-busy={loading}
+            data-enter="panel"
+            style={{ "--enter-delay": "380ms" } as CSSProperties}
+          >
             <div className="overview-panel-heading">
               <div>
                 <span className="section-kicker">COURSE PERFORMANCE</span>
@@ -375,7 +353,7 @@ export function LearningOverview({
               <span className="insight-icon">
                 <Icon name="sparkles" size={17} />
               </span>
-              <p key={metric}>
+              <p key={metric} data-enter="fade">
                 {leading ? (
                   <>
                     最高 <strong>{leading.dimension}</strong>{" "}
@@ -406,11 +384,15 @@ export function LearningOverview({
               )}
             </div>
           </section>
-          <section className="panel overview-ranking">
+          <section
+            className="panel overview-ranking"
+            data-enter="rise"
+            style={{ "--enter-delay": "480ms" } as CSSProperties}
+          >
             <div className="overview-panel-heading">
               <div>
                 <h2>分组明细</h2>
-                <p>按{METRICS[metric].label}从高到低排列</p>
+                <p data-enter="fade">按{METRICS[metric].label}从高到低排列</p>
               </div>
               <span className="subtle-label">{ranked.length} 个分组</span>
             </div>
@@ -427,7 +409,11 @@ export function LearningOverview({
                 </thead>
                 <tbody key={metric}>
                   {ranked.slice(0, 5).map((row, index) => (
-                    <tr key={row.dimension} style={{ "--row": index } as CSSProperties}>
+                    <tr
+                      key={row.dimension}
+                      data-enter="rise-sm"
+                      style={{ "--enter-delay": `${520 + index * 70}ms` } as CSSProperties}
+                    >
                       <td>
                         <button
                           className="ranking-course"
@@ -446,11 +432,13 @@ export function LearningOverview({
                       <td>
                         <span className="ranking-track">
                           <i
+                            data-grow
                             style={
                               {
                                 "--fill": leading?.value
                                   ? Math.max(0.04, Math.min(1, row.value / leading.value))
                                   : 0,
+                                "--enter-delay": `${560 + index * 70}ms`,
                               } as CSSProperties
                             }
                           />
@@ -471,7 +459,11 @@ export function LearningOverview({
           </section>
         </div>
         <aside className="overview-secondary">
-          <section className="overview-ask-card">
+          <section
+            className="overview-ask-card"
+            data-enter="slide-right"
+            style={{ "--enter-delay": "420ms" } as CSSProperties}
+          >
             <div className="ask-card-top">
               <span className="ask-card-symbol">
                 <Icon name="sparkles" size={23} />
@@ -488,7 +480,11 @@ export function LearningOverview({
               <br />
               把好奇心变成有依据的结论。
             </p>
-            <div className="overview-terminal">
+            <div
+              className="overview-terminal"
+              data-enter="rise-sm"
+              style={{ "--enter-delay": "620ms" } as CSSProperties}
+            >
               <div className="terminal-label">Q / 01 — QUESTION INPUT</div>
               <form
                 onSubmit={(event) => {
@@ -523,6 +519,8 @@ export function LearningOverview({
                   type="button"
                   key={item.id}
                   disabled={!canRun}
+                  data-enter="rise-sm"
+                  style={{ "--enter-delay": `${700 + index * 60}ms` } as CSSProperties}
                   onClick={() => onQuestion(item.question)}
                 >
                   <span className="prompt-number">0{index + 1}</span>
@@ -530,13 +528,17 @@ export function LearningOverview({
                   <Icon name="arrow" size={14} />
                 </button>
               ))}
-              <p>
+              <p data-enter="fade" style={{ "--enter-delay": "880ms" } as CSSProperties}>
                 <Icon name="check" size={13} />
                 推荐问题可直接分析，无需 AI 连接
               </p>
             </section>
           </section>
-          <section className="panel overview-source-card">
+          <section
+            className="panel overview-source-card"
+            data-enter="slide-right"
+            style={{ "--enter-delay": "540ms" } as CSSProperties}
+          >
             <div className="source-card-label">
               <Icon name="database" size={17} />
               <span>数据概况</span>

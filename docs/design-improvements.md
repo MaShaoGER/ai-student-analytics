@@ -1,5 +1,13 @@
 # 学析台前端设计（2026-10-17）
 
+## 全站统一动效系统（2026-10-18，预览分支 `test/ui-home-preview`）
+
+- 共建 6 个代理（Lead + 5 个动效任务）：新增 `app/motion.css` 作为唯一动效契约（令牌、`data-enter` / `data-enter-group` / `data-grow` / `.motion-skeleton` 声明式 API、全局控件反馈、页面切换淡入、抽屉与主题揭示），新增 `components/ui/animated-number.tsx` 共享计数组件；页面专属样式分文件维护：`app/motion-analysis.css`、`app/motion-conversation.css`、`app/motion-auth.css`。
+- 覆盖范围：登录页（品牌/标题错峰、概念信号图描线、表单卡与字段错峰）、工作台标题与视图切换、学习全景、指标分析（控件/结果卡/焦点数字/图表/表格行/导出区）、一句话分析（页面层级、消息逐条、图表附件展开、输入区、工具结果卡）、关联全景（SVG 描线/柱体生长）、学科关联（chord 入场）、成绩分布（热力图逐行扫入 + 数字计数）、图表工坊（ECharts 入场 + 控件错峰）、数据、分析报告、系统管理、我的账号，以及全站导航抽屉与主题圆形揭示。
+- 约束与偏好：只动画 transform/opacity/clip-path/stroke-dashoffset；键盘交互即时、页面入场仍保留一次；`data-motion` 开关与系统 reduced-motion 全链路生效；关闭→重开动效不重播已渲染页面（下一次视图切换恢复）。业务逻辑、接口、文案与 aria 结构未改动，无新增依赖。
+- 验证：`npx tsc --noEmit` 通过；406 项单元/路由测试通过（23 项 HTTP 用例按惯例默认跳过）；隔离浏览器逐页核对登录、全景、指标分析四视图、图表工坊、一句话分析问答、数据、报告、系统管理、我的账号，浅/深主题、1512×982 与 390×844、抽屉与主题揭示、`prefers-reduced-motion`（0 个运行中动画），320/390 无页面横向溢出；控制台仅既有 favicon 404。未运行生产构建、完整 HTTP 套件与真机。
+- 演示素材：`output/playwright/motion/demo/`（全站动效视频与关键帧）；各代理截图分别在 `output/playwright/motion/{analysis,conversation,charts-a,charts-b,auth}/`。
+
 ## 主页激进动画风格（2026-10-18，预览分支 `test/ui-home-preview`）
 
 - 只改主页，不动其它页面：学习全景每次挂载（登录、切换导航回到首页、浏览器刷新）播放一轮约 1.2s 的入场编排——眉题裁切擦入、标题 720ms 上浮、指标卡错峰入场、分区条横向擦出、右栏从右侧滑入、排行行与分布条错峰。安全/减弱动效开关与系统设置优先；键盘用户的交互反馈仍即时，入场动画作为数据呈现仍在切换时播放一次。

@@ -16,7 +16,7 @@ import {
 import { DIMENSIONS, METRICS } from "./metrics";
 import type { ScoreDistributionData } from "./score-distribution";
 import { courseRelationRequestSchema, type CourseRelationData } from "./course-relations";
-import type { StudioProjectData, StudioRow, StudioTable } from "./chart-studio";
+import type { StudioProjectData, StudioRow, StudioTable, StudioRelationshipMetric } from "./chart-studio";
 import {
   coursePanoramaRequestSchema,
   PanoramaSelectionError,
@@ -358,7 +358,7 @@ export async function courseRelations(
   input: unknown,
   options: QueryExecutionOptions = {},
 ): Promise<CourseRelationData> {
-  const { datasetId, term, threshold } = courseRelationRequestSchema.parse(input);
+  const { datasetId, term, threshold, courses: requestedCourses = [] } = courseRelationRequestSchema.parse(input);
   if (!validateFiles(datasetId)) throw new Error("成绩数据源不可用。");
   const minSampleSize = 3;
   const courseLimit = 12;
@@ -380,8 +380,10 @@ export async function courseRelations(
       WHERE code_presentation = ${literal}
       GROUP BY code_module HAVING COUNT(*) >= ${minSampleSize}`);
     const [total] = await sql("SELECT COUNT(*) AS total FROM eligible_courses");
+    const preferred = requestedCourses.map((name) => `'${name.replaceAll("'", "''")}'`);
+    const priority = preferred.length ? `CASE WHEN code_module IN (${preferred.join(", ")}) THEN 0 ELSE 1 END,` : "";
     await sql(`CREATE TEMP TABLE selected_courses AS SELECT * FROM eligible_courses
-      ORDER BY sample_size DESC, code_module ASC LIMIT ${courseLimit}`);
+      ORDER BY ${priority} sample_size DESC, code_module ASC LIMIT ${courseLimit}`);
     const courses = await sql("SELECT * FROM selected_courses ORDER BY code_module ASC");
     const pairs = await sql(`
       WITH selected_scores AS (
@@ -416,7 +418,7 @@ export async function coursePanorama(
   input: unknown,
   options: QueryExecutionOptions = {},
 ): Promise<CoursePanoramaData> {
-  const { datasetId, term, threshold, source, target } = coursePanoramaRequestSchema.parse(input);
+  const { datasetId, term, threshold, source, target, courses: requestedCourses = [] } = coursePanoramaRequestSchema.parse(input);
   if (!validateFiles(datasetId)) throw new Error("成绩数据源不可用。");
   const minSampleSize = 3;
   const courseLimit = 12;
@@ -441,8 +443,10 @@ export async function coursePanorama(
       WHERE code_presentation = ${literal(activeTerm)}
       GROUP BY code_module HAVING COUNT(*) >= ${minSampleSize}`);
     const [total] = await sql("SELECT COUNT(*) AS total FROM eligible_courses");
+    const preferred = requestedCourses.map((name) => `'${name.replaceAll("'", "''")}'`);
+    const priority = preferred.length ? `CASE WHEN code_module IN (${preferred.join(", ")}) THEN 0 ELSE 1 END,` : "";
     await sql(`CREATE TEMP TABLE selected_courses AS SELECT * FROM eligible_courses
-      ORDER BY sample_size DESC, code_module ASC LIMIT ${courseLimit}`);
+      ORDER BY ${priority} sample_size DESC, code_module ASC LIMIT ${courseLimit}`);
     await sql(`CREATE TEMP TABLE selected_scores AS
       SELECT s.* FROM student_scores s JOIN selected_courses c USING (code_module)
       WHERE s.code_presentation = ${literal(activeTerm)}`);
@@ -512,6 +516,7 @@ export async function chartStudioData(
   term?: string,
   course = "",
   options: QueryExecutionOptions = {},
+  selection: { courses?: string[]; beforeTerm?: string; densityMetric?: StudioRelationshipMetric } = {},
 ): Promise<StudioProjectData> {
   if (!validateFiles(datasetId)) throw new Error("数据源不可用。");
   const literal = (value: string) => `'${value.replaceAll("'", "''")}'`;
@@ -527,7 +532,8 @@ export async function chartStudioData(
     const result: StudioProjectData = { datasetId, term: activeTerm, terms, course, courses: [], tables: {} };
     if (!activeTerm || !terms.includes(activeTerm)) return result;
     const whereTerm = `code_presentation = ${literal(activeTerm)}`;
-    const whereCourse = course ? ` AND code_module = ${literal(course)}` : "";
+    const chosen = selection.courses?.length ? selection.courses : course ? [course] : [];
+    const whereCourse = chosen.length ? ` AND code_module IN (${chosen.map(literal).join(", ")})` : "";
     const courses = await sql(`SELECT code_module FROM all_scores WHERE ${whereTerm}
       GROUP BY code_module HAVING COUNT(*) >= 3 ORDER BY code_module ASC`);
     result.courses = courses.map((row) => String(row.code_module));
@@ -540,7 +546,8 @@ export async function chartStudioData(
     result.tables.boxplot = table(box, ["课程", "最小值", "下四分位数", "中位数", "上四分位数", "最大值", "样本数"],
       `${activeTerm} · 有效成绩五数概要，须线表示最小值和最大值；每组至少 3 人。`);
     const index = terms.indexOf(activeTerm);
-    const previous = terms[index + 1];
+    const previous = selection.beforeTerm ?? terms[index + 1];
+    if (previous && !terms.includes(previous)) throw new Error("对比学期不在当前数据中。");
     const comparison = previous ? await sql(`
       WITH before AS (SELECT code_module, AVG(score) AS mean, COUNT(*) AS n FROM all_scores
         WHERE code_presentation = ${literal(previous)}${whereCourse} GROUP BY code_module HAVING COUNT(*) >= 3),
@@ -570,7 +577,13 @@ export async function chartStudioData(
       await sql(`CREATE TEMP TABLE studio_attributes AS
         SELECT code_module, code_presentation, id_student,
           AVG(CASE WHEN TRY_CAST(attendance_rate AS DOUBLE) BETWEEN 0 AND 100 THEN TRY_CAST(attendance_rate AS DOUBLE) END) AS attendance,
-          AVG(CASE WHEN TRY_CAST(homework_completion_rate AS DOUBLE) BETWEEN 0 AND 100 THEN TRY_CAST(homework_completion_rate AS DOUBLE) END) AS homework
+          AVG(CASE WHEN TRY_CAST(homework_completion_rate AS DOUBLE) BETWEEN 0 AND 100 THEN TRY_CAST(homework_completion_rate AS DOUBLE) END) AS homework,
+          AVG(CASE WHEN TRY_CAST(absent_sessions AS DOUBLE) BETWEEN 0 AND TRY_CAST(scheduled_sessions AS DOUBLE)
+            AND TRY_CAST(excused_sessions AS DOUBLE) BETWEEN 0 AND TRY_CAST(scheduled_sessions AS DOUBLE)
+            AND TRY_CAST(absent_sessions AS DOUBLE) + TRY_CAST(excused_sessions AS DOUBLE) <= TRY_CAST(scheduled_sessions AS DOUBLE)
+            THEN TRY_CAST(absent_sessions AS DOUBLE) + TRY_CAST(excused_sessions AS DOUBLE) END) AS absence,
+          AVG(CASE WHEN TRY_CAST(absent_sessions AS DOUBLE) BETWEEN 0 AND TRY_CAST(scheduled_sessions AS DOUBLE)
+            THEN TRY_CAST(absent_sessions AS DOUBLE) END) AS unexcused
         FROM ${csv(DEMO_OUTCOMES)} WHERE ${whereTerm}${whereCourse} GROUP BY ALL`);
       const paths = await sql(`SELECT
           CASE WHEN attendance < 80 THEN '出勤低于80%' WHEN attendance < 95 THEN '出勤80–95%' ELSE '出勤至少95%' END AS "出勤档位",
@@ -587,7 +600,18 @@ export async function chartStudioData(
         WHERE attendance IS NOT NULL GROUP BY ALL HAVING COUNT(*) >= 3 ORDER BY ALL`);
       result.tables.density = table(density, ["出勤率区间中心", "成绩区间中心", "频数"],
         `${activeTerm} · 按出勤率 10 个百分点、成绩 5 分聚合；坐标为区间中心，频数少于 3 人不展示。`);
-    } else {
+    }
+    if (datasetId === "demo" && (selection.densityMetric === "absence" || selection.densityMetric === "unexcused")) {
+      const metric = selection.densityMetric;
+      const label = metric === "absence" ? "缺勤课时" : "旷课课时";
+      const density = await sql(`SELECT ${metric} AS "${label}",
+          LEAST(19, FLOOR(score / 5)) * 5 + 2.5 AS "成绩区间中心", COUNT(*) AS "频数"
+        FROM studio_scores JOIN studio_attributes USING(code_module, code_presentation, id_student)
+        WHERE ${metric} IS NOT NULL GROUP BY ALL HAVING COUNT(*) >= 3 ORDER BY ALL`);
+      result.tables.density = table(density, [label, "成绩区间中心", "频数"],
+        `${activeTerm} · ${label}按学生-课程-学期统计，${metric === "absence" ? "包含请假缺席与旷课" : "仅无有效批准请假的旷课，不含请假缺席"}；每课时45分钟，不等同于请假申请或缺勤事件次数。成绩按5分分档，频数为选课人次；少于3人的组合不展示，缺失记录不当作零，也不以活跃度替代。`);
+    }
+    if (datasetId === "oulad" || selection.densityMetric === "activity") {
       const density = await sql(`WITH activity AS (SELECT code_module, code_presentation, id_student, SUM(activity) AS activity
           FROM studio_activity WHERE ${whereTerm}${whereCourse} GROUP BY ALL)
         SELECT FLOOR(activity / 100) * 100 + 50 AS "活动量区间中心",
@@ -595,7 +619,7 @@ export async function chartStudioData(
         FROM studio_scores JOIN activity USING(code_module, code_presentation, id_student)
         GROUP BY ALL HAVING COUNT(*) >= 3 ORDER BY ALL LIMIT 2000`);
       result.tables.density = table(density, ["活动量区间中心", "成绩区间中心", "频数"],
-        `${activeTerm} · 活动量按 100 次、成绩按 5 分汇总，频数少于 3 人不展示；OULAD 不含校园出勤和作业完成率。`);
+        `${activeTerm} · 活动量按 100 次、成绩按 5 分汇总，频数少于 3 人不展示；${datasetId === "oulad" ? "OULAD 不含校园出勤和作业完成率。" : "演示数据，活动量与成绩不代表因果关系。"}`);
     }
     return result;
   }, { ...API_QUERY_LIMITS.analysis, maxResultRows: 2500 }, options);

@@ -1,0 +1,57 @@
+/* 一句话分析（对话）页动效（由 conversation 动效任务维护）。
+   仅添加该页专属的层级入场与全局选择器样式：标题/数据源/消息列表/输入区的编排，
+   以及工具结果卡的全局节奏。通用 keyframes 与令牌复用 app/motion.css，
+   消息、图表附件展开、等待反馈等细节在 components/ai-conversation.module.css。 */
+
+/* 页面层级：眉题擦入 → 标题上浮 → 说明淡入 → 数据源随后出现。
+   .workbench-page-heading 为全站共用结构，这里以 [data-conversation="true"] 限定对话页
+   （进入/离开「一句话分析」模式时该属性切换，动画随之重播）。 */
+html[data-motion="on"]
+  .workbench-shell[data-conversation="true"]
+  .workbench-page-heading
+  .page-eyebrow {
+  animation: enter-wipe 480ms var(--enter-ease) both;
+}
+html[data-motion="on"]
+  .workbench-shell[data-conversation="true"]
+  .workbench-page-heading
+  .page-introduction
+  h1 {
+  animation: enter-rise 620ms var(--enter-ease) 60ms both;
+}
+html[data-motion="on"]
+  .workbench-shell[data-conversation="true"]
+  .workbench-page-heading
+  .page-introduction
+  p {
+  animation: enter-rise-sm 480ms var(--enter-ease) 160ms both;
+}
+html[data-motion="on"]
+  .workbench-shell[data-conversation="true"]
+  .workbench-page-heading
+  .workbench-source
+  > span {
+  animation: enter-fade 400ms var(--ease-out) 240ms both;
+}
+html[data-motion="on"]
+  .workbench-shell[data-conversation="true"]
+  .workbench-page-heading
+  .workbench-source
+  select {
+  animation: enter-fade 400ms var(--ease-out) 280ms both;
+}
+
+/* 页面入场属于内容呈现而非交互反馈：键盘模态下仍保留，
+   与 motion.css 对 [data-enter] / .view-surface 的约定保持一致，按基础时长播放。 */
+html[data-motion="on"]:not([data-input-modality="pointer"])
+  .workbench-shell[data-conversation="true"]
+  .workbench-page-heading
+  :is(
+    .page-eyebrow,
+    .page-introduction h1,
+    .page-introduction p,
+    .workbench-source > span,
+    .workbench-source select
+  ) {
+  animation-duration: var(--enter-dur, var(--motion-enter)) !important;
+}

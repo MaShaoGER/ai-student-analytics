@@ -1,13 +1,24 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import dynamic from "next/dynamic";
+import { toolLabel } from "@/lib/ai/chart-capabilities";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { AnalysisResultView } from "./analysis-result";
 import { Icon } from "./app-icons";
+import { useMotionPreferences } from "./ui/motion-preferences";
 import { GOLDEN_CASES } from "@/lib/analysis/golden-cases";
 import { distributionRows, scoreInterval } from "@/lib/analysis/score-distribution";
 import type { AnalysisResult } from "@/lib/analysis/types";
 import type { ChartViewType } from "@/lib/analysis/visualization";
-import type { ChatArtifact, ChatMessage, ChatResponse } from "@/lib/ai/chat-types";
+import type { ChatArtifact, ChatMessage, ChatResponse, ChatDisplayView } from "@/lib/ai/chat-types";
 import styles from "./ai-conversation.module.css";
 
 export type ConversationTurn = ChatMessage & { id: string; response?: ChatResponse };
@@ -23,10 +34,76 @@ function Speaker({ role }: { role: ChatMessage["role"] }) {
   );
 }
 
+const ConversationToolResult = dynamic(
+  () => import("./conversation-tool-result").then((m) => m.ConversationToolResult),
+  {
+    loading: () => (
+      <p className={styles.loadingHint} role="status">
+        正在打开图表…
+      </p>
+    ),
+  },
+);
+
 function artifactLabel(artifact: ChatArtifact) {
+  if (artifact.kind === "studio")
+    return `${artifact.tool === "density" && artifact.densityMode === "scatter" ? "关系散点图" : toolLabel(artifact.tool)} · ${artifact.term}`;
+  if (artifact.kind === "relations" || artifact.kind === "panorama")
+    return `${artifact.kind === "relations" ? "学科关联弦图" : "学科全景"} · ${artifact.data.term ?? "无可用学期"}`;
   return artifact.kind === "analysis"
     ? `${artifact.result.metricLabel} · 按${artifact.result.dimension === "term" ? "学期" : "课程"} · ${artifact.result.rows.length} 个分组`
     : `成绩分布 · ${artifact.term || "全部学期"} · ${artifact.course || "全部课程"} · 每 ${artifact.binWidth} 分一档`;
+}
+
+/**
+ * 图表附件的展开/收起：展开/收起只动画 transform + opacity，高度由内容自然撑开，
+ * 不做 layout 动画。收起时先播完退出过渡再卸载图表，避免"啪"地消失；
+ * 动效关闭或系统减少动态效果时直接切换，键盘用户保持即时反馈。
+ */
+function ChartAttachmentBody({
+  expanded,
+  id,
+  children,
+}: {
+  expanded: boolean;
+  id: string;
+  children: ReactNode;
+}) {
+  const { enabled, reduced } = useMotionPreferences();
+  const [rendered, setRendered] = useState(expanded);
+  const [closing, setClosing] = useState(false);
+
+  useEffect(() => {
+    if (expanded) {
+      setRendered(true);
+      setClosing(false);
+      return;
+    }
+    if (!rendered) return;
+    if (!enabled || reduced) {
+      setRendered(false);
+      setClosing(false);
+      return;
+    }
+    setClosing(true);
+    const timer = window.setTimeout(() => {
+      setRendered(false);
+      setClosing(false);
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [enabled, expanded, reduced, rendered]);
+
+  return (
+    <div
+      id={id}
+      className={styles.attachmentBody}
+      data-state={closing ? "closing" : "open"}
+      hidden={!rendered}
+      inert={!expanded || closing ? true : undefined}
+    >
+      {rendered && children}
+    </div>
+  );
 }
 
 export function ConversationWorkspace({
@@ -59,7 +136,7 @@ export function ConversationWorkspace({
   onStop: () => void;
   onClear: () => void;
   onExpandChart: (id: string | null) => void;
-  onChartChange: (id: string, view: ChartViewType | "heatmap") => void;
+  onChartChange: (id: string, view: ChatDisplayView) => void;
   onReport: (result: AnalysisResult) => void;
   onConfigure?: () => void;
   notice?: ReactNode;
@@ -122,7 +199,11 @@ export function ConversationWorkspace({
 
   return (
     <div ref={root} className={styles.conversation}>
-      <p className={styles.availability}>
+      <p
+        className={styles.availability}
+        data-enter="fade"
+        style={{ "--enter-delay": "300ms" } as CSSProperties}
+      >
         <span className={aiReady ? "status-dot" : "status-dot is-muted"} />
         {aiReady ? "连续对话已开启" : "推荐问题可直接使用"}
       </p>
@@ -132,12 +213,18 @@ export function ConversationWorkspace({
         aria-label="分析对话"
         aria-live="polite"
         aria-relevant="additions"
+        data-enter="fade"
+        style={{ "--enter-delay": "340ms" } as CSSProperties}
       >
         {!messages.length && (
-          <div className={styles.empty}>
+          <div
+            className={styles.empty}
+            data-enter="rise-sm"
+            style={{ "--enter-delay": "400ms" } as CSSProperties}
+          >
             <Speaker role="assistant" />
             <p>
-              可以先聊分析思路，也可以直接查询成绩、活跃次数、课程完成率或成绩分布。继续追问会沿用当前筛选。
+              可以直接说想比较什么、观察趋势、分布或指标关系。我会选择合适的文字、图表或数值表，也可以按你的要求调整。继续追问会沿用当前筛选。
             </p>
             <div className={styles.suggestions} aria-label="推荐问题">
               {[GOLDEN_CASES[0], GOLDEN_CASES[3], GOLDEN_CASES[6]].map((item) => (
@@ -165,6 +252,12 @@ export function ConversationWorkspace({
               key={message.id}
               className={styles.message}
               data-role={message.role}
+              data-enter="rise-sm"
+              style={
+                {
+                  "--enter-delay": index === messages.length - 1 ? "70ms" : "0ms",
+                } as CSSProperties
+              }
             >
               <Speaker role={message.role} />
               <p className={styles.messageText}>{message.content}</p>
@@ -173,8 +266,12 @@ export function ConversationWorkspace({
                   {response.warning}
                 </p>
               )}
-              {artifact && (
-                <div className={styles.chartAttachment}>
+              {artifact && response?.presentation !== "text" && (
+                <div
+                  className={styles.chartAttachment}
+                  data-enter="fade"
+                  style={{ "--enter-delay": "140ms" } as CSSProperties}
+                >
                   <button
                     type="button"
                     className={styles.chartToggle}
@@ -187,20 +284,23 @@ export function ConversationWorkspace({
                     <small>{expanded ? "收起图表" : "展开图表"}</small>
                     <Icon name="chevron" size={15} />
                   </button>
-                  <div id={chartId} hidden={!expanded}>
-                    {expanded && (
-                      <ConversationResult
-                        response={response}
-                        artifact={artifact}
-                        onChartChange={(view) => onChartChange(message.id, view)}
-                        onReport={onReport}
-                      />
-                    )}
-                  </div>
+                  <ChartAttachmentBody expanded={expanded} id={chartId}>
+                    <ConversationResult
+                      response={response}
+                      artifact={artifact}
+                      onChartChange={(view) => onChartChange(message.id, view)}
+                      onReport={onReport}
+                    />
+                  </ChartAttachmentBody>
                 </div>
               )}
               {index === messages.length - 1 && response?.suggestions.length ? (
-                <div className={styles.suggestions} aria-label="继续探索">
+                <div
+                  className={styles.suggestions}
+                  aria-label="继续探索"
+                  data-enter="fade"
+                  style={{ "--enter-delay": "240ms" } as CSSProperties}
+                >
                   {response.suggestions.map((suggestion) => (
                     <button
                       type="button"
@@ -219,11 +319,21 @@ export function ConversationWorkspace({
         })}
         {loading && (
           <div ref={pending} className={styles.pending}>
-            <div className={styles.message} data-role="user">
+            <div
+              className={styles.message}
+              data-role="user"
+              data-enter="rise-sm"
+              style={{ "--enter-delay": "0ms" } as CSSProperties}
+            >
               <Speaker role="user" />
               <p className={styles.messageText}>{pendingQuestion}</p>
             </div>
-            <div className={styles.message} data-role="assistant">
+            <div
+              className={styles.message}
+              data-role="assistant"
+              data-enter="rise-sm"
+              style={{ "--enter-delay": "60ms" } as CSSProperties}
+            >
               <Speaker role="assistant" />
               <p className={styles.pendingStatus} role="status">
                 <span className="spinner" />
@@ -248,6 +358,8 @@ export function ConversationWorkspace({
         <form
           className={styles.composer}
           aria-label="对话输入"
+          data-enter="rise"
+          style={{ "--enter-delay": "420ms" } as CSSProperties}
           onSubmit={(event) => {
             event.preventDefault();
             onAsk();
@@ -464,7 +576,7 @@ function ConversationResult({
 }: {
   response: ChatResponse;
   artifact: ChatArtifact;
-  onChartChange: (view: ChartViewType | "heatmap") => void;
+  onChartChange: (view: ChatDisplayView) => void;
   onReport: (result: AnalysisResult) => void;
 }) {
   return (
@@ -487,8 +599,10 @@ function ConversationResult({
           loading={false}
           onReport={onReport}
         />
-      ) : (
+      ) : artifact.kind === "distribution" ? (
         <DistributionResult artifact={artifact} onViewChange={onChartChange} />
+      ) : (
+        <ConversationToolResult artifact={artifact} onViewChange={onChartChange} />
       )}
     </div>
   );

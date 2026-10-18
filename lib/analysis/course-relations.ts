@@ -5,6 +5,7 @@ export const courseRelationRequestSchema = z.object({
   datasetId: dataSourceSchema,
   term: z.string().trim().min(1).max(80).optional(),
   threshold: z.coerce.number().int().min(1).max(100).default(60),
+  courses: z.array(z.string().trim().min(1).max(100)).max(12).optional(),
 });
 
 export type CourseRelationRequest = z.infer<typeof courseRelationRequestSchema>;

@@ -1,0 +1,131 @@
+/* 登录页与系统管理页动效（由 auth/admin 动效任务维护）。
+   仅添加这两页专属的入场/错峰动画；通用能力复用 [data-enter] / [data-enter-group]。
+   契约见 app/motion.css 与 docs/motion-system.md，动画只涉及 transform / opacity /
+   clip-path / stroke-dashoffset，并跟随 html[data-motion] 与 reduced-motion。 */
+
+/* ---- 登录页 · 概念信号图描线（一次性，页面专属） ----------------------
+   三条路径在 JSX 里用 pathLength="1" 归一化，stroke-dashoffset 从 1 画到 0；
+   参考网格先出现，数据点在线条画到对应位置时依次亮起，随后静止。 */
+@keyframes auth-signal-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes auth-signal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes auth-signal-point-in {
+  from {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes auth-signal-ring-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+}
+
+html[data-motion="on"] .login-signal-map .signal-path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: auth-signal-draw var(--signal-dur, 800ms) var(--enter-ease) var(--signal-delay, 0ms)
+    both;
+}
+
+html[data-motion="on"] .login-signal-map .signal-path-muted {
+  --signal-delay: 360ms;
+  --signal-dur: 680ms;
+}
+
+html[data-motion="on"] .login-signal-map .signal-path-secondary {
+  --signal-delay: 420ms;
+  --signal-dur: 760ms;
+}
+
+html[data-motion="on"] .login-signal-map .signal-path-primary {
+  --signal-delay: 480ms;
+  --signal-dur: 880ms;
+}
+
+/* 点阵底纹网格随卡片一起出现，不参与描线。 */
+html[data-motion="on"] .login-signal-map > rect {
+  animation: auth-signal-fade-in 560ms var(--enter-ease) 320ms both;
+}
+
+html[data-motion="on"] .login-signal-map .signal-point {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: auth-signal-point-in 420ms var(--enter-ease) 0ms both;
+}
+
+html[data-motion="on"] .login-signal-map .signal-point:nth-of-type(1) {
+  animation-delay: 820ms;
+}
+
+html[data-motion="on"] .login-signal-map .signal-point:nth-of-type(2) {
+  animation-delay: 960ms;
+}
+
+html[data-motion="on"] .login-signal-map .signal-point:nth-of-type(3) {
+  animation-delay: 1080ms;
+}
+
+html[data-motion="on"] .login-signal-map .signal-point:nth-of-type(4) {
+  animation-delay: 1180ms;
+}
+
+/* 焦点环是 SVG 里的第 5 个圆，线画到终点后收束。 */
+html[data-motion="on"] .login-signal-map circle:not(.signal-point) {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: auth-signal-ring-in 560ms var(--enter-ease) 1180ms both;
+}
+
+/* 页面加载入场属于内容呈现而非交互反馈（与 motion.css 对 [data-enter] 的约定一致）：
+   键盘模态下仍保留描线；只有按压/悬停类交互反馈才要求指针模态。 */
+html[data-motion="on"]:not([data-input-modality="pointer"]) .login-signal-map .signal-path {
+  animation-duration: var(--signal-dur, 800ms) !important;
+}
+
+html[data-motion="on"]:not([data-input-modality="pointer"]) .login-signal-map .signal-point {
+  animation-duration: 420ms !important;
+}
+
+html[data-motion="on"]:not([data-input-modality="pointer"]) .login-signal-map > rect,
+html[data-motion="on"]:not([data-input-modality="pointer"])
+  .login-signal-map
+  circle:not(.signal-point) {
+  animation-duration: 560ms !important;
+}
+
+/* 关闭动效或系统减少动态效果时，信号图直接呈现最终状态。 */
+@media (prefers-reduced-motion: reduce) {
+  html[data-motion="on"] .login-signal-map .signal-path,
+  html[data-motion="on"] .login-signal-map .signal-point,
+  html[data-motion="on"] .login-signal-map > rect,
+  html[data-motion="on"] .login-signal-map circle:not(.signal-point) {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+}

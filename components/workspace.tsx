@@ -4,7 +4,7 @@ import { NavigationIndicator } from "@/components/ui/navigation-indicator";
 import { MotionToggle } from "@/components/ui/motion-preferences";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { AnalysisResultView } from "@/components/analysis-result";
 import { Icon } from "@/components/app-icons";
 import { LearningOverview, type OverviewResults } from "@/components/learning-overview";
@@ -13,7 +13,13 @@ import { ThemeToggle, useTheme } from "@/components/ui/theme-provider";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { ScoreDistribution } from "@/components/score-distribution";
 import { ConversationWorkspace, type ConversationTurn } from "@/components/ai-conversation";
-import type { ChatIntent, ChatResponse } from "@/lib/ai/chat-types";
+import {
+  artifactWithView,
+  intentWithView,
+  type ChatDisplayView,
+  type ChatIntent,
+  type ChatResponse,
+} from "@/lib/ai/chat-types";
 import { createPlan } from "@/lib/analysis/plan";
 import { METRICS } from "@/lib/analysis/metrics";
 import {
@@ -119,7 +125,11 @@ const formatNumber = (value: number) => value.toLocaleString("zh-CN", { maximumF
 function DataSourceDetails({ profile }: { profile?: DatasetProfile }) {
   if (!profile) return null;
   return (
-    <details className="panel source-details">
+    <details
+      className="panel source-details"
+      data-enter="panel"
+      style={{ "--enter-delay": "220ms" } as CSSProperties}
+    >
       <summary>
         <span className="feature-icon">
           <Icon name="database" size={19} />
@@ -236,7 +246,11 @@ function AccountPanel({ user, expire }: { user: SessionUser; expire: () => void 
     }
   }
   return (
-    <div className="account-grid">
+    <div
+      className="account-grid"
+      data-enter-group="rise"
+      style={{ "--enter-group-delay": "80ms" } as CSSProperties}
+    >
       <section className="panel account-card">
         <span className="avatar avatar-large">{user.displayName.slice(0, 1)}</span>
         <h2>{user.displayName}</h2>
@@ -343,7 +357,11 @@ function ReportCenter({
   }
   if (!result)
     return (
-      <section className="panel report-empty">
+      <section
+        className="panel report-empty"
+        data-enter="rise"
+        style={{ "--enter-delay": "80ms" } as CSSProperties}
+      >
         <span className="feature-icon">
           <Icon name="file" size={26} />
         </span>
@@ -356,8 +374,16 @@ function ReportCenter({
       </section>
     );
   return (
-    <section className="panel report-workspace">
-      <div className="report-controls">
+    <section
+      className="panel report-workspace"
+      data-enter="panel"
+      style={{ "--enter-delay": "80ms" } as CSSProperties}
+    >
+      <div
+        className="report-controls"
+        data-enter-group="rise"
+        style={{ "--enter-group-delay": "60ms" } as CSSProperties}
+      >
         <div>
           <span className="section-kicker">ANALYSIS REPORT</span>
           <h2>本次会话的分析报告</h2>
@@ -416,6 +442,8 @@ function ReportCenter({
       </div>
       <iframe
         className="report-frame"
+        data-enter="fade"
+        style={{ "--enter-delay": "280ms" } as CSSProperties}
         ref={frame}
         sandbox="allow-same-origin allow-modals"
         srcDoc={html}
@@ -696,6 +724,7 @@ export function Workspace() {
     setError(null);
   }
   function navigate(next: View) {
+    delete document.documentElement.dataset.motionReplayGuard;
     if (next !== "analysis") {
       askPending.current?.abort();
       askPending.current = null;
@@ -706,6 +735,7 @@ export function Workspace() {
     setError(null);
   }
   function changeMode(next: AnalysisMode) {
+    delete document.documentElement.dataset.motionReplayGuard;
     askPending.current?.abort();
     askPending.current = null;
     setAskLoading(false);
@@ -778,7 +808,7 @@ export function Workspace() {
       );
       setQuestion((draft) => (draft === nextQuestion ? "" : draft));
       if (payload.artifact) {
-        setExpandedChartId(turnId);
+        if (payload.presentation !== "text") setExpandedChartId(turnId);
         if (payload.artifact.kind === "analysis") {
           setAskResult(payload.artifact.result);
           rememberResult(payload.artifact.result);
@@ -794,21 +824,11 @@ export function Workspace() {
       }
     }
   }
-  function changeChatView(id: string, chart: ChartViewType | "heatmap") {
+  function changeChatView(id: string, chart: ChatDisplayView) {
     const selected = chatMessages.find((message) => message.id === id);
     const artifact = selected?.response?.artifact;
-    if (
-      !artifact ||
-      (artifact.kind === "analysis" && chart === "heatmap") ||
-      (artifact.kind === "distribution" && chart !== "table" && chart !== "heatmap")
-    )
-      return;
-    const updated =
-      artifact.kind === "analysis" && chart !== "heatmap"
-        ? { ...artifact, view: chart }
-        : artifact.kind === "distribution" && (chart === "table" || chart === "heatmap")
-          ? { ...artifact, view: chart }
-          : artifact;
+    if (!artifact) return;
+    const updated = artifactWithView(artifact, chart);
     setChatMessages((previous) =>
       previous.map((message) =>
         message.id === id && message.response
@@ -820,10 +840,7 @@ export function Workspace() {
       .reverse()
       .find((message) => message.response?.artifact);
     if (latestArtifact?.id === id && chatContext) {
-      if (chatContext.kind === "analysis" && chart !== "heatmap")
-        setChatContext({ ...chatContext, view: chart });
-      if (chatContext.kind === "distribution" && (chart === "table" || chart === "heatmap"))
-        setChatContext({ ...chatContext, view: chart });
+      setChatContext(intentWithView(chatContext, chart));
     }
   }
   if (bootLoading)
@@ -868,7 +885,7 @@ export function Workspace() {
   const loading = mode === "metrics" ? browseLoading : askLoading;
   const showDataset = view === "overview" || view === "analysis" || view === "data";
   const notice = error && (
-    <div className="notice notice-error global-notice" role="alert">
+    <div className="notice notice-error global-notice" role="alert" data-enter="fade">
       <Icon name="info" size={18} />
       <span>
         {error}
@@ -925,11 +942,17 @@ export function Workspace() {
     </nav>
   );
   const pageHeader = (
-    <div className="page-introduction">
-      <span className="page-eyebrow">
+    <div className="page-introduction" key={`header-${view}-${mode}`}>
+      <span className="page-eyebrow" data-enter="wipe">
         {view === "overview" ? "01 / LEARNING OVERVIEW" : "学析台 / LEARNING WORKSPACE"}
       </span>
-      <h1 ref={pageHeading} tabIndex={-1} id="workspace-heading">
+      <h1
+        ref={pageHeading}
+        tabIndex={-1}
+        id="workspace-heading"
+        data-enter="rise"
+        style={{ "--enter-delay": "70ms" } as CSSProperties}
+      >
         {view === "overview" ? (
           <>
             学习，
@@ -940,11 +963,18 @@ export function Workspace() {
           currentPage.title
         )}
       </h1>
-      <p>{currentPage.description}</p>
+      <p data-enter="rise-sm" style={{ "--enter-delay": "180ms" } as CSSProperties}>
+        {currentPage.description}
+      </p>
     </div>
   );
   const sourcePicker = showDataset && (
-    <label className="workbench-source">
+    <label
+      className="workbench-source"
+      key={`source-${view}-${mode}`}
+      data-enter="rise-sm"
+      style={{ "--enter-delay": "240ms" } as CSSProperties}
+    >
       <span>
         <Icon name="database" size={14} />
         当前数据源
@@ -977,7 +1007,12 @@ export function Workspace() {
       <a className="skip-link" href="#main-content">
         跳到主要内容
       </a>
-      <aside className="instrument-rail" aria-label="工作台工具">
+      <aside
+        className="instrument-rail"
+        aria-label="工作台工具"
+        data-enter="slide-left"
+        style={{ "--enter-dur": "620ms" } as CSSProperties}
+      >
         <div className="rail-content">
           <button
             type="button"
@@ -1029,7 +1064,11 @@ export function Workspace() {
           <span className="rail-hatch" aria-hidden="true" />
         </div>
       </aside>
-      <header className="workbench-header">
+      <header
+        className="workbench-header"
+        data-enter="fade"
+        style={{ "--enter-delay": "60ms" } as CSSProperties}
+      >
         <div className="desktop-navigation">{navigation}</div>
         <span className="mobile-workspace-title">
           学析台<small>{currentPage.title}</small>
@@ -1136,7 +1175,11 @@ export function Workspace() {
                   data-metric={mode === "metrics" ? metric : undefined}
                   aria-label="学习分析工作区"
                 >
-                  <div className="analysis-workspace-controls">
+                  <div
+                    className="analysis-workspace-controls"
+                    data-enter="rise-sm"
+                    style={{ "--enter-delay": "60ms" } as CSSProperties}
+                  >
                     {mode === "metrics" && (
                       <div className="control-field">
                         <span>分析方式</span>
@@ -1231,7 +1274,11 @@ export function Workspace() {
                       )
                     ) : null}
                   </div>
-                  <div className="analysis-notices">
+                  <div
+                    className="analysis-notices"
+                    data-enter="fade"
+                    style={{ "--enter-delay": "140ms" } as CSSProperties}
+                  >
                     {notice}
                     {!showChartStudio && !profilesLoading && !canRun && (
                       <div className="notice notice-warning" role="status">
@@ -1265,8 +1312,16 @@ export function Workspace() {
                 </section>
               ))}
             {view === "data" && (
-              <section className="panel dataset-workspace">
-                <div className="dataset-heading">
+              <section
+                className="panel dataset-workspace"
+                data-enter="panel"
+                style={{ "--enter-delay": "60ms" } as CSSProperties}
+              >
+                <div
+                  className="dataset-heading"
+                  data-enter="rise-sm"
+                  style={{ "--enter-delay": "120ms" } as CSSProperties}
+                >
                   <span className="feature-icon">
                     <Icon name="database" size={22} />
                   </span>
@@ -1278,7 +1333,11 @@ export function Workspace() {
                     {profilesLoading ? "正在读取" : canRun ? "可用于分析" : "暂不可用"}
                   </span>
                 </div>
-                <div className="dataset-scope">
+                <div
+                  className="dataset-scope"
+                  data-enter-group="rise"
+                  style={{ "--enter-group-delay": "180ms" } as CSSProperties}
+                >
                   <span>
                     <strong>
                       {selectedProfile?.tables.filter((table) => table.status === "ready").length ??
@@ -1290,7 +1349,11 @@ export function Workspace() {
                   <span>指标口径随结果提供</span>
                 </div>
                 <DataSourceDetails profile={selectedProfile} />
-                <div className="dataset-actions">
+                <div
+                  className="dataset-actions"
+                  data-enter="rise-sm"
+                  style={{ "--enter-delay": "320ms" } as CSSProperties}
+                >
                   <button
                     type="button"
                     className="primary-button"
@@ -1316,7 +1379,9 @@ export function Workspace() {
             )}
             {view === "account" && (
               <>
-                <div className="settings-section-label">我的账号</div>
+                <div className="settings-section-label" data-enter="fade">
+                  我的账号
+                </div>
                 <AccountPanel user={user} expire={expire} />
               </>
             )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Icon } from "@/components/app-icons";
 import { CoursePanoramaChart } from "@/components/course-panorama-chart";
 import { relationKey } from "@/lib/analysis/course-relations";
@@ -87,7 +87,7 @@ export function CoursePanorama({
       aria-labelledby="course-panorama-heading"
       aria-busy={loading}
     >
-      <div className={styles.heading}>
+      <div className={styles.heading} data-enter="rise-sm">
         <div>
           <span className="section-kicker">COURSE PANORAMA</span>
           <h2 id="course-panorama-heading">学科关联全景</h2>
@@ -103,7 +103,11 @@ export function CoursePanorama({
           {loading ? <span className="spinner" /> : <Icon name="refresh" size={17} />}
         </button>
       </div>
-      <div className={styles.filters}>
+      <div
+        className={styles.filters}
+        data-enter-group="fade"
+        style={{ "--enter-group-delay": "80ms" } as CSSProperties}
+      >
         <label className="control-field">
           <span>学期</span>
           <select
@@ -176,7 +180,11 @@ export function CoursePanorama({
                 门满足样本要求。
               </p>
             )}
-            <div className={styles.cohortStrip}>
+            <div
+              className={styles.cohortStrip}
+              data-enter="fade"
+              style={{ "--enter-delay": "140ms" } as CSSProperties}
+            >
               <div className={styles.cohort} aria-live="polite">
                 <span className={styles.muted}>当前人群</span>
                 <span className={styles.cohortName}>
@@ -203,7 +211,11 @@ export function CoursePanorama({
             <div className={styles.layout}>
               <CoursePanoramaChart data={current} disabled={loading} onSelect={selectRelation} />
               <aside className={styles.sidebar} aria-label="全景关联选择与详情">
-                <label className={`control-field ${styles.relationSelect}`}>
+                <label
+                  className={`control-field ${styles.relationSelect}`}
+                  data-enter="fade"
+                  style={{ "--enter-delay": "120ms" } as CSSProperties}
+                >
                   <span>关联路径</span>
                   <select
                     aria-label="全景关联路径"
@@ -219,9 +231,19 @@ export function CoursePanorama({
                     ))}
                   </select>
                 </label>
-                <p className={styles.sidebarNote}>两科学生成绩均低于分数线</p>
-                <div className={styles.pathList}>
-                  {ranked.map((item) => {
+                <p
+                  className={styles.sidebarNote}
+                  data-enter="fade"
+                  style={{ "--enter-delay": "160ms" } as CSSProperties}
+                >
+                  两科学生成绩均低于分数线
+                </p>
+                <div
+                  className={styles.pathList}
+                  data-enter-group="rise"
+                  style={{ "--enter-group-delay": "200ms" } as CSSProperties}
+                >
+                  {ranked.map((item, index) => {
                     const key = relationKey(item);
                     return (
                       <button
@@ -240,7 +262,15 @@ export function CoursePanorama({
                           <strong>{number(item.belowCount)} 人</strong>
                         </span>
                         <span className={styles.pathTrack}>
-                          <span style={{ width: `${(item.belowCount / largest) * 100}%` }} />
+                          <span
+                            data-grow
+                            style={
+                              {
+                                "--fill": item.belowCount / largest,
+                                "--enter-delay": `${200 + index * 60}ms`,
+                              } as CSSProperties
+                            }
+                          />
                         </span>
                       </button>
                     );
@@ -251,11 +281,20 @@ export function CoursePanorama({
                     </p>
                   )}
                 </div>
-                <div className={styles.detail} aria-live="polite">
+                <div
+                  className={styles.detail}
+                  aria-live="polite"
+                  data-enter="panel"
+                  style={{ "--enter-delay": "260ms" } as CSSProperties}
+                >
                   <span className={styles.detailName}>
                     {selection ? `${selection.source} × ${selection.target}` : "全体学生"}
                   </span>
-                  <div className={styles.detailNumber}>
+                  <div
+                    className={styles.detailNumber}
+                    data-enter="scale"
+                    style={{ "--enter-delay": "340ms" } as CSSProperties}
+                  >
                     {number(count)}
                     <span>人</span>
                   </div>
@@ -277,7 +316,11 @@ export function CoursePanorama({
                 </div>
               </aside>
             </div>
-            <details className={styles.numericDetails}>
+            <details
+              className={styles.numericDetails}
+              data-enter="fade"
+              style={{ "--enter-delay": "300ms" } as CSSProperties}
+            >
               <summary>查看各科统计数值</summary>
               <div className={styles.tableViewport}>
                 <table>
@@ -309,7 +352,11 @@ export function CoursePanorama({
                 </table>
               </div>
             </details>
-            <div className={styles.notes}>
+            <div
+              className={styles.notes}
+              data-enter="fade"
+              style={{ "--enter-delay": "360ms" } as CSSProperties}
+            >
               <p>
                 每列按该科有效成绩计算；同一学生、同一课程、同一学期的重复成绩先取均值。分数区间左闭右开，最后一格包含
                 100 分。

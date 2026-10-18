@@ -30,9 +30,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const root = document.documentElement;
       const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
       const transition = (document as ViewTransitionDocument).startViewTransition;
-      // The circular reveal is an occasional delight reserved for the homepage.
-      const onHomepage = Boolean(document.querySelector(".learning-overview"));
-      if (!transition || reduce || root.dataset.motion !== "on" || !onHomepage) {
+      // The circular reveal is shared by every page and respects the motion switch.
+      if (!transition || reduce || root.dataset.motion !== "on") {
         applyTheme(next);
       } else {
         const x = origin?.x ?? innerWidth / 2;

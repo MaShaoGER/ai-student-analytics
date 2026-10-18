@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Icon } from "@/components/app-icons";
 import { CourseRelationChart } from "@/components/course-relation-chart";
 import {
@@ -78,7 +78,7 @@ export function CourseRelations({
       aria-labelledby="course-relations-heading"
       aria-busy={loading}
     >
-      <div className={styles.heading}>
+      <div className={styles.heading} data-enter="rise-sm">
         <div>
           <span className="section-kicker">LEARNING CONNECTIONS</span>
           <h2 id="course-relations-heading">哪些学科，需要一起关注</h2>
@@ -94,7 +94,11 @@ export function CourseRelations({
           {loading ? <span className="spinner" /> : <Icon name="refresh" size={17} />}
         </button>
       </div>
-      <div className={styles.filters}>
+      <div
+        className={styles.filters}
+        data-enter-group="fade"
+        style={{ "--enter-group-delay": "80ms" } as CSSProperties}
+      >
         <label className="control-field">
           <span>学期</span>
           <select
@@ -174,10 +178,21 @@ export function CourseRelations({
                     onCourse={focusCourse}
                     onRelation={selectRelation}
                   />
-                  <p className={styles.caption}>外圈为学科 · 连带为共同未达标人数 · 颜色区分学科</p>
+                  <p
+                    className={styles.caption}
+                    data-enter="fade"
+                    style={{ "--enter-delay": "180ms" } as CSSProperties}
+                  >
+                    外圈为学科 · 连带为共同未达标人数 · 颜色区分学科
+                  </p>
                 </div>
                 <aside className={styles.sidebar} aria-label="学科关联详情">
-                  <div className={styles.detail} aria-live="polite">
+                  <div
+                    className={styles.detail}
+                    aria-live="polite"
+                    data-enter="panel"
+                    style={{ "--enter-delay": "120ms" } as CSSProperties}
+                  >
                     <span className="section-kicker">当前关联</span>
                     {selected ? (
                       <>
@@ -186,7 +201,11 @@ export function CourseRelations({
                           <span>↔</span>
                           {selected.target}
                         </h3>
-                        <div className={styles.value}>
+                        <div
+                          className={styles.value}
+                          data-enter="scale"
+                          style={{ "--enter-delay": "240ms" } as CSSProperties}
+                        >
                           {number(selected.belowCount)}
                           <span>人共同未达标</span>
                         </div>
@@ -199,12 +218,20 @@ export function CourseRelations({
                       <p>该学科暂无满足展示条件的关联。</p>
                     )}
                   </div>
-                  <div className={styles.rankingHeading}>
+                  <div
+                    className={styles.rankingHeading}
+                    data-enter="fade"
+                    style={{ "--enter-delay": "200ms" } as CSSProperties}
+                  >
                     <h3>共同薄弱关联</h3>
                     <span>{relations.length} 组 · 按人数</span>
                   </div>
                   {relations.length ? (
-                    <ol className={styles.ranking}>
+                    <ol
+                      className={styles.ranking}
+                      data-enter-group="rise"
+                      style={{ "--enter-group-delay": "220ms" } as CSSProperties}
+                    >
                       {relations.map((item, index) => (
                         <li key={relationKey(item)}>
                           <button
@@ -232,7 +259,13 @@ export function CourseRelations({
                   )}
                 </aside>
               </div>
-              <div className={styles.coursePicker} role="group" aria-label="聚焦学科">
+              <div
+                className={styles.coursePicker}
+                role="group"
+                aria-label="聚焦学科"
+                data-enter-group="fade"
+                style={{ "--enter-group-delay": "280ms" } as CSSProperties}
+              >
                 <button
                   type="button"
                   aria-pressed={!activeCourse && !selection}
@@ -266,7 +299,11 @@ export function CourseRelations({
               </p>
             </div>
           )}
-          <details className={styles.method}>
+          <details
+            className={styles.method}
+            data-enter="fade"
+            style={{ "--enter-delay": "340ms" } as CSSProperties}
+          >
             <summary>怎么看这张图 · 统计口径</summary>
             <p>
               仅在同一学期内，按匿名学生匹配两门学科。先将学生在同一课程、同一学期的重复有效成绩取均值，再判断是否严格低于{" "}

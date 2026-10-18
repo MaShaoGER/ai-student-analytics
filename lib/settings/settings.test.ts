@@ -105,6 +105,7 @@ describe("persistent AI settings and usage", () => {
       saveAIConfig({ ...config, apiFormat, apiKey: SAVED_KEY });
       const decision = {
         action: "analysis",
+        tool: null, courses: null, terms: null, dimensions: null, threshold: null,
         message: "按指定课程和学期查询。",
         metric: "score",
         dimension: "course",
@@ -143,11 +144,12 @@ describe("persistent AI settings and usage", () => {
           });
       }
       const result = await converse({
-        question: "只看AAA课程在2024J的平均成绩，用表格显示",
+        question: "只看AAA课程在2024J的平均成绩，用表格显示并解读",
         datasetId: "demo",
       });
       expect(result.kind).toBe("result");
-      expect(result.answer).toBe(explanation.answer);
+      expect(result.answer).toContain(explanation.answer);
+      expect(result.answer).toContain("79.67");
       expect(result.artifact).toMatchObject({
         kind: "analysis",
         view: "table",

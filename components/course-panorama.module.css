@@ -411,8 +411,82 @@
     margin-left: 0;
   }
 }
+html[data-motion="off"] .ribbon {
+  transition: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .ribbon {
     transition: none;
+  }
+}
+
+/* ---- 数据到达后的首次绘制：描线 / 生长 / 错峰 --------------------------------
+   只在「交互动效」开启（html[data-motion="on"]）时播放；元素挂载即播放一次，
+   筛选/聚焦等交互不会重播。只用 stroke-dashoffset / transform / opacity，
+   连接带带宽、柱体高度、及格率长度等数据编码在动画结束后与动画前完全一致。 */
+@keyframes panorama-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes panorama-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes panorama-bar {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes panorama-pass {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+html[data-motion="on"] .entering .ribbonGroup {
+  animation: panorama-fade 480ms var(--enter-ease) var(--enter-delay, 120ms) both;
+}
+html[data-motion="on"] .entering .ribbonGroup .ribbon {
+  stroke-dasharray: 1;
+  animation: panorama-draw 760ms var(--enter-ease) var(--enter-delay, 120ms) both;
+}
+html[data-motion="on"] .entering .columnGroup {
+  animation: panorama-fade 480ms var(--enter-ease) var(--enter-delay, 160ms) both;
+}
+html[data-motion="on"] .entering .bar {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: panorama-bar 760ms var(--enter-ease) var(--enter-delay, 160ms) both;
+}
+html[data-motion="on"] .entering .passFill {
+  transform-box: fill-box;
+  transform-origin: 0 50%;
+  animation: panorama-pass 620ms var(--enter-ease) var(--enter-delay, 160ms) both;
+}
+html[data-motion="on"] .entering .frameGroup,
+html[data-motion="on"] .entering .threshold {
+  animation: panorama-fade 480ms var(--ease-out) var(--enter-delay, 60ms) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-motion="on"]
+    .entering
+    :is(.ribbonGroup, .ribbonGroup .ribbon, .columnGroup, .bar, .passFill) {
+    animation: none;
+  }
+  html[data-motion="on"] .entering .ribbonGroup .ribbon {
+    stroke-dasharray: none;
   }
 }
