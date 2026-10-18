@@ -89,6 +89,10 @@ export type AnalysisRecord = {
   userId?: string | null;
   requestSource?: "analysis" | "ask";
   stage?: "validation" | "planning" | "execution";
+  /** Version of the model instructions that produced (or failed to produce) a plan. */
+  promptVersion?: string;
+  /** Model that produced the plan, when one was actually called. Never a key or base URL. */
+  model?: string | null;
   result: {
     rowCount: number;
     period: string;

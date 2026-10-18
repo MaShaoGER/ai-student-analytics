@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { runAnalysis } from "@/lib/analysis/duckdb";
 import { type AnalysisRecord } from "@/lib/analysis/types";
-import { type AnalysisHttpError, noDataHttpError, queryExecutionHttpError } from "@/lib/analysis/http-errors";
+import {
+  isRetryableErrorCode,
+  type AnalysisHttpError,
+  noDataHttpError,
+  queryExecutionHttpError,
+} from "@/lib/analysis/http-errors";
 import {
   AIClarificationError,
   AIConfigurationError,
@@ -21,6 +26,7 @@ import { apiError, assertSameOrigin, requireUser } from "@/lib/auth/http";
 import { AuthError } from "@/lib/auth/service";
 import { BudgetExceededError, UnknownModelPricingError } from "@/lib/security/ai-cost";
 import { AIProviderError, AI_PROVIDER_RETRY_AFTER } from "@/lib/ai/provider-errors";
+import { PROMPT_VERSION } from "@/lib/ai/prompts/version";
 
 export const runtime = "nodejs";
 const MAX_REQUEST_BODY_BYTES = 64 * 1024;
@@ -95,6 +101,9 @@ export async function POST(request: Request) {
       userId,
       requestSource: "ask",
       stage,
+      // Success and failure audits carry the same traceability fields.
+      promptVersion: PROMPT_VERSION,
+      model: planned.model,
       result: {
         rowCount: analysis.result.rows.length,
         period: analysis.result.period,
@@ -129,15 +138,18 @@ export async function POST(request: Request) {
       userId,
       requestSource: "ask",
       stage,
+      promptVersion: PROMPT_VERSION,
       result: { rowCount: 0, period: "", durationMs: Math.round(performance.now() - startedAt) },
       errorCode: failure.code,
       errorMessage: auditMessage,
     });
     if (error instanceof AuthError) return apiError(error);
     const { status, ...body } = failure;
-    return NextResponse.json(body, {
+    return NextResponse.json(
+      { ...body, retryable: isRetryableErrorCode(failure.code) },
+      {
       status,
-      ...(error instanceof AIProviderError
+      ...(error instanceof AIProviderError && error.status === 429
         ? { headers: { "Cache-Control": "no-store", "Retry-After": String(AI_PROVIDER_RETRY_AFTER) } }
         : status === 413
           ? { headers: { "Cache-Control": "no-store" } }

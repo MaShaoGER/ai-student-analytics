@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { POST } from "./route";
 import { converse } from "@/lib/ai/conversation";
+import { AIConfigurationError } from "@/lib/ai/planner";
+import { PROMPT_VERSION } from "@/lib/ai/prompts/version";
 import { requireUser } from "@/lib/auth/http";
 import { AuthError } from "@/lib/auth/service";
 import { checkRateLimit } from "@/lib/security/rate-limit";
@@ -102,9 +104,12 @@ describe("conversation HTTP boundary", () => {
         )
       ).status,
     ).toBe(400);
-    expect((await POST(request({ question: "长".repeat(60000), datasetId: "demo" }))).status).toBe(
-      413,
-    );
+    const oversized = await POST(request({ question: "长".repeat(60000), datasetId: "demo" }));
+    expect(oversized.status).toBe(413);
+    expect(await oversized.json()).toMatchObject({
+      code: "INVALID_QUESTION",
+      retryable: false,
+    });
     expect(converse).not.toHaveBeenCalled();
   });
 
@@ -121,6 +126,56 @@ describe("conversation HTTP boundary", () => {
       errorCode: "ANALYSIS_FAILED",
     });
     expect(readFileSync(join(directory, "analysis.jsonl"), "utf8")).not.toContain(secret);
+  });
+
+  it("records prompt version and the model without persisting question text", async () => {
+    vi.mocked(converse).mockResolvedValue({
+      kind: "result",
+      presentation: "text",
+      answer: "本次共返回 1 个分组。",
+      facts: ["本次返回 1 个分组。"],
+      suggestions: [],
+      artifact: null,
+      context: null,
+      planning: { source: "external", rationale: "按问题选择真实统计。", model: "fixture-model" },
+    });
+    const response = await POST(request({ question: secret, datasetId: "demo" }));
+    expect(response.status).toBe(200);
+    expect(loadAnalysisRecords()[0]).toMatchObject({
+      requestSource: "ask",
+      promptVersion: PROMPT_VERSION,
+      model: "fixture-model",
+      errorCode: null,
+    });
+    expect(readFileSync(join(directory, "analysis.jsonl"), "utf8")).not.toContain(secret);
+  });
+
+  it("classifies unreadable data sources as retryable data errors, not AI failures", async () => {
+    vi.mocked(converse).mockImplementation(async (_input, options) => {
+      options?.onExecution?.(null);
+      throw new QueryExecutionError("DATA_SOURCE_UNAVAILABLE", secret);
+    });
+    const response = await POST(request({ question: "比较各课程平均成绩", datasetId: "demo" }));
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({
+      code: "DATA_SOURCE_UNAVAILABLE",
+      retryable: true,
+    });
+    expect(loadAnalysisRecords()[0]).toMatchObject({
+      stage: "execution",
+      errorCode: "DATA_SOURCE_UNAVAILABLE",
+    });
+    expect(readFileSync(join(directory, "analysis.jsonl"), "utf8")).not.toContain(secret);
+  });
+
+  it("marks configuration failures as non-retryable", async () => {
+    vi.mocked(converse).mockRejectedValue(new AIConfigurationError());
+    const response = await POST(request({ question: "比较各课程平均成绩", datasetId: "demo" }));
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({
+      code: "AI_NOT_CONFIGURED",
+      retryable: false,
+    });
   });
 
   it("propagates cancellation even during planning", async () => {

@@ -201,6 +201,88 @@
 .composer:focus-within {
   border-color: var(--accent);
 }
+/* Inline "new conversation" confirmation: replaces the tool row, so the action
+   stays where the click happened and is reachable by keyboard. */
+.clearConfirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px 8px;
+  font-size: 11px;
+  color: var(--instrument-muted);
+}
+.clearConfirm > button {
+  min-height: 28px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 11px;
+  color: var(--instrument-ink);
+  background: transparent;
+  border: 1px solid var(--instrument-line);
+  cursor: pointer;
+}
+.clearConfirm > .clearConfirmAction {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--button-ink);
+}
+/* Follow-up scope chip above the textarea. Clearing it only affects the next
+   questions, which the chip itself and the live status line make explicit. */
+.contextRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+}
+.contextChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 26px;
+  padding: 2px 4px 2px 8px;
+  background: var(--instrument-inset);
+  border: 1px solid var(--instrument-line);
+  color: var(--instrument-ink);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.contextChip > span {
+  min-width: 0;
+}
+.contextChip > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--instrument-muted);
+  cursor: pointer;
+}
+.contextChip > button:hover {
+  color: var(--instrument-ink);
+}
+.contextHint {
+  color: var(--instrument-muted);
+  font-size: 11px;
+}
+.contextNotice {
+  margin: 6px 0 0;
+  color: var(--instrument-muted);
+  font-size: 11px;
+}
+.fieldError {
+  margin: 0 0 6px;
+  color: var(--danger);
+  font-size: 12px;
+}
 .composerActions {
   display: flex;
   align-items: center;
@@ -245,22 +327,60 @@
   gap: 16px;
   min-width: 0;
 }
-.evidence {
-  padding: 20px 24px;
+/* "数字从哪来": facts are shown for every answer, with or without a chart, so a
+   plain text conclusion still carries its samples and definitions. */
+.facts {
+  margin-top: 16px;
+  padding: 16px 20px;
   background: var(--surface-inset);
   border-left: 3px solid var(--sage);
 }
-.evidence strong {
+.facts strong {
   font-size: 13px;
 }
-.evidence ul {
+.facts ul {
   padding-left: 20px;
-  margin: 12px 0 0;
-  font-size: 13px;
+  margin: 10px 0 0;
+  font-size: 12px;
   line-height: 1.8;
 }
-.evidence li + li {
-  margin-top: 8px;
+.facts li + li {
+  margin-top: 6px;
+}
+/* One line of provenance under each answer; rationale is clipped rather than
+   wrapped so the result card never grows tall. */
+.planning {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.planningRationale {
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+/* Local status line (cancelled turn): same bubble, quieter voice. */
+.message[data-system="true"] .messageText {
+  color: var(--muted);
+  font-size: 13px;
+}
+/* Responsibility and privacy boundary, stated once in the empty state. */
+.privacy {
+  max-width: 68ch;
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
 }
 .distribution {
   min-width: 0;
@@ -423,7 +543,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 }
 @media (max-width: 600px) {
   .distribution,
-  .evidence {
+  .facts {
     padding: 16px;
   }
   .conversation {

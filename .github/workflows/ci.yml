@@ -3,6 +3,7 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -48,3 +49,52 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # test:api starts an isolated Next dev server on port 3100 and tears it down.
       - run: pnpm test:api
+
+  # Manual real-model evaluation. Never part of the push/PR gate:
+  # it costs money and depends on provider availability, so it only runs
+  # when a maintainer starts the workflow from the Actions tab.
+  ai-eval:
+    name: AI eval (manual)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check AI secrets
+        id: ai_secrets
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "${OPENAI_API_KEY}" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::OPENAI_API_KEY is not configured; skipping the real-model eval and validating cases only."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Validate eval cases (no network, no cost)
+        if: steps.ai_secrets.outputs.enabled != 'true'
+        run: AI_EVAL_MOCK=1 pnpm vitest run scripts/ai-eval.test.ts
+      - name: Run AI eval against the configured model
+        if: steps.ai_secrets.outputs.enabled == 'true'
+        env:
+          AI_EVAL: "1"
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          APP_SETTINGS_KEY: ${{ secrets.APP_SETTINGS_KEY }}
+          OPENAI_MODEL: ${{ vars.AI_EVAL_MODEL || 'gpt-4o-mini' }}
+          OPENAI_INPUT_PRICE: ${{ vars.AI_EVAL_INPUT_PRICE }}
+          OPENAI_OUTPUT_PRICE: ${{ vars.AI_EVAL_OUTPUT_PRICE }}
+        run: pnpm eval:ai
+      - name: Upload eval report
+        if: always() && steps.ai_secrets.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-eval-report
+          path: output/ai-eval/
+          if-no-files-found: warn
+          retention-days: 14

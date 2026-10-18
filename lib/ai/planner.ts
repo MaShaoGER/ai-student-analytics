@@ -3,7 +3,6 @@ import { APIConnectionTimeoutError, APIUserAbortError } from "openai/core/error"
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import { findGoldenCase, planForDataset } from "../analysis/golden-cases";
-import { METRICS } from "../analysis/metrics";
 import { createPlan } from "../analysis/plan";
 import { dataSourceSchema, type AnalysisPlan } from "../analysis/types";
 import { calculateCost, reserveBudget, settleBudget, type TokenUsage } from "../security/ai-cost";
@@ -11,7 +10,8 @@ import { getAIConfig, getRuntimeAIConfig } from "../settings/ai";
 import { QueryExecutionError } from "../security/query-execution";
 import { isBailianQwenFlash } from "./bailian";
 import { isZhipuGLMFlash } from "./zhipu";
-import { classifyAIProviderError } from "./provider-errors";
+import { AIProviderError, classifyAIProviderError } from "./provider-errors";
+import { PLANNER_INSTRUCTIONS } from "./prompts/planner";
 
 const aiPlanFieldsSchema = z.object({
   canAnalyze: z.boolean(),
@@ -50,6 +50,47 @@ type StructuredPlanGenerator = (
 
 function assertPlanningActive(signal?: AbortSignal): void {
   if (signal?.aborted) throw new QueryExecutionError("CANCELLED", "分析请求已取消。");
+}
+
+const PROMPT_TOKEN_HEADROOM = 1.08;
+const MIN_PROMPT_TOKEN_ESTIMATE = 128;
+
+/**
+ * Rough token estimate for a request payload.
+ *
+ * UTF-8 byte length is a poor token bound: Chinese characters are three bytes
+ * each but roughly one token, which used to over-reserve the budget by 6–7x.
+ * ASCII averages about four characters per token, while non-ASCII text (CJK,
+ * emoji, accented Latin) is close to one token per character. Add 8% headroom
+ * for JSON punctuation/schema boilerplate and a floor for tiny payloads.
+ */
+export function estimatePromptTokens(text: string): number {
+  let asciiCharacters = 0;
+  let otherCharacters = 0;
+  for (const character of text) {
+    if (character.codePointAt(0)! < 0x80) asciiCharacters += 1;
+    else otherCharacters += 1;
+  }
+  const estimate = asciiCharacters / 4 + otherCharacters;
+  return Math.max(MIN_PROMPT_TOKEN_ESTIMATE, Math.ceil(estimate * PROMPT_TOKEN_HEADROOM));
+}
+
+/**
+ * Providers without strict structured output may wrap JSON in Markdown fences
+ * or add a sentence before it. Repair once: drop the fence, then take the
+ * outermost braces. Anything still unparseable becomes AI_INVALID_OUTPUT.
+ */
+export function repairModelJSON(content: string): string {
+  const trimmed = content.trim();
+  const fenced = /^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(trimmed);
+  const body = fenced ? fenced[1].trim() : trimmed;
+  const start = body.indexOf("{");
+  const end = body.lastIndexOf("}");
+  return start >= 0 && end > start ? body.slice(start, end + 1) : body;
+}
+
+function invalidOutput(): AIProviderError {
+  return new AIProviderError("AI_INVALID_OUTPUT");
 }
 
 export class AIConfigurationError extends Error {
@@ -142,14 +183,16 @@ export async function generateStructured<T extends z.ZodObject<z.ZodRawShape>>(
         }
       : {}),
   };
-  // A UTF-8 byte bound covers input, instructions and the structured output schema.
+  // A character heuristic (ASCII/4 + non-ASCII×1, +8% headroom) covers input,
+  // instructions and the structured output schema without the 6–7x overshoot
+  // of UTF-8 byte length on Chinese text.
   // Pending calls reserve this amount atomically before any provider request.
   const requestPayload = config.apiFormat === "chat_completions" ? chatPayload : payload;
-  const upperInputTokens = Buffer.byteLength(JSON.stringify(requestPayload), "utf8") + 512;
+  const estimatedInputTokens = estimatePromptTokens(JSON.stringify(requestPayload));
   const estimatedUsage: TokenUsage = {
-    promptTokens: upperInputTokens,
+    promptTokens: estimatedInputTokens,
     completionTokens: maxTokens,
-    totalTokens: upperInputTokens + maxTokens,
+    totalTokens: estimatedInputTokens + maxTokens,
   };
   const estimatedCost = calculateCost(config.model, estimatedUsage, config.pricing).totalCost;
   const reservation = reserveBudget(
@@ -178,11 +221,17 @@ export async function generateStructured<T extends z.ZodObject<z.ZodRawShape>>(
         usageEstimated = false;
       }
       if (response.choices[0]?.finish_reason === "length") {
-        throw new Error("模型输出已达到长度上限，未返回完整分析计划。");
+        // Truncated output cannot be trusted as a plan; bill the usage already
+        // returned by the provider and fail with a recoverable, fixed code.
+        throw invalidOutput();
       }
       const content = response.choices[0]?.message.content;
-      if (!content) throw new Error("模型没有返回可验证的分析计划，请换一种问法。");
-      fields = JSON.parse(content);
+      if (!content) throw invalidOutput();
+      try {
+        fields = JSON.parse(repairModelJSON(content));
+      } catch {
+        throw invalidOutput();
+      }
     } else {
       const response = await client.responses.parse(payload, { signal: options.signal });
       if (response.usage) {
@@ -193,9 +242,15 @@ export async function generateStructured<T extends z.ZodObject<z.ZodRawShape>>(
         };
         usageEstimated = false;
       }
+      // The Responses API reports truncation via status/incomplete_details
+      // instead of a chat `finish_reason`; an incomplete plan must never be
+      // validated as if it were complete.
+      if (response.status === "incomplete" || Boolean(response.incomplete_details)) {
+        throw invalidOutput();
+      }
       fields = response.output_parsed;
     }
-    if (!fields) throw new Error("模型没有返回可验证的分析计划，请换一种问法。");
+    if (!fields) throw invalidOutput();
     return { fields: parseResponse(fields), usedModel: config.model };
   } catch (error) {
     if (options.signal?.aborted || error instanceof APIUserAbortError) {
@@ -226,14 +281,7 @@ async function generateWithOpenAI(
   options: PlanningOptions = {},
   endpoint = "planner",
 ): Promise<AIPlanFields & { usedModel: string }> {
-  const instructions = [
-    "你是高校教学数据分析规划器。只为允许的指标和维度生成计划，不计算数字，不生成 SQL。",
-    `允许指标：score（${METRICS.score.description}）、activity（${METRICS.activity.description}）、completion_rate（${METRICS.completion_rate.description}）。`,
-    "允许维度：course（课程）、term（学期）。趋势或按学期的问题优先使用折线图，课程比较优先使用柱状图；用户明确要求表格时使用 table。",
-    "只有问题能由允许的指标和维度准确回答时，canAnalyze 才为 true，clarificationQuestion 为 null。",
-    "口径含糊或超出能力时，canAnalyze 必须为 false，并在 clarificationQuestion 中提出一个简短、可回答的澄清问题；不要强行选择近似指标。",
-    "需要澄清时 metric、dimension、chartType 可为 null。请求具体学生名单或个体排名时，说明当前仅支持课程、学期分组统计，并询问是否改为相应的群体统计；不要暗示补充课程或分数阈值就能查询个体。",
-  ].join("\n");
+  const instructions = PLANNER_INSTRUCTIONS;
   const { fields, usedModel } = await generateStructured(
     question,
     instructions,

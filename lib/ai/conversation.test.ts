@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { converse, resultFacts } from "./conversation";
 import { chatInputSchema, type ChatIntent } from "./chat-types";
+import { CHAT_EXPLANATION_PROMPT, CHAT_PLANNING_PROMPT } from "./prompts/conversation";
+import { PROMPT_VERSION } from "./prompts/version";
 import { generateStructured } from "./planner";
 import { runAnalysis, scoreDistribution } from "../analysis/duckdb";
 import { QueryExecutionError } from "../security/query-execution";
@@ -118,6 +120,7 @@ describe("conversational analysis", () => {
       catalog: { courses: ["数学", "英语"], terms: ["2024B", "2024J"] },
     });
     expect(prompt).not.toHaveProperty("groups");
+    expect(generate.mock.calls[0][1]).toBe(CHAT_PLANNING_PROMPT);
     expect(response.context).toMatchObject({
       kind: "analysis",
       filters: [
@@ -128,6 +131,7 @@ describe("conversational analysis", () => {
     const explanation = JSON.parse(generate.mock.calls[1][0]);
     expect(explanation.evidence.rows).toEqual([{ dimension: "数学", value: 73.5, sampleSize: 3 }]);
     expect(explanation).not.toHaveProperty("query");
+    expect(generate.mock.calls[1][1]).toBe(CHAT_EXPLANATION_PROMPT);
   });
 
   it.each(["reply", "clarify"])("allows %s without executing a metric query", async (action) => {
@@ -440,5 +444,54 @@ describe("conversational analysis", () => {
         },
       }).success,
     ).toBe(false);
+  });
+
+  it("pins the extracted conversation prompts to the shared prompt version", () => {
+    expect(CHAT_PLANNING_PROMPT).toContain("你是学析台的教学数据助手");
+    expect(CHAT_PLANNING_PROMPT).toContain("action=tool并填写tool");
+    expect(CHAT_EXPLANATION_PROMPT).toContain("根据真实evidence补充一小段解读");
+    expect(PROMPT_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}\.\d+$/);
+  });
+
+  it("keeps the non-numeric part of an explanation instead of discarding it whole", async () => {
+    generate
+      .mockReset()
+      .mockResolvedValueOnce({ fields: decision, usedModel: "fixture" })
+      .mockResolvedValueOnce({
+        fields: {
+          answer: "整体差异需要结合课程难度核验。最高分为 95 分。",
+          suggestions: [],
+        },
+        usedModel: "fixture",
+      });
+    const response = await converse(
+      { question: "看看数学的成绩图并解读", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(response.kind).toBe("result");
+    expect(response.answer).toContain("整体差异需要结合课程难度核验。");
+    expect(response.answer).not.toContain("最高分为");
+    expect(response.warning).toBeUndefined();
+    expect(response.facts.join(" ")).toContain("73.5");
+  });
+
+  it("falls back to the notice when the explanation exceeds the schema budget", async () => {
+    generate
+      .mockReset()
+      .mockResolvedValueOnce({ fields: decision, usedModel: "fixture" })
+      .mockResolvedValueOnce({
+        fields: { answer: "整".repeat(121), suggestions: [] },
+        usedModel: "fixture",
+      });
+    const response = await converse(
+      { question: "看看数学的成绩图并解读", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(response.kind).toBe("result");
+    expect(response.answer).not.toContain("整".repeat(121));
+    expect(response.warning).toContain("保留真实统计");
+    expect(response.facts.join(" ")).toContain("73.5");
   });
 });

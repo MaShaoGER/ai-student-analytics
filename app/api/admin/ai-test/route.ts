@@ -15,10 +15,18 @@ export async function POST(request: Request) {
     const result = await testAIConnection();
     return noStoreJson({ success: true, message: "已收到可验证的分析计划，AI 连接正常。本次测试已产生一次实际调用。", model: result.model, stats: getPublicCostStats() });
   } catch (error) {
-    if (error instanceof AIProviderError) return NextResponse.json({ error: error.message, code: error.code }, {
-      status: error.status,
-      headers: { "Cache-Control": "no-store", "Retry-After": String(AI_PROVIDER_RETRY_AFTER) },
-    });
+    if (error instanceof AIProviderError)
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        {
+          status: error.status,
+          headers: {
+            "Cache-Control": "no-store",
+            // Only throttling is worth retrying; auth/parameter failures need a config fix.
+            ...(error.status === 429 ? { "Retry-After": String(AI_PROVIDER_RETRY_AFTER) } : {}),
+          },
+        },
+      );
     if (error instanceof BudgetExceededError) return NextResponse.json({ error: error.message, code: "AI_BUDGET_EXCEEDED" }, { status: 429 });
     if (error instanceof UnknownModelPricingError) return NextResponse.json({ error: error.message, code: "AI_PRICING_REQUIRED" }, { status: 503 });
     if (error instanceof AIConfigurationError) return NextResponse.json({ error: error.message, code: "AI_NOT_CONFIGURED" }, { status: 503 });

@@ -14,14 +14,24 @@ import {
 import { AnalysisResultView } from "./analysis-result";
 import { Icon } from "./app-icons";
 import { useMotionPreferences } from "./ui/motion-preferences";
-import { GOLDEN_CASES } from "@/lib/analysis/golden-cases";
 import { distributionRows, scoreInterval } from "@/lib/analysis/score-distribution";
 import type { AnalysisResult } from "@/lib/analysis/types";
 import type { ChartViewType } from "@/lib/analysis/visualization";
 import type { ChatArtifact, ChatMessage, ChatResponse, ChatDisplayView } from "@/lib/ai/chat-types";
+import { planningMethodLabel } from "@/lib/ai/context-label";
+import { suggestedQuestionsFor } from "@/lib/ai/suggested-questions";
 import styles from "./ai-conversation.module.css";
 
-export type ConversationTurn = ChatMessage & { id: string; response?: ChatResponse };
+export type ConversationTurn = ChatMessage & {
+  id: string;
+  response?: ChatResponse;
+  /** Locally generated status line (e.g. a cancelled turn), not sent to the model. */
+  system?: boolean;
+};
+
+/** Waiting copy advances by elapsed time; the server reports no stages itself. */
+const WAIT_STAGES = ["正在理解问题…", "正在查询数据…", "正在组织解读…"] as const;
+const QUESTION_ERROR_ID = "analysis-question-error";
 
 function Speaker({ role }: { role: ChatMessage["role"] }) {
   return (
@@ -106,6 +116,20 @@ function ChartAttachmentBody({
   );
 }
 
+/** One line under the answer: who chose the analysis method, and why. */
+function PlanningNote({ planning }: { planning: ChatResponse["planning"] }) {
+  return (
+    <p className={styles.planning} data-enter="fade">
+      <span>分析方式：{planningMethodLabel(planning)}</span>
+      {planning.rationale ? (
+        <span className={styles.planningRationale} title={planning.rationale}>
+          {planning.rationale}
+        </span>
+      ) : null}
+    </p>
+  );
+}
+
 export function ConversationWorkspace({
   messages,
   question,
@@ -113,11 +137,15 @@ export function ConversationWorkspace({
   pendingQuestion,
   aiReady,
   canRun,
+  model,
+  contextLabel,
+  inputError,
   expandedChartId,
   onQuestionChange,
   onAsk,
   onStop,
   onClear,
+  onClearContext,
   onExpandChart,
   onChartChange,
   onReport,
@@ -130,11 +158,15 @@ export function ConversationWorkspace({
   pendingQuestion: string;
   aiReady: boolean;
   canRun: boolean;
+  model?: string | null;
+  contextLabel?: string | null;
+  inputError?: string | null;
   expandedChartId: string | null;
   onQuestionChange: (value: string) => void;
   onAsk: (question?: string) => void;
   onStop: () => void;
   onClear: () => void;
+  onClearContext?: () => void;
   onExpandChart: (id: string | null) => void;
   onChartChange: (id: string, view: ChatDisplayView) => void;
   onReport: (result: AnalysisResult) => void;
@@ -144,8 +176,56 @@ export function ConversationWorkspace({
   const root = useRef<HTMLDivElement>(null);
   const composer = useRef<HTMLDivElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
+  const sendButton = useRef<HTMLButtonElement>(null);
   const newest = useRef<HTMLElement>(null);
   const pending = useRef<HTMLDivElement>(null);
+  const [waitStage, setWaitStage] = useState(0);
+  const [clearConfirming, setClearConfirming] = useState(false);
+  const [contextNotice, setContextNotice] = useState("");
+  const stopRequested = useRef(false);
+
+  useEffect(() => {
+    if (!loading) {
+      setWaitStage(0);
+      return;
+    }
+    setWaitStage(0);
+    const querying = window.setTimeout(() => setWaitStage(1), 4000);
+    const explaining = window.setTimeout(() => setWaitStage(2), 10000);
+    return () => {
+      window.clearTimeout(querying);
+      window.clearTimeout(explaining);
+    };
+  }, [loading]);
+
+  // Stopping swaps the stop button for the send button, which would otherwise
+  // drop keyboard focus to the body; hand it back once the swap has rendered.
+  useEffect(() => {
+    if (loading || !stopRequested.current) return;
+    stopRequested.current = false;
+    const frame = requestAnimationFrame(() => sendButton.current?.focus({ preventScroll: true }));
+    return () => cancelAnimationFrame(frame);
+  }, [loading]);
+
+  // The browser owns the wording; this only asks for its confirmation dialog.
+  useEffect(() => {
+    if (!messages.length) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [messages.length]);
+
+  useEffect(() => {
+    // A new turn re-establishes context and settles any pending clear action, so
+    // both the confirmation row and its announcement close themselves.
+    setClearConfirming(false);
+    setContextNotice("");
+  }, [messages.length]);
+
+  const rounds = messages.filter((message) => message.role === "user").length;
 
   useLayoutEffect(() => {
     const main = root.current?.closest<HTMLElement>(".workbench-content");
@@ -205,7 +285,7 @@ export function ConversationWorkspace({
         style={{ "--enter-delay": "300ms" } as CSSProperties}
       >
         <span className={aiReady ? "status-dot" : "status-dot is-muted"} />
-        {aiReady ? "连续对话已开启" : "推荐问题可直接使用"}
+        {aiReady ? `连续对话已开启${model ? ` · ${model}` : ""}` : "推荐问题可直接使用"}
       </p>
       <div
         className={styles.transcript}
@@ -227,7 +307,7 @@ export function ConversationWorkspace({
               可以直接说想比较什么、观察趋势、分布或指标关系。我会选择合适的文字、图表或数值表，也可以按你的要求调整。继续追问会沿用当前筛选。
             </p>
             <div className={styles.suggestions} aria-label="推荐问题">
-              {[GOLDEN_CASES[0], GOLDEN_CASES[3], GOLDEN_CASES[6]].map((item) => (
+              {suggestedQuestionsFor(aiReady).map((item) => (
                 <button
                   type="button"
                   className="secondary-button"
@@ -239,6 +319,10 @@ export function ConversationWorkspace({
                 </button>
               ))}
             </div>
+            <p className={styles.privacy}>
+              AI
+              只负责选择分析方式与措辞，数字由本地统计计算；只做群体统计，不提供个体名单或排名；对话正文不写入审计记录。
+            </p>
           </div>
         )}
         {messages.map((message, index) => {
@@ -252,6 +336,7 @@ export function ConversationWorkspace({
               key={message.id}
               className={styles.message}
               data-role={message.role}
+              data-system={message.system ? "true" : undefined}
               data-enter="rise-sm"
               style={
                 {
@@ -266,6 +351,21 @@ export function ConversationWorkspace({
                   {response.warning}
                 </p>
               )}
+              {response?.facts.length ? (
+                <div
+                  className={styles.facts}
+                  data-enter="fade"
+                  style={{ "--enter-delay": "120ms" } as CSSProperties}
+                >
+                  <strong>数字从哪来</strong>
+                  <ul>
+                    {response.facts.map((fact, index) => (
+                      <li key={index}>{fact}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {response?.planning ? <PlanningNote planning={response.planning} /> : null}
               {artifact && response?.presentation !== "text" && (
                 <div
                   className={styles.chartAttachment}
@@ -337,7 +437,7 @@ export function ConversationWorkspace({
               <Speaker role="assistant" />
               <p className={styles.pendingStatus} role="status">
                 <span className="spinner" />
-                正在读取数据并组织回复…
+                {WAIT_STAGES[waitStage]}
               </p>
             </div>
           </div>
@@ -368,39 +468,92 @@ export function ConversationWorkspace({
           <div className={styles.composerHeading}>
             <label htmlFor="analysis-question">{messages.length ? "继续追问" : "分析问题"}</label>
             <div className={styles.composerTools}>
-              <details className={styles.presets}>
-                <summary>推荐问题</summary>
-                <div>
-                  {[GOLDEN_CASES[0], GOLDEN_CASES[3], GOLDEN_CASES[6]].map((item) => (
-                    <button
-                      type="button"
-                      key={item.id}
-                      disabled={loading || !canRun}
-                      onClick={(event) => {
-                        event.currentTarget.closest("details")?.removeAttribute("open");
-                        onAsk(item.question);
-                      }}
-                    >
-                      {item.question}
-                    </button>
-                  ))}
-                </div>
-              </details>
-              {messages.length > 0 && (
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={() => {
-                    onClear();
-                    textarea.current?.focus({ preventScroll: true });
+              {clearConfirming && messages.length > 0 ? (
+                <div
+                  className={styles.clearConfirm}
+                  role="group"
+                  aria-label="确认清空对话"
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      setClearConfirming(false);
+                    }
                   }}
                 >
-                  <Icon name="plus" size={13} />
-                  新对话
-                </button>
+                  <span>将清空当前 {rounds} 轮对话</span>
+                  <button type="button" autoFocus onClick={() => setClearConfirming(false)}>
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.clearConfirmAction}
+                    onClick={() => {
+                      setClearConfirming(false);
+                      onClear();
+                      textarea.current?.focus({ preventScroll: true });
+                    }}
+                  >
+                    清空
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <details className={styles.presets}>
+                    <summary>推荐问题</summary>
+                    <div>
+                      {suggestedQuestionsFor(aiReady).map((item) => (
+                        <button
+                          type="button"
+                          key={item.id}
+                          disabled={loading || !canRun}
+                          onClick={(event) => {
+                            event.currentTarget.closest("details")?.removeAttribute("open");
+                            onAsk(item.question);
+                          }}
+                        >
+                          {item.question}
+                        </button>
+                      ))}
+                    </div>
+                  </details>
+                  {messages.length > 0 && (
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => setClearConfirming(true)}
+                    >
+                      <Icon name="plus" size={13} />
+                      新对话
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
+          {contextLabel ? (
+            <div className={styles.contextRow}>
+              <span className={styles.contextChip}>
+                <Icon name="sliders" size={12} />
+                <span>{contextLabel}</span>
+                <button
+                  type="button"
+                  aria-label={`清除筛选：${contextLabel}`}
+                  onClick={() => {
+                    onClearContext?.();
+                    setContextNotice("已清除筛选，后续追问不再沿用当前范围。");
+                  }}
+                >
+                  <Icon name="close" size={12} />
+                </button>
+              </span>
+              <span className={styles.contextHint}>仅影响后续追问</span>
+            </div>
+          ) : null}
+          {contextNotice ? (
+            <p className={styles.contextNotice} role="status" aria-live="polite">
+              {contextNotice}
+            </p>
+          ) : null}
           <textarea
             ref={textarea}
             id="analysis-question"
@@ -411,6 +564,8 @@ export function ConversationWorkspace({
             placeholder={
               messages.length ? "只看上学期、换成表格，或继续追问…" : "你想了解哪些学习情况？"
             }
+            aria-invalid={inputError ? true : undefined}
+            aria-describedby={inputError ? QUESTION_ERROR_ID : undefined}
             onChange={(event) => onQuestionChange(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -419,6 +574,11 @@ export function ConversationWorkspace({
               }
             }}
           />
+          {inputError ? (
+            <p className={styles.fieldError} id={QUESTION_ERROR_ID} role="alert">
+              {inputError}
+            </p>
+          ) : null}
           <div className={styles.composerActions}>
             <span>
               {question.length}/500
@@ -432,6 +592,7 @@ export function ConversationWorkspace({
                 onClick={(event) => {
                   // Cancelling swaps this control for a submit button during the click.
                   event.preventDefault();
+                  stopRequested.current = true;
                   onStop();
                 }}
               >
@@ -439,6 +600,7 @@ export function ConversationWorkspace({
               </button>
             ) : (
               <button
+                ref={sendButton}
                 type="submit"
                 key="send"
                 className={styles.send}
@@ -581,22 +743,13 @@ function ConversationResult({
 }) {
   return (
     <div className={styles.results}>
-      {response.facts.length ? (
-        <div className={styles.evidence}>
-          <strong>数据核对</strong>
-          <ul>
-            {response.facts.map((fact, index) => (
-              <li key={index}>{fact}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
       {artifact.kind === "analysis" ? (
         <AnalysisResultView
           result={artifact.result}
           chartType={artifact.view}
           onChartChange={onChartChange}
           loading={false}
+          planning={response.planning}
           onReport={onReport}
         />
       ) : artifact.kind === "distribution" ? (

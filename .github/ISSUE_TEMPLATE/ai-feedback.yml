@@ -1,0 +1,87 @@
+name: AI 回答反馈
+description: 报告 AI 回答不准确、该出图却出文字、一直澄清、连接失败等问题
+title: "[AI 反馈] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。请尽量填写完整，便于复现和定位。
+        **不要**在这里粘贴 API 密钥、`.env` 内容、学生姓名/学号或其他个人信息；截图前请先遮挡。
+        提交后维护者会用审计记录（`records/analysis.jsonl`，只含错误码/阶段/耗时，不含问题原文）核对。
+  - type: dropdown
+    id: category
+    attributes:
+      label: 问题类型
+      description: 最接近的一类即可。
+      options:
+        - 数字/口径不对
+        - 理解错问题（问 A 答 B）
+        - 该出图却只给了文字
+        - 一直要求澄清或无法确定范围
+        - 连接失败/超时/限流（429、过载）
+        - 提示 AI 未配置或密钥失效
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: 问题原话
+      description: 请原样粘贴你输入的问题（包括标点），不要改写。
+      placeholder: 例如：各科成绩分布如何？
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望结果
+      description: 你期望它怎么理解、出什么图、给出哪些依据。
+      placeholder: 例如：期望看到成绩分布热力图，并标注每组样本数与口径。
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果
+      description: 实际发生了什么？可粘贴页面提示原文、错误码或结果卡里“分析方式/数字从哪来”的内容。
+      placeholder: 例如：只返回了一段文字，没有图，也没有样本数；页面提示“AI 暂未完成回复”。
+    validations:
+      required: true
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: 截图
+      description: 直接把截图拖进输入框（或粘贴剪贴板图片）。请包含错误提示全文与浏览器时间；不要拍密钥输入框、终端环境变量。
+      placeholder: 拖动图片到这里，或粘贴截图。
+  - type: input
+    id: occurred_at
+    attributes:
+      label: 发生时间
+      description: 尽量精确到分钟并注明时区，便于对照审计记录。
+      placeholder: 例如：2026-11-18 15:42（+08:00）
+    validations:
+      required: true
+  - type: dropdown
+    id: reproducible
+    attributes:
+      label: 是否可复现
+      options:
+        - 每次必现
+        - 偶尔出现
+        - 只出现一次
+    validations:
+      required: true
+  - type: input
+    id: context
+    attributes:
+      label: 数据源与筛选（可选）
+      description: 例如数据源 demo、课程“高等数学”、学期 2024J；以及是首次提问还是连续追问。
+      placeholder: 数据源 / 课程 / 学期 / 是否追问
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 隐私确认
+      options:
+        - label: 我没有在本次反馈中粘贴 API 密钥、环境变量文件或学生个人信息。
+          required: true

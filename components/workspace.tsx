@@ -22,6 +22,7 @@ import {
 } from "@/lib/ai/chat-types";
 import { createPlan } from "@/lib/analysis/plan";
 import { METRICS } from "@/lib/analysis/metrics";
+import { describeChatContext } from "@/lib/ai/context-label";
 import {
   analysisDimensionLabel,
   analysisReportHtml,
@@ -83,8 +84,24 @@ const AdminPanel = dynamic(
 );
 type View = "overview" | "analysis" | "data" | "reports" | "admin" | "account";
 type AnalysisMode = "metrics" | "question";
-type AIStatus = { configured: boolean; enabled: boolean };
+type AIStatus = { configured: boolean; enabled: boolean; model: string | null };
 type SessionAnalysis = { key: string; result: AnalysisResult };
+type FailedAsk = { question: string; code: string | null; retryable: boolean };
+/** Mirrors `isRetryableErrorCode` in lib/analysis/http-errors.ts; the server sends
+ *  `retryable` itself, this set only covers an older server response. */
+const RETRYABLE_CODES = new Set([
+  "DATA_SOURCE_UNAVAILABLE",
+  "AI_PROVIDER_OVERLOADED",
+  "AI_PROVIDER_RATE_LIMITED",
+  "AI_PROVIDER_UNAVAILABLE",
+  "RATE_LIMIT_EXCEEDED",
+  "ANALYSIS_FAILED",
+  "TIMEOUT",
+  "AI_PLANNING_FAILED",
+]);
+const DATA_SOURCE_UNAVAILABLE_MESSAGE =
+  "当前数据源读取失败，请换一个数据源，或联系管理员检查数据文件。";
+const STOPPED_MESSAGE = "已停止本轮回复，问题已保留，可直接重发。";
 const analysisKey = (result: AnalysisResult) =>
   JSON.stringify([
     result.datasetId,
@@ -93,6 +110,33 @@ const analysisKey = (result: AnalysisResult) =>
     result.query,
   ]);
 const NETWORK_ERROR_MESSAGE = "网络连接失败，请检查网络后重试。";
+
+/** Carries the server's code/retryable/Retry-After out of `api()` so the notice
+ *  can offer a retry instead of a dead end. */
+class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly code: string | null,
+    readonly retryable: boolean,
+    readonly status: number,
+    readonly retryAfterSeconds: number | null,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+function retryAfterSeconds(headers: Headers): number | null {
+  const header = headers.get("retry-after");
+  if (!header) return null;
+  const seconds = Number.parseInt(header, 10);
+  if (Number.isFinite(seconds) && seconds > 0) return seconds;
+  const at = Date.parse(header);
+  if (Number.isFinite(at)) {
+    const delta = Math.ceil((at - Date.now()) / 1000);
+    return delta > 0 ? delta : null;
+  }
+  return null;
+}
 /** Keep fetch noise out of Chinese notices: cancellation stays silent, server
  *  messages pass through, and network failures get one actionable sentence. */
 function requestMessage(error: unknown, fallback: string): string {
@@ -478,7 +522,11 @@ export function Workspace() {
   const [profiles, setProfiles] = useState<DatasetProfile[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(true);
   const [datasetId, setDatasetId] = useState<DataSource>("demo");
-  const [aiStatus, setAIStatus] = useState<AIStatus>({ configured: false, enabled: false });
+  const [aiStatus, setAIStatus] = useState<AIStatus>({
+    configured: false,
+    enabled: false,
+    model: null,
+  });
   // AI availability is deployment-wide, so it is fetched once per session. Only
   // leaving system management can change it, which refreshes the check once.
   const [aiStatusRefresh, setAiStatusRefresh] = useState(0);
@@ -504,6 +552,9 @@ export function Workspace() {
   const [sessionAnalyses, setSessionAnalyses] = useState<SessionAnalysis[]>([]);
   const [selectedReportKey, setSelectedReportKey] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [inputError, setInputError] = useState<string | null>(null);
+  const [failedAsk, setFailedAsk] = useState<FailedAsk | null>(null);
+  const [loginNotice, setLoginNotice] = useState<string | null>(null);
   const [refreshCount, setRefreshCount] = useState(0);
   const generation = useRef(0);
   const askPending = useRef<AbortController | null>(null);
@@ -552,6 +603,8 @@ export function Workspace() {
     setExpandedChartId(null);
     setQuestion("");
     setError(null);
+    setInputError(null);
+    setFailedAsk(null);
     setAskLoading(false);
     setBrowseLoading(false);
     sidebar.current?.hidePopover();
@@ -574,11 +627,36 @@ export function Workspace() {
       }
       if (options?.signal?.aborted) throw new DOMException("Request cancelled", "AbortError");
       if (response.status === 401) {
-        if (current === generation.current) expire();
-        throw new Error("登录已过期，请重新登录。");
+        if (current === generation.current) {
+          setLoginNotice("登录已过期，请重新登录。");
+          expire();
+        }
+        throw new ApiError("登录已过期，请重新登录。", "UNAUTHORIZED", false, 401, null);
       }
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "请求失败，请稍后重试。");
+      const retryAfter = retryAfterSeconds(response.headers);
+      // Response shapes differ per route, so the payload stays untyped here and
+      // every caller narrows what it asked for.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const payload: any = await response.json().catch(() => null);
+      if (!response.ok) {
+        const code = typeof payload?.code === "string" ? payload.code : null;
+        const retryable =
+          typeof payload?.retryable === "boolean"
+            ? payload.retryable
+            : code
+              ? RETRYABLE_CODES.has(code)
+              : response.status >= 500;
+        const serverMessage = typeof payload?.error === "string" ? payload.error : null;
+        let message =
+          code === "DATA_SOURCE_UNAVAILABLE"
+            ? DATA_SOURCE_UNAVAILABLE_MESSAGE
+            : (serverMessage ?? "请求失败，请稍后重试。");
+        if (response.status === 429 && retryAfter)
+          message = `${message}（请约 ${retryAfter} 秒后再试）`;
+        throw new ApiError(message, code, retryable, response.status, retryAfter);
+      }
+      if (payload === null)
+        throw new ApiError("返回数据格式异常，请稍后重试。", null, true, response.status, null);
       return payload;
     },
     [expire],
@@ -628,11 +706,16 @@ export function Workspace() {
     const current = generation.current;
     api("/api/ai/status", { signal: controller.signal })
       .then((payload) => {
-        if (!controller.signal.aborted && current === generation.current) setAIStatus(payload);
+        if (!controller.signal.aborted && current === generation.current)
+          setAIStatus({
+            configured: Boolean(payload.configured),
+            enabled: Boolean(payload.enabled),
+            model: typeof payload.model === "string" && payload.model ? payload.model : null,
+          });
       })
       .catch(() => {
         if (!controller.signal.aborted && current === generation.current)
-          setAIStatus({ configured: false, enabled: false });
+          setAIStatus({ configured: false, enabled: false, model: null });
       });
     return () => controller.abort();
   }, [user, api, aiStatusRefresh]);
@@ -748,6 +831,8 @@ export function Workspace() {
     setAskLoading(false);
     setBrowseLoading(false);
     setError(null);
+    setInputError(null);
+    setFailedAsk(null);
   }
   function navigate(next: View) {
     delete document.documentElement.dataset.motionReplayGuard;
@@ -795,7 +880,9 @@ export function Workspace() {
   async function ask(nextQuestion = question) {
     const trimmed = nextQuestion.trim();
     if (trimmed.length < 2 || trimmed.length > 500) {
-      setError("请写下 2–500 字的分析问题。");
+      const message = "请写下 2–500 字的分析问题。";
+      setError(message);
+      setInputError(message);
       return;
     }
     if ((!canRun && !aiReady) || askPending.current) return;
@@ -805,6 +892,8 @@ export function Workspace() {
     setPendingQuestion(trimmed);
     setAskLoading(true);
     setError(null);
+    setInputError(null);
+    setFailedAsk(null);
     const current = generation.current;
     const isCurrent = () =>
       !controller.signal.aborted &&
@@ -817,7 +906,10 @@ export function Workspace() {
         body: JSON.stringify({
           question: trimmed,
           datasetId,
-          history: chatMessages.slice(-12).map(({ role, content }) => ({ role, content })),
+          history: chatMessages
+            .filter((message) => !message.system)
+            .slice(-12)
+            .map(({ role, content }) => ({ role, content })),
           context: chatContext,
         }),
         signal: controller.signal,
@@ -841,8 +933,19 @@ export function Workspace() {
         }
       }
     } catch (requestError) {
-      if (isCurrent())
-        setError(requestMessage(requestError, "分析失败，请稍后重试。"));
+      if (!isCurrent()) return;
+      const message = requestMessage(requestError, "分析失败，请稍后重试。");
+      // Cancellation is silent: the stop button reports its own outcome.
+      if (!message) return;
+      setError(message);
+      setFailedAsk({
+        question: trimmed,
+        code: requestError instanceof ApiError ? requestError.code : null,
+        retryable:
+          requestError instanceof ApiError
+            ? requestError.retryable
+            : requestError instanceof TypeError,
+      });
     } finally {
       if (isCurrent()) {
         askPending.current = null;
@@ -894,11 +997,13 @@ export function Workspace() {
     return (
       <LoginScreen
         setupRequired={setupRequired}
+        notice={loginNotice}
         onLogin={(nextUser) => {
           generation.current++;
           setUser(nextUser);
           setProfilesLoading(true);
           setBootError("");
+          setLoginNotice(null);
         }}
       />
     );
@@ -910,6 +1015,10 @@ export function Workspace() {
   const visibleResult = activeResult?.datasetId === datasetId ? activeResult : null;
   const loading = mode === "metrics" ? browseLoading : askLoading;
   const showDataset = view === "overview" || view === "analysis" || view === "data";
+  const retryableAsk =
+    failedAsk && failedAsk.retryable && view === "analysis" && mode === "question"
+      ? failedAsk
+      : null;
   const notice = error && (
     <div className="notice notice-error global-notice" role="alert" data-enter="fade">
       <Icon name="info" size={18} />
@@ -917,11 +1026,28 @@ export function Workspace() {
         {error}
         {visibleResult && view === "analysis" && " 上次成功的结果仍可查看和导出。"}
       </span>
+      {retryableAsk && (
+        <button
+          type="button"
+          className="text-button"
+          disabled={askLoading}
+          onClick={() => {
+            setError(null);
+            setFailedAsk(null);
+            void ask(retryableAsk.question);
+          }}
+        >
+          重试这次提问
+        </button>
+      )}
       <button
         type="button"
         aria-label="关闭提示"
         className="icon-button"
-        onClick={() => setError(null)}
+        onClick={() => {
+          setError(null);
+          setFailedAsk(null);
+        }}
       >
         <Icon name="close" size={17} />
       </button>
@@ -1145,6 +1271,7 @@ export function Workspace() {
                 loading={profilesLoading || (overviewLoading && canRun)}
                 profile={selectedProfile}
                 canRun={canRun}
+                aiReady={aiReady}
                 onExplore={(nextMetric) => {
                   setAnalysisView("standard");
                   setMetric(nextMetric);
@@ -1172,8 +1299,14 @@ export function Workspace() {
                   pendingQuestion={pendingQuestion}
                   aiReady={aiReady}
                   canRun={canRun}
+                  model={aiStatus.model}
+                  contextLabel={describeChatContext(chatContext)}
+                  inputError={inputError}
                   expandedChartId={expandedChartId}
-                  onQuestionChange={setQuestion}
+                  onQuestionChange={(value) => {
+                    setQuestion(value);
+                    if (inputError) setInputError(null);
+                  }}
                   onAsk={(next) => void ask(next)}
                   onExpandChart={setExpandedChartId}
                   onChartChange={changeChatView}
@@ -1181,10 +1314,24 @@ export function Workspace() {
                   onConfigure={user.role === "admin" ? () => navigate("admin") : undefined}
                   notice={notice}
                   onStop={() => {
-                    askPending.current?.abort();
+                    // Ignore a second stop click after the request already ended.
+                    if (!askPending.current) return;
+                    askPending.current.abort();
                     askPending.current = null;
                     setAskLoading(false);
+                    setChatMessages((previous) =>
+                      [
+                        ...previous,
+                        {
+                          id: `stopped-${crypto.randomUUID()}`,
+                          role: "assistant" as const,
+                          content: STOPPED_MESSAGE,
+                          system: true,
+                        },
+                      ].slice(-40),
+                    );
                   }}
+                  onClearContext={() => setChatContext(null)}
                   onClear={() => {
                     setChatMessages([]);
                     setChatContext(null);
@@ -1192,6 +1339,8 @@ export function Workspace() {
                     setAskResult(null);
                     setQuestion("");
                     setError(null);
+                    setInputError(null);
+                    setFailedAsk(null);
                     window.scrollTo({ top: 0, behavior: "instant" });
                   }}
                 />

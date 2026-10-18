@@ -328,13 +328,33 @@ describe("chart requests preserve the requested task", () => {
       view: "chart",
     });
   });
-  it("chooses a distribution chart from the analysis goal", async () => {
+  it("asks the model for a score distribution instead of guessing a boxplot", async () => {
+    generate
+      .mockReset()
+      .mockResolvedValueOnce({
+        fields: {
+          ...plan,
+          action: "distribution",
+          goal: "distribution",
+          metric: "score",
+          dimension: null,
+          course: null,
+          term: null,
+          view: "heatmap",
+          sortBy: null,
+          sortDirection: null,
+          limit: null,
+        },
+        usedModel: "fixture",
+      })
+      .mockRejectedValue(new Error("no explanation"));
     const r = await converse(
       { question: "想看看各科成绩的分布情况", datasetId: "demo" },
       {},
       deps(),
     );
-    expect(r.artifact).toMatchObject({ kind: "studio", tool: "boxplot", view: "chart" });
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(r.artifact).toMatchObject({ kind: "distribution" });
   });
   it("clears an old course filter when the new goal compares all courses", async () => {
     const r = await converse(

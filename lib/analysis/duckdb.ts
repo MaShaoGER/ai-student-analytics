@@ -4,6 +4,7 @@ import path from "node:path";
 import { API_QUERY_LIMITS } from "../security/query-limits";
 import {
   assertQueryResultLimits,
+  QueryExecutionError,
   withBoundedQueryConnection,
   type QueryExecutionOptions,
 } from "../security/query-execution";
@@ -289,7 +290,10 @@ export async function runAnalysis(
 ): Promise<{ plan: AnalysisPlan; result: AnalysisResult }> {
   const plan = analysisPlanSchema.parse(input);
   if (!validateFiles(plan.datasetId)) {
-    throw new Error(`数据源 ${plan.datasetId} 不可用，请检查本地数据文件。`);
+    throw new QueryExecutionError(
+      "DATA_SOURCE_UNAVAILABLE",
+      `数据源 ${plan.datasetId} 不可用，请检查本地数据文件。`,
+    );
   }
   const query = plan.datasetId === "demo" ? queryForDemo(plan) : queryForOulad(plan);
   const minSampleSize = 3;
@@ -361,7 +365,8 @@ export async function scoreDistribution(
   datasetId: DataSource,
   options: QueryExecutionOptions = {},
 ): Promise<ScoreDistributionData> {
-  if (!validateFiles(datasetId)) throw new Error("成绩数据源不可用。");
+  if (!validateFiles(datasetId))
+    throw new QueryExecutionError("DATA_SOURCE_UNAVAILABLE", "成绩数据源不可用，请检查本地数据文件。");
   const source = studentScoreSource(datasetId);
   const rows = await withBoundedQueryConnection(
     (sql) => sql(`
@@ -407,7 +412,8 @@ export async function courseRelations(
   options: QueryExecutionOptions = {},
 ): Promise<CourseRelationData> {
   const { datasetId, term, threshold, courses: requestedCourses = [] } = courseRelationRequestSchema.parse(input);
-  if (!validateFiles(datasetId)) throw new Error("成绩数据源不可用。");
+  if (!validateFiles(datasetId))
+    throw new QueryExecutionError("DATA_SOURCE_UNAVAILABLE", "成绩数据源不可用，请检查本地数据文件。");
   const minSampleSize = 3;
   const courseLimit = 12;
   return withBoundedQueryConnection(async (sql) => {
@@ -467,7 +473,8 @@ export async function coursePanorama(
   options: QueryExecutionOptions = {},
 ): Promise<CoursePanoramaData> {
   const { datasetId, term, threshold, source, target, courses: requestedCourses = [] } = coursePanoramaRequestSchema.parse(input);
-  if (!validateFiles(datasetId)) throw new Error("成绩数据源不可用。");
+  if (!validateFiles(datasetId))
+    throw new QueryExecutionError("DATA_SOURCE_UNAVAILABLE", "成绩数据源不可用，请检查本地数据文件。");
   const minSampleSize = 3;
   const courseLimit = 12;
   const literal = (value: string) => `'${value.replaceAll("'", "''")}'`;
@@ -566,7 +573,8 @@ export async function chartStudioData(
   options: QueryExecutionOptions = {},
   selection: { courses?: string[]; beforeTerm?: string; densityMetric?: StudioRelationshipMetric } = {},
 ): Promise<StudioProjectData> {
-  if (!validateFiles(datasetId)) throw new Error("数据源不可用。");
+  if (!validateFiles(datasetId))
+    throw new QueryExecutionError("DATA_SOURCE_UNAVAILABLE", "数据源不可用，请检查本地数据文件。");
   const literal = (value: string) => `'${value.replaceAll("'", "''")}'`;
   const table = (rows: Record<string, unknown>[], columns: string[], description: string): StudioTable => ({
     columns, rows: rows as StudioRow[], description,

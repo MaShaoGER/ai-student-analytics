@@ -354,8 +354,10 @@ integration("authenticated application HTTP API", () => {
     const reloaded = await (await request("/api/admin/ai-config")).json();
     expect(reloaded.config).toEqual(saved.config);
     const status = await (await request("/api/ai/status", {}, userCookie)).json();
-    expect(Object.keys(status).sort()).toEqual(["configured", "enabled"]);
+    expect(Object.keys(status).sort()).toEqual(["configured", "enabled", "model"]);
+    expect(status.configured).toBe(true);
     expect(status.enabled).toBe(false);
+    expect(status.model).toBe("fixture-model");
   });
 
   it("does not call the provider while AI is disabled", async () => {

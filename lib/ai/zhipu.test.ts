@@ -128,9 +128,19 @@ describe("Zhipu GLM Flash planner transport and accounting", () => {
     expect(readState("cost-history.json", () => ({}))).toMatchObject({ reservations: [], records: [{ usageEstimated: false }] });
   });
 
-  it.each([401, 429])("does not retry HTTP %s and settles zero-cost estimated usage", async (providerStatus) => {
+  it.each([
+    // Upstream auth failures become a gateway error (502) so the client does not
+    // mistake them for its own expired session; throttling stays 429.
+    [401, 502, "AI_PROVIDER_AUTH"],
+    [429, 429, "AI_PROVIDER_RATE_LIMITED"],
+  ] as const)(
+    "does not retry HTTP %s and settles zero-cost estimated usage",
+    async (providerStatus, clientStatus, code) => {
     status = providerStatus;
-    await expect(planQuestion({ question, datasetId: "demo" })).rejects.toMatchObject({ status: providerStatus });
+    await expect(planQuestion({ question, datasetId: "demo" })).rejects.toMatchObject({
+      status: clientStatus,
+      code,
+    });
     expect(fetchStub).toHaveBeenCalledOnce();
     expect(readState("cost-history.json", () => ({}))).toMatchObject({ reservations: [], records: [{ usageEstimated: true, cost: { totalCost: 0 } }] });
   });

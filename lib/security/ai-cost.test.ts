@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -9,9 +9,16 @@ import {
   checkBudget,
   BudgetExceededError,
   getCostStats,
+  getPublicCostStats,
+  reserveBudget,
+  settleBudget,
+  cleanupOldRecords,
   BUDGET_LIMITS,
   UnknownModelPricingError,
 } from "./ai-cost";
+
+const DAY = 24 * 60 * 60 * 1000;
+const PRICING = { inputPerMillion: 1, outputPerMillion: 1 };
 
 describe("AI cost tracking", () => {
   let directory: string;
@@ -166,6 +173,104 @@ describe("AI cost tracking", () => {
       expect(BUDGET_LIMITS.perHour).toBeLessThanOrEqual(10);
       expect(BUDGET_LIMITS.perDay).toBeLessThanOrEqual(50);
       expect(BUDGET_LIMITS.perMonth).toBeLessThanOrEqual(500);
+    });
+  });
+
+  describe("estimated vs measured accounting", () => {
+    const usage = { promptTokens: 1_000, completionTokens: 500, totalTokens: 1_500 };
+
+    const settle = (estimated: boolean) =>
+      settleBudget(
+        reserveBudget(0.01, BUDGET_LIMITS),
+        "gpt-4o-mini",
+        usage,
+        "planner",
+        PRICING,
+        estimated,
+      );
+
+    it("separates measured calls from estimated calls and reports the estimated cost share", () => {
+      recordCost("gpt-4o-mini", usage);
+      settle(true);
+
+      const stats = getCostStats();
+      expect(stats.total).toBe(2);
+      expect(stats.measuredCalls).toBe(1);
+      expect(stats.estimatedCalls).toBe(1);
+      expect(stats.estimatedCost).toBeCloseTo(0.0015, 8);
+      // Estimates are half the calls and dominate the (much cheaper) measured one.
+      expect(stats.estimatedShare).toBe(0.77);
+
+      const publicStats = getPublicCostStats();
+      expect(publicStats).toMatchObject({
+        totalCalls: 2,
+        measuredCalls: 1,
+        estimatedCalls: 1,
+        estimatedCost: "0.0015",
+        estimatedShare: 0.77,
+        estimated: true,
+      });
+    });
+
+    it("reports a zero share when there are no calls", () => {
+      expect(getCostStats()).toMatchObject({ total: 0, measuredCalls: 0, estimatedCalls: 0, estimatedCost: 0, estimatedShare: 0 });
+      expect(getPublicCostStats()).toMatchObject({ estimatedCost: "0.0000", estimatedShare: 0 });
+    });
+
+    it("keeps a measured failure documented as estimated", () => {
+      settle(false);
+      expect(getCostStats()).toMatchObject({ measuredCalls: 1, estimatedCalls: 0, estimatedShare: 0 });
+    });
+  });
+
+  describe("bounded history cleanup", () => {
+    const seed = (records: { timestamp: number }[]) =>
+      writeFileSync(
+        join(directory, "cost-history.json"),
+        JSON.stringify({
+          reservations: [],
+          records: records.map((record) => ({
+            model: "seeded-model",
+            usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+            cost: { promptCost: 0, completionCost: 0, totalCost: 0, currency: "USD" },
+            endpoint: "seed",
+            usageEstimated: false,
+            ...record,
+          })),
+        }),
+      );
+
+    it("prunes records older than 90 days once settlement pushes history past 500 entries", () => {
+      const now = Date.now();
+      const oldTimestamp = now - 91 * DAY;
+      seed([
+        { timestamp: oldTimestamp },
+        { timestamp: oldTimestamp + 1 },
+        ...Array.from({ length: 499 }, (_, index) => ({ timestamp: now - index * 1_000 })),
+      ]);
+
+      settleBudget(
+        reserveBudget(0.000001, BUDGET_LIMITS),
+        "gpt-4o-mini",
+        { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+        "planner",
+        PRICING,
+        false,
+      );
+
+      const stats = getCostStats();
+      expect(stats.total).toBe(500);
+      const state = JSON.parse(
+        readFileSync(join(directory, "cost-history.json"), "utf8"),
+      ) as { records: { timestamp: number }[] };
+      expect(state.records.every((record) => record.timestamp > oldTimestamp + 1)).toBe(true);
+    });
+
+    it("cleanupOldRecords reports and removes aged entries", () => {
+      const now = Date.now();
+      seed([{ timestamp: now - 100 * DAY }, { timestamp: now }]);
+      expect(cleanupOldRecords(90 * DAY)).toBe(1);
+      expect(getCostStats().total).toBe(1);
     });
   });
 });

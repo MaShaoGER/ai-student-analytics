@@ -14,9 +14,12 @@ type MotionStyle = CSSProperties & { [key: `--${string}`]: string };
 export function LoginScreen({
   onLogin,
   setupRequired,
+  notice,
 }: {
   onLogin: (user: SessionUser) => void;
   setupRequired: boolean;
+  /** One-off context from the workspace, e.g. "登录已过期，请重新登录。". */
+  notice?: string | null;
 }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -216,6 +219,12 @@ export function LoginScreen({
             <div className="notice notice-info" role="status">
               <Icon name="info" />
               <span>尚未创建管理员账号，请联系部署管理员完成初始化。</span>
+            </div>
+          )}
+          {notice && (
+            <div className="notice notice-info" role="status">
+              <Icon name="info" />
+              <span>{notice}</span>
             </div>
           )}
           {error && (

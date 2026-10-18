@@ -33,6 +33,11 @@ export function inferChartTool(input: ChatInput): ChatTool | undefined {
   if (explicit) return explicit;
   const goal = inferGoal(input.question);
   if (goal === "explain") return undefined;
+  // Relationship questions map to the deterministic density tool: the tool is
+  // local, so "缺勤次数和成绩有关系吗？" still works without a model. A plain
+  // distribution question ("各科成绩分布如何？") is deliberately NOT mapped to
+  // a local boxplot: score-distribution is a model-planned view (heatmap/table),
+  // and guessing a boxplot here silently changed the requested artifact.
   if (
     goal === "relationship" &&
     relationshipMetric(input.question, input.context) &&
@@ -40,13 +45,6 @@ export function inferChartTool(input: ChatInput): ChatTool | undefined {
       (input.context?.kind === "tool" && input.context.tool === "density"))
   )
     return "density";
-  if (
-    goal === "distribution" &&
-    /各科|各门|每门|对比|比较/.test(input.question) &&
-    /成绩|得分|分数|均分/.test(input.question) &&
-    !/分数段|分档|热力|直方/.test(input.question)
-  )
-    return "boxplot";
   return undefined;
 }
 export function wantsTable(question: string) {
@@ -184,4 +182,18 @@ export function resultNarrative(
   return artifact.kind === "relations"
     ? "用弦图呈现学科共同未达标的情况，连接带越宽表示共现人数越多；可点选查看共同选课样本与占比。"
     : "全景图汇集所选学期的各科成绩分布、均分、及格率与薄弱共现，便于一起观察。";
+}
+
+/**
+ * Explanation text must not restate numbers: verified values already come from
+ * `resultFacts`. Remove only the sentences that carry a digit or percent sign
+ * and keep the remaining prose; the caller shows the degraded notice only when
+ * nothing survives. Previously any numeric character dropped the whole text.
+ */
+export function sanitizeExplanation(answer: string): string {
+  return answer
+    .split(/(?<=[。！？!?；;\n])/u)
+    .filter((sentence) => !/[0-9０-９%％]/u.test(sentence))
+    .join("")
+    .trim();
 }

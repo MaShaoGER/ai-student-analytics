@@ -15,6 +15,7 @@
     "data:demo": "node scripts/generate-demo-data.mjs",
     "format": "prettier --write .",
     "test:recovery": "node --test scripts/recovery.test.mjs",
+    "eval:ai": "AI_EVAL=1 vitest run scripts/ai-eval.test.ts",
     "postbuild": "node scripts/prepare-standalone-native.mjs"
   },
   "dependencies": {

@@ -30,9 +30,18 @@ export type AIConfig = {
 };
 export type AICostStats = {
   totalCalls: number;
+  /** Calls billed from provider-reported usage. */
+  measuredCalls: number;
+  /** Calls billed from the request heuristic (network failure or no usage). */
+  estimatedCalls: number;
+  /** Cost attributed to estimated calls, fixed to 4 decimals. */
+  estimatedCost: string;
+  /** Share of total cost that came from estimates, 0–1 rounded to 2 decimals. */
+  estimatedShare: number;
   lastHour: { totalCost: string; currency: string };
   last24Hours: { totalCost: string; currency: string };
   byModel: { model: string; calls: number; totalCost: string }[];
+  /** Kept for compatibility: every figure here is an estimate, not a bill. */
   estimated: true;
 };
 export type AIConfigResponse = { config: AIConfig; stats: AICostStats };

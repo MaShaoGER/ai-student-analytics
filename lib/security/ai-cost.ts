@@ -27,6 +27,9 @@ type CostStore = { records: CostRecord[]; reservations: Reservation[] };
 const initial = (): CostStore => ({ records: [], reservations: [] });
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
+/** Keep history bounded without paying a prune on every call. */
+const COST_HISTORY_PRUNE_THRESHOLD = 500;
+const COST_HISTORY_RETENTION_MS = 90 * DAY;
 export const BUDGET_LIMITS = { ...DEFAULT_BUDGETS };
 
 export class UnknownModelPricingError extends Error {
@@ -102,12 +105,16 @@ export function reserveBudget(estimatedCost: number, limits: AIBudgets = getAICo
 
 export function settleBudget(id: string, model: string, usage: TokenUsage, endpoint: string, pricing: AIPricing, usageEstimated = false): CostEstimate {
   const cost = calculateCost(model, usage, pricing);
-  updateState("cost-history.json", initial, (state) => {
+  const recordCount = updateState("cost-history.json", initial, (state) => {
     const reservation = state.reservations.find((candidate) => candidate.id === id);
     if (!reservation) throw new Error("AI 预算记录不存在或已结算。");
     state.reservations = state.reservations.filter((candidate) => candidate.id !== id);
     state.records.push({ timestamp: Date.now(), model, usage, cost, endpoint, usageEstimated });
+    return state.records.length;
   });
+  // Bound unbounded history growth. Pruning runs as a separate transaction and
+  // only once the file is large, so normal calls keep their single write.
+  if (recordCount > COST_HISTORY_PRUNE_THRESHOLD) cleanupOldRecords(COST_HISTORY_RETENTION_MS);
   return cost;
 }
 
@@ -119,8 +126,16 @@ export function releaseBudget(id: string): void {
 
 export function getCostStats() {
   const state = readState("cost-history.json", initial);
+  const estimatedRecords = state.records.filter((record) => record.usageEstimated === true);
+  const totalCost = state.records.reduce((sum, record) => sum + record.cost.totalCost, 0);
+  const estimatedCost = estimatedRecords.reduce((sum, record) => sum + record.cost.totalCost, 0);
   return {
     total: state.records.length,
+    estimatedCalls: estimatedRecords.length,
+    measuredCalls: state.records.length - estimatedRecords.length,
+    estimatedCost,
+    // Cost share of calls billed from an estimate rather than provider usage.
+    estimatedShare: totalCost > 0 ? Math.round((estimatedCost / totalCost) * 100) / 100 : 0,
     last24h: totalFor(state.records, DAY),
     lastHour: totalFor(state.records, HOUR),
     byModel: state.records.reduce((byModel, record) => {
@@ -135,6 +150,10 @@ export function getPublicCostStats(): AICostStats {
   const stats = getCostStats();
   return {
     totalCalls: stats.total,
+    estimatedCalls: stats.estimatedCalls,
+    measuredCalls: stats.measuredCalls,
+    estimatedCost: stats.estimatedCost.toFixed(4),
+    estimatedShare: stats.estimatedShare,
     lastHour: { totalCost: stats.lastHour.totalCost.toFixed(4), currency: "USD" },
     last24Hours: { totalCost: stats.last24h.totalCost.toFixed(4), currency: "USD" },
     byModel: Object.entries(stats.byModel).map(([model, data]) => ({ model, calls: data.calls, totalCost: data.totalCost.toFixed(4) })),

@@ -13,6 +13,8 @@ export async function GET(request: Request) {
     return noStoreJson({
       configured: status.configured && pricingConfigured,
       enabled: status.enabled,
+      // Model name only: never expose the key, base URL or pricing defaults here.
+      model: config.model || null,
     });
   } catch (error) {
     return apiError(error);

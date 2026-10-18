@@ -7,7 +7,7 @@ import { ChartViewPicker } from "@/components/chart-view-picker";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { resolveChartView, type ChartViewType } from "@/lib/analysis/visualization";
 import { METRICS } from "@/lib/analysis/metrics";
-import { GOLDEN_CASES } from "@/lib/analysis/golden-cases";
+import { suggestedQuestionsFor } from "@/lib/ai/suggested-questions";
 import type { AnalysisResult, DatasetProfile, Metric } from "@/lib/analysis/types";
 
 const AnalysisChart = dynamic(
@@ -89,6 +89,7 @@ export function LearningOverview({
   loading,
   profile,
   canRun,
+  aiReady,
   onExplore,
   onQuestion,
   onData,
@@ -100,6 +101,7 @@ export function LearningOverview({
   loading: boolean;
   profile?: DatasetProfile;
   canRun: boolean;
+  aiReady: boolean;
   onExplore: (metric: Metric) => void;
   onQuestion: (question?: string) => void;
   onData: () => void;
@@ -514,7 +516,7 @@ export function LearningOverview({
                 <h2>试着问问</h2>
                 <Icon name="messages" size={17} />
               </div>
-              {[GOLDEN_CASES[0], GOLDEN_CASES[3], GOLDEN_CASES[6]].map((item, index) => (
+              {suggestedQuestionsFor(aiReady).map((item, index) => (
                 <button
                   type="button"
                   key={item.id}
@@ -530,7 +532,9 @@ export function LearningOverview({
               ))}
               <p data-enter="fade" style={{ "--enter-delay": "880ms" } as CSSProperties}>
                 <Icon name="check" size={13} />
-                推荐问题可直接分析，无需 AI 连接
+                {aiReady
+                  ? "推荐问题可直接分析，也可以用自己的话提问"
+                  : "推荐问题可直接分析，无需 AI 连接"}
               </p>
             </section>
           </section>

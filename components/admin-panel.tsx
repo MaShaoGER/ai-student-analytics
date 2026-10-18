@@ -750,6 +750,25 @@ export function AdminPanel({
                       </strong>
                     </div>
                     <div className="admin-stat">
+                      <span>实测 / 估算调用</span>
+                      <strong>
+                        实测 <AnimatedNumber value={stats?.measuredCalls} fallback="—" />
+                        <small> 次 · </small>
+                        估算 <AnimatedNumber value={stats?.estimatedCalls} fallback="—" />
+                        <small> 次</small>
+                      </strong>
+                    </div>
+                    <div className="admin-stat">
+                      <span>估算费用占比</span>
+                      <strong>
+                        <AnimatedNumber
+                          value={stats === null ? undefined : stats.estimatedShare * 100}
+                          fallback="—"
+                        />
+                        <small> %</small>
+                      </strong>
+                    </div>
+                    <div className="admin-stat">
                       <span>近 24 小时</span>
                       <strong>
                         <AnimatedCost value={stats?.last24Hours.totalCost} />
@@ -765,7 +784,9 @@ export function AdminPanel({
                     </div>
                   </div>
                   <p className="form-help">
-                    费用根据填写的单价估算。用量包含连接测试，以服务商账单为准。
+                    实测指服务商返回了 usage 的调用；估算指网络失败或未返回
+                    usage、按请求内容估算的调用（估算费用合计 $
+                    {stats?.estimatedCost ?? "—"}）。费用均按填写的单价估算，用量包含连接测试，以服务商账单为准。
                   </p>
                 </section>
                 <section className="panel">

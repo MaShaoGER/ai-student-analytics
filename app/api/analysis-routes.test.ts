@@ -14,6 +14,7 @@ import { checkRateLimit } from "../../lib/security/rate-limit";
 import { QueryExecutionError, type QueryExecutionErrorCode } from "../../lib/security/query-execution";
 import { BudgetExceededError, UnknownModelPricingError } from "../../lib/security/ai-cost";
 import { AIClarificationError, AIConfigurationError, planQuestion } from "../../lib/ai/planner";
+import { PROMPT_VERSION } from "../../lib/ai/prompts/version";
 import { AIProviderError } from "../../lib/ai/provider-errors";
 
 vi.mock("@/lib/analysis/duckdb", () => ({ runAnalysis: vi.fn(), profileDatasets: vi.fn() }));
@@ -88,6 +89,7 @@ describe("analysis API classification and persisted audit", () => {
     expect(loadAnalysisRecords()).toEqual([expect.objectContaining({
       datasetId: "oulad", metricId: "activity", plan,
       userId: "user-id-123", requestSource: endpoint, stage: "execution",
+      ...(endpoint === "ask" ? { promptVersion: PROMPT_VERSION, model: null } : {}),
       result: { rowCount: 1, period: result.period, durationMs: 12 }, errorCode: null,
     })]);
     const saved = readFileSync(path.join(directory, "analysis.jsonl"), "utf8");
@@ -135,6 +137,8 @@ describe("analysis API classification and persisted audit", () => {
     expect(await response.json()).toEqual({
       error: "请求内容过大，请缩小查询范围后重试。",
       code: "REQUEST_TOO_LARGE",
+      // The conversational endpoint reports whether the client may retry.
+      ...(endpoint === "ask" ? { retryable: false } : {}),
     });
     expect(runAnalysis).not.toHaveBeenCalled();
     expect(loadAnalysisRecords()).toEqual([

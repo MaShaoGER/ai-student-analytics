@@ -50,6 +50,9 @@ export async function saveAnalysisRecord(record: RecordInput): Promise<string> {
     userId: record.userId,
     requestSource: record.requestSource,
     stage: record.stage,
+    // Prompt version and model make AI failures reproducible without storing text.
+    promptVersion: record.promptVersion,
+    model: record.model ?? null,
     result: {
       rowCount: record.result.rowCount,
       period: record.result.period,
@@ -71,7 +74,18 @@ export async function saveAnalysisRecord(record: RecordInput): Promise<string> {
 
 /** Audit failures must not hide a successful result or the original API error. */
 export async function saveAnalysisAudit(
-  record: AnalysisRecordContext & Pick<RecordInput, "userId" | "requestSource" | "stage" | "result" | "errorCode" | "errorMessage">,
+  record: AnalysisRecordContext &
+    Pick<
+      RecordInput,
+      | "userId"
+      | "requestSource"
+      | "stage"
+      | "result"
+      | "errorCode"
+      | "errorMessage"
+      | "promptVersion"
+      | "model"
+    >,
 ): Promise<void> {
   try {
     await saveAnalysisRecord({ datasetVersion: "1.0", metricVersion: "1.0", ...record });

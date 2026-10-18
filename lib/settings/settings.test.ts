@@ -19,7 +19,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { APIConnectionTimeoutError, APIUserAbortError } from "openai/core/error";
 import { z } from "zod";
 import type { AIConfig } from "../client-types";
-import { generateStructured, getAIStatus, planQuestion } from "../ai/planner";
+import {
+  estimatePromptTokens,
+  generateStructured,
+  getAIStatus,
+  planQuestion,
+} from "../ai/planner";
 import { converse } from "../ai/conversation";
 import { BAILIAN_QWEN_FLASH } from "../ai/bailian";
 import {
@@ -385,7 +390,10 @@ describe("persistent AI settings and usage", () => {
   it("reserves the Bailian request before calling and estimates usage on provider failure", async () => {
     saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, apiKey: SAVED_KEY });
     openAIStub.create.mockImplementationOnce(async (payload) => {
-      const expectedCost = ((Buffer.byteLength(JSON.stringify(payload), "utf8") + 512) * 2 + 500 * 5) / 1_000_000;
+      // Pricing is 2 USD/M input and 5 USD/M output; the planner reserves the
+      // character-based token estimate (not UTF-8 bytes) plus the output cap.
+      const expectedCost =
+        (estimatePromptTokens(JSON.stringify(payload)) * 2 + 500 * 5) / 1_000_000;
       const history = readState("cost-history.json", () => ({ reservations: [] as { amount: number }[] }));
       expect(history.reservations).toHaveLength(1);
       expect(history.reservations[0].amount).toBeCloseTo(expectedCost, 8);

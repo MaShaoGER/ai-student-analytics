@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Icon } from "@/components/app-icons";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { ChartViewPicker } from "@/components/chart-view-picker";
+import { planningMethodLabel } from "@/lib/ai/context-label";
 import { METRICS } from "@/lib/analysis/metrics";
 import type { AnalysisResult, AnalysisRow } from "@/lib/analysis/types";
 import { resolveChartView, type ChartViewType } from "@/lib/analysis/visualization";
@@ -28,8 +29,9 @@ const AnalysisChart = dynamic(
 );
 
 export type AnalysisPlanning = {
-  source: "golden_case" | "openai" | "external";
+  source: "golden_case" | "local" | "openai" | "external";
   rationale: string;
+  model?: string | null;
 };
 
 const formatNumber = (value: number) => value.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
@@ -461,8 +463,7 @@ export function AnalysisResultView({
                   <div>
                     <dt>分析方式</dt>
                     <dd>
-                      {planning.source === "golden_case" ? "已验证的分析方式" : "AI 生成分析计划"} ·{" "}
-                      {planning.rationale}
+                      {planningMethodLabel(planning)} · {planning.rationale}
                     </dd>
                   </div>
                 )}

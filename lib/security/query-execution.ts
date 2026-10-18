@@ -2,7 +2,14 @@ import { DuckDBInstance, type DuckDBConnection } from "@duckdb/node-api";
 import { validateQueryResult, type QueryLimits } from "./query-limits";
 
 export type QueryExecutionErrorCode =
-  "TIMEOUT" | "CANCELLED" | "OUT_OF_MEMORY" | "TOO_MANY_ROWS" | "TOO_MANY_FIELDS";
+  | "TIMEOUT"
+  | "CANCELLED"
+  | "OUT_OF_MEMORY"
+  | "TOO_MANY_ROWS"
+  | "TOO_MANY_FIELDS"
+  // Data files are missing/unreadable. Separate from query failures so the user
+  // and administrator are pointed at the data source instead of the AI provider.
+  | "DATA_SOURCE_UNAVAILABLE";
 
 export class QueryExecutionError extends Error {
   constructor(

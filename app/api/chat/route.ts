@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { converse } from "@/lib/ai/conversation";
 import { chatInputSchema } from "@/lib/ai/chat-types";
+import { PROMPT_VERSION } from "@/lib/ai/prompts/version";
 import { AIConfigurationError } from "@/lib/ai/planner";
 import { AIProviderError, AI_PROVIDER_RETRY_AFTER } from "@/lib/ai/provider-errors";
 import { apiError, assertSameOrigin, noStoreJson, requireUser } from "@/lib/auth/http";
 import { AuthError } from "@/lib/auth/service";
-import { queryExecutionHttpError } from "@/lib/analysis/http-errors";
+import { isRetryableErrorCode, queryExecutionHttpError } from "@/lib/analysis/http-errors";
 import { analysisRecordContext, saveAnalysisAudit } from "@/lib/records";
 import { BudgetExceededError, UnknownModelPricingError } from "@/lib/security/ai-cost";
 import { checkRateLimit, rateLimitConfigs } from "@/lib/security/rate-limit";
@@ -19,13 +20,19 @@ export async function POST(request: Request) {
     assertSameOrigin(request);
     userId = (await requireUser(request)).id;
   } catch (error) {
+    // Every /api/chat error carries the same { error, code, retryable } shape.
+    if (error instanceof AuthError)
+      return NextResponse.json(
+        { error: error.message, code: error.code, retryable: false },
+        { status: error.status, headers: { "Cache-Control": "no-store" } },
+      );
     return apiError(error);
   }
   // Share the existing natural-language quota; switching endpoints cannot bypass it.
   const limit = checkRateLimit(`ask:${userId}`, rateLimitConfigs.ask);
   if (!limit.allowed)
     return NextResponse.json(
-      { error: "请求过于频繁，请稍后重试。", code: "RATE_LIMIT_EXCEEDED" },
+      { error: "请求过于频繁，请约 30 秒后再试。", code: "RATE_LIMIT_EXCEEDED", retryable: true },
       {
         status: 429,
         headers: {
@@ -43,12 +50,15 @@ export async function POST(request: Request) {
     errorMessage: string | null,
     rowCount = 0,
     period = "",
+    model: string | null = null,
   ) =>
     saveAnalysisAudit({
       ...context,
       userId,
       requestSource: "ask",
       stage,
+      promptVersion: PROMPT_VERSION,
+      model,
       result: { rowCount, period, durationMs: Math.round(performance.now() - startedAt) },
       errorCode,
       errorMessage,
@@ -68,7 +78,11 @@ export async function POST(request: Request) {
           await reader.cancel();
           await audit("INVALID_QUESTION", "对话内容超过长度限制。");
           return NextResponse.json(
-            { error: "对话内容过长，请开始新对话。", code: "INVALID_QUESTION" },
+            {
+              error: "对话内容过长，请开始新对话。",
+              code: "INVALID_QUESTION",
+              retryable: false,
+            },
             { status: 413, headers: { "Cache-Control": "no-store" } },
           );
         }
@@ -101,6 +115,7 @@ export async function POST(request: Request) {
               ? artifact.data.relations.length
               : 0,
       artifact?.kind === "analysis" ? artifact.result.period : "",
+      response.planning.model,
     );
     return noStoreJson(response);
   } catch (error) {
@@ -138,12 +153,12 @@ export async function POST(request: Request) {
     // Never persist conversational text, model replies, raw result rows or driver details.
     await audit(failure.code, "对话请求未完成。");
     return NextResponse.json(
-      { error: failure.error, code: failure.code },
+      { error: failure.error, code: failure.code, retryable: isRetryableErrorCode(failure.code) },
       {
         status: failure.status,
         headers: {
           "Cache-Control": "no-store",
-          ...(error instanceof AIProviderError
+          ...(error instanceof AIProviderError && error.status === 429
             ? { "Retry-After": String(AI_PROVIDER_RETRY_AFTER) }
             : {}),
         },

@@ -11,6 +11,14 @@ export function queryExecutionHttpError(error: unknown): AnalysisHttpError | nul
       return { error: "分析请求超时，请缩小分析范围或稍后重试。", code: error.code, status: 504 };
     case "CANCELLED":
       return { error: "分析请求已取消。", code: error.code, status: 499 };
+    case "DATA_SOURCE_UNAVAILABLE":
+      // A missing/unreadable data file is not an AI failure. Point at the data
+      // source so users and administrators look in the right place.
+      return {
+        error: "当前数据源读取失败，请换一个数据源，或联系管理员检查数据文件。",
+        code: error.code,
+        status: 503,
+      };
     case "OUT_OF_MEMORY":
       return { error: "分析超过内存限制，请添加课程或学期筛选条件后重试。", code: error.code, status: 422 };
     case "TOO_MANY_ROWS":
@@ -26,4 +34,23 @@ export function noDataHttpError(result: AnalysisResult): AnalysisHttpError {
     code: "NO_DATA",
     status: 422,
   };
+}
+
+/**
+ * Whether retrying the same question can plausibly succeed without changing
+ * anything. Used by the chat UI to render a "retry this question" action.
+ */
+const RETRYABLE_ERROR_CODES = new Set([
+  "DATA_SOURCE_UNAVAILABLE",
+  "AI_PROVIDER_OVERLOADED",
+  "AI_PROVIDER_RATE_LIMITED",
+  "AI_PROVIDER_UNAVAILABLE",
+  "RATE_LIMIT_EXCEEDED",
+  "ANALYSIS_FAILED",
+  "AI_PLANNING_FAILED",
+  "TIMEOUT",
+]);
+
+export function isRetryableErrorCode(code: string | null | undefined): boolean {
+  return Boolean(code && RETRYABLE_ERROR_CODES.has(code));
 }
