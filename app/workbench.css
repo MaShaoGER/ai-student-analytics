@@ -1769,7 +1769,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   font-size: 12px;
 }
 .ranking-course[aria-pressed="true"] strong {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .ranking-track {
   display: block;
@@ -1848,7 +1848,7 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
   padding: 5px 12px;
 }
 .graphite-workspace .analysis-workspace-controls button[aria-pressed="true"] {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .result-focus .focus-help {
   margin-top: auto;
@@ -2243,5 +2243,18 @@ html[data-input-modality="pointer"] .source-details > summary > svg:last-child {
 @media (prefers-reduced-motion: reduce) {
   .analysis-refresh[data-loading="true"] .refresh-feedback > .spinner {
     animation: none;
+  }
+}
+
+/* iOS Safari zooms the whole page when a focused control's text is below 16px.
+   One rule covers every control on phones; desktop sizes and the composer's own
+   16px rule are unchanged. The focus-group picker keeps its oversized display type. */
+@media (max-width: 600px) {
+  :is(
+      input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+      select,
+      textarea
+    ):not(.focus-group-picker select) {
+    font-size: 16px;
   }
 }

@@ -88,16 +88,20 @@ export const useMotionPreferences = () => useContext(MotionContext);
 
 export function MotionToggle() {
   const { enabled, reduced, setEnabled } = useMotionPreferences();
+  // The effective state includes the system preference: a stored "on" preference
+  // cannot play motion while the operating system asks for reduced motion.
+  const active = enabled && !reduced;
   return (
     <div>
       <button
         className="secondary-button motion-toggle"
         type="button"
-        aria-pressed={enabled}
-        onClick={() => setEnabled(!enabled)}
+        aria-pressed={active}
+        disabled={reduced}
+        onClick={() => setEnabled(!active)}
       >
         <span>交互动效</span>
-        <strong>{enabled ? "开启" : "关闭"}</strong>
+        <strong>{reduced ? "已跟随系统关闭" : active ? "开启" : "关闭"}</strong>
       </button>
       <p>{reduced ? "已跟随系统减少动态效果。" : "导航与图表随操作短暂过渡；键盘操作即时响应。"}</p>
     </div>

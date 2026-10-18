@@ -7,8 +7,14 @@
   --panel-radius: var(--corner-radius);
   --ink: #242923;
   --muted: #5c665a;
+  /* Sage surfaces (sign-in form, overview metric strip) need a darker muted ink
+     so 8–12px explanatory text still reaches 4.5:1; --muted stays for paper. */
+  --muted-on-sage: #3f4a3f;
   --navy: var(--ink);
   --accent: #f56837;
+  /* Selected-state text on light sage/metric fills: the fill and border keep the
+     accent signal while the label itself reaches 4.5:1. */
+  --accent-ink: #8a3a12;
   --button-ink: #242923;
   --teal: var(--accent);
   --teal-dark: #70412b;
@@ -72,7 +78,9 @@
 :root[data-theme="dark"] {
   --ink: #e4eef0;
   --muted: #adc1c8;
+  --muted-on-sage: #adc1c8;
   --accent: #ff5b04;
+  --accent-ink: #ffb58e;
   --button-ink: #16232a;
   --paper: #16232a;
   --surface-inset: #121e25;
@@ -796,7 +804,7 @@ summary {
   background: color-mix(in srgb, var(--ink) 7%, transparent);
 }
 .overview-metric.is-selected .metric-index {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 /* A reserved marker slot keeps labels aligned; only the active metric fills it. */
 .overview-metric-label::before {
@@ -871,7 +879,7 @@ summary {
 .overview-metric-note {
   font-size: 10px;
   line-height: 1.7;
-  color: var(--muted);
+  color: var(--muted-on-sage);
 }
 .overview-metric-note > svg {
   width: 13px;
@@ -1447,6 +1455,12 @@ summary {
 .motion-toggle strong {
   font-weight: 500;
 }
+/* The system preference is a state, not a broken control: keep the label readable
+   while it is disabled and waiting for the OS preference to change. */
+.motion-toggle:disabled {
+  opacity: 1;
+  cursor: default;
+}
 .motion-toggle + p {
   font-size: 11px;
   color: var(--muted);
@@ -1565,6 +1579,19 @@ select {
 .login-form-options label,
 .login-heading .login-eyebrow {
   color: var(--muted);
+}
+/* Explanatory copy that sits on the sage form surface uses the darker muted ink;
+   the story panel keeps the paper-surface --muted value. */
+.login-heading p,
+.login-heading .login-eyebrow,
+.login-secure-note,
+.login-footer,
+.login-signal-labels,
+.login-form-options,
+.login-form-options label,
+.login-signals-heading,
+.login-signals-heading > span:last-child {
+  color: var(--muted-on-sage);
 }
 .signal-path-muted {
   stroke: var(--metric-bar);
@@ -2102,5 +2129,22 @@ html[data-motion="off"] button:active {
   }
   .overview-chart-panel .chart {
     height: 240px;
+  }
+}
+
+/* 320px is the narrowest supported viewport: the activity total ("5,220,398")
+   must stay on one line. The metric strip drops to one card per row so each number
+   owns the full card width; 390px and desktop keep the two-column strip. */
+@media (max-width: 360px) {
+  .overview-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .overview-metric-value,
+  .overview-metric:first-child .overview-metric-value {
+    white-space: nowrap;
+    overflow-wrap: normal;
+  }
+  .metric-miniature {
+    width: 72px;
   }
 }

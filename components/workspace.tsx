@@ -92,6 +92,14 @@ const analysisKey = (result: AnalysisResult) =>
     result.dimensions ?? [result.dimension],
     result.query,
   ]);
+const NETWORK_ERROR_MESSAGE = "网络连接失败，请检查网络后重试。";
+/** Keep fetch noise out of Chinese notices: cancellation stays silent, server
+ *  messages pass through, and network failures get one actionable sentence. */
+function requestMessage(error: unknown, fallback: string): string {
+  if (error instanceof DOMException && error.name === "AbortError") return "";
+  if (error instanceof TypeError) return NETWORK_ERROR_MESSAGE;
+  return error instanceof Error && error.message ? error.message : fallback;
+}
 const pageInfo: Record<View, { title: string; description: string }> = {
   overview: { title: "学习全景", description: "把分散的学习记录，变成清晰的教学线索。" },
   analysis: { title: "指标分析", description: "比较课程与学期表现，查看每个结论的统计依据。" },
@@ -240,7 +248,7 @@ function AccountPanel({ user, expire }: { user: SessionUser; expire: () => void 
       expire();
     } catch (e) {
       if (active.current && !controller.signal.aborted)
-        setError(e instanceof Error ? e.message : "密码修改失败。");
+        setError(requestMessage(e, "密码修改失败。"));
     } finally {
       if (active.current && !controller.signal.aborted) setSaving(false);
     }
@@ -471,6 +479,10 @@ export function Workspace() {
   const [profilesLoading, setProfilesLoading] = useState(true);
   const [datasetId, setDatasetId] = useState<DataSource>("demo");
   const [aiStatus, setAIStatus] = useState<AIStatus>({ configured: false, enabled: false });
+  // AI availability is deployment-wide, so it is fetched once per session. Only
+  // leaving system management can change it, which refreshes the check once.
+  const [aiStatusRefresh, setAiStatusRefresh] = useState(0);
+  const previousView = useRef<View | null>(null);
   const [metric, setMetric] = useState<Metric>("score");
   const [scoreView, setScoreView] = useState<
     "panorama" | "distribution" | "comparison" | "relations"
@@ -551,7 +563,15 @@ export function Workspace() {
   const api = useCallback(
     async (url: string, options?: RequestInit) => {
       const current = generation.current;
-      const response = await fetch(url, { ...options, cache: "no-store" });
+      let response: Response;
+      try {
+        response = await fetch(url, { ...options, cache: "no-store" });
+      } catch (requestError) {
+        if (requestError instanceof DOMException && requestError.name === "AbortError")
+          throw requestError;
+        if (requestError instanceof TypeError) throw new Error(NETWORK_ERROR_MESSAGE);
+        throw requestError;
+      }
       if (options?.signal?.aborted) throw new DOMException("Request cancelled", "AbortError");
       if (response.status === 401) {
         if (current === generation.current) expire();
@@ -575,7 +595,8 @@ export function Workspace() {
         }
       })
       .catch((requestError) => {
-        if (!controller.signal.aborted) setBootError(requestError.message);
+        if (!controller.signal.aborted)
+          setBootError(requestMessage(requestError, "暂时无法连接工作台，请检查服务后重试。"));
       })
       .finally(() => {
         if (!controller.signal.aborted) setBootLoading(false);
@@ -594,7 +615,7 @@ export function Workspace() {
       })
       .catch((requestError) => {
         if (!controller.signal.aborted && current === generation.current)
-          setError(requestError.message);
+          setError(requestMessage(requestError, "请求失败，请稍后重试。"));
       })
       .finally(() => {
         if (!controller.signal.aborted && current === generation.current) setProfilesLoading(false);
@@ -614,7 +635,12 @@ export function Workspace() {
           setAIStatus({ configured: false, enabled: false });
       });
     return () => controller.abort();
-  }, [user, view, datasetId, api]);
+  }, [user, api, aiStatusRefresh]);
+  useEffect(() => {
+    const previous = previousView.current;
+    previousView.current = view;
+    if (previous === "admin" && view !== "admin") setAiStatusRefresh((count) => count + 1);
+  }, [view]);
   useEffect(() => {
     if (!user || !canRun) return;
     const controller = new AbortController();
@@ -652,7 +678,7 @@ export function Workspace() {
       const failure = responses.find((response) => response.status === "rejected");
       if (failure?.status === "rejected")
         setError(
-          `部分概览暂时无法显示：${failure.reason instanceof Error ? failure.reason.message : "请稍后重试。"}`,
+          `部分概览暂时无法显示：${requestMessage(failure.reason, "请稍后重试。") || "请稍后重试。"}`,
         );
     });
     return () => controller.abort();
@@ -687,7 +713,7 @@ export function Workspace() {
       })
       .catch((requestError) => {
         if (!controller.signal.aborted && current === generation.current)
-          setError(requestError.message);
+          setError(requestMessage(requestError, "请求失败，请稍后重试。"));
       })
       .finally(() => {
         if (!controller.signal.aborted && current === generation.current) setBrowseLoading(false);
@@ -761,7 +787,7 @@ export function Workspace() {
       await api("/api/auth/logout", { method: "POST" });
       expire();
     } catch (requestError) {
-      setLogoutError(requestError instanceof Error ? requestError.message : "退出失败，请重试。");
+      setLogoutError(requestMessage(requestError, "退出失败，请重试。"));
     } finally {
       setLoggingOut(false);
     }
@@ -816,7 +842,7 @@ export function Workspace() {
       }
     } catch (requestError) {
       if (isCurrent())
-        setError(requestError instanceof Error ? requestError.message : "分析失败，请稍后重试。");
+        setError(requestMessage(requestError, "分析失败，请稍后重试。"));
     } finally {
       if (isCurrent()) {
         askPending.current = null;
