@@ -46,3 +46,8 @@ export type AICostStats = {
 };
 export type AIConfigResponse = { config: AIConfig; stats: AICostStats };
 export type AITestResponse = { success: true; message: string; model: string; stats: AICostStats };
+export type AnalysisControlResponse = {
+  settings: { enabled: boolean; maxToolCalls: number; timeoutSeconds: number };
+  capability: { status: "unknown" | "supported" | "failed"; checkedAt: string | null };
+  knowledge: { version: string; count: number; builtAt: string | null; stale: boolean };
+};

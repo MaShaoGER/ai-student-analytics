@@ -367,12 +367,10 @@ export function buildStudioChart(
         { type: "inside", yAxisIndex: 0 },
       ];
       details.push(
-        ...points
-          .slice(0, 300)
-          .map((point) => ({
-            label: `${fmt(point.value[0])} / ${fmt(point.value[1])}`,
-            detail: point.detail,
-          })),
+        ...points.slice(0, 300).map((point) => ({
+          label: `${fmt(point.value[0])} / ${fmt(point.value[1])}`,
+          detail: point.detail,
+        })),
       );
     } else {
       const count = options.compact ? 10 : 16;
@@ -453,7 +451,9 @@ export function buildStudioChart(
     before: values.before / values.count,
     after: values.after / values.count,
   }));
-  rows.sort((a, b) => b.after - b.before - (a.after - a.before));
+  rows.sort(
+    (a, b) => (table.sortChange === "asc" ? 1 : -1) * (a.after - a.before - (b.after - b.before)),
+  );
   const connectors: SeriesOption[] = rows.map((row) => ({
     type: "line",
     silent: true,

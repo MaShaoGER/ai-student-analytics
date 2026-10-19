@@ -231,7 +231,12 @@ export async function executeChartTool(
       rows.sort((a, b) =>
         intent.sortChange === "asc" ? a["变化"] - b["变化"] : b["变化"] - a["变化"],
       );
-    table = { ...original, columns: [...original.columns, "变化"], rows };
+    table = {
+      ...original,
+      columns: [...original.columns, "变化"],
+      rows,
+      sortChange: intent.sortChange,
+    };
   }
   return {
     kind: "studio",

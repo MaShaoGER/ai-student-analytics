@@ -22,11 +22,7 @@ import {
   resultNarrative,
   sanitizeExplanation,
 } from "./response-presentation";
-import {
-  conversationDecisionSchema,
-  parseConversationDecision,
-  resolvePlan,
-} from "./resolve-plan";
+import { conversationDecisionSchema, parseConversationDecision, resolvePlan } from "./resolve-plan";
 import { CHAT_EXPLANATION_PROMPT, CHAT_PLANNING_PROMPT } from "./prompts/conversation";
 import { getAIConfig } from "../settings/ai";
 import { generateStructured, type PlanningOptions } from "./planner";
@@ -50,7 +46,10 @@ const interpretationSchema = z.object({
   answer: z.string().min(1).max(120),
   suggestions: z.array(z.string().min(1).max(100)).max(3),
 });
-type Options = PlanningOptions & { onExecution?: (plan: AnalysisPlan | null) => void };
+type Options = PlanningOptions & {
+  onExecution?: (plan: AnalysisPlan | null) => void;
+  onStep?: (step: import("./chat-types").AnalysisStep) => void;
+};
 type Dependencies = Partial<typeof toolQueries> & {
   generate: (
     question: string,
@@ -163,7 +162,13 @@ export async function converse(
   dependencies: Dependencies = defaults,
 ): Promise<ChatResponse> {
   assertActive(options);
-  const input = chatInputSchema.parse(raw);
+  const parsed = chatInputSchema.parse(raw);
+  if (parsed.mode === "comprehensive") {
+    const { converseComprehensive } = await import("./comprehensive");
+    return converseComprehensive(parsed, options);
+  }
+  // Keep the quick planner's existing wire input unchanged.
+  const { mode: _mode, ...input } = parsed;
   try {
     // Planning and explanation share the configured per-request cap.
     options = { ...options, budgetContext: { spent: 0 } };

@@ -12,12 +12,19 @@ import {
   type ReactNode,
 } from "react";
 import { AnalysisResultView } from "./analysis-result";
+import { SegmentedControl } from "./ui/segmented-control";
 import { Icon } from "./app-icons";
 import { useMotionPreferences } from "./ui/motion-preferences";
 import { distributionRows, scoreInterval } from "@/lib/analysis/score-distribution";
 import type { AnalysisResult } from "@/lib/analysis/types";
 import type { ChartViewType } from "@/lib/analysis/visualization";
-import type { ChatArtifact, ChatMessage, ChatResponse, ChatDisplayView } from "@/lib/ai/chat-types";
+import type {
+  ChatArtifact,
+  ChatMessage,
+  ChatResponse,
+  ChatDisplayView,
+  AnalysisStep,
+} from "@/lib/ai/chat-types";
 import { planningMethodLabel } from "@/lib/ai/context-label";
 import { suggestedQuestionsFor } from "@/lib/ai/suggested-questions";
 import styles from "./ai-conversation.module.css";
@@ -27,10 +34,9 @@ export type ConversationTurn = ChatMessage & {
   response?: ChatResponse;
   /** Locally generated status line (e.g. a cancelled turn), not sent to the model. */
   system?: boolean;
+  steps?: AnalysisStep[];
 };
 
-/** Waiting copy advances by elapsed time; the server reports no stages itself. */
-const WAIT_STAGES = ["正在理解问题…", "正在查询数据…", "正在组织解读…"] as const;
 const QUESTION_ERROR_ID = "analysis-question-error";
 
 function Speaker({ role }: { role: ChatMessage["role"] }) {
@@ -135,6 +141,9 @@ export function ConversationWorkspace({
   question,
   loading,
   pendingQuestion,
+  analysisMode,
+  onAnalysisModeChange,
+  pendingSteps,
   aiReady,
   canRun,
   model,
@@ -156,6 +165,9 @@ export function ConversationWorkspace({
   question: string;
   loading: boolean;
   pendingQuestion: string;
+  analysisMode: "quick" | "comprehensive";
+  onAnalysisModeChange: (mode: "quick" | "comprehensive") => void;
+  pendingSteps: AnalysisStep[];
   aiReady: boolean;
   canRun: boolean;
   model?: string | null;
@@ -168,7 +180,7 @@ export function ConversationWorkspace({
   onClear: () => void;
   onClearContext?: () => void;
   onExpandChart: (id: string | null) => void;
-  onChartChange: (id: string, view: ChatDisplayView) => void;
+  onChartChange: (id: string, view: ChatDisplayView, artifactIndex?: number) => void;
   onReport: (result: AnalysisResult) => void;
   onConfigure?: () => void;
   notice?: ReactNode;
@@ -179,24 +191,9 @@ export function ConversationWorkspace({
   const sendButton = useRef<HTMLButtonElement>(null);
   const newest = useRef<HTMLElement>(null);
   const pending = useRef<HTMLDivElement>(null);
-  const [waitStage, setWaitStage] = useState(0);
   const [clearConfirming, setClearConfirming] = useState(false);
   const [contextNotice, setContextNotice] = useState("");
   const stopRequested = useRef(false);
-
-  useEffect(() => {
-    if (!loading) {
-      setWaitStage(0);
-      return;
-    }
-    setWaitStage(0);
-    const querying = window.setTimeout(() => setWaitStage(1), 4000);
-    const explaining = window.setTimeout(() => setWaitStage(2), 10000);
-    return () => {
-      window.clearTimeout(querying);
-      window.clearTimeout(explaining);
-    };
-  }, [loading]);
 
   // Stopping swaps the stop button for the send button, which would otherwise
   // drop keyboard focus to the body; hand it back once the swap has rendered.
@@ -327,9 +324,7 @@ export function ConversationWorkspace({
         )}
         {messages.map((message, index) => {
           const response = message.response;
-          const artifact = response?.artifact;
-          const expanded = expandedChartId === message.id;
-          const chartId = `conversation-chart-${message.id}`;
+          const artifacts = response?.artifacts ?? (response?.artifact ? [response.artifact] : []);
           return (
             <article
               ref={index === messages.length - 1 ? newest : undefined}
@@ -351,7 +346,7 @@ export function ConversationWorkspace({
                   {response.warning}
                 </p>
               )}
-              {response?.facts.length ? (
+              {response?.facts.length && !response.steps?.length ? (
                 <div
                   className={styles.facts}
                   data-enter="fade"
@@ -366,34 +361,56 @@ export function ConversationWorkspace({
                 </div>
               ) : null}
               {response?.planning ? <PlanningNote planning={response.planning} /> : null}
-              {artifact && response?.presentation !== "text" && (
-                <div
-                  className={styles.chartAttachment}
-                  data-enter="fade"
-                  style={{ "--enter-delay": "140ms" } as CSSProperties}
-                >
-                  <button
-                    type="button"
-                    className={styles.chartToggle}
-                    aria-expanded={expanded}
-                    aria-controls={chartId}
-                    onClick={() => onExpandChart(expanded ? null : message.id)}
-                  >
-                    <Icon name="chart" size={17} />
-                    <span>{artifactLabel(artifact)}</span>
-                    <small>{expanded ? "收起图表" : "展开图表"}</small>
-                    <Icon name="chevron" size={15} />
-                  </button>
-                  <ChartAttachmentBody expanded={expanded} id={chartId}>
-                    <ConversationResult
-                      response={response}
-                      artifact={artifact}
-                      onChartChange={(view) => onChartChange(message.id, view)}
-                      onReport={onReport}
-                    />
-                  </ChartAttachmentBody>
+              <ExecutionSteps steps={response?.steps ?? message.steps ?? []} />
+              {response?.citations?.length ? (
+                <div className={styles.citations}>
+                  <strong>依据与引用</strong>
+                  {response.citations.map((citation, index) => (
+                    <details key={citation.id}>
+                      <summary>
+                        ［{index + 1}］{citation.title} · {citation.version}
+                      </summary>
+                      <p>{citation.excerpt}</p>
+                      <a href={citation.source} target="_blank" rel="noreferrer">
+                        查看来源与适用范围
+                      </a>
+                    </details>
+                  ))}
                 </div>
-              )}
+              ) : null}
+              {response &&
+                response.presentation !== "text" &&
+                artifacts.map((artifact, artifactIndex) => {
+                  const attachmentId = response.artifacts
+                    ? `${message.id}:${artifactIndex}`
+                    : message.id;
+                  const expanded = expandedChartId === attachmentId;
+                  const chartId = `conversation-chart-${attachmentId}`;
+                  return (
+                    <div key={attachmentId} className={styles.chartAttachment}>
+                      <button
+                        type="button"
+                        className={styles.chartToggle}
+                        aria-expanded={expanded}
+                        aria-controls={chartId}
+                        onClick={() => onExpandChart(expanded ? null : attachmentId)}
+                      >
+                        <Icon name="chart" size={17} />
+                        <span>{artifactLabel(artifact)}</span>
+                        <small>{expanded ? "收起图表" : "展开图表"}</small>
+                        <Icon name="chevron" size={15} />
+                      </button>
+                      <ChartAttachmentBody expanded={expanded} id={chartId}>
+                        <ConversationResult
+                          response={response}
+                          artifact={artifact}
+                          onChartChange={(view) => onChartChange(message.id, view, artifactIndex)}
+                          onReport={onReport}
+                        />
+                      </ChartAttachmentBody>
+                    </div>
+                  );
+                })}
               {index === messages.length - 1 && response?.suggestions.length ? (
                 <div
                   className={styles.suggestions}
@@ -437,12 +454,15 @@ export function ConversationWorkspace({
               <Speaker role="assistant" />
               <p className={styles.pendingStatus} role="status">
                 <span className="spinner" />
-                {WAIT_STAGES[waitStage]}
+                {[...pendingSteps].reverse().find((step) => step.status === "running")?.label ??
+                  "正在处理分析请求…"}
               </p>
+              <ExecutionSteps steps={pendingSteps} live />
             </div>
           </div>
         )}
       </div>
+      {!loading && pendingSteps.length > 0 ? <ExecutionSteps steps={pendingSteps} /> : null}
       {!aiReady && (
         <p className={styles.note}>
           推荐问题和已有结果的表格切换无需连接 AI。自由对话需要管理员开启并配置 AI。
@@ -529,6 +549,22 @@ export function ConversationWorkspace({
                 </>
               )}
             </div>
+          </div>
+          <div className={styles.analysisMode}>
+            <SegmentedControl<"quick" | "comprehensive">
+              label="分析方式"
+              value={analysisMode}
+              onChange={onAnalysisModeChange}
+              options={[
+                { value: "quick", label: "普通问答", disabled: loading },
+                { value: "comprehensive", label: "综合分析", disabled: loading || !aiReady },
+              ]}
+            />
+            <span>
+              {analysisMode === "comprehensive"
+                ? "按结果继续查询，展示步骤与引用"
+                : "适合单项指标和快速追问"}
+            </span>
           </div>
           {contextLabel ? (
             <div className={styles.contextRow}>
@@ -758,5 +794,33 @@ function ConversationResult({
         <ConversationToolResult artifact={artifact} onViewChange={onChartChange} />
       )}
     </div>
+  );
+}
+
+function ExecutionSteps({ steps, live = false }: { steps: AnalysisStep[]; live?: boolean }) {
+  if (!steps.length) return null;
+  const completed = steps.filter((step) => step.status === "completed").length;
+  return (
+    <details className={styles.executionSteps} open={live ? true : undefined}>
+      <summary>
+        执行记录 · 已完成 {completed}/{steps.length} 步
+      </summary>
+      <ol>
+        {steps.map((step) => (
+          <li key={step.id} data-status={step.status}>
+            <span>{step.label}</span>
+            <small>
+              {step.status === "running"
+                ? "执行中"
+                : step.status === "failed"
+                  ? "未完成"
+                  : step.status === "cancelled"
+                    ? "已停止"
+                    : `${(step.durationMs / 1000).toFixed(1)} 秒`}
+            </small>
+          </li>
+        ))}
+      </ol>
+    </details>
   );
 }

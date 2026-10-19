@@ -7,6 +7,7 @@ export type SegmentedOption<Value extends string> = {
   value: Value;
   label: string;
   icon?: ReactNode;
+  disabled?: boolean;
 };
 
 export type SegmentedControlProps<Value extends string> = {
@@ -61,7 +62,7 @@ export function SegmentedControl<Value extends string>({
           className={styles.button}
           data-metric={option.value}
           aria-pressed={option.value === value}
-          disabled={disabled}
+          disabled={disabled || option.disabled}
           onClick={(event) => {
             // Native keyboard and assistive-technology clicks have detail=0.
             document.documentElement.dataset.inputModality =

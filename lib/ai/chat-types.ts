@@ -56,6 +56,7 @@ export const chatIntentSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 export const chatInputSchema = z.object({
+  mode: z.enum(["quick", "comprehensive"]).default("quick"),
   question: z.string().trim().min(2).max(500),
   datasetId: dataSourceSchema,
   history: z
@@ -65,7 +66,9 @@ export const chatInputSchema = z.object({
   context: chatIntentSchema.nullable().default(null),
 });
 export type ChatIntent = z.infer<typeof chatIntentSchema>;
-export type ChatInput = z.infer<typeof chatInputSchema>;
+export type ChatInput = Omit<z.infer<typeof chatInputSchema>, "mode"> & {
+  mode?: "quick" | "comprehensive";
+};
 export type ChatMessage = ChatInput["history"][number];
 export type ChatArtifact =
   | {
@@ -93,6 +96,11 @@ export type ChatArtifact =
       view: "table" | "heatmap";
     };
 export type ChatResponse = {
+  completion?: "complete" | "partial";
+  failureCode?: string;
+  artifacts?: ChatArtifact[];
+  citations?: KnowledgeCitation[];
+  steps?: AnalysisStep[];
   presentation?: "text" | "chart" | "table";
   kind: "answer" | "clarification" | "result";
   answer: string;
@@ -107,6 +115,26 @@ export type ChatResponse = {
   };
   warning?: string;
 };
+
+export type KnowledgeCitation = {
+  id: string;
+  title: string;
+  version: string;
+  source: string;
+  scope: "all" | "demo" | "oulad";
+  excerpt: string;
+};
+export type AnalysisStep = {
+  id: string;
+  label: string;
+  status: "running" | "completed" | "failed" | "cancelled";
+  durationMs: number;
+  summary?: string;
+};
+export type ChatStreamEvent =
+  | { type: "step"; requestId: string; step: AnalysisStep }
+  | { type: "result"; requestId: string; response: ChatResponse }
+  | { type: "error"; requestId: string; error: string; code: string; retryable: boolean };
 
 export function artifactWithView(artifact: ChatArtifact, view: ChatDisplayView): ChatArtifact {
   if (artifact.kind === "analysis")

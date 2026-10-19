@@ -22,6 +22,7 @@ import { AnimatedNumber, useCountUp } from "@/components/ui/animated-number";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { ThemeToggle } from "@/components/ui/theme-provider";
 import { MotionToggle } from "@/components/ui/motion-preferences";
+import { AnalysisControls } from "@/components/analysis-controls";
 import { BAILIAN_QWEN_FLASH, isBailianQwenFlash } from "@/lib/ai/bailian";
 import { ZHIPU_GLM_FLASH, isZhipuGLMFlash } from "@/lib/ai/zhipu";
 
@@ -622,6 +623,16 @@ export function AdminPanel({
                     </div>
                   </div>
                 </div>
+                <AnalysisControls
+                  request={request}
+                  connectionReady={canTest}
+                  config={config}
+                  onUsageChange={() => {
+                    void request<AIConfigResponse>("/api/admin/ai-config")
+                      .then((value) => setStats(value.stats))
+                      .catch(() => {});
+                  }}
+                />
                 <div className="admin-form-section">
                   <div className="admin-section-heading">
                     <div>
@@ -785,8 +796,8 @@ export function AdminPanel({
                   </div>
                   <p className="form-help">
                     实测指服务商返回了 usage 的调用；估算指网络失败或未返回
-                    usage、按请求内容估算的调用（估算费用合计 $
-                    {stats?.estimatedCost ?? "—"}）。费用均按填写的单价估算，用量包含连接测试，以服务商账单为准。
+                    usage、按请求内容估算的调用（估算费用合计 ${stats?.estimatedCost ?? "—"}
+                    ）。费用均按填写的单价估算，用量包含连接测试，以服务商账单为准。
                   </p>
                 </section>
                 <section className="panel">

@@ -53,6 +53,11 @@ export async function saveAnalysisRecord(record: RecordInput): Promise<string> {
     // Prompt version and model make AI failures reproducible without storing text.
     promptVersion: record.promptVersion,
     model: record.model ?? null,
+    executionSteps: record.executionSteps?.filter((step) => ["catalog", "decision", "aggregate", "compare_terms", "score_distribution", "search_knowledge", "advanced_chart", "clarify", "validate"].includes(step.operation)).slice(0, 24).map((step) => ({
+      operation: step.operation,
+      status: ["running", "completed", "failed", "cancelled"].includes(step.status) ? step.status : "failed",
+      durationMs: Number.isFinite(step.durationMs) ? Math.max(0, Math.round(step.durationMs)) : 0,
+    })),
     result: {
       rowCount: record.result.rowCount,
       period: record.result.period,
@@ -85,6 +90,7 @@ export async function saveAnalysisAudit(
       | "errorMessage"
       | "promptVersion"
       | "model"
+      | "executionSteps"
     >,
 ): Promise<void> {
   try {

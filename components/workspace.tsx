@@ -17,9 +17,11 @@ import {
   artifactWithView,
   intentWithView,
   type ChatDisplayView,
+  type AnalysisStep,
   type ChatIntent,
   type ChatResponse,
 } from "@/lib/ai/chat-types";
+import { readChatStream } from "@/lib/ai/chat-stream";
 import { createPlan } from "@/lib/analysis/plan";
 import { METRICS } from "@/lib/analysis/metrics";
 import { describeChatContext } from "@/lib/ai/context-label";
@@ -549,6 +551,8 @@ export function Workspace() {
   const [expandedChartId, setExpandedChartId] = useState<string | null>(null);
   const [pendingQuestion, setPendingQuestion] = useState("");
   const [askLoading, setAskLoading] = useState(false);
+  const [analysisMode, setAnalysisMode] = useState<"quick" | "comprehensive">("quick");
+  const [pendingSteps, setPendingSteps] = useState<AnalysisStep[]>([]);
   const [sessionAnalyses, setSessionAnalyses] = useState<SessionAnalysis[]>([]);
   const [selectedReportKey, setSelectedReportKey] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -598,6 +602,7 @@ export function Workspace() {
     setSessionAnalyses([]);
     setSelectedReportKey("");
     setChatMessages([]);
+    setPendingSteps([]);
     setChatContext(null);
     setExpandedChartId(null);
     setQuestion("");
@@ -613,7 +618,7 @@ export function Workspace() {
     setView("overview");
   }, []);
   const api = useCallback(
-    async (url: string, options?: RequestInit) => {
+    async (url: string, options?: RequestInit, onStep?: (step: AnalysisStep) => void) => {
       const current = generation.current;
       let response: Response;
       try {
@@ -632,6 +637,21 @@ export function Workspace() {
         }
         throw new ApiError("登录已过期，请重新登录。", "UNAUTHORIZED", false, 401, null);
       }
+      if (response.ok && response.headers.get("content-type")?.includes("text/event-stream")) {
+        try {
+          return await readChatStream(response, onStep ?? (() => {}));
+        } catch (error) {
+          if (options?.signal?.aborted) throw new DOMException("Request cancelled", "AbortError");
+          const failure = error as Error & { code?: string; retryable?: boolean };
+          throw new ApiError(
+            failure.message || "分析连接中断，请重试。",
+            failure.code ?? null,
+            failure.retryable ?? true,
+            502,
+            null,
+          );
+        }
+      }
       const retryAfter = retryAfterSeconds(response.headers);
       // Response shapes differ per route, so the payload stays untyped here and
       // every caller narrows what it asked for.
@@ -639,9 +659,13 @@ export function Workspace() {
       const payload: any = await response.json().catch(() => null);
       // A measured empty result still carries scope/privacy metadata for reports.
       // Keep the API's 422/NO_DATA contract while allowing this screen to render it.
-      const emptyAnalysis = url === "/api/analysis" && response.status === 422 &&
-        payload?.code === "NO_DATA" && payload?.plan &&
-        Array.isArray(payload?.result?.rows) && payload.result.rows.length === 0 &&
+      const emptyAnalysis =
+        url === "/api/analysis" &&
+        response.status === 422 &&
+        payload?.code === "NO_DATA" &&
+        payload?.plan &&
+        Array.isArray(payload?.result?.rows) &&
+        payload.result.rows.length === 0 &&
         typeof payload.result.period === "string";
       if (!response.ok && !emptyAnalysis) {
         const code = typeof payload?.code === "string" ? payload.code : null;
@@ -831,6 +855,7 @@ export function Workspace() {
     setAnalysis(null);
     setAskResult(null);
     setChatMessages([]);
+    setPendingSteps([]);
     setChatContext(null);
     setExpandedChartId(null);
     setAskLoading(false);
@@ -896,6 +921,7 @@ export function Workspace() {
     setQuestion(nextQuestion);
     setPendingQuestion(trimmed);
     setAskLoading(true);
+    setPendingSteps([]);
     setError(null);
     setInputError(null);
     setFailedAsk(null);
@@ -905,21 +931,38 @@ export function Workspace() {
       askPending.current === controller &&
       current === generation.current;
     try {
-      const payload = (await api("/api/chat", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          question: trimmed,
-          datasetId,
-          history: chatMessages
-            .filter((message) => !message.system)
-            .slice(-12)
-            .map(({ role, content }) => ({ role, content })),
-          context: chatContext,
-        }),
-        signal: controller.signal,
-      })) as ChatResponse;
+      const payload = (await api(
+        "/api/chat",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            ...(analysisMode === "comprehensive" ? { accept: "text/event-stream" } : {}),
+          },
+          body: JSON.stringify({
+            mode: analysisMode,
+            question: trimmed,
+            datasetId,
+            history: chatMessages
+              .filter((message) => !message.system)
+              .slice(-12)
+              .map(({ role, content }) => ({ role, content })),
+            context: chatContext,
+          }),
+          signal: controller.signal,
+        },
+        (step) => {
+          if (isCurrent())
+            setPendingSteps((previous) => {
+              const index = previous.findIndex((item) => item.id === step.id);
+              return index < 0
+                ? [...previous, step]
+                : previous.map((item) => (item.id === step.id ? step : item));
+            });
+        },
+      )) as ChatResponse;
       if (!isCurrent()) return;
+      setPendingSteps([]);
       setChatContext(payload.context);
       const turnId = crypto.randomUUID();
       setChatMessages((previous) =>
@@ -931,7 +974,8 @@ export function Workspace() {
       );
       setQuestion((draft) => (draft === nextQuestion ? "" : draft));
       if (payload.artifact) {
-        if (payload.presentation !== "text") setExpandedChartId(turnId);
+        if (payload.presentation !== "text")
+          setExpandedChartId(payload.artifacts?.length ? `${turnId}:0` : turnId);
         if (payload.artifact.kind === "analysis") {
           setAskResult(payload.artifact.result);
           rememberResult(payload.artifact.result);
@@ -943,6 +987,9 @@ export function Workspace() {
       // Cancellation is silent: the stop button reports its own outcome.
       if (!message) return;
       setError(message);
+      setPendingSteps((previous) =>
+        previous.map((step) => (step.status === "running" ? { ...step, status: "failed" } : step)),
+      );
       setFailedAsk({
         question: trimmed,
         code: requestError instanceof ApiError ? requestError.code : null,
@@ -958,24 +1005,37 @@ export function Workspace() {
       }
     }
   }
-  function changeChatView(id: string, chart: ChatDisplayView) {
+  function changeChatView(id: string, chart: ChatDisplayView, artifactIndex = 0) {
     const selected = chatMessages.find((message) => message.id === id);
-    const artifact = selected?.response?.artifact;
+    const artifact = selected?.response?.artifacts?.[artifactIndex] ?? selected?.response?.artifact;
     if (!artifact) return;
     const updated = artifactWithView(artifact, chart);
     setChatMessages((previous) =>
       previous.map((message) =>
         message.id === id && message.response
-          ? { ...message, response: { ...message.response, artifact: updated } }
+          ? {
+              ...message,
+              response: {
+                ...message.response,
+                artifact: artifactIndex === 0 ? updated : message.response.artifact,
+                ...(message.response.artifacts
+                  ? {
+                      artifacts: message.response.artifacts.map((item, index) =>
+                        index === artifactIndex ? updated : item,
+                      ),
+                    }
+                  : {}),
+              },
+            }
           : message,
       ),
     );
     const latestArtifact = [...chatMessages]
       .reverse()
       .find((message) => message.response?.artifact);
-    if (latestArtifact?.id === id && chatContext) {
+    const contextArtifactIndex = (selected?.response?.artifacts?.length ?? 1) - 1;
+    if (latestArtifact?.id === id && chatContext && artifactIndex === contextArtifactIndex)
       setChatContext(intentWithView(chatContext, chart));
-    }
   }
   if (bootLoading)
     return (
@@ -1302,6 +1362,9 @@ export function Workspace() {
                   question={question}
                   loading={askLoading}
                   pendingQuestion={pendingQuestion}
+                  analysisMode={analysisMode}
+                  onAnalysisModeChange={setAnalysisMode}
+                  pendingSteps={pendingSteps}
                   aiReady={aiReady}
                   canRun={canRun}
                   model={aiStatus.model}
@@ -1324,6 +1387,7 @@ export function Workspace() {
                     askPending.current.abort();
                     askPending.current = null;
                     setAskLoading(false);
+                    setPendingSteps([]);
                     setChatMessages((previous) =>
                       [
                         ...previous,
@@ -1331,6 +1395,11 @@ export function Workspace() {
                           id: `stopped-${crypto.randomUUID()}`,
                           role: "assistant" as const,
                           content: STOPPED_MESSAGE,
+                          steps: pendingSteps.map((step) =>
+                            step.status === "running"
+                              ? { ...step, status: "cancelled" as const }
+                              : step,
+                          ),
                           system: true,
                         },
                       ].slice(-40),
@@ -1339,6 +1408,7 @@ export function Workspace() {
                   onClearContext={() => setChatContext(null)}
                   onClear={() => {
                     setChatMessages([]);
+                    setPendingSteps([]);
                     setChatContext(null);
                     setExpandedChartId(null);
                     setAskResult(null);

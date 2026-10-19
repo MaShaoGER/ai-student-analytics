@@ -58,6 +58,54 @@ describe("conversation HTTP boundary", () => {
     rmSync(directory, { recursive: true, force: true });
   });
 
+  it("streams actual steps and audits only fixed operation metadata", async () => {
+    vi.mocked(converse).mockImplementationOnce(async (_input, options) => {
+      options?.onStep?.({ id: "one", label: "比较学期成绩", status: "running", durationMs: 0 });
+      options?.onStep?.({ id: "one", label: "比较学期成绩", status: "completed", durationMs: 7 });
+      return {
+        kind: "answer",
+        answer: secret,
+        facts: [],
+        suggestions: [],
+        artifact: null,
+        context: null,
+        planning: { source: "external", rationale: secret, model: "fixture" },
+      };
+    });
+    const request = new Request("http://localhost/api/chat", {
+      method: "POST",
+      headers: { origin: "http://localhost", accept: "text/event-stream" },
+      body: JSON.stringify({ mode: "comprehensive", question: secret, datasetId: "demo" }),
+    });
+    const response = await POST(request);
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+    const events = (await response.text())
+      .trim()
+      .split("\n\n")
+      .map((frame) => JSON.parse(frame.slice(6)));
+    expect(events.map((event) => event.type)).toEqual(["step", "step", "result"]);
+    expect(new Set(events.map((event) => event.requestId)).size).toBe(1);
+    expect(loadAnalysisRecords()[0].executionSteps).toEqual([
+      { operation: "compare_terms", status: "completed", durationMs: 7 },
+    ]);
+    expect(readFileSync(join(directory, "analysis.jsonl"), "utf8")).not.toContain(secret);
+  });
+
+  it("sanitizes failures after stream headers have been sent", async () => {
+    vi.mocked(converse).mockRejectedValueOnce(new Error(secret));
+    const response = await POST(
+      new Request("http://localhost/api/chat", {
+        method: "POST",
+        headers: { origin: "http://localhost", accept: "text/event-stream" },
+        body: JSON.stringify({ mode: "comprehensive", question: secret, datasetId: "demo" }),
+      }),
+    );
+    const body = await response.text();
+    expect(body).not.toContain(secret);
+    expect(body).toContain('"type":"error"');
+    expect(loadAnalysisRecords()[0].errorCode).toBe("AI_PLANNING_FAILED");
+  });
+
   it("returns conversational clarifications as successful turns and never persists their text", async () => {
     const response = await POST(request({ question: secret, datasetId: "demo" }));
     expect(response.status).toBe(200);

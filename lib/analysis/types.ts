@@ -78,6 +78,11 @@ export type AnalysisResult = {
 };
 
 export type AnalysisRecord = {
+  executionSteps?: {
+    operation: string;
+    status: "running" | "completed" | "failed" | "cancelled";
+    durationMs: number;
+  }[];
   id: string; // uuid or timestamp-based id
   timestamp: string; // ISO 8601
   datasetId: DataSource | null;

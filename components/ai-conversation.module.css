@@ -2,6 +2,61 @@
   min-width: 0;
   padding: 24px 28px 0;
 }
+.analysisMode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 8px 0 12px;
+}
+.analysisMode > span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.executionSteps,
+.citations {
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.executionSteps summary,
+.citations summary {
+  cursor: pointer;
+  padding-block: 8px;
+}
+.executionSteps ol {
+  list-style: decimal-leading-zero;
+  padding-left: 28px;
+  max-width: 640px;
+}
+.executionSteps li {
+  padding: 6px 0 6px 4px;
+  font-variant-numeric: tabular-nums;
+}
+.executionSteps li > span {
+  color: var(--ink);
+}
+.executionSteps small {
+  margin-left: 16px;
+  white-space: nowrap;
+}
+.executionSteps li[data-status="running"] {
+  color: var(--accent);
+}
+.executionSteps li[data-status="failed"],
+.executionSteps li[data-status="cancelled"] {
+  font-weight: 600;
+}
+.citations {
+  max-width: 90ch;
+}
+.citations p {
+  line-height: 1.8;
+}
+.citations a {
+  color: var(--ink);
+  text-underline-offset: 3px;
+}
 .availability {
   display: flex;
   align-items: center;

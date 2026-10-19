@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { createChatStream } from "@/lib/ai/chat-stream";
+import { ComprehensiveError } from "@/lib/ai/comprehensive";
+import type { AnalysisStep } from "@/lib/ai/chat-types";
 import { converse } from "@/lib/ai/conversation";
 import { chatInputSchema } from "@/lib/ai/chat-types";
 import { PROMPT_VERSION } from "@/lib/ai/prompts/version";
@@ -42,6 +45,21 @@ export async function POST(request: Request) {
       },
     );
   let context = analysisRecordContext(null);
+  const executionSteps = new Map<
+    string,
+    { operation: string; status: AnalysisStep["status"]; durationMs: number }
+  >();
+  const operations: Record<string, string> = {
+    读取可用课程与学期: "catalog",
+    选择下一步分析: "decision",
+    查询聚合指标: "aggregate",
+    比较学期成绩: "compare_terms",
+    查询课程成绩分布: "score_distribution",
+    检索指标与教学依据: "search_knowledge",
+    生成高级分析图表: "advanced_chart",
+    确认分析范围: "clarify",
+    校验统计结果与来源: "validate",
+  };
   let stage: "validation" | "planning" | "execution" = "validation";
   const startedAt = performance.now();
   const currentStage = (): "validation" | "planning" | "execution" => stage;
@@ -59,10 +77,47 @@ export async function POST(request: Request) {
       stage,
       promptVersion: PROMPT_VERSION,
       model,
+      ...(executionSteps.size ? { executionSteps: [...executionSteps.values()] } : {}),
       result: { rowCount, period, durationMs: Math.round(performance.now() - startedAt) },
       errorCode,
       errorMessage,
     });
+  const classify = (error: unknown) => {
+    const queryFailure = queryExecutionHttpError(error);
+    return (
+      queryFailure ??
+      (error instanceof ComprehensiveError
+        ? { status: 422, code: error.code, error: error.message }
+        : error instanceof AuthError
+          ? { status: error.status, code: error.code, error: error.message }
+          : error instanceof AIConfigurationError
+            ? { status: 503, code: "AI_NOT_CONFIGURED", error: error.message }
+            : error instanceof AIProviderError
+              ? { status: error.status, code: error.code, error: error.message }
+              : error instanceof BudgetExceededError
+                ? { status: 429, code: "AI_BUDGET_EXCEEDED", error: error.message }
+                : error instanceof UnknownModelPricingError
+                  ? { status: 503, code: "AI_PRICING_REQUIRED", error: error.message }
+                  : currentStage() === "validation" &&
+                      (error instanceof z.ZodError || error instanceof SyntaxError)
+                    ? {
+                        status: 400,
+                        code: "INVALID_QUESTION",
+                        error: "请输入2–500字的问题，或开始新对话后重试。",
+                      }
+                    : currentStage() === "execution"
+                      ? {
+                          status: 500,
+                          code: "ANALYSIS_FAILED",
+                          error: "数据查询暂未完成，请稍后重试。",
+                        }
+                      : {
+                          status: 502,
+                          code: "AI_PLANNING_FAILED",
+                          error: "AI 暂未完成回复，请稍后重试。",
+                        })
+    );
+  };
   try {
     // Bound the body before parsing untrusted history, even for chunked requests.
     const reader = request.body?.getReader();
@@ -94,62 +149,56 @@ export async function POST(request: Request) {
     context = { ...analysisRecordContext(payload), metricId: null, plan: null };
     const input = chatInputSchema.parse(payload);
     stage = "planning";
-    const response = await converse(input, {
-      signal: request.signal,
-      onExecution(plan) {
-        stage = "execution";
-        if (plan) context = analysisRecordContext(plan);
-      },
-    });
-    const artifact = response.artifact;
-    await audit(
-      null,
-      null,
-      artifact?.kind === "analysis"
-        ? artifact.result.rows.length
-        : artifact?.kind === "distribution"
-          ? artifact.data.groups.length
-          : artifact?.kind === "studio"
-            ? artifact.table.rows.length
-            : artifact?.kind === "relations" || artifact?.kind === "panorama"
-              ? artifact.data.relations.length
-              : 0,
-      artifact?.kind === "analysis" ? artifact.result.period : "",
-      response.planning.model,
-    );
-    return noStoreJson(response);
+    const run = async (signal: AbortSignal, onStep?: (step: AnalysisStep) => void) => {
+      const response = await converse(input, {
+        signal,
+        onStep(step) {
+          const operation = operations[step.label];
+          if (operation)
+            executionSteps.set(step.id, {
+              operation,
+              status: step.status,
+              durationMs: step.durationMs,
+            });
+          stage = operation === "decision" ? "planning" : "execution";
+          onStep?.(step);
+        },
+        onExecution(plan) {
+          stage = "execution";
+          if (plan) context = analysisRecordContext(plan);
+        },
+      });
+      const artifact = response.artifact;
+      await audit(
+        response.failureCode ?? null,
+        response.failureCode ? "综合分析部分步骤未完成。" : null,
+        artifact?.kind === "analysis"
+          ? artifact.result.rows.length
+          : artifact?.kind === "distribution"
+            ? artifact.data.groups.length
+            : artifact?.kind === "studio"
+              ? artifact.table.rows.length
+              : artifact?.kind === "relations" || artifact?.kind === "panorama"
+                ? artifact.data.relations.length
+                : 0,
+        artifact?.kind === "analysis" ? artifact.result.period : "",
+        response.planning.model,
+      );
+      return response;
+    };
+    if (
+      input.mode === "comprehensive" &&
+      request.headers.get("accept")?.includes("text/event-stream")
+    ) {
+      return createChatStream(request.signal, run, async (error) => {
+        const failure = classify(error);
+        await audit(failure.code, "对话请求未完成。");
+        return { ...failure, retryable: isRetryableErrorCode(failure.code) };
+      });
+    }
+    return noStoreJson(await run(request.signal));
   } catch (error) {
-    const queryFailure = queryExecutionHttpError(error);
-    const failure =
-      queryFailure ??
-      (error instanceof AuthError
-        ? { status: error.status, code: error.code, error: error.message }
-        : error instanceof AIConfigurationError
-          ? { status: 503, code: "AI_NOT_CONFIGURED", error: error.message }
-          : error instanceof AIProviderError
-            ? { status: error.status, code: error.code, error: error.message }
-            : error instanceof BudgetExceededError
-              ? { status: 429, code: "AI_BUDGET_EXCEEDED", error: error.message }
-              : error instanceof UnknownModelPricingError
-                ? { status: 503, code: "AI_PRICING_REQUIRED", error: error.message }
-                : currentStage() === "validation" &&
-                    (error instanceof z.ZodError || error instanceof SyntaxError)
-                  ? {
-                      status: 400,
-                      code: "INVALID_QUESTION",
-                      error: "请输入2–500字的问题，或开始新对话后重试。",
-                    }
-                  : currentStage() === "execution"
-                    ? {
-                        status: 500,
-                        code: "ANALYSIS_FAILED",
-                        error: "数据查询暂未完成，请稍后重试。",
-                      }
-                    : {
-                        status: 502,
-                        code: "AI_PLANNING_FAILED",
-                        error: "AI 暂未完成回复，请稍后重试。",
-                      });
+    const failure = classify(error);
     // Never persist conversational text, model replies, raw result rows or driver details.
     await audit(failure.code, "对话请求未完成。");
     return NextResponse.json(

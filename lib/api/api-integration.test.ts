@@ -150,6 +150,46 @@ integration("authenticated application HTTP API", () => {
     expect(result.facts.join(" ")).toContain("按 10 分一档");
   });
 
+  it("restricts comprehensive controls to admins and exposes only public status", async () => {
+    expect((await request("/api/admin/analysis-settings", {}, userCookie)).status).toBe(403);
+    const response = await request("/api/admin/analysis-settings");
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.capability.status).toBe("unknown");
+    expect(payload.knowledge.count).toBe(8);
+    expect(JSON.stringify(payload)).not.toContain("fingerprint");
+    const saved = await request("/api/admin/analysis-settings", {
+      method: "PUT",
+      body: JSON.stringify({ enabled: true, maxToolCalls: 4, timeoutSeconds: 45 }),
+    });
+    expect((await saved.json()).settings.maxToolCalls).toBe(4);
+    const rebuilt = await request("/api/admin/analysis-settings", {
+      method: "POST",
+      body: JSON.stringify({ action: "rebuild" }),
+    });
+    expect((await rebuilt.json()).knowledge.builtAt).toBeTruthy();
+  });
+
+  it("returns a terminal stream error when tools are not verified, keeping ordinary chat available", async () => {
+    const response = await request(
+      "/api/chat",
+      {
+        method: "POST",
+        headers: { accept: "text/event-stream" },
+        body: JSON.stringify({
+          mode: "comprehensive",
+          question: "比较两个学期的成绩",
+          datasetId: "demo",
+        }),
+      },
+      userCookie,
+    );
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+    const body = await response.text();
+    expect(body).toContain('"type":"error"');
+    expect(body).toContain("AI_NOT_CONFIGURED");
+  });
+
   it("returns a public session DTO without credentials", async () => {
     const response = await request("/api/auth/session");
     const payload = await response.json();
@@ -283,9 +323,14 @@ integration("authenticated application HTTP API", () => {
       }),
     });
     expect(response.status).toBe(422);
-    expect(await response.json()).toMatchObject({ code: "NO_DATA", result: {
-      rows: [], filteredOutGroupCount: 0, period: expect.stringContaining("无匹配记录"),
-    } });
+    expect(await response.json()).toMatchObject({
+      code: "NO_DATA",
+      result: {
+        rows: [],
+        filteredOutGroupCount: 0,
+        period: expect.stringContaining("无匹配记录"),
+      },
+    });
   });
 
   it("runs verified questions without a model connection", async () => {
