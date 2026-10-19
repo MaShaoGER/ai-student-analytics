@@ -346,19 +346,42 @@ export function ConversationWorkspace({
                   {response.warning}
                 </p>
               )}
-              {response?.facts.length && !response.steps?.length ? (
-                <div
+              {/* The unified path always has execution steps, so gating on
+                  "no steps" hid the numbers exactly where they matter most.
+                  Show the collapsed evidence whenever facts exist. */}
+              {response?.facts.length ? (
+                <details
                   className={styles.facts}
                   data-enter="fade"
                   style={{ "--enter-delay": "120ms" } as CSSProperties}
                 >
-                  <strong>数字从哪来</strong>
+                  <summary>
+                    <strong>数字从哪来</strong>
+                    {response.resultRefs?.length ? (
+                      <span className={styles.resultScope}>
+                        {" "}
+                        · {response.resultRefs.length} 份统计结果
+                      </span>
+                    ) : null}
+                  </summary>
                   <ul>
-                    {response.facts.map((fact, index) => (
-                      <li key={index}>{fact}</li>
-                    ))}
+                    {response.facts.map((fact, index) => {
+                      // Matching factRefs carry the verifiable identity; the
+                      // prose stays exactly as computed by the program.
+                      const ref = response.factRefs?.find(
+                        (item) => item.text === fact,
+                      );
+                      return (
+                        <li key={ref?.factId ?? index}>
+                          {fact}
+                          {ref ? (
+                            <small className={styles.factId}>{ref.factId}</small>
+                          ) : null}
+                        </li>
+                      );
+                    })}
                   </ul>
-                </div>
+                </details>
               ) : null}
               {response?.planning ? <PlanningNote planning={response.planning} /> : null}
               <ExecutionSteps steps={response?.steps ?? message.steps ?? []} />

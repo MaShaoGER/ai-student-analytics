@@ -16,7 +16,14 @@ import {
   type DataSource,
 } from "./types";
 import { DIMENSIONS, METRICS } from "./metrics";
-import type { ScoreDistributionData } from "./score-distribution";
+import type { ScoreDistributionData, DistributionScope } from "./score-distribution";
+import {
+  absenceRequestSchema,
+  absenceSupport,
+  ABSENCE_MINUTES_PER_PERIOD,
+  type AbsenceCourseRow,
+  type AbsenceStats,
+} from "./absence-stats";
 import { courseRelationRequestSchema, type CourseRelationData } from "./course-relations";
 import type { StudioProjectData, StudioRow, StudioTable, StudioRelationshipMetric } from "./chart-studio";
 import {
@@ -339,13 +346,20 @@ function studentScoreSource(datasetId: DataSource) {
 export async function scoreDistribution(
   datasetId: DataSource,
   options: QueryExecutionOptions = {},
+  scope: DistributionScope = {},
 ): Promise<ScoreDistributionData> {
   if (!validateFiles(datasetId))
     throw new QueryExecutionError("DATA_SOURCE_UNAVAILABLE", "成绩数据源不可用，请检查本地数据文件。");
   const source = studentScoreSource(datasetId);
+  // Narrow the source before aggregating: the optional course/term predicate is
+  // applied inside the CTE so the histogram, the eligibility count and the
+  // returned groups all describe exactly the requested scope. Filtering groups
+  // after the fact used to read and aggregate the whole dataset.
+  const narrowed = distributionPredicate(scope);
+  const scopedSource = narrowed ? `SELECT * FROM (${source}) WHERE ${narrowed}` : source;
   const rows = await withBoundedQueryConnection(
     (sql) => sql(`
-      WITH student_scores AS (${source}),
+      WITH student_scores AS (${scopedSource}),
       eligible AS (
         SELECT code_module, code_presentation, COUNT(*) AS sample_size
         FROM student_scores
@@ -379,6 +393,22 @@ export async function scoreDistribution(
       };
     }),
   };
+}
+
+/**
+ * Exact-match predicate for an already-validated catalog label. Values are
+ * escaped as SQL literals here; callers must not pass free text. Blank labels
+ * are ignored rather than turned into `= '  '`, which would silently match
+ * nothing.
+ */
+function distributionPredicate(scope: DistributionScope): string {
+  const label = (value: string | null | undefined) => value?.trim() ?? "";
+  const parts: string[] = [];
+  const course = label(scope.course);
+  const term = label(scope.term);
+  if (course) parts.push(`code_module = '${course.replaceAll("'", "''")}'`);
+  if (term) parts.push(`code_presentation = '${term.replaceAll("'", "''")}'`);
+  return parts.join(" AND ");
 }
 
 /** Join only deduplicated scores from the same student and term; return aggregates. */
@@ -755,4 +785,193 @@ export async function profileDatasets(
   ];
   profileCache = { signature, expiresAt: cacheNow + PROFILE_CACHE_TTL_MS, profiles };
   return profiles;
+}
+
+/**
+ * Absence statistics in their real units. The three units are measured
+ * separately from the same source rows: class periods missed (sessions),
+ * distinct students affected, and approved leave days (leave table only).
+ * OULAD returns `supported: false` because it has no attendance fields.
+ */
+export async function absenceStats(
+  input: unknown,
+  options: QueryExecutionOptions = {},
+): Promise<AbsenceStats> {
+  const request = absenceRequestSchema.parse(input);
+  const support = absenceSupport(request.datasetId, request.unit);
+  if (!support.supported)
+    return {
+      datasetId: request.datasetId,
+      term: request.term ?? null,
+      terms: [],
+      course: request.course ?? null,
+      metric: request.metric,
+      unit: request.unit,
+      supported: false,
+      unsupportedReason: support.reason,
+      rows: [],
+      totals: { sessions: 0, studentCourseCount: 0, distinctStudents: 0, approvedLeaveDays: 0 },
+      minutesPerPeriod: ABSENCE_MINUTES_PER_PERIOD,
+      minSampleSize: 3,
+    };
+  if (!validateFiles(request.datasetId))
+    throw new QueryExecutionError(
+      "DATA_SOURCE_UNAVAILABLE",
+      "成绩与出勤数据源不可用，请检查本地数据文件。",
+    );
+  const term = request.term?.trim() || null;
+  const course = request.course?.trim() || null;
+  // Probe the actual columns before building SQL: a dataset without absence
+  // fields (or a trimmed fixture) must return "unsupported", not a driver error.
+  const columns = new Set(
+    (
+      await withBoundedQueryConnection(
+        (sql) => sql(`DESCRIBE SELECT * FROM ${csv(DEMO_OUTCOMES)}`),
+        { ...API_QUERY_LIMITS.analysis, maxResultRows: 200 },
+        options,
+      )
+    ).map((row) => String(row.column_name)),
+  );
+  const required = {
+    absence: ["absent_sessions", "excused_sessions"],
+    unexcused: ["absent_sessions"],
+    excused: ["excused_sessions"],
+  }[request.metric];
+  const missing = required.filter((name) => !columns.has(name));
+  if (missing.length)
+    return {
+      datasetId: request.datasetId,
+      term,
+      terms: [],
+      course,
+      metric: request.metric,
+      unit: request.unit,
+      supported: false,
+      unsupportedReason: `当前数据源缺少缺勤字段（${missing.join("、")}），无法统计缺勤；不能用出勤率或活动量替代。`,
+      rows: [],
+      totals: { sessions: 0, studentCourseCount: 0, distinctStudents: 0, approvedLeaveDays: 0 },
+      minutesPerPeriod: ABSENCE_MINUTES_PER_PERIOD,
+      minSampleSize: 3,
+    };
+  // COALESCE before adding: a NULL in either column would make the sum NULL and
+  // the row would be silently dropped by the FILTER below, which would treat
+  // "missing" as "no absence happened".
+  const column =
+    request.metric === "absence"
+      ? "(COALESCE(TRY_CAST(absent_sessions AS DOUBLE), 0) + COALESCE(TRY_CAST(excused_sessions AS DOUBLE), 0))"
+      : request.metric === "unexcused"
+        ? "TRY_CAST(absent_sessions AS DOUBLE)"
+        : "TRY_CAST(excused_sessions AS DOUBLE)";
+  const filters = [
+    term ? `code_presentation = ${quoteLiteral(term)}` : "",
+    course ? `code_module = ${quoteLiteral(course)}` : "",
+  ].filter(Boolean);
+  const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+  const minSampleSize = 3;
+  // One connection answers all three questions: course rows, the term list, and
+  // the approved-leave day total. They must describe the same source rows.
+  const { result, terms, distinctStudents, approvedLeaveDays } = await withBoundedQueryConnection(
+    async (sql) => {
+      const result = await sql(`
+        WITH outcomes AS (
+          SELECT code_module, code_presentation, id_student,
+                 ${column} AS missed
+          FROM ${csv(DEMO_OUTCOMES)}
+          ${where}
+        ), grouped AS (
+          SELECT code_module AS course,
+                 SUM(missed) FILTER (WHERE missed IS NOT NULL) AS sessions,
+                 -- The privacy threshold counts every student with a valid
+                 -- absence record in the group, not only the affected ones:
+                 -- gating on "affected >= 3" would leak the affected count.
+                 COUNT(DISTINCT id_student) FILTER (WHERE missed IS NOT NULL) AS sample_size,
+                 COUNT(DISTINCT id_student) FILTER (WHERE missed > 0) AS students
+          FROM outcomes GROUP BY code_module
+        )
+        SELECT course, sessions, students FROM grouped
+        WHERE sample_size >= ${minSampleSize}
+        ORDER BY course ASC
+      `);
+      const termRows = await sql(`
+        SELECT DISTINCT code_presentation FROM ${csv(DEMO_OUTCOMES)}
+        ${where} ORDER BY code_presentation ASC
+      `);
+      // Distinct affected students across the scope. The per-course sums are
+      // person-course counts and would overstate the headcount (measured on the
+      // sample dataset: 3,184 person-course rows vs 1,194 distinct students).
+      //
+      // The suppression threshold applies here too. Calculating the total over
+      // every row would count students from courses whose own group was hidden,
+      // which both contradicts the returned rows and defeats the privacy rule
+      // that a sub-threshold group is not disclosed. Only students in eligible
+      // (>= minSampleSize valid records) course groups are counted.
+      const distinctRows = await sql(`
+        WITH outcomes AS (
+          SELECT code_module, id_student, ${column} AS missed
+          FROM ${csv(DEMO_OUTCOMES)}
+          ${where}
+        ), eligible AS (
+          SELECT code_module FROM outcomes
+          GROUP BY code_module HAVING COUNT(DISTINCT id_student) >= ${minSampleSize}
+        )
+        SELECT COUNT(DISTINCT o.id_student) AS students
+        FROM outcomes o JOIN eligible e USING (code_module)
+        WHERE o.missed > 0
+      `);
+      // Approved leave days live in the leave table, which has no course column:
+      // the total is term-scoped and must never be split across courses. A
+      // missing leave file must not fail the absence count that already worked;
+      // it degrades to "leave days unavailable" instead of an IO error.
+      const leavePath = path.join(DEMO_ROOT, "leave_requests.csv");
+      const leaveRows =
+        request.metric === "unexcused"
+          ? []
+          : fileExists(leavePath)
+            ? await sql(`
+                SELECT COALESCE(SUM(TRY_CAST(duration_days AS DOUBLE)), 0) AS days
+                FROM ${csv(leavePath)}
+                WHERE approval_status = '已批准'
+                ${term ? `AND code_presentation = ${quoteLiteral(term)}` : ""}
+              `)
+            : [];
+      return {
+        result,
+        terms: termRows.map((row) => String(row.code_presentation)),
+        distinctStudents: Number(distinctRows[0]?.students ?? 0),
+        approvedLeaveDays: Number(leaveRows[0]?.days ?? 0),
+      };
+    },
+    { ...API_QUERY_LIMITS.analysis, maxResultRows: 1000 },
+    options,
+  );
+  const rows: AbsenceCourseRow[] = result.map((row) => ({
+    course: String(row.course),
+    sessions: Number(row.sessions ?? 0),
+    students: Number(row.students ?? 0),
+  }));
+  return {
+    datasetId: request.datasetId,
+    term,
+    terms,
+    course,
+    metric: request.metric,
+    unit: request.unit,
+    supported: true,
+    unsupportedReason: null,
+    rows,
+    totals: {
+      sessions: rows.reduce((sum, row) => sum + row.sessions, 0),
+      // Reported separately on purpose: the sum over groups counts one student
+      // once per course, the query above counts distinct students overall.
+      studentCourseCount: rows.reduce((sum, row) => sum + row.students, 0),
+      distinctStudents,
+      approvedLeaveDays,
+    },
+    minutesPerPeriod: ABSENCE_MINUTES_PER_PERIOD,
+    minSampleSize,
+  };
+}
+
+function quoteLiteral(value: string): string {
+  return `'${value.replaceAll("'", "''")}'`;
 }

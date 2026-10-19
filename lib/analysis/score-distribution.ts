@@ -14,6 +14,16 @@ export type ScoreDistributionData = {
   minSampleSize: number;
 };
 
+/**
+ * Narrowing applied inside the SQL. `course`/`term` are exact catalog labels and
+ * must already be validated by the caller; they are always bound as literals,
+ * never spliced from free text.
+ */
+export type DistributionScope = {
+  course?: string | null;
+  term?: string | null;
+};
+
 export type ScoreBinWidth = 2 | 5 | 10;
 
 export function distributionRows(
@@ -43,3 +53,14 @@ export function scoreInterval(index: number, width: ScoreBinWidth) {
   const end = start + width;
   return `${start} ≤ 分数 ${end === 100 ? "≤" : "<"} ${end}`;
 }
+
+/**
+ * Count participating students, not multiply-counted person-terms: a single
+ * pinned term counts people, anything wider counts person-terms. The label must
+ * never claim "人" when the same student may appear in several terms.
+ */
+export function distributionCountingUnit(groups: ScoreDistributionGroup[], term?: string | null) {
+  if (term) return "人" as const;
+  return new Set(groups.map((group) => group.term)).size > 1 ? ("人次" as const) : ("人" as const);
+}
+

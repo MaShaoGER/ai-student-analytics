@@ -386,12 +386,49 @@
    plain text conclusion still carries its samples and definitions. */
 .facts {
   margin-top: 16px;
-  padding: 16px 20px;
+  padding: 12px 20px;
   background: var(--surface-inset);
   border-left: 3px solid var(--sage);
 }
+/* Collapsed by default (roadmap: "数字从哪来" 默认折叠) but always reachable. */
+.facts summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 4px 0;
+  color: var(--ink);
+}
+.facts summary::-webkit-details-marker {
+  display: none;
+}
+.facts summary::after {
+  content: "展开";
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+.facts[open] summary::after {
+  content: "收起";
+}
+.facts summary:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
 .facts strong {
   font-size: 13px;
+}
+.resultScope {
+  font-size: 12px;
+  color: var(--muted);
+}
+.factId {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 .facts ul {
   padding-left: 20px;

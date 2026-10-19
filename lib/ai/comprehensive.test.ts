@@ -59,6 +59,7 @@ describe("controlled multi-step analysis with real DuckDB", () => {
       generate: vi.fn(),
       analyze: vi.fn(real.runAnalysis),
       distribution: vi.fn(real.scoreDistribution),
+      absence: vi.fn(real.absenceStats),
       chart: vi.fn(executeChartTool),
       search: searchKnowledge,
       settings: () => ({ enabled: true, maxToolCalls: 6, timeoutSeconds: 60 }),
@@ -255,6 +256,169 @@ describe("controlled multi-step analysis with real DuckDB", () => {
     );
     expect(deps.distribution).not.toHaveBeenCalled();
   });
+  it("answers absence questions in the unit that was asked, without substituting activity", async () => {
+    // The fixture has no absence columns, so an implementation that substituted
+    // activity or returned zero would silently look plausible. Expect refusal.
+    sequence(
+      call("absence_stats", { metric: "absence", unit: "sessions" }),
+      finish,
+    );
+    const result = await converseComprehensive(
+      { question: "缺勤课时和成绩有关系吗？", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(deps.absence).toHaveBeenCalledWith(
+      { datasetId: "demo", metric: "absence", unit: "sessions" },
+      expect.anything(),
+    );
+    // Either real numbers from the fixture or an explicit "no eligible group";
+    // never a substituted activity metric and never a fabricated zero.
+    const text = result.facts.join(" ");
+    expect(text).toMatch(/缺勤|没有达到最小样本要求/);
+    expect(text).not.toContain("活跃次数");
+  });
+
+  it("renders a pure absence answer as a result with identifiable facts, not a clarification", async () => {
+    vi.mocked(deps.absence).mockResolvedValueOnce({
+      datasetId: "demo",
+      term: "2024J",
+      terms: ["2024J"],
+      course: null,
+      metric: "absence",
+      unit: "sessions",
+      supported: true,
+      unsupportedReason: null,
+      rows: [
+        { course: "AAA", sessions: 40, students: 4 },
+      ],
+      totals: {
+        sessions: 40,
+        studentCourseCount: 4,
+        distinctStudents: 4,
+        approvedLeaveDays: 7,
+      },
+      minutesPerPeriod: 45,
+      minSampleSize: 3,
+    });
+    sequence(call("absence_stats", { metric: "absence", unit: "sessions", term: "2024J" }), finish);
+    const result = await converseComprehensive(
+      { question: "2024J 缺勤课时是多少？", datasetId: "demo" },
+      {},
+      deps,
+    );
+    // A real answer, not "please specify the metric/course/term".
+    expect(result.kind).toBe("result");
+    expect(result.answer).not.toContain("请明确要分析的指标");
+    expect(result.facts.join(" ")).toContain("40");
+    // The numbers are identified and bound, so the UI can show evidence.
+    expect(result.resultRefs).toHaveLength(1);
+    expect(result.resultRefs![0].kind).toBe("absence");
+    expect(result.factRefs!.length).toBeGreaterThan(0);
+    for (const fact of result.factRefs!)
+      expect(fact.resultId).toBe(result.resultRefs![0].resultId);
+    expect(result.artifacts).toHaveLength(0);
+  });
+
+  it("binds every displayed absence fact to a factId (no text drift)", async () => {
+    vi.mocked(deps.absence).mockResolvedValueOnce({
+      datasetId: "demo",
+      term: "2024J",
+      terms: ["2024J"],
+      course: null,
+      metric: "absence",
+      unit: "sessions",
+      supported: true,
+      unsupportedReason: null,
+      rows: [
+        { course: "AAA", sessions: 40, students: 4 },
+        { course: "BBB", sessions: 25, students: 3 },
+      ],
+      totals: { sessions: 65, studentCourseCount: 7, distinctStudents: 6, approvedLeaveDays: 9 },
+      minutesPerPeriod: 45,
+      minSampleSize: 3,
+    });
+    sequence(call("absence_stats", { metric: "absence", unit: "sessions", term: "2024J" }), finish);
+    const result = await converseComprehensive(
+      { question: "2024J 缺勤课时是多少？", datasetId: "demo" },
+      {},
+      deps,
+    );
+    const texts = new Set(result.factRefs!.map((fact) => fact.text));
+    // Facts carrying a computed number; the closing limitation sentences have no
+    // factId by design and are excluded on purpose.
+    const numericFacts = result.facts.filter((fact) =>
+      /AAA：|BBB：|全部课程合计|跨课程去重后/.test(fact),
+    );
+    expect(numericFacts.length).toBeGreaterThan(0);
+    // Every number-bearing sentence shown to the user must resolve to a factId.
+    for (const fact of numericFacts) expect(texts.has(fact)).toBe(true);
+  });
+
+  it("does not answer absence questions with activity data on OULAD", async () => {
+    vi.mocked(deps.absence).mockResolvedValueOnce({
+      datasetId: "oulad",
+      term: null,
+      terms: [],
+      course: null,
+      metric: "absence",
+      unit: "sessions",
+      supported: false,
+      unsupportedReason: "OULAD 没有校园出勤字段。",
+      rows: [],
+      totals: { sessions: 0, studentCourseCount: 0, distinctStudents: 0, approvedLeaveDays: 0 },
+      minutesPerPeriod: 45,
+      minSampleSize: 3,
+    });
+    sequence(call("absence_stats", { metric: "absence", unit: "sessions" }), finish);
+    const result = await converseComprehensive(
+      { question: "缺勤课时和成绩有关系吗？", datasetId: "oulad" },
+      {},
+      deps,
+    );
+    expect(result.facts.join(" ")).toContain("OULAD 没有校园出勤字段");
+    expect(result.facts.join(" ")).not.toContain("活跃");
+    // Refusing with a reason is an explained answer, not a request to clarify,
+    // and definitely not a "result": nothing was computed.
+    expect(result.kind).toBe("answer");
+    expect(result.answer).not.toContain("请明确要分析的指标");
+    expect(result.answer).toContain("OULAD 没有校园出勤字段");
+    expect(result.resultRefs ?? []).toHaveLength(0);
+    expect(result.factRefs ?? []).toHaveLength(0);
+    expect(deps.analyze).not.toHaveBeenCalled();
+  });
+
+  it("rejects absence labels outside the catalog before querying", async () => {
+    sequence(call("absence_stats", { metric: "absence", unit: "sessions", course: "不存在的课" }));
+    await expect(
+      converseComprehensive({ question: "缺勤课时和成绩有关系吗？", datasetId: "demo" }, {}, deps),
+    ).rejects.toMatchObject({ code: "AI_TOOL_INVALID" });
+    expect(deps.absence).not.toHaveBeenCalled();
+  });
+
+  it("pushes the requested distribution scope into the query instead of filtering afterwards", async () => {
+    sequence(
+      call("score_distribution", { course: "AAA", term: "2024J", binWidth: 5 }),
+      finish,
+    );
+    const result = await converseComprehensive({ question, datasetId: "demo" }, {}, deps);
+    // The third argument is the scope. Without it the whole dataset is read and
+    // filtered in memory, which the roadmap explicitly forbids.
+    expect(deps.distribution).toHaveBeenLastCalledWith(
+      "demo",
+      expect.anything(),
+      { course: "AAA", term: "2024J" },
+    );
+    const artifact = result.artifacts?.find((item) => item.kind === "distribution");
+    expect(artifact).toMatchObject({ kind: "distribution", course: "AAA", term: "2024J" });
+    if (artifact?.kind === "distribution")
+      expect(
+        artifact.data.groups.every(
+          (group) => group.course === "AAA" && group.term === "2024J",
+        ),
+      ).toBe(true);
+  });
+
   it("provides cited definitions and refuses knowledge without evidence", async () => {
     sequence(call("search_knowledge", { query: "完成率和出勤率有什么区别" }), finish);
     const result = await converseComprehensive(

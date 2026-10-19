@@ -12,6 +12,7 @@ import type { StudioTable } from "../analysis/chart-studio";
 import type { CourseRelationData } from "../analysis/course-relations";
 import type { CoursePanoramaData } from "../analysis/course-panorama";
 import { toolSchema, type ChatTool } from "./chart-capabilities";
+import type { FactRef, ResultRef } from "./result-contract";
 
 export const chatViewSchema = z.enum([
   "bar",
@@ -78,6 +79,13 @@ export type ChatArtifact =
       densityMode?: "density" | "scatter";
       term: string;
       view: "chart" | "table";
+      /**
+       * Courses the chart was narrowed to. Optional for older snapshots, but
+       * required for result identity: two different course scopes must not hash
+       * to the same `resultId`.
+       */
+      courses?: string[];
+      datasetId?: "demo" | "oulad";
     }
   | { kind: "relations"; data: CourseRelationData; course: string; view: "chart" | "table" }
   | { kind: "panorama"; data: CoursePanoramaData; view: "chart" | "table" }
@@ -114,7 +122,16 @@ export type ChatResponse = {
     model: string | null;
   };
   warning?: string;
+  /**
+   * Unified result contract (unified-AI roadmap stage 2). `resultRefs` identify
+   * every numeric result in `artifacts`; `factRefs` bind prose numbers to those
+   * ids. Charts and tables share a `resultId`, so switching the view never
+   * changes identity or triggers another query.
+   */
+  resultRefs?: ResultRef[];
+  factRefs?: FactRef[];
 };
+
 
 export type KnowledgeCitation = {
   id: string;

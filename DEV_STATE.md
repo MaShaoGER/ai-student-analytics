@@ -1,5 +1,34 @@
 # 开发续接记录
 
+## 交接：下一轮从这里开始（2026-10-19 收尾）
+
+**当前状态**：路线图第 2 步「接好统计与展示」已完成并本地提交；第 1、3、4 步未实施。工作区无未提交源码改动（`app/preview/`、`参考.af` 为用户原有未跟踪文件，不要提交）。
+
+**下一轮目标：路线图第 1 步「统一入口和上下文」**，具体四件事：
+
+1. 收敛 `app/api/chat/route.ts` 的执行入口：不再按 `mode` 分派 `converse` / `converseComprehensive`，改为单一入口。注意 `chatInputSchema.mode` 目前仍有 `quick`/`comprehensive` 默认值，前端 `components/workspace.tsx` 的 `analysisMode` state 与 `components/ai-conversation.tsx` 的 `SegmentedControl` 需要一并移除，否则只是隐藏按钮而未真正合并。
+2. 按真实角色传历史消息：现在 `comprehensive.ts` 把 `{...input, catalog, requestedComparison}` 整体 `JSON.stringify` 成一条 user 消息，应改为按 user/assistant 角色传入，并把已确认的课程/学期/指标作为结构化上下文保留。
+3. 移除 `comprehensive.ts` 的 `INSTRUCTIONS` 中写死的业务流程（“先比较学期，再根据 largestDecline 选择后续课程”），示例只作能力说明。同时移除 `comprehensive.ts` 中依赖问题关键词的完成判定（`needsDistribution = /分布/.test(...)`）。
+4. 保留已建成的 `resultRef`/`factRef` 契约，新的统一入口必须继续输出 `resultRefs`/`factRefs`。
+
+**动之前先读**：[统一对话路线图](docs/unified-ai-workflow-roadmap.md) 第 3 节（现状问题）、第 6 节（阶段表）；[第 2 步实施记录](docs/unified-ai-phase2.md)（已建成什么、哪些是已知限制）。
+
+**已知约束**：第 1 步会动请求契约与提示词，风险高于第 2 步。改完必须跑 `pnpm typecheck`、`pnpm test`、`pnpm test:api`；`COMMIT` 前还原 `next-env.d.ts` 与 `tsconfig.json`（`next dev`/`next build` 会改写编译路径）。真实模型验收与浏览器验收仍未做，不得声称已通过。
+
+**本地启动**：`NEXT_DIST_DIR=.next/local-stage2 pnpm dev`（沿用既有编译目录），账号 `root` 为管理员。停止时注意还原上述两个配置文件。
+
+## AI 统一对话第 2 步实施（2026-10-19，方案 B：留在 codex/competition-phase2）
+
+- 用户选择方案 B，在既有第二阶段分支上继续实施统一对话路线图的**第 2 步「接好统计与展示」**；第 1、3、4 步未实施，模式切换按钮仍在。
+- 新增统一结果契约 `lib/ai/result-contract.ts`（`ResultRef`/`FactRef`、确定性 `resultId`、悬空引用检测）与派生层 `lib/ai/artifact-results.ts`；图表与表格共享同一 `resultId`，界面原地切换已验证零查询、零模型调用。`danglingFactRefs` 已接入两条响应路径（`describeResponseArtifacts`），悬空事实被剔除并给出警告，不再只是存在但未使用。
+- 成绩分布改为按课程/学期**下推查询**（`scoreDistribution` 第三参数 `scope`），不再全量拉取后内存过滤；修复了空白标签被拼成 `= '  '` 的缺陷。
+- 新增缺勤统计契约 `lib/analysis/absence-stats.ts` 与 `absenceStats()`：课时/人数/天数三种单位、请假与旷课两种口径严格分离；请假天数不换算成课时；OULAD 返回 unsupported；缺列时先探测再如实说明而不是驱动报错。综合分析新增 `absence_stats` 工具并接入目录校验与预算/取消语义。
+- 修正一处真实口径风险：分组人数直接相加是**人次**，不是去重人数（真实数据 2025J 为 3184 人次 vs 1194 人），`totals` 已拆成 `studentCourseCount` 与 `distinctStudents`，事实文本与提示词同步。
+- 界面：`数字从哪来` 改为默认折叠的 `<details>`，展开入口始终可用，命中事实显示 `factId`。
+- 验证：`pnpm typecheck` 通过；`pnpm test` **591 通过 / 73 跳过**（基线 543/73）；`pnpm test:api` 25 项通过；隔离生产构建通过；独立 CSV 复算成绩分布与缺勤数字（Python 独立脚本，2025J：19,410 课时 / 3,184 人次 / 1,194 去重人 / 965 请假天，逐课程一致）。
+- 独立核验与代码审查各发现并已修复的缺陷：分布下推只加在函数上、主链路未传参（假通过）；纯缺勤回答被误归为 clarification 且 UI 折叠块永不渲染；去重人数绕过最小样本抑制（隐私口径）；请假天数作用域文案错误；`absence_stats` 未进审计白名单；studio 结果 id 忽略课程范围；unsupported 仍产出结果引用；事实文本与 `factId` 两处生成导致绑定失效；NULL 缺勤值被当成零缺勤。
+- 未执行：真实模型验收、浏览器点击验收（Playwright 不在依赖内）、第 1/3/4 步、既有 6 项真实评测未通过项的复核。详见 [统一对话第二阶段实施记录](docs/unified-ai-phase2.md)。
+
 ## AI 统一对话改进路线（2026-10-19，仅记录）
 
 - 用户已确认合并“普通问答 / 综合分析”，由 AI 按上下文决定直接回答或调用统计、知识与展示工具；保留基础访问检查、工具内部校验和预算兜底。

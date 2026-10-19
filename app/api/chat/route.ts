@@ -55,6 +55,9 @@ export async function POST(request: Request) {
     查询聚合指标: "aggregate",
     比较学期成绩: "compare_terms",
     查询课程成绩分布: "score_distribution",
+    // Absence is a real execution step; without this mapping its steps vanish
+    // from the audit and its failures are misclassified as planning failures.
+    查询缺勤课时与人数: "absence_stats",
     检索指标与教学依据: "search_knowledge",
     生成高级分析图表: "advanced_chart",
     确认分析范围: "clarify",

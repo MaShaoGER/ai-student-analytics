@@ -244,6 +244,9 @@ export async function executeChartTool(
     table,
     term: project.term ?? "",
     view: intent.view,
+    // Result identity must distinguish different course scopes.
+    courses: intent.courses,
+    datasetId: input.datasetId,
     ...(intent.tool === "density" ? { densityMode: intent.densityMode ?? "scatter" } : {}),
   };
 }

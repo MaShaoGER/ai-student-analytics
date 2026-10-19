@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { loadEnvFile } from "./ai-eval/environment";
 import { probeToolCalling, generateToolTurn } from "../lib/ai/tool-provider";
 import { converseComprehensive, type ComprehensiveDependencies } from "../lib/ai/comprehensive";
-import { runAnalysis, scoreDistribution } from "../lib/analysis/duckdb";
+import { absenceStats, runAnalysis, scoreDistribution } from "../lib/analysis/duckdb";
 import { executeChartTool } from "../lib/ai/chart-tools";
 import { searchKnowledge } from "../lib/ai/knowledge";
 import { getAnalysisSettings } from "../lib/settings/analysis";
@@ -19,6 +19,7 @@ const deps: ComprehensiveDependencies = {
   generate: generateToolTurn,
   analyze: runAnalysis,
   distribution: scoreDistribution,
+  absence: absenceStats,
   chart: executeChartTool,
   search: searchKnowledge,
   settings: getAnalysisSettings,
@@ -33,6 +34,7 @@ describe.skipIf(!enabled).sequential("phase 2 real endpoint acceptance", () => {
     const real = await import("../lib/analysis/duckdb");
     deps.analyze = real.runAnalysis;
     deps.distribution = real.scoreDistribution;
+    deps.absence = real.absenceStats;
     const config = getAIConfig();
     if (!config.enabled || !config.keyConfigured)
       throw new Error("A configured model and decryption key are required.");

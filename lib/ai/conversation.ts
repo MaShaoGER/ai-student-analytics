@@ -34,6 +34,7 @@ import {
   type ChatIntent,
   type ChatResponse,
 } from "./chat-types";
+import { describeResponseArtifacts } from "./artifact-results";
 
 // Backward-compatible re-exports: the decision schema now lives in resolve-plan.ts.
 export { conversationDecisionSchema, parseConversationDecision } from "./resolve-plan";
@@ -501,6 +502,13 @@ export async function converse(
       suggestions,
       context: intent,
       artifact,
+      // The quick path shares the same result contract as the unified path,
+      // including dropping facts that cite a result this response lacks.
+      ...(() => {
+        const described = describeResponseArtifacts([artifact], input.datasetId);
+        if (described.warning) warning = [warning, described.warning].filter(Boolean).join(" ");
+        return { resultRefs: described.resultRefs, factRefs: described.factRefs };
+      })(),
       planning,
       ...(warning ? { warning } : {}),
     };
