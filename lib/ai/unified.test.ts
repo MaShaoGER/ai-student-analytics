@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { mkdtempSync, writeFileSync, copyFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { converseComprehensive, type ComprehensiveDependencies } from "./comprehensive";
+import { converseUnified, type UnifiedDependencies } from "./unified";
 import type { ToolMessage, ToolTurn } from "./tool-provider";
 import type { AnalysisStep } from "./chat-types";
 import { executeChartTool } from "./chart-tools";
@@ -22,11 +22,19 @@ const finish: ToolTurn = {
   model: "fixture",
   message: { role: "assistant", content: "模型编造数字 999 分，教学原因已经确认。", calls: [] },
 };
+const directAnswer: ToolTurn = {
+  model: "fixture",
+  message: {
+    role: "assistant",
+    content: "完成率是完成课程的学生数占符合统计条件学生数的比例，需要先确定统计口径。",
+    calls: [],
+  },
+};
 const question = "比较2024B和2024J，找出均分下降最多的课程，再看它的成绩分布和比较口径";
 describe("controlled multi-step analysis with real DuckDB", () => {
   let directory: string;
   let real: typeof import("../analysis/duckdb");
-  let deps: ComprehensiveDependencies;
+  let deps: UnifiedDependencies;
   beforeAll(async () => {
     directory = mkdtempSync(join(tmpdir(), "phase2-data-"));
     const records = ["id_student,code_module,code_presentation,score,completed"];
@@ -90,12 +98,13 @@ describe("controlled multi-step analysis with real DuckDB", () => {
     });
     sequence(call("search_knowledge", { query: "跨学期比较口径" }), finish);
     const events: AnalysisStep[] = [];
-    const result = await converseComprehensive(
+    const result = await converseUnified(
       { question, datasetId: "demo" },
       { onStep: (step) => events.push(step) },
       deps,
     );
     expect(result.artifacts?.map((item) => item.kind)).toEqual(["studio", "distribution"]);
+    expect(result.planning.rationale).toContain("服务端工具结果");
     expect(result.answer).toContain("下降 30 分");
     expect(result.answer).not.toContain("999");
     expect(result.answer).not.toContain("原因已经确认");
@@ -113,31 +122,63 @@ describe("controlled multi-step analysis with real DuckDB", () => {
       call("compare_terms", { beforeTerm: "2024J", afterTerm: "2024B", courses: [] }),
       finish,
     );
-    const result = await converseComprehensive(
+    const result = await converseUnified(
       { question: "比较2024B和2024J，看它在2024J的成绩分布", datasetId: "demo" },
       {},
       deps,
     );
     expect(result.answer).toContain("2024B → 2024J");
     expect(result.answer).toContain("下降 30 分");
-    expect(result.completion).toBe("partial");
+    // Completion is no longer inferred from the word "分布" in the question; the
+    // model decided it had enough evidence and stopped.
+    expect(result.completion).toBe("complete");
+    expect(result.failureCode).toBeUndefined();
   });
-  it("treats a text-only model turn without evidence as a request for clarification", async () => {
-    sequence(finish);
-    const result = await converseComprehensive(
+  it("does not mark a question as incomplete just because it mentions 分布", async () => {
+    sequence(directAnswer);
+    const result = await converseUnified(
+      { question: "各科成绩分布如何？", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(result.kind).toBe("answer");
+    expect(result.completion).toBe("complete");
+    expect(result.failureCode).toBeUndefined();
+  });
+  it("returns a direct answer when the model calls no tool", async () => {
+    // A turn without tool calls is the normal direct-answer path after the
+    // merge; it must not be reported as "please specify the metric".
+    sequence(directAnswer);
+    const result = await converseUnified(
+      { question: "完成率是什么意思", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(result.kind).toBe("answer");
+    expect(result.answer).toContain("完成率是完成课程");
+    expect(result.answer).not.toContain("请明确要分析的指标");
+    expect(result.artifacts).toHaveLength(0);
+    expect(result.factRefs ?? []).toHaveLength(0);
+    // The planning note shown in the UI must not claim tools were called.
+    expect(result.planning.rationale).toContain("未经统计核验");
+    expect(result.planning.rationale).not.toContain("服务端工具结果");
+  });
+  it("keeps the explicit clarify tool as the only way to request scope details", async () => {
+    sequence(call("clarify", { question: "请说明想比较哪两个学期。" }), finish);
+    const result = await converseUnified(
       { question: "本学期哪个课程下降最多", datasetId: "demo" },
       {},
       deps,
     );
     expect(result.kind).toBe("clarification");
-    expect(result.answer).not.toContain("999");
+    expect(result.answer).toBe("请说明想比较哪两个学期。");
   });
   it("can answer sourced definitions when the statistical data source is unavailable", async () => {
     vi.mocked(deps.distribution).mockRejectedValue(
       new QueryExecutionError("DATA_SOURCE_UNAVAILABLE", "missing"),
     );
     sequence(call("search_knowledge", { query: "完成率和出勤率有什么区别" }), finish);
-    const result = await converseComprehensive(
+    const result = await converseUnified(
       { question: "完成率和出勤率有什么区别", datasetId: "demo" },
       {},
       deps,
@@ -146,23 +187,28 @@ describe("controlled multi-step analysis with real DuckDB", () => {
     expect(result.answer).toContain("不同指标");
     expect(deps.analyze).not.toHaveBeenCalled();
   });
-  it("does not turn an increase into a decline and prevents a wrong dependent query", async () => {
+  it("does not turn an increase into a decline, and no longer forces the compare→distribution order", async () => {
     sequence(
       call("compare_terms", { beforeTerm: "2024B", afterTerm: "2024J", courses: ["BBB"] }),
       call("score_distribution", { course: "BBB", term: "2024J", binWidth: 5 }),
+      finish,
     );
-    const result = await converseComprehensive({ question, datasetId: "demo" }, {}, deps);
+    const result = await converseUnified({ question, datasetId: "demo" }, {}, deps);
+    // The comparison result states honestly that nothing declined …
     expect(result.answer).toContain("没有均分下降");
-    expect(result.completion).toBe("partial");
-    expect(result.artifacts).toHaveLength(1);
-    expect(result.failureCode).toBe("AI_TOOL_INVALID");
+    // … while the next tool call is not rejected by a hard-coded workflow rule:
+    // the roadmap removes the fixed "largest decline → distribution" order, so
+    // dependent-tool consistency is the model's responsibility, not a keyword check.
+    expect(result.artifacts?.map((artifact) => artifact.kind)).toEqual(["studio", "distribution"]);
+    expect(result.completion).toBe("complete");
+    expect(result.failureCode).toBeUndefined();
   });
   it("stops repeated arguments even if JSON keys are reordered", async () => {
     sequence(
       call("aggregate", { metric: "score", dimension: "course", filters: [] }),
       call("aggregate", { filters: [], dimension: "course", metric: "score" }),
     );
-    const result = await converseComprehensive(
+    const result = await converseUnified(
       { question: "看看各课程成绩", datasetId: "demo" },
       {},
       deps,
@@ -178,26 +224,26 @@ describe("controlled multi-step analysis with real DuckDB", () => {
       ...call("score_distribution", { course: "AAA", term: "2024J", binWidth: 5 }).message.calls!,
     );
     sequence(turn);
-    const result = await converseComprehensive({ question, datasetId: "demo" }, {}, deps);
+    const result = await converseUnified({ question, datasetId: "demo" }, {}, deps);
     expect(result.failureCode).toBe("AI_TOOL_LIMIT");
     expect(result.artifacts).toHaveLength(1);
     expect(deps.distribution).toHaveBeenCalledTimes(1);
   });
   it("does not execute unknown tools or invalid labels", async () => {
     sequence(call("execute_sql", { sql: "select * from students" }));
-    await expect(
-      converseComprehensive({ question, datasetId: "demo" }, {}, deps),
-    ).rejects.toMatchObject({ code: "AI_TOOL_INVALID" });
+    await expect(converseUnified({ question, datasetId: "demo" }, {}, deps)).rejects.toMatchObject({
+      code: "AI_TOOL_INVALID",
+    });
     expect(deps.analyze).not.toHaveBeenCalled();
     vi.mocked(deps.generate).mockReset();
     sequence(call("score_distribution", { course: "missing", term: "2024J", binWidth: 5 }));
-    await expect(
-      converseComprehensive({ question, datasetId: "demo" }, {}, deps),
-    ).rejects.toMatchObject({ code: "AI_TOOL_INVALID" });
+    await expect(converseUnified({ question, datasetId: "demo" }, {}, deps)).rejects.toMatchObject({
+      code: "AI_TOOL_INVALID",
+    });
   });
   it("asks for missing scope without executing a statistical query", async () => {
     sequence(call("clarify", { question: "请指定前后两个学期。" }));
-    const result = await converseComprehensive(
+    const result = await converseUnified(
       { question: "本学期哪个课程下降最多", datasetId: "demo" },
       {},
       deps,
@@ -211,7 +257,7 @@ describe("controlled multi-step analysis with real DuckDB", () => {
       options!.budgetContext!.spent = 0.05;
       throw new BudgetExceededError("单次请求", 0.2, 0.1);
     });
-    const result = await converseComprehensive({ question, datasetId: "demo" }, {}, deps);
+    const result = await converseUnified({ question, datasetId: "demo" }, {}, deps);
     expect(result.failureCode).toBe("AI_BUDGET_EXCEEDED");
     const contexts = vi.mocked(deps.generate).mock.calls.map((args) => args[2]!.budgetContext);
     expect(contexts[0]).toBe(contexts[1]);
@@ -224,7 +270,7 @@ describe("controlled multi-step analysis with real DuckDB", () => {
       throw new QueryExecutionError("CANCELLED", "cancelled");
     });
     await expect(
-      converseComprehensive(
+      converseUnified(
         { question, datasetId: "demo" },
         { signal: abort.signal, onStep: (step) => events.push(step) },
         deps,
@@ -245,13 +291,13 @@ describe("controlled multi-step analysis with real DuckDB", () => {
           );
         }),
     );
-    await expect(
-      converseComprehensive({ question, datasetId: "demo" }, {}, deps),
-    ).rejects.toMatchObject({ code: "TIMEOUT" });
+    await expect(converseUnified({ question, datasetId: "demo" }, {}, deps)).rejects.toMatchObject({
+      code: "TIMEOUT",
+    });
   });
   it("requires compatible and enabled configuration before any queries", async () => {
     deps.capability = () => ({ status: "unknown", checkedAt: null });
-    await expect(converseComprehensive({ question, datasetId: "demo" }, {}, deps)).rejects.toThrow(
+    await expect(converseUnified({ question, datasetId: "demo" }, {}, deps)).rejects.toThrow(
       "尚未通过",
     );
     expect(deps.distribution).not.toHaveBeenCalled();
@@ -259,11 +305,8 @@ describe("controlled multi-step analysis with real DuckDB", () => {
   it("answers absence questions in the unit that was asked, without substituting activity", async () => {
     // The fixture has no absence columns, so an implementation that substituted
     // activity or returned zero would silently look plausible. Expect refusal.
-    sequence(
-      call("absence_stats", { metric: "absence", unit: "sessions" }),
-      finish,
-    );
-    const result = await converseComprehensive(
+    sequence(call("absence_stats", { metric: "absence", unit: "sessions" }), finish);
+    const result = await converseUnified(
       { question: "缺勤课时和成绩有关系吗？", datasetId: "demo" },
       {},
       deps,
@@ -289,9 +332,7 @@ describe("controlled multi-step analysis with real DuckDB", () => {
       unit: "sessions",
       supported: true,
       unsupportedReason: null,
-      rows: [
-        { course: "AAA", sessions: 40, students: 4 },
-      ],
+      rows: [{ course: "AAA", sessions: 40, students: 4 }],
       totals: {
         sessions: 40,
         studentCourseCount: 4,
@@ -302,7 +343,7 @@ describe("controlled multi-step analysis with real DuckDB", () => {
       minSampleSize: 3,
     });
     sequence(call("absence_stats", { metric: "absence", unit: "sessions", term: "2024J" }), finish);
-    const result = await converseComprehensive(
+    const result = await converseUnified(
       { question: "2024J 缺勤课时是多少？", datasetId: "demo" },
       {},
       deps,
@@ -315,8 +356,7 @@ describe("controlled multi-step analysis with real DuckDB", () => {
     expect(result.resultRefs).toHaveLength(1);
     expect(result.resultRefs![0].kind).toBe("absence");
     expect(result.factRefs!.length).toBeGreaterThan(0);
-    for (const fact of result.factRefs!)
-      expect(fact.resultId).toBe(result.resultRefs![0].resultId);
+    for (const fact of result.factRefs!) expect(fact.resultId).toBe(result.resultRefs![0].resultId);
     expect(result.artifacts).toHaveLength(0);
   });
 
@@ -339,7 +379,7 @@ describe("controlled multi-step analysis with real DuckDB", () => {
       minSampleSize: 3,
     });
     sequence(call("absence_stats", { metric: "absence", unit: "sessions", term: "2024J" }), finish);
-    const result = await converseComprehensive(
+    const result = await converseUnified(
       { question: "2024J 缺勤课时是多少？", datasetId: "demo" },
       {},
       deps,
@@ -371,7 +411,7 @@ describe("controlled multi-step analysis with real DuckDB", () => {
       minSampleSize: 3,
     });
     sequence(call("absence_stats", { metric: "absence", unit: "sessions" }), finish);
-    const result = await converseComprehensive(
+    const result = await converseUnified(
       { question: "缺勤课时和成绩有关系吗？", datasetId: "oulad" },
       {},
       deps,
@@ -391,47 +431,195 @@ describe("controlled multi-step analysis with real DuckDB", () => {
   it("rejects absence labels outside the catalog before querying", async () => {
     sequence(call("absence_stats", { metric: "absence", unit: "sessions", course: "不存在的课" }));
     await expect(
-      converseComprehensive({ question: "缺勤课时和成绩有关系吗？", datasetId: "demo" }, {}, deps),
+      converseUnified({ question: "缺勤课时和成绩有关系吗？", datasetId: "demo" }, {}, deps),
     ).rejects.toMatchObject({ code: "AI_TOOL_INVALID" });
     expect(deps.absence).not.toHaveBeenCalled();
   });
 
   it("pushes the requested distribution scope into the query instead of filtering afterwards", async () => {
-    sequence(
-      call("score_distribution", { course: "AAA", term: "2024J", binWidth: 5 }),
-      finish,
-    );
-    const result = await converseComprehensive({ question, datasetId: "demo" }, {}, deps);
+    sequence(call("score_distribution", { course: "AAA", term: "2024J", binWidth: 5 }), finish);
+    const result = await converseUnified({ question, datasetId: "demo" }, {}, deps);
     // The third argument is the scope. Without it the whole dataset is read and
     // filtered in memory, which the roadmap explicitly forbids.
-    expect(deps.distribution).toHaveBeenLastCalledWith(
-      "demo",
-      expect.anything(),
-      { course: "AAA", term: "2024J" },
-    );
+    expect(deps.distribution).toHaveBeenLastCalledWith("demo", expect.anything(), {
+      course: "AAA",
+      term: "2024J",
+    });
     const artifact = result.artifacts?.find((item) => item.kind === "distribution");
     expect(artifact).toMatchObject({ kind: "distribution", course: "AAA", term: "2024J" });
     if (artifact?.kind === "distribution")
       expect(
-        artifact.data.groups.every(
-          (group) => group.course === "AAA" && group.term === "2024J",
-        ),
+        artifact.data.groups.every((group) => group.course === "AAA" && group.term === "2024J"),
       ).toBe(true);
   });
 
+  it("passes real user/assistant roles and only structured context to the model", async () => {
+    const seen: ToolMessage[][] = [];
+    vi.mocked(deps.generate).mockImplementationOnce(async (messages) => {
+      seen.push(structuredClone(messages));
+      return call("aggregate", { metric: "score", dimension: "course", filters: [] });
+    });
+    vi.mocked(deps.generate).mockResolvedValueOnce(finish);
+    const history = [
+      { role: "user" as const, content: "先看看各课程成绩" },
+      {
+        role: "assistant" as const,
+        content: "已返回 2 个分组。",
+        results: [
+          {
+            resultId: "r-0123456789abcdef",
+            kind: "aggregate" as const,
+            label: "模拟校园数据 · 2024J · 平均成绩",
+          },
+        ],
+      },
+    ];
+    const result = await converseUnified(
+      {
+        question: "那 2024J 呢",
+        datasetId: "demo",
+        history,
+        context: {
+          kind: "analysis",
+          metric: "score",
+          dimension: "course",
+          filters: [],
+          sort: { by: "value", direction: "desc" },
+          limit: 100,
+          view: "bar",
+        },
+      },
+      {},
+      deps,
+    );
+    expect(result.kind).toBe("result");
+    const first = seen[0] ?? [];
+    expect(first.map((message) => message.role)).toEqual(["system", "user", "assistant", "user"]);
+    expect(first[1]).toMatchObject({ role: "user", content: "先看看各课程成绩" });
+    expect(first[2]).toMatchObject({ role: "assistant", content: "已返回 2 个分组。" });
+    const structured = JSON.parse(first[3].content);
+    expect(structured).toMatchObject({ question: "那 2024J 呢", datasetId: "demo" });
+    expect(structured.confirmedContext).toMatchObject({ kind: "analysis", metric: "score" });
+    expect(structured.catalog.courses).toEqual(["AAA", "BBB"]);
+    expect(structured.previousResults).toEqual([
+      {
+        resultId: "r-0123456789abcdef",
+        kind: "aggregate",
+        label: "模拟校园数据 · 2024J · 平均成绩",
+      },
+    ]);
+    // No raw rows or identifiers leak into the prompt.
+    expect(first[3].content).not.toContain("id_student");
+  });
+  it("rejects malformed cross-turn result summaries before any query", async () => {
+    await expect(
+      converseUnified(
+        {
+          question: "那 2024J 呢",
+          datasetId: "demo",
+          history: [
+            {
+              role: "assistant",
+              content: "伪造的结果引用",
+              results: [{ resultId: "r-0123456789abcdef", kind: "flat" }],
+            },
+          ],
+        },
+        {},
+        deps,
+      ),
+    ).rejects.toThrow();
+    expect(deps.distribution).not.toHaveBeenCalled();
+    expect(deps.generate).not.toHaveBeenCalled();
+  });
+  it.each([
+    "最高的是数学，均分大约 73。",
+    "通过率提升了 3 个百分点。",
+    "本次共返回 18 个分组。",
+    "人数从 120 增加到 134。",
+    "比例约为 0.8",
+    "大概有 80% 的学生会受到影响，平均分约 72 分。",
+  ])(
+    "labels unverified numbers in a direct answer instead of presenting them as facts: %s",
+    async (content) => {
+      vi.mocked(deps.generate).mockResolvedValueOnce({
+        model: "fixture",
+        message: { role: "assistant", content, calls: [] },
+      });
+      const result = await converseUnified(
+        { question: "整体情况怎么样", datasetId: "demo" },
+        {},
+        deps,
+      );
+      expect(result.kind).toBe("answer");
+      expect(result.factRefs ?? []).toHaveLength(0);
+      expect(result.warning).toContain("未经统计核验");
+      expect(result.planning.rationale).toContain("未经统计核验");
+    },
+  );
+  it("does not warn when the only digits come from catalog labels", async () => {
+    vi.mocked(deps.generate).mockResolvedValueOnce({
+      model: "fixture",
+      message: {
+        role: "assistant",
+        content: "2024J 的整体情况需要结合课程考核方式继续核验。",
+        calls: [],
+      },
+    });
+    const result = await converseUnified(
+      { question: "整体情况怎么样", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(result.kind).toBe("answer");
+    expect(result.warning).toBeUndefined();
+  });
+  it("tells the user when a long direct answer was truncated", async () => {
+    vi.mocked(deps.generate).mockResolvedValueOnce({
+      model: "fixture",
+      message: { role: "assistant", content: "说明".repeat(1100), calls: [] },
+    });
+    const result = await converseUnified(
+      { question: "整体情况怎么样", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(result.kind).toBe("answer");
+    expect(result.answer.length).toBeLessThanOrEqual(2000);
+    expect(result.warning).toContain("已截断");
+  });
+  it("keeps the instructions free of one fixed task order", async () => {
+    const seen: ToolMessage[][] = [];
+    vi.mocked(deps.generate).mockImplementationOnce(async (messages) => {
+      seen.push(structuredClone(messages));
+      return directAnswer;
+    });
+    await converseUnified({ question: "随便聊聊", datasetId: "demo" }, {}, deps);
+    const system = seen[0][0].content;
+    expect(system).not.toMatch(/先比较学期/);
+    expect(system).not.toMatch(/largestDecline/);
+    expect(system).not.toMatch(/第一步/);
+    // Capabilities and evidence rules stay.
+    expect(system).toContain("数字只能来自本轮工具返回");
+    expect(system).toContain("缺勤相关数字只能来自 absence_stats");
+  });
   it("provides cited definitions and refuses knowledge without evidence", async () => {
     sequence(call("search_knowledge", { query: "完成率和出勤率有什么区别" }), finish);
-    const result = await converseComprehensive(
+    const result = await converseUnified(
       { question: "完成率和出勤率有什么区别", datasetId: "demo" },
       {},
       deps,
     );
     expect(result.answer).toContain("不同指标");
+    // A cited definition is a successful answer, not a request for clarification.
+    expect(result.kind).toBe("answer");
     expect(result.citations!.length).toBeGreaterThan(0);
     expect(result.artifacts).toHaveLength(0);
+    expect(result.planning.rationale).toContain("知识库引用");
+    expect(result.planning.rationale).not.toContain("服务端工具结果");
     vi.mocked(deps.generate).mockReset();
     sequence(call("search_knowledge", { query: "量子力学校规" }), finish);
-    const missing = await converseComprehensive(
+    const missing = await converseUnified(
       { question: "量子力学校规", datasetId: "demo" },
       {},
       deps,

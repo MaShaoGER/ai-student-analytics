@@ -75,7 +75,7 @@ describe("conversation HTTP boundary", () => {
     const request = new Request("http://localhost/api/chat", {
       method: "POST",
       headers: { origin: "http://localhost", accept: "text/event-stream" },
-      body: JSON.stringify({ mode: "comprehensive", question: secret, datasetId: "demo" }),
+      body: JSON.stringify({ question: secret, datasetId: "demo" }),
     });
     const response = await POST(request);
     expect(response.headers.get("content-type")).toContain("text/event-stream");
@@ -97,7 +97,7 @@ describe("conversation HTTP boundary", () => {
       new Request("http://localhost/api/chat", {
         method: "POST",
         headers: { origin: "http://localhost", accept: "text/event-stream" },
-        body: JSON.stringify({ mode: "comprehensive", question: secret, datasetId: "demo" }),
+        body: JSON.stringify({ question: secret, datasetId: "demo" }),
       }),
     );
     const body = await response.text();
@@ -119,6 +119,42 @@ describe("conversation HTTP boundary", () => {
       errorCode: null,
     });
     expect(readFileSync(join(directory, "analysis.jsonl"), "utf8")).not.toContain(secret);
+  });
+
+  it("serves the unified JSON response from the same entry point when streaming is not requested", async () => {
+    vi.mocked(converse).mockResolvedValueOnce({
+      kind: "result",
+      presentation: "chart",
+      answer: "已按实际数据完成以下分析：本次返回 1 个分组。",
+      facts: ["本次返回 1 个分组。"],
+      suggestions: ["改成表格"],
+      artifact: null,
+      context: null,
+      planning: {
+        source: "external",
+        rationale: "通过标准工具调用执行受控多步分析。",
+        model: "fixture-model",
+      },
+    });
+    const response = await POST(
+      new Request("http://localhost/api/chat", {
+        method: "POST",
+        headers: { origin: "http://localhost", accept: "application/json" },
+        body: JSON.stringify({ question: secret, datasetId: "demo" }),
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/json");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toMatchObject({
+      kind: "result",
+      planning: { source: "external", model: "fixture-model" },
+    });
+    // The single entry receives one parsed input; the removed mode field is not
+    // part of the contract any more.
+    const input = vi.mocked(converse).mock.calls[0][0];
+    expect(input).toMatchObject({ question: secret, datasetId: "demo" });
+    expect(input).not.toHaveProperty("mode");
   });
 
   it("rejects unauthenticated and cross-origin requests before running the conversation", async () => {

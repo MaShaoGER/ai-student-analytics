@@ -2,11 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  describeArtifact,
-  describeArtifacts,
-  describeResponseArtifacts,
-} from "./artifact-results";
+import { describeArtifact, describeArtifacts, describeResponseArtifacts } from "./artifact-results";
 import { buildFactRef, danglingFactRefs } from "./result-contract";
 import { artifactWithView, type ChatArtifact } from "./chat-types";
 
@@ -63,7 +59,9 @@ const distributionArtifact = (view: "heatmap" | "table"): ChatArtifact => ({
         course: "Web前端开发",
         term: "2025J",
         count: 200,
-        bins: Array(100).fill(0).map((_, index) => (index < 60 ? 1 : 0)),
+        bins: Array(100)
+          .fill(0)
+          .map((_, index) => (index < 60 ? 1 : 0)),
       },
       // A group outside the requested scope must be ignored when deriving facts.
       { course: "操作系统", term: "2025J", count: 180, bins: Array(100).fill(0) },
@@ -180,15 +178,28 @@ describe("switching presentation does not change the result", () => {
     rmSync(directory, { recursive: true, force: true });
   });
 
-  const deps = () => ({
-    analyze: vi.fn(runAnalysis) as never,
-    generate: vi.fn() as never,
-    distribution: vi.fn(async () => ({
-      datasetId: "demo" as const,
-      minSampleSize: 3,
-      groups: [],
-    })) as never,
-  });
+  /**
+   * The unified tool loop cannot run in these tests, so the deterministic
+   * golden/presentation paths are exercised instead; a spy proves no model turn
+   * is ever attempted (the capability check rejects before `generate`).
+   */
+  const deps = () => {
+    const generate = vi.fn();
+    return {
+      analyze: vi.fn(runAnalysis) as never,
+      distribution: vi.fn(async () => ({
+        datasetId: "demo" as const,
+        minSampleSize: 3,
+        groups: [],
+      })) as never,
+      unified: {
+        capability: () => ({ status: "unknown" as const, checkedAt: null }),
+        settings: () => ({ enabled: true, maxToolCalls: 6, timeoutSeconds: 60 }),
+        generate: generate as never,
+      },
+      modelCalls: generate,
+    };
+  };
 
   /**
    * The in-place chart⇄table toggle is the case the roadmap calls out: it must
@@ -209,7 +220,7 @@ describe("switching presentation does not change the result", () => {
     expect(describeArtifact(toggled, "demo")!.facts).toEqual(base.facts);
     // A presentation change never needs another query or another model call.
     expect(dependencies.analyze).toHaveBeenCalledTimes(1);
-    expect(dependencies.generate).not.toHaveBeenCalled();
+    expect(dependencies.modelCalls).not.toHaveBeenCalled();
   });
 
   /**
@@ -226,12 +237,13 @@ describe("switching presentation does not change the result", () => {
       dependencies,
     );
     const base = describeArtifact(first.artifact!, "demo")!;
+    const followupDeps = deps();
     const typed = await converse(
       { question: "改成表格", datasetId: "demo", context: first.context },
       {},
-      { ...deps(), analyze: dependencies.analyze },
+      { ...followupDeps, analyze: dependencies.analyze },
     );
-    expect(dependencies.generate).not.toHaveBeenCalled();
+    expect(followupDeps.modelCalls).not.toHaveBeenCalled();
     expect(typed.artifact?.view).toBe("table");
     const switched = describeArtifact(typed.artifact!, "demo")!;
     expect(switched.result.resultId).toBe(base.result.resultId);

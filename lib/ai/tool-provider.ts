@@ -170,7 +170,9 @@ export async function generateToolTurn(
       reservation,
       config.model,
       usage,
-      "comprehensive",
+      // Unified conversation endpoint label in cost history. Kept distinct from
+      // the legacy /api/ask planning labels so spend can still be attributed.
+      "chat",
       config.pricing,
       estimated,
     );

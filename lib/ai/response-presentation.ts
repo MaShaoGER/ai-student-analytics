@@ -59,36 +59,6 @@ export function wantsText(question: string) {
     question,
   );
 }
-export function chooseAnalysisView(
-  question: string,
-  dimension: "course" | "term",
-  proposed: ChartViewType | null | undefined,
-  context: ChatIntent | null,
-  goal: AnalysisGoal,
-  dimensions?: ("course" | "term")[],
-): ChartViewType {
-  if (wantsTable(question)) return "table";
-  const explicit = /柱状图|条形图/.test(question)
-    ? "bar"
-    : /折线图/.test(question)
-      ? "line"
-      : /饼图|环形图/.test(question)
-        ? "pie"
-        : /雷达图/.test(question)
-          ? "radar"
-          : /矩形树图/.test(question)
-            ? "treemap"
-            : /气泡图/.test(question)
-              ? "scatter"
-              : null;
-  if (explicit) return explicit;
-  if (dimensions && dimensions.length > 1) return "table";
-  if (goal === "trend" || dimension === "term") return "line";
-  if (goal === "compare") return "bar";
-  if (goal === "auto" && /^(?:只看|仅看|保留|换到)/.test(question) && context?.kind === "analysis")
-    return context.view;
-  return proposed && proposed !== "table" ? proposed : "bar";
-}
 export function responsePresentation(
   question: string,
   artifact: ChatArtifact,
@@ -182,18 +152,4 @@ export function resultNarrative(
   return artifact.kind === "relations"
     ? "用弦图呈现学科共同未达标的情况，连接带越宽表示共现人数越多；可点选查看共同选课样本与占比。"
     : "全景图汇集所选学期的各科成绩分布、均分、及格率与薄弱共现，便于一起观察。";
-}
-
-/**
- * Explanation text must not restate numbers: verified values already come from
- * `resultFacts`. Remove only the sentences that carry a digit or percent sign
- * and keep the remaining prose; the caller shows the degraded notice only when
- * nothing survives. Previously any numeric character dropped the whole text.
- */
-export function sanitizeExplanation(answer: string): string {
-  return answer
-    .split(/(?<=[。！？!?；;\n])/u)
-    .filter((sentence) => !/[0-9０-９%％]/u.test(sentence))
-    .join("")
-    .trim();
 }

@@ -15,8 +15,8 @@
     "data:demo": "node scripts/generate-demo-data.mjs",
     "format": "prettier --write .",
     "test:recovery": "node --test scripts/recovery.test.mjs",
-    "eval:ai": "AI_EVAL=1 vitest run scripts/ai-eval.test.ts scripts/ai-eval-phase1.test.ts",
-    "eval:ai:mock": "AI_EVAL_MOCK=1 vitest run scripts/ai-eval.test.ts scripts/ai-eval-phase1.test.ts",
+    "eval:ai": "AI_EVAL=1 vitest run scripts/ai-eval.test.ts",
+    "eval:ai:mock": "AI_EVAL_MOCK=1 vitest run scripts/ai-eval.test.ts",
     "postbuild": "node scripts/prepare-standalone-native.mjs",
     "eval:ai:phase2": "AI_EVAL_PHASE2=1 vitest run scripts/ai-eval-phase2.test.ts"
   },

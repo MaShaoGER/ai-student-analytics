@@ -31,7 +31,7 @@ export function AnalysisControls({
       })
       .catch(() => {
         if (!controller.signal.aborted)
-          setFeedback({ error: true, message: "综合分析设置读取失败，请重新打开管理页。" });
+          setFeedback({ error: true, message: "对话分析设置读取失败，请重新打开管理页。" });
       });
     return () => controller.abort();
   }, [request, config]);
@@ -54,7 +54,7 @@ export function AnalysisControls({
             ? "工具调用与结果回传检测通过。此次检测已计入用量。"
             : kind === "rebuild"
               ? "知识索引已按当前项目资料重建。"
-              : "综合分析限制已保存。",
+              : "对话分析限制已保存。",
       });
     } catch (error) {
       setFeedback({
@@ -78,8 +78,8 @@ export function AnalysisControls({
     <div className="admin-form-section" aria-busy={busy}>
       <div className="admin-section-heading">
         <div>
-          <h3>综合分析</h3>
-          <p>允许助手根据真实结果继续查询，并展示步骤和引用。</p>
+          <h3>AI 对话分析</h3>
+          <p>统一对话的模型、工具与知识检索限制；关闭后仅保留无需模型的已验证问题和展示切换。</p>
         </div>
       </div>
       {feedback ? (
@@ -91,12 +91,12 @@ export function AnalysisControls({
         </p>
       ) : null}
       {!state || !draft ? (
-        <p role="status">正在读取综合分析设置…</p>
+        <p role="status">正在读取对话分析设置…</p>
       ) : (
         <>
           <label className="admin-toggle" htmlFor="analysis-enabled">
             <span>
-              <strong>允许综合分析</strong>
+              <strong>允许 AI 对话分析</strong>
               <span>开启后仍需当前模型通过工具调用检测。</span>
             </span>
             <input

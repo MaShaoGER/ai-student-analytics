@@ -2,8 +2,9 @@
  * The single source of recommended questions for every entry point: the
  * conversation empty state, the composer preset menu and the home "试着问问"
  * card. The two golden cases and the relationship question are deterministic
- * (golden plan or the local density tool), so they work without any AI
- * connection; the score-distribution question needs the planner to run.
+ * (verified preset plan or the local density tool), so they still work without
+ * any AI connection as the unified entry's degraded fallback; the
+ * score-distribution question needs the model's tool loop to run.
  */
 export type SuggestedQuestion = {
   id: string;

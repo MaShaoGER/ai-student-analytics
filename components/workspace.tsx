@@ -551,7 +551,6 @@ export function Workspace() {
   const [expandedChartId, setExpandedChartId] = useState<string | null>(null);
   const [pendingQuestion, setPendingQuestion] = useState("");
   const [askLoading, setAskLoading] = useState(false);
-  const [analysisMode, setAnalysisMode] = useState<"quick" | "comprehensive">("quick");
   const [pendingSteps, setPendingSteps] = useState<AnalysisStep[]>([]);
   const [sessionAnalyses, setSessionAnalyses] = useState<SessionAnalysis[]>([]);
   const [selectedReportKey, setSelectedReportKey] = useState("");
@@ -907,7 +906,7 @@ export function Workspace() {
       setLoggingOut(false);
     }
   }
-  async function ask(nextQuestion = question) {
+  async function ask(nextQuestion = question, options: { fresh?: boolean } = {}) {
     const trimmed = nextQuestion.trim();
     if (trimmed.length < 2 || trimmed.length > 500) {
       const message = "请写下 2–500 字的分析问题。";
@@ -916,6 +915,15 @@ export function Workspace() {
       return;
     }
     if ((!canRun && !aiReady) || askPending.current) return;
+    // Entry points outside the transcript (home cards) start a fresh
+    // conversation instead of inheriting an unrelated earlier scope.
+    if (options.fresh) {
+      setChatMessages([]);
+      setChatContext(null);
+      setExpandedChartId(null);
+      setPendingSteps([]);
+      setAskResult(null);
+    }
     const controller = new AbortController();
     askPending.current = controller;
     setQuestion(nextQuestion);
@@ -937,17 +945,38 @@ export function Workspace() {
           method: "POST",
           headers: {
             "content-type": "application/json",
-            ...(analysisMode === "comprehensive" ? { accept: "text/event-stream" } : {}),
+            accept: "text/event-stream",
           },
           body: JSON.stringify({
-            mode: analysisMode,
             question: trimmed,
             datasetId,
-            history: chatMessages
+            // Assistant turns carry a compact summary of the results they produced
+            // so a follow-up keeps "相关结果与条件" without replaying full artifacts.
+            // User turns stay plain, and empty result lists are omitted entirely.
+            history: (options.fresh ? [] : chatMessages)
               .filter((message) => !message.system)
               .slice(-12)
-              .map(({ role, content }) => ({ role, content })),
-            context: chatContext,
+              .map((message) => {
+                const results =
+                  message.role === "assistant"
+                    ? (message.response?.resultRefs ?? []).slice(0, 4).map((ref) => ({
+                        resultId: ref.resultId,
+                        kind: ref.kind,
+                        label: ref.scopeLabel,
+                      }))
+                    : [];
+                return {
+                  role: message.role,
+                  // The request schema bounds history content; a long multi-result
+                  // answer must not make the next turn fail with 400.
+                  content:
+                    message.content.length > 2900
+                      ? `${message.content.slice(0, 2890)}…（已截断）`
+                      : message.content,
+                  ...(results.length ? { results } : {}),
+                };
+              }),
+            context: options.fresh ? null : chatContext,
           }),
           signal: controller.signal,
         },
@@ -967,7 +996,7 @@ export function Workspace() {
       const turnId = crypto.randomUUID();
       setChatMessages((previous) =>
         [
-          ...previous,
+          ...(options.fresh ? [] : previous),
           { id: `${turnId}-user`, role: "user" as const, content: trimmed },
           { id: turnId, role: "assistant" as const, content: payload.answer, response: payload },
         ].slice(-40),
@@ -1349,7 +1378,7 @@ export function Workspace() {
                 onQuestion={(nextQuestion) => {
                   changeMode("question");
                   navigate("analysis");
-                  if (nextQuestion) void ask(nextQuestion);
+                  if (nextQuestion) void ask(nextQuestion, { fresh: true });
                 }}
                 onData={() => navigate("data")}
                 onReport={previewReport}
@@ -1362,8 +1391,6 @@ export function Workspace() {
                   question={question}
                   loading={askLoading}
                   pendingQuestion={pendingQuestion}
-                  analysisMode={analysisMode}
-                  onAnalysisModeChange={setAnalysisMode}
                   pendingSteps={pendingSteps}
                   aiReady={aiReady}
                   canRun={canRun}

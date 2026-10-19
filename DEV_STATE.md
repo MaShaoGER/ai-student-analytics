@@ -1,21 +1,33 @@
 # 开发续接记录
 
-## 交接：下一轮从这里开始（2026-10-19 收尾）
+## 交接：下一轮从这里开始（2026-10-19 统一对话第 1 步收尾）
 
-**当前状态**：路线图第 2 步「接好统计与展示」已完成并本地提交；第 1、3、4 步未实施。工作区无未提交源码改动（`app/preview/`、`参考.af` 为用户原有未跟踪文件，不要提交）。
+**当前状态**：路线图第 1 步「统一入口和上下文」已完成并本地提交，第 2 步此前已完成；第 3、4 步未实施。`app/preview/`、`参考.af` 为用户原有未跟踪文件，不要提交。
 
-**下一轮目标：路线图第 1 步「统一入口和上下文」**，具体四件事：
+**下一步目标：路线图第 3 步「输出自然回答并精简界面」**，具体三件事：
 
-1. 收敛 `app/api/chat/route.ts` 的执行入口：不再按 `mode` 分派 `converse` / `converseComprehensive`，改为单一入口。注意 `chatInputSchema.mode` 目前仍有 `quick`/`comprehensive` 默认值，前端 `components/workspace.tsx` 的 `analysisMode` state 与 `components/ai-conversation.tsx` 的 `SegmentedControl` 需要一并移除，否则只是隐藏按钮而未真正合并。
-2. 按真实角色传历史消息：现在 `comprehensive.ts` 把 `{...input, catalog, requestedComparison}` 整体 `JSON.stringify` 成一条 user 消息，应改为按 user/assistant 角色传入，并把已确认的课程/学期/指标作为结构化上下文保留。
-3. 移除 `comprehensive.ts` 的 `INSTRUCTIONS` 中写死的业务流程（“先比较学期，再根据 largestDecline 选择后续课程”），示例只作能力说明。同时移除 `comprehensive.ts` 中依赖问题关键词的完成判定（`needsDistribution = /分布/.test(...)`）。
-4. 保留已建成的 `resultRef`/`factRef` 契约，新的统一入口必须继续输出 `resultRefs`/`factRefs`。
+1. 接入 AI 最终解释与事实引用：工具结果出来后，由模型基于本轮真实结果组织回答，结论数字用 `factId` 绑定；替换现在"已按实际数据完成以下分析："的事实模板。注意区分"直接回答（无工具）"与"工具结果解释"，不要回到"模型口述数字即事实"。
+2. 输入区可收起并保留草稿：收起状态下发送、错误提示、停止、中文输入法行为都要保持；"数字从哪来"折叠与附件不受影响。
+3. 顺带处理第 1 步已知限制：`aggregate` 工具没有 `view`/`sort`/`limit` 参数，"用表格显示各课程平均成绩"需要先出图再"改成表格"；可在自然回答/展示阶段一并补齐。
 
-**动之前先读**：[统一对话路线图](docs/unified-ai-workflow-roadmap.md) 第 3 节（现状问题）、第 6 节（阶段表）；[第 2 步实施记录](docs/unified-ai-phase2.md)（已建成什么、哪些是已知限制）。
+第 4 步（请求级 token/费用关联、重建统一对话的模拟/真实评测、重点回归与真实模型、多轮浏览器验收）在其后。
 
-**已知约束**：第 1 步会动请求契约与提示词，风险高于第 2 步。改完必须跑 `pnpm typecheck`、`pnpm test`、`pnpm test:api`；`COMMIT` 前还原 `next-env.d.ts` 与 `tsconfig.json`（`next dev`/`next build` 会改写编译路径）。真实模型验收与浏览器验收仍未做，不得声称已通过。
+**动之前先读**：[统一对话路线图](docs/unified-ai-workflow-roadmap.md) 第 3、5、6 节；[第 1 步实施记录](docs/unified-ai-step1.md)（本轮做了什么、验证证据、8 条已知限制）；[第 2 步实施记录](docs/unified-ai-phase2.md)。
+
+**已知约束**：第 3 步会动回答生成与界面，必须保留 `resultRefs`/`factRefs` 契约与"数字从哪来"折叠。改完必须跑 `pnpm typecheck`、`pnpm test`、`pnpm test:api`；`COMMIT` 前还原 `next-env.d.ts` 与 `tsconfig.json`。真实模型验收与浏览器验收仍未做，不得声称已通过。第一阶段"模拟规划器"评测夹具已随第 1 步退役，统一对话评测需在第 4 步重建为工具调用评测。
 
 **本地启动**：`NEXT_DIST_DIR=.next/local-stage2 pnpm dev`（沿用既有编译目录），账号 `root` 为管理员。停止时注意还原上述两个配置文件。
+
+## AI 统一对话第 1 步实施（2026-10-19，统一入口和上下文）
+
+- 模式合并落地：`app/api/chat/route.ts` 不再按 `mode` 分派，只有 `converse` 一个入口；`chatInputSchema` 删除 `mode`；前端删除 `analysisMode` state 与"普通问答/综合分析"分段控件，`/api/chat` 固定 SSE（是否流式只由 Accept 决定）；管理页文案改为"AI 对话分析"。旧 JSON 规划器分支（`generateStructured`、`resolvePlan`、`CHAT_PLANNING_PROMPT`/`CHAT_EXPLANATION_PROMPT`）删除，`lib/ai/comprehensive.ts` 收敛为 `lib/ai/unified.ts`。
+- 上下文：历史按真实 user/assistant 角色逐条传入，最后一条 user 消息只含结构化上下文 `{question, datasetId, confirmedContext, catalog, requestedComparison, previousResults}`；assistant 历史最多附 4 条 `{resultId, kind, label}` 受控结果摘要并被 schema 校验（user 轮禁止携带、历史仍 12 条上限）。`previousResults` 只表示身份/范围，数字必须重新调用工具。
+- 提示词与判定：INSTRUCTIONS 与工具描述删除"先比较学期→largestDecline→分布"固定流程；删除 `needsDistribution=/分布/` 关键词完成判定与 `AI_TASK_INCOMPLETE`；删除依赖关键词的 largestDecline→distribution 强制校验。文本轮不再一律当 clarification：无工具调用的文本返回 `kind:"answer"`（≤2000 字），仅 `clarify` 工具或空轮才是追问；直接回答若带统计样数字会附加"未经统计核验"warning。
+- 契约与降级：统一循环与本地回退都继续输出 `resultRefs`/`factRefs` 并剔除悬空事实；缺勤 unsupported 不产出 ResultRef。模型不可用时回退到精确 golden 预设（仅无历史无上下文的 new turn）与本地明确图表/关系问题，`planning.source` 如实为 `golden_case`/`local`，其余问题抛 AI_NOT_CONFIGURED 说明。**测试期间发现的真实缺陷**：本地回退未把 `ChartClarification` 转成 clarification 响应（旧实现会转），OULAD 桑基图/未知学期会退化为 502；已修复并补测试。
+- 关联改动：cost-history endpoint 标签 `comprehensive`→`chat`；提示词版本 `2026-10-19.2`；退役第一阶段模拟规划器评测夹具（`scripts/ai-eval-phase1.test.ts`、`scripts/ai-eval/phase1.ts`、`phase1-cases.jsonl`），`eval:ai`/`eval:ai:mock` 只保留原 30/48 题套件。
+- 独立审查（只读，无 Blocker）发现的 2 个 Major / 4 个 Minor / 3 个 Nit 已全部修复并补测试：回答 `planning.rationale` 按实际路径如实说明（工具/知识/直接回答/无结果），不再无条件声称"服务端核验"；未核验数字 warning 改为"剔除目录标签后检测任意数字"并覆盖 6 种真实表述；长回答截断与 history 3000 字上限有提示与客户端截断；无模型时推荐问题只在新对话提供、首页入口以新对话发起；本地回退不再把 `DATA_SOURCE_UNAVAILABLE` 吞成 `AI_NOT_CONFIGURED`；空 `results: []` 与文案标签同步。
+- 验证：`pnpm typecheck` 通过；`pnpm test` **561 通过 / 61 跳过**（上轮 591/73，差额来自删除旧规划器/旧模式测试、裁剪被删函数测试、退役模拟评测夹具，并新增 33 项统一入口测试）；`pnpm test:api` **25 项通过**；隔离生产构建通过（`.next/unified-stage1-verify`），生成的 `next-env.d.ts`/`tsconfig.json` 已还原。
+- 未执行：统一入口的真实模型验收、真实 `eval:ai`/`eval:ai:phase2`、多轮浏览器验收、第 3/4 步。详见[统一对话第 1 步实施记录](docs/unified-ai-step1.md)。
 
 ## AI 统一对话第 2 步实施（2026-10-19，方案 B：留在 codex/competition-phase2）
 

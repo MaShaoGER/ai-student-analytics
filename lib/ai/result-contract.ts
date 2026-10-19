@@ -29,14 +29,21 @@ export const DATASET_VERSIONS: Record<DataSource, string> = {
 };
 export const METRIC_VERSION = "metric-definitions-v1";
 
-export type ResultKind =
-  | "aggregate"
-  | "compare_terms"
-  | "distribution"
-  | "advanced_chart"
-  | "relations"
-  | "panorama"
-  | "absence";
+/**
+ * Every result kind in one runtime list. The chat request schema validates the
+ * cross-turn result summaries against it, so adding a kind can never silently
+ * leave the transport behind.
+ */
+export const RESULT_KINDS = [
+  "aggregate",
+  "compare_terms",
+  "distribution",
+  "advanced_chart",
+  "relations",
+  "panorama",
+  "absence",
+] as const;
+export type ResultKind = (typeof RESULT_KINDS)[number];
 
 /** What a result is about, independent of any single value. */
 export type ResultScope = {
@@ -145,7 +152,10 @@ export function makeFactId(resultId: string, label: string): string {
   return `f-${stableHash({ resultId, label })}`;
 }
 
-export type ResultRefInput = Omit<ResultRef, "version" | "resultId" | "datasetId" | "datasetVersion" | "metricVersion"> & {
+export type ResultRefInput = Omit<
+  ResultRef,
+  "version" | "resultId" | "datasetId" | "datasetVersion" | "metricVersion"
+> & {
   datasetId: DataSource;
 };
 
@@ -192,4 +202,3 @@ export function danglingFactRefs(artifacts: ResultRef[], facts: FactRef[]): Fact
   const known = new Set(artifacts.map((artifact) => artifact.resultId));
   return facts.filter((fact) => !known.has(fact.resultId));
 }
-

@@ -19,12 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { APIConnectionTimeoutError, APIUserAbortError } from "openai/core/error";
 import { z } from "zod";
 import type { AIConfig } from "../client-types";
-import {
-  estimatePromptTokens,
-  generateStructured,
-  getAIStatus,
-  planQuestion,
-} from "../ai/planner";
+import { estimatePromptTokens, generateStructured, getAIStatus, planQuestion } from "../ai/planner";
 import { converse } from "../ai/conversation";
 import { BAILIAN_QWEN_FLASH } from "../ai/bailian";
 import {
@@ -43,13 +38,14 @@ import { readState, updateState } from "./storage";
 const openAIStub = vi.hoisted(() => ({
   options: null as unknown,
   parse: vi.fn(),
+  responsesCreate: vi.fn(),
   create: vi.fn(),
 }));
 
 // Exercise the real planner/configuration/cost path while forbidding network calls.
 vi.mock("openai", () => ({
   default: class {
-    responses = { parse: openAIStub.parse };
+    responses = { parse: openAIStub.parse, create: openAIStub.responsesCreate };
     chat = { completions: { create: openAIStub.create } };
     constructor(options: unknown) {
       openAIStub.options = options;
@@ -85,6 +81,7 @@ describe("persistent AI settings and usage", () => {
     vi.stubEnv("OPENAI_OUTPUT_PRICE", "");
     openAIStub.options = null;
     openAIStub.parse.mockReset();
+    openAIStub.responsesCreate.mockReset();
     openAIStub.create.mockReset();
     openAIStub.parse.mockResolvedValue({
       output_parsed: {
@@ -106,71 +103,115 @@ describe("persistent AI settings and usage", () => {
   });
 
   it.each(["responses", "chat_completions"] as const)(
-    "executes conversation planning, real aggregate query and explanation using %s",
+    "executes the unified tool loop, real aggregate query and verified result using %s",
     async (apiFormat) => {
-      saveAIConfig({ ...config, apiFormat, apiKey: SAVED_KEY });
-      const decision = {
-        action: "analysis",
-        tool: null, courses: null, terms: null, dimensions: null, threshold: null,
-        message: "按指定课程和学期查询。",
+      const baseUrl = "https://models.example.test/v1";
+      saveAIConfig({ ...config, apiFormat, baseUrl, apiKey: SAVED_KEY });
+      const toolArguments = JSON.stringify({
         metric: "score",
         dimension: "course",
-        course: "AAA",
-        term: "2024J",
-        binWidth: null,
-        view: "table",
-        sortBy: "value",
-        sortDirection: "desc",
-        limit: 20,
-      };
-      const explanation = {
-        answer: "这些结果只描述当前课程学期，不能据此推断教学原因。",
-        suggestions: ["按学期比较"],
-      };
+        filters: [
+          { field: "course", op: "eq", value: "AAA" },
+          { field: "term", op: "eq", value: "2024J" },
+        ],
+      });
+      const toolCallId = "call-aggregate";
+      const modelNarration = "模型编造数字 999 分，并声称查询过完整名单。";
       if (apiFormat === "responses") {
-        openAIStub.parse
-          .mockReset()
+        openAIStub.responsesCreate
           .mockResolvedValueOnce({
-            output_parsed: decision,
+            status: "completed",
+            output: [
+              {
+                type: "function_call",
+                call_id: toolCallId,
+                name: "aggregate",
+                arguments: toolArguments,
+              },
+            ],
+            output_text: "",
             usage: { input_tokens: 200, output_tokens: 100, total_tokens: 300 },
           })
           .mockResolvedValueOnce({
-            output_parsed: explanation,
+            status: "completed",
+            output: [],
+            output_text: modelNarration,
             usage: { input_tokens: 250, output_tokens: 100, total_tokens: 350 },
           });
       } else {
         openAIStub.create
           .mockResolvedValueOnce({
-            choices: [{ message: { content: JSON.stringify(decision) } }],
+            choices: [
+              {
+                finish_reason: "tool_calls",
+                message: {
+                  content: null,
+                  tool_calls: [
+                    {
+                      id: toolCallId,
+                      type: "function",
+                      function: { name: "aggregate", arguments: toolArguments },
+                    },
+                  ],
+                },
+              },
+            ],
             usage: { prompt_tokens: 200, completion_tokens: 100, total_tokens: 300 },
           })
           .mockResolvedValueOnce({
-            choices: [{ message: { content: JSON.stringify(explanation) } }],
+            choices: [{ finish_reason: "stop", message: { content: modelNarration } }],
             usage: { prompt_tokens: 250, completion_tokens: 100, total_tokens: 350 },
           });
       }
-      const result = await converse({
-        question: "只看AAA课程在2024J的平均成绩，用表格显示并解读",
-        datasetId: "demo",
-      });
+      const result = await converse(
+        { question: "只看AAA课程在2024J的平均成绩，用表格显示", datasetId: "demo" },
+        {},
+        {
+          unified: {
+            settings: () => ({ enabled: true, maxToolCalls: 6, timeoutSeconds: 60 }),
+            capability: () => ({ status: "supported" as const, checkedAt: null }),
+          },
+        },
+      );
       expect(result.kind).toBe("result");
-      expect(result.answer).toContain(explanation.answer);
-      expect(result.answer).toContain("79.67");
+      expect(result.planning).toMatchObject({ source: "external", model: config.model });
       expect(result.artifact).toMatchObject({
         kind: "analysis",
-        view: "table",
-        result: { rows: [{ dimension: "AAA", sampleSize: 3 }] },
+        plan: { metric: "score", dimensions: ["course"] },
+        result: { rows: [{ dimension: "AAA", value: 79.67, sampleSize: 3 }] },
       });
       expect(result.facts.join(" ")).toContain("79.67");
+      // Verified numbers come from the tool output, never from model prose.
+      expect(result.answer).toContain("79.67");
+      expect(result.answer).not.toContain("999");
+      expect(result.resultRefs).toHaveLength(1);
+      expect(result.factRefs!.length).toBeGreaterThan(0);
+      for (const fact of result.factRefs!)
+        expect(result.resultRefs!.some((ref) => ref.resultId === fact.resultId)).toBe(true);
+
       const calls =
-        apiFormat === "responses" ? openAIStub.parse.mock.calls : openAIStub.create.mock.calls;
+        apiFormat === "responses"
+          ? openAIStub.responsesCreate.mock.calls
+          : openAIStub.create.mock.calls;
       expect(calls).toHaveLength(2);
+      // The real saved key and endpoint drive both model turns.
+      expect(openAIStub.options).toMatchObject({
+        apiKey: SAVED_KEY,
+        baseURL: baseUrl,
+        maxRetries: 0,
+        timeout: 20_000,
+      });
+      // The loop sees the catalog first, then the actual aggregate rows.
+      expect(JSON.stringify(calls[0][0])).toContain("aggregate");
       expect(JSON.stringify(calls[1][0])).toContain("79.67");
+
       expect(getCostStats().total).toBe(2);
+      expect(getTotalCost().totalCost).toBeCloseTo(0.0019, 8);
       const cost = readState("cost-history.json", () => ({
-        records: [] as { endpoint: string }[],
+        records: [] as { endpoint: string; usageEstimated: boolean }[],
       }));
-      expect(cost.records.map((record) => record.endpoint)).toEqual(["chat-plan", "chat-explain"]);
+      expect(cost.records.map((record) => record.endpoint)).toEqual(["chat", "chat"]);
+      expect(cost.records.every((record) => record.usageEstimated === false)).toBe(true);
     },
   );
 
@@ -208,11 +249,22 @@ describe("persistent AI settings and usage", () => {
   });
 
   it("opens pre-upgrade settings with the official Responses defaults", () => {
-    writeFileSync(path.join(stateDir, "ai-config.json"), JSON.stringify({
-      version: 1, enabled: true, model: "gpt-4o-mini",
-      budgets: config.budgets, pricing: config.pricing, encryptedApiKey: null,
-    }));
-    expect(getAIConfig()).toMatchObject({ apiFormat: "responses", baseUrl: "", model: "gpt-4o-mini" });
+    writeFileSync(
+      path.join(stateDir, "ai-config.json"),
+      JSON.stringify({
+        version: 1,
+        enabled: true,
+        model: "gpt-4o-mini",
+        budgets: config.budgets,
+        pricing: config.pricing,
+        encryptedApiKey: null,
+      }),
+    );
+    expect(getAIConfig()).toMatchObject({
+      apiFormat: "responses",
+      baseUrl: "",
+      model: "gpt-4o-mini",
+    });
   });
 
   it("preserves the saved key when the administrator leaves the replacement field empty", () => {
@@ -231,18 +283,26 @@ describe("persistent AI settings and usage", () => {
   it("rejects cross-origin updates without a replacement key, atomically", () => {
     saveAIConfig({ ...config, apiKey: SAVED_KEY });
     const before = readFileSync(path.join(stateDir, "ai-config.json"), "utf8");
-    expect(() => saveAIConfig({ ...config, baseUrl: "https://other.example/v1" }))
-      .toThrow(/重新填写/);
+    expect(() => saveAIConfig({ ...config, baseUrl: "https://other.example/v1" })).toThrow(
+      /重新填写/,
+    );
     expect(readFileSync(path.join(stateDir, "ai-config.json"), "utf8")).toBe(before);
   });
 
   it("does not send an environment key to a custom origin", () => {
-    expect(() => saveAIConfig({ ...config, baseUrl: "https://other.example/v1" }))
-      .toThrow(/重新填写/);
+    expect(() => saveAIConfig({ ...config, baseUrl: "https://other.example/v1" })).toThrow(
+      /重新填写/,
+    );
     // Also guard old settings saved before origin binding existed.
-    writeFileSync(path.join(stateDir, "ai-config.json"), JSON.stringify({
-      ...config, version: 1, baseUrl: "https://other.example/v1", encryptedApiKey: null,
-    }));
+    writeFileSync(
+      path.join(stateDir, "ai-config.json"),
+      JSON.stringify({
+        ...config,
+        version: 1,
+        baseUrl: "https://other.example/v1",
+        encryptedApiKey: null,
+      }),
+    );
     expect(getAIConfig().keyConfigured).toBe(false);
     expect(getRuntimeAIConfig().apiKey).toBeNull();
   });
@@ -251,8 +311,9 @@ describe("persistent AI settings and usage", () => {
     saveAIConfig({ ...config, baseUrl: "https://MODELS.example:443/v1/", apiKey: SAVED_KEY });
     saveAIConfig({ ...config, baseUrl: "https://models.example/v2" });
     expect(getRuntimeAIConfig().apiKey).toBe(SAVED_KEY);
-    expect(() => saveAIConfig({ ...config, baseUrl: "https://models.example:8443/v2" }))
-      .toThrow(/重新填写/);
+    expect(() => saveAIConfig({ ...config, baseUrl: "https://models.example:8443/v2" })).toThrow(
+      /重新填写/,
+    );
     saveAIConfig({ ...config, baseUrl: "https://new.example/v1", apiKey: "sk-new-test" });
     expect(getRuntimeAIConfig().apiKey).toBe("sk-new-test");
   });
@@ -266,9 +327,13 @@ describe("persistent AI settings and usage", () => {
 
   it("fails closed when a persisted key binding differs from its endpoint", () => {
     saveAIConfig({ ...config, apiKey: SAVED_KEY });
-    updateState("ai-config.json", () => ({}), (state: Record<string, unknown>) => {
-      state.baseUrl = "https://changed.example/v1";
-    });
+    updateState(
+      "ai-config.json",
+      () => ({}),
+      (state: Record<string, unknown>) => {
+        state.baseUrl = "https://changed.example/v1";
+      },
+    );
     expect(getAIConfig().keyConfigured).toBe(false);
     expect(getRuntimeAIConfig().apiKey).toBeNull();
   });
@@ -319,22 +384,43 @@ describe("persistent AI settings and usage", () => {
     saveAIConfig({ ...config, apiKey: SAVED_KEY });
     vi.stubEnv("OPENAI_BASE_URL", "https://unrelated.example/v1");
     await planQuestion({ question: "请按学期查看平均成绩", datasetId: "demo" });
-    expect(openAIStub.options).toMatchObject({ apiKey: SAVED_KEY, baseURL: "https://api.openai.com/v1" });
+    expect(openAIStub.options).toMatchObject({
+      apiKey: SAVED_KEY,
+      baseURL: "https://api.openai.com/v1",
+    });
   });
 
   it("uses a custom Chat Completions endpoint and validates its JSON plan", async () => {
-    saveAIConfig({ ...config, apiFormat: "chat_completions", baseUrl: "https://models.example.test/v1/", apiKey: SAVED_KEY });
+    saveAIConfig({
+      ...config,
+      apiFormat: "chat_completions",
+      baseUrl: "https://models.example.test/v1/",
+      apiKey: SAVED_KEY,
+    });
     openAIStub.create.mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify({
-        canAnalyze: true, metric: "score", dimension: "term", chartType: "line",
-        rationale: "按学期比较成绩。", clarificationQuestion: null,
-      }) } }],
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              canAnalyze: true,
+              metric: "score",
+              dimension: "term",
+              chartType: "line",
+              rationale: "按学期比较成绩。",
+              clarificationQuestion: null,
+            }),
+          },
+        },
+      ],
       usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
     });
     const result = await planQuestion({ question: "请按学期比较平均成绩变化", datasetId: "demo" });
     expect(result.source).toBe("external");
     expect(result.plan).toMatchObject({ metric: "score", dimensions: ["term"] });
-    expect(openAIStub.options).toMatchObject({ apiKey: SAVED_KEY, baseURL: "https://models.example.test/v1" });
+    expect(openAIStub.options).toMatchObject({
+      apiKey: SAVED_KEY,
+      baseURL: "https://models.example.test/v1",
+    });
     expect(openAIStub.create).toHaveBeenCalledOnce();
     expect(openAIStub.create.mock.calls[0][0]).not.toHaveProperty("enable_thinking");
     expect(openAIStub.create.mock.calls[0][0]).not.toHaveProperty("response_format");
@@ -343,102 +429,222 @@ describe("persistent AI settings and usage", () => {
 
   it.each([
     { baseUrl: BAILIAN_QWEN_FLASH.baseUrl, model: "qwen3.8-flash" },
-    { baseUrl: "https://workspace-123.cn-beijing.maas.aliyuncs.com/compatible-mode/v1", model: "qwen3.8-flash" },
+    {
+      baseUrl: "https://workspace-123.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+      model: "qwen3.8-flash",
+    },
     { baseUrl: BAILIAN_QWEN_FLASH.baseUrl, model: "qwen3.7-flash" },
-    { baseUrl: "https://workspace-123.cn-beijing.maas.aliyuncs.com/compatible-mode/v1", model: "qwen3.7-flash" },
-  ])("plans with Bailian JSON mode, non-thinking output and actual usage at $baseUrl using $model", async ({ baseUrl, model }) => {
-    saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, baseUrl, model, apiKey: SAVED_KEY });
-    const controller = new AbortController();
-    openAIStub.create.mockResolvedValue({
-      choices: [{ finish_reason: "stop", message: { content: JSON.stringify({
-        canAnalyze: true, metric: "score", dimension: "course", chartType: "table",
-        rationale: "按课程列出平均成绩。", clarificationQuestion: null,
-      }) } }],
-      usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
-    });
+    {
+      baseUrl: "https://workspace-123.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+      model: "qwen3.7-flash",
+    },
+  ])(
+    "plans with Bailian JSON mode, non-thinking output and actual usage at $baseUrl using $model",
+    async ({ baseUrl, model }) => {
+      saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, baseUrl, model, apiKey: SAVED_KEY });
+      const controller = new AbortController();
+      openAIStub.create.mockResolvedValue({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: {
+              content: JSON.stringify({
+                canAnalyze: true,
+                metric: "score",
+                dimension: "course",
+                chartType: "table",
+                rationale: "按课程列出平均成绩。",
+                clarificationQuestion: null,
+              }),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
+      });
 
-    const result = await planQuestion({ question: "请把各门课的均分列成表格", datasetId: "demo" }, undefined, { signal: controller.signal });
-    expect(result).toMatchObject({ source: "external", model, plan: {
-      metric: "score", dimensions: ["course"], chartType: "table",
-    } });
-    expect(openAIStub.options).toMatchObject({ apiKey: SAVED_KEY, baseURL: baseUrl, maxRetries: 0, timeout: 20_000 });
-    expect(openAIStub.create).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-      model, enable_thinking: false,
-      response_format: { type: "json_object" }, max_tokens: 500,
-      messages: expect.arrayContaining([expect.objectContaining({ role: "system", content: expect.stringContaining("JSON") })]),
-    }), { signal: controller.signal });
-    expect(openAIStub.parse).not.toHaveBeenCalled();
-    expect(getTotalCost().totalCost).toBeCloseTo(0.00045, 8);
-    expect(getCostStats().total).toBe(1);
-    const history = readState("cost-history.json", () => ({ records: [] as { usageEstimated: boolean }[] }));
-    expect(history.records[0].usageEstimated).toBe(false);
-  });
+      const result = await planQuestion(
+        { question: "请把各门课的均分列成表格", datasetId: "demo" },
+        undefined,
+        { signal: controller.signal },
+      );
+      expect(result).toMatchObject({
+        source: "external",
+        model,
+        plan: {
+          metric: "score",
+          dimensions: ["course"],
+          chartType: "table",
+        },
+      });
+      expect(openAIStub.options).toMatchObject({
+        apiKey: SAVED_KEY,
+        baseURL: baseUrl,
+        maxRetries: 0,
+        timeout: 20_000,
+      });
+      expect(openAIStub.create).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          model,
+          enable_thinking: false,
+          response_format: { type: "json_object" },
+          max_tokens: 500,
+          messages: expect.arrayContaining([
+            expect.objectContaining({ role: "system", content: expect.stringContaining("JSON") }),
+          ]),
+        }),
+        { signal: controller.signal },
+      );
+      expect(openAIStub.parse).not.toHaveBeenCalled();
+      expect(getTotalCost().totalCost).toBeCloseTo(0.00045, 8);
+      expect(getCostStats().total).toBe(1);
+      const history = readState("cost-history.json", () => ({
+        records: [] as { usageEstimated: boolean }[],
+      }));
+      expect(history.records[0].usageEstimated).toBe(false);
+    },
+  );
 
-  it.each(["分析学生表现", "给我每个学生的家庭收入"])("keeps Bailian clarification outside query execution for %s", async (question) => {
-    saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, apiKey: SAVED_KEY });
-    openAIStub.create.mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify({
-        canAnalyze: false, metric: "score", dimension: "course", chartType: "bar",
-        rationale: "问题不明确或超出当前数据能力。", clarificationQuestion: "是否改为比较各课程的平均成绩？",
-      }) } }],
-    });
-    await expect(planQuestion({ question, datasetId: "demo" })).rejects.toMatchObject({
-      name: "AIClarificationError", clarificationQuestion: "是否改为比较各课程的平均成绩？",
-    });
-    expect(getCostStats().total).toBe(1);
-  });
+  it.each(["分析学生表现", "给我每个学生的家庭收入"])(
+    "keeps Bailian clarification outside query execution for %s",
+    async (question) => {
+      saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, apiKey: SAVED_KEY });
+      openAIStub.create.mockResolvedValue({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                canAnalyze: false,
+                metric: "score",
+                dimension: "course",
+                chartType: "bar",
+                rationale: "问题不明确或超出当前数据能力。",
+                clarificationQuestion: "是否改为比较各课程的平均成绩？",
+              }),
+            },
+          },
+        ],
+      });
+      await expect(planQuestion({ question, datasetId: "demo" })).rejects.toMatchObject({
+        name: "AIClarificationError",
+        clarificationQuestion: "是否改为比较各课程的平均成绩？",
+      });
+      expect(getCostStats().total).toBe(1);
+    },
+  );
 
-  it.each(["chat_completions", "responses"] as const)("handles clarification with null plan fields via %s", async (apiFormat) => {
-    saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, model: "qwen3.7-flash", apiFormat, apiKey: SAVED_KEY });
-    const fields = {
-      canAnalyze: false, metric: null, dimension: null, chartType: null,
-      rationale: "当前只支持课程和学期分组，不支持学生名单。",
-      clarificationQuestion: "是否改为查看各课程的平均成绩？",
-    };
-    openAIStub.create.mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify(fields) } }],
-      usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
-    });
-    openAIStub.parse.mockResolvedValue({ output_parsed: fields, usage: { input_tokens: 100, output_tokens: 50, total_tokens: 150 } });
-    await expect(planQuestion({ question: "哪些同学成绩很不好", datasetId: "demo" })).rejects.toMatchObject({
-      name: "AIClarificationError", clarificationQuestion: fields.clarificationQuestion,
-    });
-    expect(getCostStats().total).toBe(1);
-    const history = readState("cost-history.json", () => ({ records: [] as { usageEstimated: boolean }[] }));
-    expect(history.records[0].usageEstimated).toBe(false);
-  });
+  it.each(["chat_completions", "responses"] as const)(
+    "handles clarification with null plan fields via %s",
+    async (apiFormat) => {
+      saveAIConfig({
+        ...config,
+        ...BAILIAN_QWEN_FLASH,
+        model: "qwen3.7-flash",
+        apiFormat,
+        apiKey: SAVED_KEY,
+      });
+      const fields = {
+        canAnalyze: false,
+        metric: null,
+        dimension: null,
+        chartType: null,
+        rationale: "当前只支持课程和学期分组，不支持学生名单。",
+        clarificationQuestion: "是否改为查看各课程的平均成绩？",
+      };
+      openAIStub.create.mockResolvedValue({
+        choices: [{ message: { content: JSON.stringify(fields) } }],
+        usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
+      });
+      openAIStub.parse.mockResolvedValue({
+        output_parsed: fields,
+        usage: { input_tokens: 100, output_tokens: 50, total_tokens: 150 },
+      });
+      await expect(
+        planQuestion({ question: "哪些同学成绩很不好", datasetId: "demo" }),
+      ).rejects.toMatchObject({
+        name: "AIClarificationError",
+        clarificationQuestion: fields.clarificationQuestion,
+      });
+      expect(getCostStats().total).toBe(1);
+      const history = readState("cost-history.json", () => ({
+        records: [] as { usageEstimated: boolean }[],
+      }));
+      expect(history.records[0].usageEstimated).toBe(false);
+    },
+  );
 
   it("accepts omitted plan fields only for a valid clarification", async () => {
     saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, apiKey: SAVED_KEY });
-    const fields = { canAnalyze: false, rationale: "不支持学生个体名单。", clarificationQuestion: "是否按课程查看平均成绩？" };
-    openAIStub.create.mockResolvedValue({ choices: [{ message: { content: JSON.stringify(fields) } }] });
-    await expect(planQuestion({ question: "哪些同学成绩很不好", datasetId: "demo" })).rejects.toMatchObject({ name: "AIClarificationError" });
-    openAIStub.create.mockResolvedValue({ choices: [{ message: { content: JSON.stringify({ ...fields, clarificationQuestion: "" }) } }] });
-    await expect(planQuestion({ question: "哪些同学成绩很不好", datasetId: "demo" })).rejects.toMatchObject({ name: "ZodError" });
+    const fields = {
+      canAnalyze: false,
+      rationale: "不支持学生个体名单。",
+      clarificationQuestion: "是否按课程查看平均成绩？",
+    };
+    openAIStub.create.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(fields) } }],
+    });
+    await expect(
+      planQuestion({ question: "哪些同学成绩很不好", datasetId: "demo" }),
+    ).rejects.toMatchObject({ name: "AIClarificationError" });
+    openAIStub.create.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ ...fields, clarificationQuestion: "" }) } }],
+    });
+    await expect(
+      planQuestion({ question: "哪些同学成绩很不好", datasetId: "demo" }),
+    ).rejects.toMatchObject({ name: "ZodError" });
   });
 
-  it.each(["metric", "dimension", "chartType"])("rejects a successful plan with null %s", async (field) => {
-    saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, apiKey: SAVED_KEY });
-    const fields = { canAnalyze: true, metric: "score", dimension: "course", chartType: "bar", rationale: "按课程比较成绩。", clarificationQuestion: null, [field]: null };
-    openAIStub.create.mockResolvedValue({ choices: [{ message: { content: JSON.stringify(fields) } }] });
-    await expect(planQuestion({ question: "请比较各门课的均分", datasetId: "demo" })).rejects.toMatchObject({ name: "ZodError" });
-  });
+  it.each(["metric", "dimension", "chartType"])(
+    "rejects a successful plan with null %s",
+    async (field) => {
+      saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, apiKey: SAVED_KEY });
+      const fields = {
+        canAnalyze: true,
+        metric: "score",
+        dimension: "course",
+        chartType: "bar",
+        rationale: "按课程比较成绩。",
+        clarificationQuestion: null,
+        [field]: null,
+      };
+      openAIStub.create.mockResolvedValue({
+        choices: [{ message: { content: JSON.stringify(fields) } }],
+      });
+      await expect(
+        planQuestion({ question: "请比较各门课的均分", datasetId: "demo" }),
+      ).rejects.toMatchObject({ name: "ZodError" });
+    },
+  );
 
   it.each([
     { content: '{"canAnalyze":true,"metric":"household_income"}', finish_reason: "stop" },
     { content: '```json\n{"canAnalyze":true}\n```', finish_reason: "stop" },
     { content: null, finish_reason: "stop" },
-    { content: JSON.stringify({ canAnalyze: true, metric: "score", dimension: "course", chartType: "table", rationale: "按课程列出平均成绩。", clarificationQuestion: null }), finish_reason: "length" },
-  ])("rejects unusable Bailian output and retains billed usage: $finish_reason $content", async ({ content, finish_reason }) => {
-    saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, apiKey: SAVED_KEY });
-    openAIStub.create.mockResolvedValue({
-      choices: [{ finish_reason, message: { content } }],
-      usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
-    });
-    await expect(planQuestion({ question: "请把各门课的均分列成表格", datasetId: "demo" })).rejects.toThrow();
-    expect(getCostStats().total).toBe(1);
-    expect(getTotalCost().totalCost).toBeCloseTo(0.00045, 8);
-  });
+    {
+      content: JSON.stringify({
+        canAnalyze: true,
+        metric: "score",
+        dimension: "course",
+        chartType: "table",
+        rationale: "按课程列出平均成绩。",
+        clarificationQuestion: null,
+      }),
+      finish_reason: "length",
+    },
+  ])(
+    "rejects unusable Bailian output and retains billed usage: $finish_reason $content",
+    async ({ content, finish_reason }) => {
+      saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, apiKey: SAVED_KEY });
+      openAIStub.create.mockResolvedValue({
+        choices: [{ finish_reason, message: { content } }],
+        usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
+      });
+      await expect(
+        planQuestion({ question: "请把各门课的均分列成表格", datasetId: "demo" }),
+      ).rejects.toThrow();
+      expect(getCostStats().total).toBe(1);
+      expect(getTotalCost().totalCost).toBeCloseTo(0.00045, 8);
+    },
+  );
 
   it("reserves the Bailian request before calling and estimates usage on provider failure", async () => {
     saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, apiKey: SAVED_KEY });
@@ -447,26 +653,47 @@ describe("persistent AI settings and usage", () => {
       // character-based token estimate (not UTF-8 bytes) plus the output cap.
       const expectedCost =
         (estimatePromptTokens(JSON.stringify(payload)) * 2 + 500 * 5) / 1_000_000;
-      const history = readState("cost-history.json", () => ({ reservations: [] as { amount: number }[] }));
+      const history = readState("cost-history.json", () => ({
+        reservations: [] as { amount: number }[],
+      }));
       expect(history.reservations).toHaveLength(1);
       expect(history.reservations[0].amount).toBeCloseTo(expectedCost, 8);
       throw new APIConnectionTimeoutError();
     });
-    await expect(planQuestion({ question: "请把各门课的均分列成表格", datasetId: "demo" })).rejects.toMatchObject({ code: "TIMEOUT" });
+    await expect(
+      planQuestion({ question: "请把各门课的均分列成表格", datasetId: "demo" }),
+    ).rejects.toMatchObject({ code: "TIMEOUT" });
     expect(getCostStats().total).toBe(1);
     expect(getTotalCost().totalCost).toBeGreaterThan(0);
 
-    saveAIConfig({ ...config, ...BAILIAN_QWEN_FLASH, budgets: { ...config.budgets, perRequest: 0 } });
-    await expect(planQuestion({ question: "请把各门课的均分列成表格", datasetId: "demo" })).rejects.toBeInstanceOf(BudgetExceededError);
+    saveAIConfig({
+      ...config,
+      ...BAILIAN_QWEN_FLASH,
+      budgets: { ...config.budgets, perRequest: 0 },
+    });
+    await expect(
+      planQuestion({ question: "请把各门课的均分列成表格", datasetId: "demo" }),
+    ).rejects.toBeInstanceOf(BudgetExceededError);
     expect(openAIStub.create).toHaveBeenCalledOnce();
   });
 
   it("rejects unsafe endpoint URLs and invalid custom plans", async () => {
     expect(() => saveAIConfig({ ...config, baseUrl: "http://models.example.test/v1" })).toThrow();
-    expect(() => saveAIConfig({ ...config, baseUrl: "https://user:pass@models.example.test/v1" })).toThrow();
-    saveAIConfig({ ...config, apiFormat: "chat_completions", baseUrl: "https://models.example.test/v1", apiKey: SAVED_KEY });
-    openAIStub.create.mockResolvedValue({ choices: [{ message: { content: '{"canAnalyze":true,"metric":"made_up"}' } }] });
-    await expect(planQuestion({ question: "请按学期比较平均成绩变化", datasetId: "demo" })).rejects.toThrow();
+    expect(() =>
+      saveAIConfig({ ...config, baseUrl: "https://user:pass@models.example.test/v1" }),
+    ).toThrow();
+    saveAIConfig({
+      ...config,
+      apiFormat: "chat_completions",
+      baseUrl: "https://models.example.test/v1",
+      apiKey: SAVED_KEY,
+    });
+    openAIStub.create.mockResolvedValue({
+      choices: [{ message: { content: '{"canAnalyze":true,"metric":"made_up"}' } }],
+    });
+    await expect(
+      planQuestion({ question: "请按学期比较平均成绩变化", datasetId: "demo" }),
+    ).rejects.toThrow();
   });
 
   it("passes cancellation to the provider and settles the conservative usage estimate", async () => {
@@ -477,11 +704,11 @@ describe("persistent AI settings and usage", () => {
       controller.abort();
       throw new APIUserAbortError();
     });
-    await expect(planQuestion(
-      { question: "请把成绩按学期整理成一条时间趋势", datasetId: "demo" },
-      undefined,
-      { signal: controller.signal },
-    )).rejects.toMatchObject({ code: "CANCELLED" });
+    await expect(
+      planQuestion({ question: "请把成绩按学期整理成一条时间趋势", datasetId: "demo" }, undefined, {
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ code: "CANCELLED" });
     expect(getCostStats().total).toBe(1);
     expect(getTotalCost().totalCost).toBeGreaterThan(0);
   });
@@ -489,9 +716,9 @@ describe("persistent AI settings and usage", () => {
   it("classifies provider timeouts and preserves estimated charges for the attempted call", async () => {
     saveAIConfig({ ...config, apiKey: SAVED_KEY });
     openAIStub.parse.mockRejectedValueOnce(new APIConnectionTimeoutError());
-    await expect(planQuestion(
-      { question: "请把成绩按学期整理成一条时间趋势", datasetId: "demo" },
-    )).rejects.toMatchObject({ code: "TIMEOUT" });
+    await expect(
+      planQuestion({ question: "请把成绩按学期整理成一条时间趋势", datasetId: "demo" }),
+    ).rejects.toMatchObject({ code: "TIMEOUT" });
     expect(getCostStats().total).toBe(1);
     expect(getTotalCost().totalCost).toBeGreaterThan(0);
   });
@@ -500,11 +727,11 @@ describe("persistent AI settings and usage", () => {
     saveAIConfig({ ...config, apiKey: SAVED_KEY });
     const controller = new AbortController();
     controller.abort();
-    await expect(planQuestion(
-      { question: "请把成绩按学期整理成一条时间趋势", datasetId: "demo" },
-      undefined,
-      { signal: controller.signal },
-    )).rejects.toMatchObject({ code: "CANCELLED" });
+    await expect(
+      planQuestion({ question: "请把成绩按学期整理成一条时间趋势", datasetId: "demo" }, undefined, {
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ code: "CANCELLED" });
     expect(openAIStub.parse).not.toHaveBeenCalled();
     expect(getCostStats().total).toBe(0);
   });
@@ -766,21 +993,36 @@ describe("persistent AI settings and usage", () => {
 
   it.each(
     (["storage", "administrator CLI"] as const).flatMap((implementation) =>
-      (["new owner", "directory removed", "marker already removed", "unlink denied", "rmdir denied"] as const).map(
-        (scenario) => ({ implementation, scenario }),
-      ),
+      (
+        [
+          "new owner",
+          "directory removed",
+          "marker already removed",
+          "unlink denied",
+          "rmdir denied",
+        ] as const
+      ).map((scenario) => ({ implementation, scenario })),
     ),
-  )("releases $implementation locks safely when $scenario", async ({ implementation, scenario }) => {
-    const source = readFileSync(fileURLToPath(new URL("./storage.ts", import.meta.url)), "utf8");
-    const modulePath = path.join(stateDir, "release-storage.cjs");
-    writeFileSync(modulePath, transpileModule(source, {
-      compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
-    }).outputText, { mode: 0o600 });
-    const script = new URL("../../scripts/admin-init.mjs", import.meta.url).href;
-    const stateName = implementation === "storage" ? "release.json" : "accounts.json";
-    const lockPath = path.join(stateDir, `${stateName}.lock`);
-    const replacementOwner = path.join(lockPath, "owner-11111111-1111-1111-1111-111111111111.json");
-    const childCode = `
+  )(
+    "releases $implementation locks safely when $scenario",
+    async ({ implementation, scenario }) => {
+      const source = readFileSync(fileURLToPath(new URL("./storage.ts", import.meta.url)), "utf8");
+      const modulePath = path.join(stateDir, "release-storage.cjs");
+      writeFileSync(
+        modulePath,
+        transpileModule(source, {
+          compilerOptions: { module: ModuleKind.CommonJS, target: ScriptTarget.ES2022 },
+        }).outputText,
+        { mode: 0o600 },
+      );
+      const script = new URL("../../scripts/admin-init.mjs", import.meta.url).href;
+      const stateName = implementation === "storage" ? "release.json" : "accounts.json";
+      const lockPath = path.join(stateDir, `${stateName}.lock`);
+      const replacementOwner = path.join(
+        lockPath,
+        "owner-11111111-1111-1111-1111-111111111111.json",
+      );
+      const childCode = `
       const fs = require("node:fs");
       const assert = require("node:assert/strict");
       const path = require("node:path");
@@ -815,39 +1057,44 @@ describe("persistent AI settings and usage", () => {
       // interleaving as the transpiled CommonJS storage module.
       require("node:module").syncBuiltinESMExports();
       process.once("beforeExit", () => assert.equal(releases, 1));
-      ${implementation === "storage"
-        ? `const { updateState } = require(${JSON.stringify(modulePath)}); updateState("release.json", () => ({ count: 0 }), state => { state.count += 1; });`
-        : `import(${JSON.stringify(script)});`}
+      ${
+        implementation === "storage"
+          ? `const { updateState } = require(${JSON.stringify(modulePath)}); updateState("release.json", () => ({ count: 0 }), state => { state.count += 1; });`
+          : `import(${JSON.stringify(script)});`
+      }
     `;
-    const execution = execute(process.execPath, ["-e", childCode], {
-      timeout: 10_000,
-      env: {
-        ...process.env,
-        ANALYTICS_INIT_ENV_LOADED: "1",
-        ADMIN_USERNAME: "release-admin",
-        ADMIN_PASSWORD: "Fictional-Release-2026!",
-      },
-    });
-    if (scenario === "unlink denied" || scenario === "rmdir denied") {
-      await expect(execution).rejects.toMatchObject({ stderr: expect.stringContaining("release-test-denied") });
-    } else {
-      await execution;
-    }
+      const execution = execute(process.execPath, ["-e", childCode], {
+        timeout: 10_000,
+        env: {
+          ...process.env,
+          ANALYTICS_INIT_ENV_LOADED: "1",
+          ADMIN_USERNAME: "release-admin",
+          ADMIN_PASSWORD: "Fictional-Release-2026!",
+        },
+      });
+      if (scenario === "unlink denied" || scenario === "rmdir denied") {
+        await expect(execution).rejects.toMatchObject({
+          stderr: expect.stringContaining("release-test-denied"),
+        });
+      } else {
+        await execution;
+      }
 
-    if (implementation === "storage") {
-      expect(readState(stateName, () => ({ count: 0 })).count).toBe(1);
-    } else {
-      expect(readState(stateName, () => ({ users: [] })).users).toHaveLength(1);
-    }
-    if (scenario === "new owner") {
-      expect(readdirSync(lockPath)).toEqual([path.basename(replacementOwner)]);
-      expect(readFileSync(replacementOwner, "utf8")).toBe("new-owner");
-    } else if (scenario === "directory removed" || scenario === "marker already removed") {
-      expect(existsSync(lockPath)).toBe(false);
-    } else {
-      expect(readdirSync(lockPath)).toHaveLength(scenario === "unlink denied" ? 1 : 0);
-    }
-  });
+      if (implementation === "storage") {
+        expect(readState(stateName, () => ({ count: 0 })).count).toBe(1);
+      } else {
+        expect(readState(stateName, () => ({ users: [] })).users).toHaveLength(1);
+      }
+      if (scenario === "new owner") {
+        expect(readdirSync(lockPath)).toEqual([path.basename(replacementOwner)]);
+        expect(readFileSync(replacementOwner, "utf8")).toBe("new-owner");
+      } else if (scenario === "directory removed" || scenario === "marker already removed") {
+        expect(existsSync(lockPath)).toBe(false);
+      } else {
+        expect(readdirSync(lockPath)).toHaveLength(scenario === "unlink denied" ? 1 : 0);
+      }
+    },
+  );
 
   it("coordinates state updates from separate Node processes without lost writes", async () => {
     // Compile only the standalone storage primitive for the Node version in use.

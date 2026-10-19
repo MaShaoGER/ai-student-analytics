@@ -6,7 +6,7 @@ import type { ChatIntent } from "./chat-types";
  * - `describeChatContext` turns the follow-up `ChatIntent` into the one-line
  *   scope chip above the composer, so the current filters are never invisible.
  * - `planningMethodLabel` maps `ChatResponse.planning` to the sentence shown
- *   under each answer ("已验证的常用问题 / 本地规则 / AI 生成分析计划").
+ *   under each answer ("已验证的常用问题 / 本地规则 / AI 对话分析").
  */
 
 const METRIC_SCOPE_LABELS: Record<"score" | "activity" | "completion_rate", string> = {
@@ -64,11 +64,11 @@ export type PlanningInfo = {
 const PLANNING_SOURCE_LABELS: Record<PlanningSource, string> = {
   golden_case: "已验证的常用问题",
   local: "本地规则",
-  openai: "AI 生成分析计划",
-  external: "AI 生成分析计划",
+  openai: "AI 对话分析",
+  external: "AI 对话分析",
 };
 
-/** `已验证的常用问题` / `AI 生成分析计划（qwen3.7-flash）` — no model, no suffix. */
+/** `已验证的常用问题` / `AI 对话分析（qwen3.7-flash）` — no model, no suffix. */
 export function planningMethodLabel(planning: PlanningInfo): string {
   const label = PLANNING_SOURCE_LABELS[planning.source] ?? "本地规则";
   return planning.model ? `${label}（${planning.model}）` : label;

@@ -12,7 +12,6 @@ import {
   type ReactNode,
 } from "react";
 import { AnalysisResultView } from "./analysis-result";
-import { SegmentedControl } from "./ui/segmented-control";
 import { Icon } from "./app-icons";
 import { useMotionPreferences } from "./ui/motion-preferences";
 import { distributionRows, scoreInterval } from "@/lib/analysis/score-distribution";
@@ -141,8 +140,6 @@ export function ConversationWorkspace({
   question,
   loading,
   pendingQuestion,
-  analysisMode,
-  onAnalysisModeChange,
   pendingSteps,
   aiReady,
   canRun,
@@ -165,8 +162,6 @@ export function ConversationWorkspace({
   question: string;
   loading: boolean;
   pendingQuestion: string;
-  analysisMode: "quick" | "comprehensive";
-  onAnalysisModeChange: (mode: "quick" | "comprehensive") => void;
   pendingSteps: AnalysisStep[];
   aiReady: boolean;
   canRun: boolean;
@@ -318,7 +313,7 @@ export function ConversationWorkspace({
             </div>
             <p className={styles.privacy}>
               AI
-              只负责选择分析方式与措辞，数字由本地统计计算；只做群体统计，不提供个体名单或排名；对话正文不写入审计记录。
+              负责理解问题、选择工具和组织说明；统计数字由本地计算；只做群体统计，不提供个体名单或排名；对话正文不写入审计记录。
             </p>
           </div>
         )}
@@ -368,15 +363,11 @@ export function ConversationWorkspace({
                     {response.facts.map((fact, index) => {
                       // Matching factRefs carry the verifiable identity; the
                       // prose stays exactly as computed by the program.
-                      const ref = response.factRefs?.find(
-                        (item) => item.text === fact,
-                      );
+                      const ref = response.factRefs?.find((item) => item.text === fact);
                       return (
                         <li key={ref?.factId ?? index}>
                           {fact}
-                          {ref ? (
-                            <small className={styles.factId}>{ref.factId}</small>
-                          ) : null}
+                          {ref ? <small className={styles.factId}>{ref.factId}</small> : null}
                         </li>
                       );
                     })}
@@ -541,24 +532,28 @@ export function ConversationWorkspace({
                 </div>
               ) : (
                 <>
-                  <details className={styles.presets}>
-                    <summary>推荐问题</summary>
-                    <div>
-                      {suggestedQuestionsFor(aiReady).map((item) => (
-                        <button
-                          type="button"
-                          key={item.id}
-                          disabled={loading || !canRun}
-                          onClick={(event) => {
-                            event.currentTarget.closest("details")?.removeAttribute("open");
-                            onAsk(item.question);
-                          }}
-                        >
-                          {item.question}
-                        </button>
-                      ))}
-                    </div>
-                  </details>
+                  {/* Without a model the deterministic presets only work in a
+                      fresh conversation; offering them mid-transcript would fail. */}
+                  {aiReady || !messages.length ? (
+                    <details className={styles.presets}>
+                      <summary>推荐问题</summary>
+                      <div>
+                        {suggestedQuestionsFor(aiReady).map((item) => (
+                          <button
+                            type="button"
+                            key={item.id}
+                            disabled={loading || !canRun}
+                            onClick={(event) => {
+                              event.currentTarget.closest("details")?.removeAttribute("open");
+                              onAsk(item.question);
+                            }}
+                          >
+                            {item.question}
+                          </button>
+                        ))}
+                      </div>
+                    </details>
+                  ) : null}
                   {messages.length > 0 && (
                     <button
                       type="button"
@@ -572,22 +567,6 @@ export function ConversationWorkspace({
                 </>
               )}
             </div>
-          </div>
-          <div className={styles.analysisMode}>
-            <SegmentedControl<"quick" | "comprehensive">
-              label="分析方式"
-              value={analysisMode}
-              onChange={onAnalysisModeChange}
-              options={[
-                { value: "quick", label: "普通问答", disabled: loading },
-                { value: "comprehensive", label: "综合分析", disabled: loading || !aiReady },
-              ]}
-            />
-            <span>
-              {analysisMode === "comprehensive"
-                ? "按结果继续查询，展示步骤与引用"
-                : "适合单项指标和快速追问"}
-            </span>
           </div>
           {contextLabel ? (
             <div className={styles.contextRow}>

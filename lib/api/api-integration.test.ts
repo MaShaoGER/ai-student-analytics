@@ -89,6 +89,7 @@ integration("authenticated application HTTP API", () => {
     expect(first.headers.get("cache-control")).toBe("no-store");
     const result = await first.json();
     expect(result.kind).toBe("result");
+    expect(result.planning.source).toBe("golden_case");
     expect(result.artifact.result.rows[0]).toMatchObject({ dimension: "AAA", value: 79.67 });
     const followup = await request(
       "/api/chat",
@@ -150,7 +151,7 @@ integration("authenticated application HTTP API", () => {
     expect(result.facts.join(" ")).toContain("按 10 分一档");
   });
 
-  it("restricts comprehensive controls to admins and exposes only public status", async () => {
+  it("restricts analysis-settings controls to admins and exposes only public status", async () => {
     expect((await request("/api/admin/analysis-settings", {}, userCookie)).status).toBe(403);
     const response = await request("/api/admin/analysis-settings");
     expect(response.status).toBe(200);
@@ -170,14 +171,13 @@ integration("authenticated application HTTP API", () => {
     expect((await rebuilt.json()).knowledge.builtAt).toBeTruthy();
   });
 
-  it("returns a terminal stream error when tools are not verified, keeping ordinary chat available", async () => {
+  it("returns a terminal AI_NOT_CONFIGURED error when the unified chat has no configured model", async () => {
     const response = await request(
       "/api/chat",
       {
         method: "POST",
         headers: { accept: "text/event-stream" },
         body: JSON.stringify({
-          mode: "comprehensive",
           question: "比较两个学期的成绩",
           datasetId: "demo",
         }),

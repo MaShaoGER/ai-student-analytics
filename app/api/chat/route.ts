@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createChatStream } from "@/lib/ai/chat-stream";
-import { ComprehensiveError } from "@/lib/ai/comprehensive";
 import type { AnalysisStep } from "@/lib/ai/chat-types";
 import { converse } from "@/lib/ai/conversation";
+import { UnifiedConversationError } from "@/lib/ai/unified";
 import { chatInputSchema } from "@/lib/ai/chat-types";
 import { PROMPT_VERSION } from "@/lib/ai/prompts/version";
 import { AIConfigurationError } from "@/lib/ai/planner";
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
     const queryFailure = queryExecutionHttpError(error);
     return (
       queryFailure ??
-      (error instanceof ComprehensiveError
+      (error instanceof UnifiedConversationError
         ? { status: 422, code: error.code, error: error.message }
         : error instanceof AuthError
           ? { status: error.status, code: error.code, error: error.message }
@@ -174,7 +174,7 @@ export async function POST(request: Request) {
       const artifact = response.artifact;
       await audit(
         response.failureCode ?? null,
-        response.failureCode ? "综合分析部分步骤未完成。" : null,
+        response.failureCode ? "对话部分步骤未完成。" : null,
         artifact?.kind === "analysis"
           ? artifact.result.rows.length
           : artifact?.kind === "distribution"
@@ -189,10 +189,9 @@ export async function POST(request: Request) {
       );
       return response;
     };
-    if (
-      input.mode === "comprehensive" &&
-      request.headers.get("accept")?.includes("text/event-stream")
-    ) {
+    // Transport negotiation is the only branch left: one execution entry for
+    // every question, streamed when the client asks for it.
+    if (request.headers.get("accept")?.includes("text/event-stream")) {
       return createChatStream(request.signal, run, async (error) => {
         const failure = classify(error);
         await audit(failure.code, "对话请求未完成。");

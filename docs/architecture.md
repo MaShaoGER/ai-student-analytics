@@ -6,9 +6,10 @@
 浏览器
   -> 服务端会话登录与角色校验
   -> Next.js 工作台（手动指标、固定问题或自然语言）
-  -> POST /api/ask（单轮分析）或 POST /api/chat（连续对话，最多携带 12 条历史）
-  -> 固定问题映射或 OpenAI Responses API 结构化输出
-  -> Zod 校验 AnalysisPlan v1（/api/chat 另校验 ChatIntent 与工具白名单）
+  -> POST /api/ask（单轮分析，旧入口）或 POST /api/chat（统一对话入口：单一工具循环，最多携带 12 条历史）
+  -> /api/ask：固定问题映射或 OpenAI Responses API 结构化输出
+  -> /api/chat：AI 工具循环决定直接回答 / 统计查询 / 知识检索 / 图表（数字由 DuckDB 计算）
+  -> Zod 校验 AnalysisPlan v1（/api/chat 另校验工具参数白名单、目录标签与 ChatIntent）
   -> 固定 SQL 模板
   -> DuckDB 读取受控 CSV
   -> 结果行 + 统计周期 + 只读 SQL
@@ -19,7 +20,7 @@
 ## 边界
 
 - `datasetId` 只能是 `demo` 或 `oulad`，路径由服务端常量映射，不接受客户端文件路径。
-- 固定问题优先匹配 `golden-cases.ts`，不调用模型；自由问题才使用 OpenAI 生成受限字段。
+- `/api/chat` 只有一个入口（`converse`），请求不再有 `mode`；是否流式只由 `Accept` 决定。正常运行时由 AI 在受控工具中选择；仅当模型不可用（关闭/未配置/未通过工具调用检测）时才回退到已验证预设与本地图表，并以 `planning.source` 如实标记。`/api/ask` 仍是独立旧入口：固定问题优先匹配 `golden-cases.ts`，自由问题才使用 OpenAI 生成受限字段。
 - OpenAI 设置从服务端持久化配置读取，首次可由环境变量初始化；前端管理员保存后立即生效。密钥使用服务端 `APP_SETTINGS_KEY` 加密，不使用 `NEXT_PUBLIC_` 前缀，也不回传浏览器。
 - 数据与分析接口要求登录，账号和 AI 管理接口要求管理员。写接口校验本站 Origin；会话使用 HttpOnly Cookie，密码使用带盐 scrypt 哈希。
 - 账号、会话、配置与费用保存在 `APP_STATE_DIR`，使用原子写入与跨进程锁。管理员只在终端或首次部署环境初始化，没有公开注册入口。详见 [工作台与账号管理](./workspace-guide.md)。

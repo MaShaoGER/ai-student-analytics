@@ -12,7 +12,7 @@ import type { StudioTable } from "../analysis/chart-studio";
 import type { CourseRelationData } from "../analysis/course-relations";
 import type { CoursePanoramaData } from "../analysis/course-panorama";
 import { toolSchema, type ChatTool } from "./chart-capabilities";
-import type { FactRef, ResultRef } from "./result-contract";
+import { RESULT_KINDS, type FactRef, type ResultRef } from "./result-contract";
 
 export const chatViewSchema = z.enum([
   "bar",
@@ -56,20 +56,46 @@ export const chatIntentSchema = z.discriminatedUnion("kind", [
     view: z.enum(["table", "heatmap"]),
   }),
 ]);
-export const chatInputSchema = z.object({
-  mode: z.enum(["quick", "comprehensive"]).default("quick"),
-  question: z.string().trim().min(2).max(500),
-  datasetId: dataSourceSchema,
-  history: z
-    .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(3000) }))
-    .max(12)
-    .default([]),
-  context: chatIntentSchema.nullable().default(null),
+/**
+ * Compact, server-produced identity of one result shown in an earlier turn.
+ * It only lets the next turn keep "what was already looked at"; it is never
+ * evidence for a number (the model must re-query through a tool).
+ */
+export const chatHistoryResultSchema = z.object({
+  resultId: z.string().regex(/^r-[0-9a-f]{16}$/),
+  kind: z.enum(RESULT_KINDS),
+  label: z.string().trim().min(1).max(200),
 });
+export type ChatHistoryResult = z.infer<typeof chatHistoryResultSchema>;
+export const chatInputSchema = z
+  .object({
+    question: z.string().trim().min(2).max(500),
+    datasetId: dataSourceSchema,
+    history: z
+      .array(
+        z.object({
+          role: z.enum(["user", "assistant"]),
+          content: z.string().max(3000),
+          /** Only assistant turns carry this; see `chatHistoryResultSchema`. */
+          results: z.array(chatHistoryResultSchema).max(4).optional(),
+        }),
+      )
+      .max(12)
+      .default([]),
+    context: chatIntentSchema.nullable().default(null),
+  })
+  .superRefine((value, ctx) => {
+    value.history.forEach((message, index) => {
+      if (message.role === "user" && message.results?.length)
+        ctx.addIssue({
+          code: "custom",
+          path: ["history", index, "results"],
+          message: "用户消息不能携带结果引用。",
+        });
+    });
+  });
 export type ChatIntent = z.infer<typeof chatIntentSchema>;
-export type ChatInput = Omit<z.infer<typeof chatInputSchema>, "mode"> & {
-  mode?: "quick" | "comprehensive";
-};
+export type ChatInput = z.infer<typeof chatInputSchema>;
 export type ChatMessage = ChatInput["history"][number];
 export type ChatArtifact =
   | {
@@ -131,7 +157,6 @@ export type ChatResponse = {
   resultRefs?: ResultRef[];
   factRefs?: FactRef[];
 };
-
 
 export type KnowledgeCitation = {
   id: string;

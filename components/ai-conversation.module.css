@@ -2,17 +2,6 @@
   min-width: 0;
   padding: 24px 28px 0;
 }
-.analysisMode {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 16px;
-  margin: 8px 0 12px;
-}
-.analysisMode > span {
-  color: var(--muted);
-  font-size: 11px;
-}
 .executionSteps,
 .citations {
   margin-top: 16px;
