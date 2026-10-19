@@ -283,7 +283,9 @@ integration("authenticated application HTTP API", () => {
       }),
     });
     expect(response.status).toBe(422);
-    expect((await response.json()).code).toBe("NO_DATA");
+    expect(await response.json()).toMatchObject({ code: "NO_DATA", result: {
+      rows: [], filteredOutGroupCount: 0, period: expect.stringContaining("无匹配记录"),
+    } });
   });
 
   it("runs verified questions without a model connection", async () => {
@@ -358,6 +360,14 @@ integration("authenticated application HTTP API", () => {
     expect(status.configured).toBe(true);
     expect(status.enabled).toBe(false);
     expect(status.model).toBe("fixture-model");
+
+    const crossOrigin = await request("/api/admin/ai-config", {
+      method: "PUT",
+      body: JSON.stringify({ ...saved.config, baseUrl: "https://other.example/v1" }),
+    });
+    expect(crossOrigin.status).toBe(400);
+    expect((await crossOrigin.json()).code).toBe("AI_KEY_REENTRY_REQUIRED");
+    expect((await (await request("/api/admin/ai-config")).json()).config).toEqual(saved.config);
   });
 
   it("does not call the provider while AI is disabled", async () => {

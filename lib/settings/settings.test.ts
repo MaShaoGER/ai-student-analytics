@@ -80,6 +80,7 @@ describe("persistent AI settings and usage", () => {
     vi.stubEnv("APP_SETTINGS_KEY", SETTINGS_KEY);
     vi.stubEnv("OPENAI_API_KEY", ENV_KEY);
     vi.stubEnv("OPENAI_MODEL", "gpt-4o-mini");
+    vi.stubEnv("OPENAI_BASE_URL", "");
     vi.stubEnv("OPENAI_INPUT_PRICE", "");
     vi.stubEnv("OPENAI_OUTPUT_PRICE", "");
     openAIStub.options = null;
@@ -227,6 +228,51 @@ describe("persistent AI settings and usage", () => {
     expect(getRuntimeAIConfig().apiKey).toBe(SAVED_KEY);
   });
 
+  it("rejects cross-origin updates without a replacement key, atomically", () => {
+    saveAIConfig({ ...config, apiKey: SAVED_KEY });
+    const before = readFileSync(path.join(stateDir, "ai-config.json"), "utf8");
+    expect(() => saveAIConfig({ ...config, baseUrl: "https://other.example/v1" }))
+      .toThrow(/重新填写/);
+    expect(readFileSync(path.join(stateDir, "ai-config.json"), "utf8")).toBe(before);
+  });
+
+  it("does not send an environment key to a custom origin", () => {
+    expect(() => saveAIConfig({ ...config, baseUrl: "https://other.example/v1" }))
+      .toThrow(/重新填写/);
+    // Also guard old settings saved before origin binding existed.
+    writeFileSync(path.join(stateDir, "ai-config.json"), JSON.stringify({
+      ...config, version: 1, baseUrl: "https://other.example/v1", encryptedApiKey: null,
+    }));
+    expect(getAIConfig().keyConfigured).toBe(false);
+    expect(getRuntimeAIConfig().apiKey).toBeNull();
+  });
+
+  it("retains a key for the same origin but requires re-entry for a changed port", () => {
+    saveAIConfig({ ...config, baseUrl: "https://MODELS.example:443/v1/", apiKey: SAVED_KEY });
+    saveAIConfig({ ...config, baseUrl: "https://models.example/v2" });
+    expect(getRuntimeAIConfig().apiKey).toBe(SAVED_KEY);
+    expect(() => saveAIConfig({ ...config, baseUrl: "https://models.example:8443/v2" }))
+      .toThrow(/重新填写/);
+    saveAIConfig({ ...config, baseUrl: "https://new.example/v1", apiKey: "sk-new-test" });
+    expect(getRuntimeAIConfig().apiKey).toBe("sk-new-test");
+  });
+
+  it("binds environment fallback to its explicitly configured endpoint", () => {
+    vi.stubEnv("OPENAI_BASE_URL", "https://env.example/v1");
+    expect(getAIConfig()).toMatchObject({ baseUrl: "https://env.example/v1", keyConfigured: true });
+    expect(getRuntimeAIConfig().apiKey).toBe(ENV_KEY);
+    expect(() => saveAIConfig({ ...config, baseUrl: "" })).toThrow(/重新填写/);
+  });
+
+  it("fails closed when a persisted key binding differs from its endpoint", () => {
+    saveAIConfig({ ...config, apiKey: SAVED_KEY });
+    updateState("ai-config.json", () => ({}), (state: Record<string, unknown>) => {
+      state.baseUrl = "https://changed.example/v1";
+    });
+    expect(getAIConfig().keyConfigured).toBe(false);
+    expect(getRuntimeAIConfig().apiKey).toBeNull();
+  });
+
   it("does not partially update configuration when validation or key encryption fails", () => {
     saveAIConfig({ ...config, apiKey: SAVED_KEY });
     const before = readFileSync(path.join(stateDir, "ai-config.json"), "utf8");
@@ -267,6 +313,13 @@ describe("persistent AI settings and usage", () => {
     );
     expect(getTotalCost().totalCost).toBeCloseTo(0.0045, 8);
     expect(getCostStats().total).toBe(1);
+  });
+
+  it("does not allow the SDK environment endpoint to override a saved key endpoint", async () => {
+    saveAIConfig({ ...config, apiKey: SAVED_KEY });
+    vi.stubEnv("OPENAI_BASE_URL", "https://unrelated.example/v1");
+    await planQuestion({ question: "请按学期查看平均成绩", datasetId: "demo" });
+    expect(openAIStub.options).toMatchObject({ apiKey: SAVED_KEY, baseURL: "https://api.openai.com/v1" });
   });
 
   it("uses a custom Chat Completions endpoint and validates its JSON plan", async () => {

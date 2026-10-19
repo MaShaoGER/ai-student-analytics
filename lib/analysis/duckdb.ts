@@ -115,80 +115,63 @@ function orderClause(plan: AnalysisPlan): string {
   return `ORDER BY value ${direction}, dimension ASC`;
 }
 
-function queryForDemo(plan: AnalysisPlan) {
-  const dimension = dimensionExpression(plan);
+/** All rows and scope metadata use this exact filtered source. */
+function analysisSource(plan: AnalysisPlan): { source: string; aggregate: string } {
   const where = whereClause(plan);
-  if (plan.metric === "activity") {
-    return `
-      SELECT ${dimension} AS dimension,
-             ROUND(SUM(activity_count), 2) AS value,
-             COUNT(DISTINCT id_student) AS sample_size
-      FROM ${csv(DEMO_ACTIVITY)}
-      ${where}
-      GROUP BY ALL
-      HAVING COUNT(DISTINCT id_student) >= 3
-      ${orderClause(plan)}
-      LIMIT ${plan.limit}`;
+  if (plan.datasetId === "demo") {
+    return {
+      source: `SELECT * FROM ${csv(plan.metric === "activity" ? DEMO_ACTIVITY : DEMO_OUTCOMES)} ${where}`,
+      aggregate: plan.metric === "activity" ? "SUM(activity_count)"
+        : plan.metric === "completion_rate" ? "AVG(completed) * 100" : "AVG(score)",
+    };
   }
-  const aggregate = plan.metric === "completion_rate" ? "AVG(completed) * 100" : "AVG(score)";
-  return `
-    SELECT ${dimension} AS dimension,
-           ROUND(${aggregate}, 2) AS value,
-           COUNT(DISTINCT id_student) AS sample_size
-    FROM ${csv(DEMO_OUTCOMES)}
-    ${where}
-    GROUP BY ALL
-    HAVING COUNT(DISTINCT id_student) >= 3
-    ${orderClause(plan)}
-    LIMIT ${plan.limit}`;
+  if (plan.metric === "activity") return {
+    source: `SELECT * FROM ${csv(OULAD.studentVle)} ${where}`,
+    aggregate: "SUM(CAST(sum_click AS DOUBLE))",
+  };
+  if (plan.metric === "completion_rate") return {
+    source: `SELECT * FROM ${csv(OULAD.studentInfo)} ${where}`,
+    aggregate: "AVG(CASE WHEN final_result IN ('Pass', 'Distinction') THEN 1 ELSE 0 END) * 100",
+  };
+  return {
+    source: `SELECT a.code_module, a.code_presentation, sa.id_student,
+                    AVG(CAST(sa.score AS DOUBLE)) AS student_score
+             FROM ${csv(OULAD.studentAssessment)} sa
+             JOIN ${csv(OULAD.assessments)} a USING (id_assessment)
+             ${whereClause(plan, "a")} GROUP BY ALL`,
+    aggregate: "AVG(student_score)",
+  };
 }
 
-function queryForOulad(plan: AnalysisPlan) {
+function analysisQueries(plan: AnalysisPlan) {
+  const { source, aggregate } = analysisSource(plan);
   const dimension = dimensionExpression(plan);
-  const where = whereClause(plan);
-  if (plan.metric === "activity") {
-    return `
-      SELECT ${dimension} AS dimension,
-             ROUND(SUM(CAST(sum_click AS DOUBLE)), 2) AS value,
+  return {
+    query: `WITH analysis_source AS (${source})
+      SELECT ${dimension} AS dimension, ROUND(${aggregate}, 2) AS value,
              COUNT(DISTINCT id_student) AS sample_size
-      FROM ${csv(OULAD.studentVle)}
-      ${where}
-      GROUP BY ALL
+      FROM analysis_source GROUP BY ALL
       HAVING COUNT(DISTINCT id_student) >= 3
-      ${orderClause(plan)}
-      LIMIT ${plan.limit}`;
-  }
-  if (plan.metric === "completion_rate") {
-    return `
-      SELECT ${dimension} AS dimension,
-             ROUND(AVG(CASE WHEN final_result IN ('Pass', 'Distinction') THEN 1 ELSE 0 END) * 100, 2) AS value,
-             COUNT(DISTINCT id_student) AS sample_size
-      FROM ${csv(OULAD.studentInfo)}
-      ${where}
-      GROUP BY ALL
-      HAVING COUNT(DISTINCT id_student) >= 3
-      ${orderClause(plan)}
-      LIMIT ${plan.limit}`;
-  }
-  return `
-    WITH student_scores AS (
-      SELECT a.code_module,
-             a.code_presentation,
-             sa.id_student,
-             AVG(CAST(sa.score AS DOUBLE)) AS student_score
-      FROM ${csv(OULAD.studentAssessment)} sa
-      JOIN ${csv(OULAD.assessments)} a USING (id_assessment)
-      ${whereClause(plan, "a")}
-      GROUP BY ALL
-    )
-    SELECT ${dimension} AS dimension,
-           ROUND(AVG(student_score), 2) AS value,
-           COUNT(DISTINCT id_student) AS sample_size
-    FROM student_scores
-    GROUP BY ALL
-    HAVING COUNT(DISTINCT id_student) >= 3
-    ${orderClause(plan)}
-    LIMIT ${plan.limit}`;
+      ${orderClause(plan)} LIMIT ${plan.limit}`,
+    // Count suppressed groups before LIMIT. A row limit is not privacy filtering.
+    metadata: `WITH analysis_source AS (${source}), grouped AS (
+        SELECT ${dimension} AS dimension, COUNT(DISTINCT id_student) AS sample_size
+        FROM analysis_source GROUP BY ALL
+      ) SELECT
+        (SELECT list_sort(list_distinct(list(code_presentation))) FROM analysis_source) AS terms,
+        (SELECT COUNT(*) FROM grouped WHERE sample_size < 3) AS filtered_out_group_count`,
+  };
+}
+
+function analysisPeriod(plan: AnalysisPlan, terms: string[]): string {
+  const source = plan.datasetId === "demo" ? "模拟校园数据" : "OULAD 本地数据";
+  const filters = plan.filters.map((filter) =>
+    `${filter.field === "course" ? "课程" : "学期"}筛选：${[filter.value].flat().join("、")}`,
+  );
+  return [source, terms.length ? `学期：${terms.join("、")}` : "无匹配记录", ...filters,
+    plan.metric === "activity"
+      ? plan.datasetId === "demo" ? "周活动记录" : "学习资源访问记录"
+      : "开课期记录"].join(" · ");
 }
 
 function validateFiles(source: DataSource) {
@@ -295,25 +278,22 @@ export async function runAnalysis(
       `数据源 ${plan.datasetId} 不可用，请检查本地数据文件。`,
     );
   }
-  const query = plan.datasetId === "demo" ? queryForDemo(plan) : queryForOulad(plan);
+  const { query, metadata } = analysisQueries(plan);
   const minSampleSize = 3;
   const startedAt = performance.now();
 
-  const rows = await withBoundedQueryConnection(
-    (sql) => {
-      return sql(query);
+  const { rows, scope } = await withBoundedQueryConnection(
+    async (sql) => {
+      const rows = await sql(query);
+      const [scope] = await sql(metadata);
+      return { rows, scope };
     },
     API_QUERY_LIMITS.analysis,
     options,
   );
-
   const durationMs = Math.round(performance.now() - startedAt);
-
-  // For tracking filtered groups, we need to count groups before HAVING clause
-  // This is an approximation: we count how many unique dimension values exist
-  // but don't reach the sample size threshold. For now, set to 0 as we can't
-  // reliably track this without modifying each query significantly.
-  const filteredOutGroupCount = 0;
+  const terms = Array.isArray(scope.terms) ? scope.terms.map(String) : [];
+  const filteredOutGroupCount = Number(scope.filtered_out_group_count);
 
   return {
     plan,
@@ -329,12 +309,7 @@ export async function runAnalysis(
       })),
       unit: METRICS[plan.metric].unit,
       metricLabel: METRICS[plan.metric].label,
-      period:
-        plan.datasetId === "demo"
-          ? plan.metric === "activity"
-            ? "模拟数据全部周活动记录"
-            : "模拟数据全部开课期记录"
-          : "OULAD 本地 CSV 全部记录",
+      period: analysisPeriod(plan, terms),
       query: queryForDisplay(query),
       durationMs,
       minSampleSize,

@@ -74,7 +74,7 @@ export type AnalysisResult = {
   query: string;
   durationMs: number;
   minSampleSize: number;
-  filteredOutGroupCount: number;
+  filteredOutGroupCount: number | null;
 };
 
 export type AnalysisRecord = {

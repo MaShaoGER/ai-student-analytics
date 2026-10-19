@@ -72,6 +72,7 @@ export async function POST(request: Request) {
         {
           error: emptyResult.error,
           code: emptyResult.code,
+          ...analysis,
         },
         { status: 422 }
       );

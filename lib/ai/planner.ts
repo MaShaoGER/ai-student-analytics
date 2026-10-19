@@ -6,7 +6,7 @@ import { findGoldenCase, planForDataset } from "../analysis/golden-cases";
 import { createPlan } from "../analysis/plan";
 import { dataSourceSchema, type AnalysisPlan } from "../analysis/types";
 import { calculateCost, reserveBudget, settleBudget, type TokenUsage } from "../security/ai-cost";
-import { getAIConfig, getRuntimeAIConfig } from "../settings/ai";
+import { getAIConfig, getRuntimeAIConfig, OFFICIAL_AI_BASE_URL } from "../settings/ai";
 import { QueryExecutionError } from "../security/query-execution";
 import { isBailianQwenFlash } from "./bailian";
 import { isZhipuGLMFlash } from "./zhipu";
@@ -144,7 +144,8 @@ export async function generateStructured<T extends z.ZodObject<z.ZodRawShape>>(
   if (!config.apiKey || !config.model) throw new AIConfigurationError();
   const client = new OpenAI({
     apiKey: config.apiKey,
-    ...(config.baseUrl ? { baseURL: config.baseUrl } : {}),
+    // Always explicit: the SDK must not redirect a saved key via OPENAI_BASE_URL.
+    baseURL: config.baseUrl || OFFICIAL_AI_BASE_URL,
     maxRetries: 0,
     timeout: 20_000,
   });

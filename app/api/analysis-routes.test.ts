@@ -100,7 +100,7 @@ describe("analysis API classification and persisted audit", () => {
     vi.mocked(runAnalysis).mockResolvedValue({ plan, result: { ...result, rows: [] } });
     const response = await (endpoint === "analysis" ? postAnalysis : postAsk)(request(endpoint, endpoint === "analysis" ? plan : { question, datasetId: "oulad" }));
     expect(response.status).toBe(422);
-    expect(await response.json()).toMatchObject({ code: "NO_DATA" });
+    expect(await response.json()).toMatchObject({ code: "NO_DATA", plan, result: { ...result, rows: [] } });
     expect(loadAnalysisRecords()).toEqual([expect.objectContaining({ datasetId: "oulad", metricId: "activity", plan, errorCode: "NO_DATA", requestSource: endpoint, userId: "user-id-123", result: { rowCount: 0, period: result.period, durationMs: 12 } })]);
   });
 

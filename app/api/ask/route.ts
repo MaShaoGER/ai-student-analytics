@@ -113,7 +113,7 @@ export async function POST(request: Request) {
       errorMessage: emptyResult?.error ?? null,
     });
     if (emptyResult) {
-      return NextResponse.json({ error: emptyResult.error, code: emptyResult.code }, { status: emptyResult.status });
+      return NextResponse.json({ error: emptyResult.error, code: emptyResult.code, ...analysis }, { status: emptyResult.status });
     }
 
     return NextResponse.json({

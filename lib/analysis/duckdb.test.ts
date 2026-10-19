@@ -5,6 +5,18 @@ import type { AnalysisPlan } from "./types";
 import { QueryExecutionError } from "../security/query-execution";
 
 describe("demo DuckDB analysis", () => {
+  it("reports matched terms and filters rather than a fixed all-records period", async () => {
+    const plan = createPlan({ datasetId: "demo", metric: "score", dimension: "course", chartType: "bar" });
+    const single = await runAnalysis({ ...plan, filters: [{ field: "term", op: "eq", value: "2024J" }] });
+    expect(single.result.period).toContain("学期：2024J");
+    expect(single.result.period).not.toContain("2024B");
+    const multiple = await runAnalysis({ ...plan, filters: [{ field: "term", op: "in", value: ["2024B", "2024J"] }] });
+    expect(multiple.result.period).toContain("学期：2024B、2024J");
+    const empty = await runAnalysis({ ...plan, filters: [{ field: "course", op: "eq", value: "missing" }] });
+    expect(empty.result.period).toContain("无匹配记录");
+    expect(empty.result.period).toContain("missing");
+    expect(empty.result.filteredOutGroupCount).toBe(0);
+  });
   it("supports cancellation without changing the existing plan contract", async () => {
     const controller = new AbortController();
     controller.abort();

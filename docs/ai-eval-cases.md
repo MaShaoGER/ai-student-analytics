@@ -1,4 +1,4 @@
-# AI 评测基线（30 题）
+# AI 评测基线（30 题 + 第一阶段 12 个场景）
 
 一句话：这是**给真实模型跑的可复跑评测集**，不是单元测试。默认不运行、不产生费用；需要显式设置环境变量才会调用真实模型，结果写入 `output/ai-eval/<时间戳>.json`，用于回答“这次改动到底把 AI 变好了还是变坏了”。
 
@@ -13,7 +13,7 @@
 | --- | --- | --- | --- |
 | `pnpm test` / `pnpm vitest run scripts/ai-eval.test.ts` | 默认：整个文件 `describe.skipIf` 跳过 | 否 | 0 |
 | `AI_EVAL_MOCK=1 pnpm vitest run scripts/ai-eval.test.ts` | 只校验 `cases.jsonl`：每行可 JSON.parse、字段白名单、30 条且 10/10/10、id 唯一、期望字段自洽 | 否 | 0 |
-| `AI_EVAL=1 pnpm vitest run scripts/ai-eval.test.ts`（或 `pnpm eval:ai`） | 逐条调用 `converse`，按 `expect` 判定通过/失败，汇总写入报告文件 | 是，约 30–60 次模型调用 | 计入应用预算与真实账单 |
+| `AI_EVAL=1 pnpm vitest run scripts/ai-eval.test.ts` | 逐条调用 `converse`，按 `expect` 判定通过/失败，汇总写入报告文件 | 是，约 30–60 次模型调用 | 计入应用预算与真实账单 |
 
 `AI_EVAL=1` 与 `AI_EVAL_MOCK=1` 同时设置时以 mock 为准，不发请求。
 
@@ -164,3 +164,28 @@ CI 里没有 `records/system/ai-config.json`，真实评测走环境变量配置
 - 固定用例不经过模型；边界用例的期望依赖当前 prompt 的能力声明，prompt 大改后要同步复核期望。
 - 与 `data/fixtures/golden` 绑定的小样本（9 人）不适合评估“多课程/多学期”复杂问法；需要时用 `DEMO_DATA_DIR=data/sample` 单独跑一轮并在报告中区分。
 - 通过率不等于教学正确性；数值口径仍以 `docs/metric-definitions.yml` 与单元测试为准。
+
+
+## 赛事第一阶段扩展（2026-10-19）
+
+原 30 题保持不变。新增 `scripts/ai-eval/phase1-cases.jsonl`：12 个场景、15 轮对话，连续追问、筛选冲突、图表选择、数值核对各 3 个场景。由 `scripts/ai-eval-phase1.test.ts` 执行，不修改线上协议。
+
+- 连续追问：先运行首轮，再把**实际返回**的 context 和历史传入下一轮；检查改表格、换课程与清除学期后的继承范围。
+- 筛选冲突：模拟模型给出旧范围，检查用户明确指定的课程/学期优先；未知学期须澄清，不存在的课程学期组合返回空结果。
+- 图表选择：比较柱状图、学期趋势折线图、均分饼图降级及对应说明。
+- 数值核对：固定 golden CSV 独立基准，核对均分、完成率、活动总量、去重人数与返回顺序；同时核对实际执行计划与解析范围一致。
+
+| 命令 | 行为与证据 |
+| --- | --- |
+| `pnpm test` | 新增用例结构与评测判定器回归；不调用模型，12 个完整场景默认跳过 |
+| `pnpm eval:ai:mock` | 原 30 题结构检查 + 扩展场景的模拟规划输出与真实 DuckDB 查询；禁用网络和真实设置，**不是模型能力验收** |
+| `AI_EVAL=1 pnpm vitest run scripts/ai-eval-phase1.test.ts` | 仅跑扩展场景，使用当前真实模型，产生费用并受预算限制 |
+| `pnpm eval:ai` | 原 30 题与扩展 12 场景分别执行、分别出报告；固定问题和本地追问仍可能不调用模型 |
+
+扩展数值用例强制使用 `DEMO_DATA_DIR=data/fixtures/golden`，不将页面默认的扩充校园数据套入这组固定期望。
+
+扩展报告写入 `output/ai-eval/phase1-mock-<时间戳>.json` 或 `phase1-live-<时间戳>.json`。报告标记 `mocked`、`mode`、提示词版本、模型、数据目录、实际轮次、来源及每轮的计划和数值；模拟与真实结果不会混写。模拟规划字段仅用于注入测试依赖，真实模式不会把它们发给模型。
+
+每轮按 `planning`（指标、范围、排序、限制、澄清）、`query`（执行计划、查询行、数值、人数）、`presentation`（展示形式、视图、降级说明）记录 `pass/fail/blocked`。前一阶段失败后，依赖阶段记为 blocked，避免将未验证的后续步骤算作成功。运行异常发生在执行回调前归于规划，执行回调后归于查询；提供者和配置细节不写入扩展异常报告。
+
+本轮仅执行模拟评测；真实模型评测尚未运行，不能据此宣称真实 AI 准确率提升。

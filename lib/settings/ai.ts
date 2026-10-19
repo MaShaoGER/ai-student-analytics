@@ -41,8 +41,26 @@ type Settings = {
   budgets: AIBudgets;
   pricing: AIPricing;
   encryptedApiKey: EncryptedKey | null;
+  apiKeyOrigin?: string;
 };
 const encryptionContext = Buffer.from("student-analytics:ai-key:v1");
+
+export const OFFICIAL_AI_BASE_URL = "https://api.openai.com/v1";
+function endpointOrigin(baseUrl: string | undefined): string {
+  return new URL(baseUrl || OFFICIAL_AI_BASE_URL).origin;
+}
+function environmentKey(state: Settings): string | null {
+  if (!aiConfigInputSchema.shape.baseUrl.safeParse(process.env.OPENAI_BASE_URL?.trim() || "").success ||
+      !aiConfigInputSchema.shape.baseUrl.safeParse(state.baseUrl || "").success) return null;
+  const environmentOrigin = endpointOrigin(process.env.OPENAI_BASE_URL?.trim());
+  return endpointOrigin(state.baseUrl) === environmentOrigin
+    ? process.env.OPENAI_API_KEY?.trim() || null : null;
+}
+function savedKeyMatches(state: Settings): boolean {
+  // Legacy ciphertext belongs to its existing endpoint; the next save persists the binding.
+  return Boolean(state.encryptedApiKey) && aiConfigInputSchema.shape.baseUrl.safeParse(state.baseUrl || "").success &&
+    (!state.apiKeyOrigin || state.apiKeyOrigin === endpointOrigin(state.baseUrl));
+}
 
 function envPrice(value: string | undefined): number | null {
   if (!value?.trim()) return null;
@@ -56,7 +74,7 @@ function defaults(): Settings {
     version: 1,
     enabled: Boolean(process.env.OPENAI_API_KEY?.trim() && model),
     apiFormat: "responses",
-    baseUrl: "",
+    baseUrl: process.env.OPENAI_BASE_URL?.trim().replace(/\/+$/, "") || "",
     model,
     budgets: { ...DEFAULT_BUDGETS },
     pricing: {
@@ -99,7 +117,7 @@ function publicConfig(state: Settings): AIConfig {
     apiFormat: state.apiFormat ?? "responses",
     baseUrl: state.baseUrl ?? "",
     model: state.model,
-    keyConfigured: Boolean(state.encryptedApiKey || process.env.OPENAI_API_KEY?.trim()),
+    keyConfigured: state.encryptedApiKey ? savedKeyMatches(state) : Boolean(environmentKey(state)),
     budgets: { ...state.budgets },
     pricing: { ...state.pricing },
   };
@@ -113,6 +131,13 @@ export function saveAIConfig(payload: unknown): AIConfig {
   const input = aiConfigInputSchema.parse(payload);
   const encryptedApiKey = input.apiKey ? encrypt(input.apiKey) : undefined;
   return updateState("ai-config.json", defaults, (state) => {
+    const origin = endpointOrigin(input.baseUrl);
+    if (!encryptedApiKey && (
+      (origin !== endpointOrigin(state.baseUrl) && (state.encryptedApiKey || environmentKey(state))) ||
+      (state.encryptedApiKey && !savedKeyMatches(state))
+    )) {
+      throw new AuthError(400, "AI_KEY_REENTRY_REQUIRED", "接口所属域名或端口已更换，请重新填写该接口对应的 API 密钥。");
+    }
     state.enabled = input.enabled;
     state.apiFormat = input.apiFormat;
     state.baseUrl = input.baseUrl.replace(/\/+$/, "");
@@ -120,6 +145,7 @@ export function saveAIConfig(payload: unknown): AIConfig {
     state.budgets = { ...input.budgets };
     state.pricing = { ...input.pricing };
     if (encryptedApiKey) state.encryptedApiKey = encryptedApiKey;
+    if (state.encryptedApiKey) state.apiKeyOrigin = origin;
     return publicConfig(state);
   });
 }
@@ -127,6 +153,8 @@ export function saveAIConfig(payload: unknown): AIConfig {
 /** Server-side use only. The API must return getAIConfig(), never this object. */
 export function getRuntimeAIConfig(): AIConfig & { apiKey: string | null } {
   const state = readState("ai-config.json", defaults);
-  const apiKey = state.encryptedApiKey ? decrypt(state.encryptedApiKey) : process.env.OPENAI_API_KEY?.trim() || null;
+  const apiKey = state.encryptedApiKey
+    ? savedKeyMatches(state) ? decrypt(state.encryptedApiKey) : null
+    : environmentKey(state);
   return { ...publicConfig(state), apiKey };
 }

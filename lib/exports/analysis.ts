@@ -36,19 +36,28 @@ export function csvCell(value: string | number): string {
   return `"${guarded.replaceAll('"', '""')}"`;
 }
 
+/** Shared by the screen and exports, including old snapshots without a measured count. */
+export function analysisSuppressionNote(result: AnalysisResult): string {
+  const count = result.filteredOutGroupCount;
+  return typeof count === "number" && Number.isInteger(count) && count >= 0
+    ? count > 0 ? `本次因样本不足过滤 ${count} 个分组。` : "本次没有因样本不足被过滤的分组。"
+    : "本次未记录小样本过滤分组数，无法确定。";
+}
+
 export function analysisCsv(result: AnalysisResult): string {
   const dimension = analysisDimensionLabel(result);
   const records: (string | number)[][] = [
-    [dimension, "指标值", "参与统计人数", "数据源", "指标", "单位", "统计周期", "最小样本人数"],
-    ...result.rows.map((row) => [
-      row.dimension,
-      row.value,
-      row.sampleSize,
+    [dimension, "指标值", "参与统计人数", "数据源", "指标", "单位", "统计周期", "最小样本人数", "小样本过滤说明"],
+    ...(result.rows.length ? result.rows : [null]).map((row) => [
+      row?.dimension ?? "",
+      row?.value ?? "",
+      row?.sampleSize ?? "",
       analysisSourceLabel(result),
       result.metricLabel,
       result.unit,
       result.period,
       result.minSampleSize,
+      analysisSuppressionNote(result),
     ]),
   ];
   return `\uFEFF${records.map((record) => record.map(csvCell).join(",")).join("\r\n")}\r\n`;
@@ -81,10 +90,7 @@ export function analysisReportHtml(
   const insight = highest
     ? `${highest.dimension} 的${result.metricLabel}最高，为 ${highest.value} ${result.unit}。`
     : "本次分析没有可展示的分组。";
-  const filtered =
-    typeof result.filteredOutGroupCount === "number" && result.filteredOutGroupCount > 0
-      ? `本次因样本不足过滤 ${result.filteredOutGroupCount} 个分组。`
-      : "";
+  const filtered = analysisSuppressionNote(result);
   const max = Math.max(...result.rows.map((row) => row.value), 1);
   const metricColors =
     result.unit === "%"

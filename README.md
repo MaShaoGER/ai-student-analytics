@@ -17,6 +17,7 @@ CSV/Excel 上传导入仍属于后续计划。测试环境已于 2026-10-13 发�
 ## 当前目录
 
 - [AI学生数据分析系统开发路线图.md](AI学生数据分析系统开发路线图.md)：产品、架构、开发计划和验收标准。
+- [赛事改进路线](docs/competition-improvement-roadmap.md)：2026-10-18 确认的优先顺序、实施范围和验收标准；第一阶段已本地实施，见[实施记录](docs/competition-phase1.md)。
 - `oulad_raw/OULAD.names`：OULAD 数据字段说明。
 - `app/`、`components/`、`lib/`：Next.js 页面、图表和受控 DuckDB 分析链路。
 - `data/sample/`、`data/schema/`：虚构演示数据、数据字典和冻结的指标口径。

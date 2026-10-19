@@ -568,7 +568,6 @@ export function Workspace() {
   const showSpecialScore = showDistribution || showRelations || showPanorama || showChartStudio;
 
   const rememberResult = useCallback((result: AnalysisResult) => {
-    if (!result.rows.length) return;
     const key = analysisKey(result);
     setSessionAnalyses((previous) =>
       [{ key, result }, ...previous.filter((entry) => entry.key !== key)].slice(0, 20),
@@ -638,7 +637,13 @@ export function Workspace() {
       // every caller narrows what it asked for.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const payload: any = await response.json().catch(() => null);
-      if (!response.ok) {
+      // A measured empty result still carries scope/privacy metadata for reports.
+      // Keep the API's 422/NO_DATA contract while allowing this screen to render it.
+      const emptyAnalysis = url === "/api/analysis" && response.status === 422 &&
+        payload?.code === "NO_DATA" && payload?.plan &&
+        Array.isArray(payload?.result?.rows) && payload.result.rows.length === 0 &&
+        typeof payload.result.period === "string";
+      if (!response.ok && !emptyAnalysis) {
         const code = typeof payload?.code === "string" ? payload.code : null;
         const retryable =
           typeof payload?.retryable === "boolean"

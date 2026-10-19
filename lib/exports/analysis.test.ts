@@ -26,6 +26,11 @@ const result: AnalysisResult = {
 };
 
 describe("analysis exports", () => {
+  it("explicitly labels unknown counts in legacy results", () => {
+    const legacy = { ...result, filteredOutGroupCount: null };
+    expect(analysisReportHtml(legacy)).toContain("未记录小样本过滤分组数，无法确定");
+    expect(analysisCsv(legacy)).toContain("未记录小样本过滤分组数，无法确定");
+  });
   it("escapes commas, double quotes and multiline CSV labels without losing content", () => {
     expect(csvCell('课程,\"A\"\n第二行')).toBe('"课程,""A""\n第二行"');
     const csv = analysisCsv({

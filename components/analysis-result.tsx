@@ -12,6 +12,7 @@ import { resolveChartView, type ChartViewType } from "@/lib/analysis/visualizati
 import {
   analysisDimensionLabel,
   analysisSourceLabel,
+  analysisSuppressionNote,
   downloadAnalysisFile,
 } from "@/lib/exports/analysis";
 
@@ -170,7 +171,7 @@ export function AnalysisResultView({
           </p>
         </div>
         <div className="result-heading-actions">
-          {result && result.rows.length > 0 && (
+          {result && (
             <button className="secondary-button" type="button" onClick={() => onReport(result)}>
               <Icon name="file" size={15} />
               生成报告
@@ -251,7 +252,7 @@ export function AnalysisResultView({
               <p>
                 {search
                   ? "更换关键词，或清空搜索条件。"
-                  : `人数少于 ${result.minSampleSize} 人的分组不会显示，请调整分析条件。`}
+                  : `当前范围没有可展示的分组；${analysisSuppressionNote(result)}人数少于 ${result.minSampleSize} 人的分组不会显示。`}
               </p>
               {search && (
                 <button type="button" className="secondary-button" onClick={() => setSearch("")}>
@@ -359,57 +360,55 @@ export function AnalysisResultView({
               {animateCounts ? <AnimatedNumber value={rows.length} decimals={0} /> : rows.length}{" "}
               个可见分组 · 每组至少 {result.minSampleSize} 人
             </p>
-            {result.rows.length > 0 && (
-              <details
-                className="result-export result-disclosure"
+            <details
+              className="result-export result-disclosure"
+              data-enter="rise-sm"
+              style={enterAt(500)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.currentTarget.open = false;
+                  event.currentTarget.querySelector("summary")?.focus();
+                }
+              }}
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget))
+                  event.currentTarget.open = false;
+              }}
+            >
+              <summary>
+                <Icon name="download" size={16} />
+                导出结果
+                <Icon name="chevron" size={14} />
+              </summary>
+              <div
+                className="export-options disclosure-content"
                 data-enter="rise-sm"
-                style={enterAt(500)}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") {
-                    event.currentTarget.open = false;
-                    event.currentTarget.querySelector("summary")?.focus();
-                  }
-                }}
-                onBlur={(event) => {
-                  if (!event.currentTarget.contains(event.relatedTarget))
-                    event.currentTarget.open = false;
-                }}
+                style={{ "--enter-delay": "0ms", "--enter-dur": "320ms" } as CSSProperties}
               >
-                <summary>
-                  <Icon name="download" size={16} />
-                  导出结果
-                  <Icon name="chevron" size={14} />
-                </summary>
-                <div
-                  className="export-options disclosure-content"
-                  data-enter="rise-sm"
-                  style={{ "--enter-delay": "0ms", "--enter-dur": "320ms" } as CSSProperties}
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    downloadAnalysisFile(result, "csv");
+                    event.currentTarget.closest("details")?.removeAttribute("open");
+                  }}
                 >
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      downloadAnalysisFile(result, "csv");
-                      event.currentTarget.closest("details")?.removeAttribute("open");
-                    }}
-                  >
-                    下载 CSV
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      downloadAnalysisFile(result, "html");
-                      event.currentTarget.closest("details")?.removeAttribute("open");
-                    }}
-                  >
-                    下载 HTML 报告
-                  </button>
-                  <button type="button" onClick={() => onReport(result)}>
-                    预览 / 打印报告
-                  </button>
-                  <p>导出全部返回分组，保留原始顺序。</p>
-                </div>
-              </details>
-            )}
+                  下载 CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    downloadAnalysisFile(result, "html");
+                    event.currentTarget.closest("details")?.removeAttribute("open");
+                  }}
+                >
+                  下载 HTML 报告
+                </button>
+                <button type="button" onClick={() => onReport(result)}>
+                  预览 / 打印报告
+                </button>
+                <p>导出全部返回分组，保留原始顺序。</p>
+              </div>
+            </details>
           </div>
           <details
             className="result-technical result-disclosure"
@@ -450,9 +449,9 @@ export function AnalysisResultView({
                 <div>
                   <dt>样本与隐私</dt>
                   <dd>
-                    仅展示聚合结果，每组至少 {result.minSampleSize} 名学生；本次过滤{" "}
-                    {result.filteredOutGroupCount}{" "}
-                    个分组。各组人数分别去重，同一学生可能出现在多个分组。
+                    仅展示聚合结果，每组至少 {result.minSampleSize} 名学生；
+                    {analysisSuppressionNote(result)}
+                    各组人数分别去重，同一学生可能出现在多个分组。
                   </dd>
                 </div>
                 <div>

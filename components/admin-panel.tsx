@@ -617,7 +617,7 @@ export function AdminPanel({
                         disabled={saving || testing}
                       />
                       <span className="form-help">
-                        输入新密钥会替换已有密钥；切换服务商时请填写对应的新密钥。
+                        输入新密钥会替换已有密钥；更换接口域名或端口时，必须重新填写对应的密钥。
                       </span>
                     </div>
                   </div>
