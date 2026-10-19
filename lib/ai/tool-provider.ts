@@ -1,3 +1,4 @@
+import { assertCurrentAccess } from "../auth/access";
 import OpenAI from "openai";
 import { APIConnectionTimeoutError, APIUserAbortError } from "openai/core/error";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
@@ -78,6 +79,7 @@ export async function generateToolTurn(
   options: ToolModelOptions = {},
 ): Promise<ToolTurn> {
   if (options.signal?.aborted) throw new QueryExecutionError("CANCELLED", "分析请求已取消。");
+  assertCurrentAccess(undefined, "ai");
   const config = getRuntimeAIConfig();
   if (!config.enabled || !config.apiKey || !config.model) throw new AIConfigurationError();
   const client = new OpenAI({

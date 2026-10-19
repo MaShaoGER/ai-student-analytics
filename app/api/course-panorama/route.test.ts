@@ -25,6 +25,7 @@ beforeEach(() => {
     username: "test",
     displayName: "测试",
     role: "user",
+    datasetIds: ["demo", "oulad"],
   });
   vi.mocked(checkRateLimit).mockReturnValue({ allowed: true, remaining: 10, resetAfter: 60000 });
   vi.mocked(coursePanorama).mockResolvedValue({

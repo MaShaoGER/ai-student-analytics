@@ -1,3 +1,4 @@
+import { assertCurrentAccess } from "../auth/access";
 import { createHash } from "node:crypto";
 import { existsSync, statSync } from "node:fs";
 import path from "node:path";
@@ -25,7 +26,12 @@ import {
   type AbsenceStats,
 } from "./absence-stats";
 import { courseRelationRequestSchema, type CourseRelationData } from "./course-relations";
-import type { StudioProjectData, StudioRow, StudioTable, StudioRelationshipMetric } from "./chart-studio";
+import type {
+  StudioProjectData,
+  StudioRow,
+  StudioTable,
+  StudioRelationshipMetric,
+} from "./chart-studio";
 import {
   coursePanoramaRequestSchema,
   PanoramaSelectionError,
@@ -36,7 +42,7 @@ import {
 const PROJECT_ROOT = process.cwd();
 // Server-only override lets regression tests retain their tiny, stable fixtures.
 const DEMO_ROOT = process.env.DEMO_DATA_DIR
-  ? path.resolve(PROJECT_ROOT, process.env.DEMO_DATA_DIR)
+  ? path.resolve(/* turbopackIgnore: true */ PROJECT_ROOT, process.env.DEMO_DATA_DIR)
   : path.join(PROJECT_ROOT, "data", "sample");
 const DEMO_ACTIVITY = path.join(DEMO_ROOT, "learning_activity.csv");
 const DEMO_OUTCOMES = path.join(DEMO_ROOT, "student_outcomes.csv");
@@ -128,18 +134,24 @@ function analysisSource(plan: AnalysisPlan): { source: string; aggregate: string
   if (plan.datasetId === "demo") {
     return {
       source: `SELECT * FROM ${csv(plan.metric === "activity" ? DEMO_ACTIVITY : DEMO_OUTCOMES)} ${where}`,
-      aggregate: plan.metric === "activity" ? "SUM(activity_count)"
-        : plan.metric === "completion_rate" ? "AVG(completed) * 100" : "AVG(score)",
+      aggregate:
+        plan.metric === "activity"
+          ? "SUM(activity_count)"
+          : plan.metric === "completion_rate"
+            ? "AVG(completed) * 100"
+            : "AVG(score)",
     };
   }
-  if (plan.metric === "activity") return {
-    source: `SELECT * FROM ${csv(OULAD.studentVle)} ${where}`,
-    aggregate: "SUM(CAST(sum_click AS DOUBLE))",
-  };
-  if (plan.metric === "completion_rate") return {
-    source: `SELECT * FROM ${csv(OULAD.studentInfo)} ${where}`,
-    aggregate: "AVG(CASE WHEN final_result IN ('Pass', 'Distinction') THEN 1 ELSE 0 END) * 100",
-  };
+  if (plan.metric === "activity")
+    return {
+      source: `SELECT * FROM ${csv(OULAD.studentVle)} ${where}`,
+      aggregate: "SUM(CAST(sum_click AS DOUBLE))",
+    };
+  if (plan.metric === "completion_rate")
+    return {
+      source: `SELECT * FROM ${csv(OULAD.studentInfo)} ${where}`,
+      aggregate: "AVG(CASE WHEN final_result IN ('Pass', 'Distinction') THEN 1 ELSE 0 END) * 100",
+    };
   return {
     source: `SELECT a.code_module, a.code_presentation, sa.id_student,
                     AVG(CAST(sa.score AS DOUBLE)) AS student_score
@@ -172,13 +184,20 @@ function analysisQueries(plan: AnalysisPlan) {
 
 function analysisPeriod(plan: AnalysisPlan, terms: string[]): string {
   const source = plan.datasetId === "demo" ? "模拟校园数据" : "OULAD 本地数据";
-  const filters = plan.filters.map((filter) =>
-    `${filter.field === "course" ? "课程" : "学期"}筛选：${[filter.value].flat().join("、")}`,
+  const filters = plan.filters.map(
+    (filter) =>
+      `${filter.field === "course" ? "课程" : "学期"}筛选：${[filter.value].flat().join("、")}`,
   );
-  return [source, terms.length ? `学期：${terms.join("、")}` : "无匹配记录", ...filters,
+  return [
+    source,
+    terms.length ? `学期：${terms.join("、")}` : "无匹配记录",
+    ...filters,
     plan.metric === "activity"
-      ? plan.datasetId === "demo" ? "周活动记录" : "学习资源访问记录"
-      : "开课期记录"].join(" · ");
+      ? plan.datasetId === "demo"
+        ? "周活动记录"
+        : "学习资源访问记录"
+      : "开课期记录",
+  ].join(" · ");
 }
 
 function validateFiles(source: DataSource) {
@@ -279,6 +298,7 @@ export async function runAnalysis(
   options: QueryExecutionOptions = {},
 ): Promise<{ plan: AnalysisPlan; result: AnalysisResult }> {
   const plan = analysisPlanSchema.parse(input);
+  assertCurrentAccess(plan.datasetId);
   if (!validateFiles(plan.datasetId)) {
     throw new QueryExecutionError(
       "DATA_SOURCE_UNAVAILABLE",
@@ -348,8 +368,12 @@ export async function scoreDistribution(
   options: QueryExecutionOptions = {},
   scope: DistributionScope = {},
 ): Promise<ScoreDistributionData> {
+  assertCurrentAccess(datasetId);
   if (!validateFiles(datasetId))
-    throw new QueryExecutionError("DATA_SOURCE_UNAVAILABLE", "成绩数据源不可用，请检查本地数据文件。");
+    throw new QueryExecutionError(
+      "DATA_SOURCE_UNAVAILABLE",
+      "成绩数据源不可用，请检查本地数据文件。",
+    );
   const source = studentScoreSource(datasetId);
   // Narrow the source before aggregating: the optional course/term predicate is
   // applied inside the CTE so the histogram, the eligibility count and the
@@ -358,7 +382,8 @@ export async function scoreDistribution(
   const narrowed = distributionPredicate(scope);
   const scopedSource = narrowed ? `SELECT * FROM (${source}) WHERE ${narrowed}` : source;
   const rows = await withBoundedQueryConnection(
-    (sql) => sql(`
+    (sql) =>
+      sql(`
       WITH student_scores AS (${scopedSource}),
       eligible AS (
         SELECT code_module, code_presentation, COUNT(*) AS sample_size
@@ -416,35 +441,54 @@ export async function courseRelations(
   input: unknown,
   options: QueryExecutionOptions = {},
 ): Promise<CourseRelationData> {
-  const { datasetId, term, threshold, courses: requestedCourses = [] } = courseRelationRequestSchema.parse(input);
+  const {
+    datasetId,
+    term,
+    threshold,
+    courses: requestedCourses = [],
+  } = courseRelationRequestSchema.parse(input);
+  assertCurrentAccess(datasetId);
   if (!validateFiles(datasetId))
-    throw new QueryExecutionError("DATA_SOURCE_UNAVAILABLE", "成绩数据源不可用，请检查本地数据文件。");
+    throw new QueryExecutionError(
+      "DATA_SOURCE_UNAVAILABLE",
+      "成绩数据源不可用，请检查本地数据文件。",
+    );
   const minSampleSize = 3;
   const courseLimit = 12;
-  return withBoundedQueryConnection(async (sql) => {
-    await sql(`CREATE TEMP TABLE student_scores AS ${studentScoreSource(datasetId)}`);
-    const termRows = await sql(`SELECT DISTINCT code_presentation FROM student_scores
+  return withBoundedQueryConnection(
+    async (sql) => {
+      await sql(`CREATE TEMP TABLE student_scores AS ${studentScoreSource(datasetId)}`);
+      const termRows = await sql(`SELECT DISTINCT code_presentation FROM student_scores
       GROUP BY code_presentation, code_module HAVING COUNT(*) >= ${minSampleSize}
       ORDER BY code_presentation DESC`);
-    const terms = termRows.map((row) => String(row.code_presentation));
-    const activeTerm = term ?? terms[0] ?? null;
-    const empty: CourseRelationData = {
-      datasetId, term: activeTerm, terms, threshold, minSampleSize, courseLimit,
-      totalCourses: 0, courses: [], relations: [],
-    };
-    if (!activeTerm || !terms.includes(activeTerm)) return empty;
-    const literal = `'${activeTerm.replaceAll("'", "''")}'`;
-    await sql(`CREATE TEMP TABLE eligible_courses AS
+      const terms = termRows.map((row) => String(row.code_presentation));
+      const activeTerm = term ?? terms[0] ?? null;
+      const empty: CourseRelationData = {
+        datasetId,
+        term: activeTerm,
+        terms,
+        threshold,
+        minSampleSize,
+        courseLimit,
+        totalCourses: 0,
+        courses: [],
+        relations: [],
+      };
+      if (!activeTerm || !terms.includes(activeTerm)) return empty;
+      const literal = `'${activeTerm.replaceAll("'", "''")}'`;
+      await sql(`CREATE TEMP TABLE eligible_courses AS
       SELECT code_module, COUNT(*) AS sample_size FROM student_scores
       WHERE code_presentation = ${literal}
       GROUP BY code_module HAVING COUNT(*) >= ${minSampleSize}`);
-    const [total] = await sql("SELECT COUNT(*) AS total FROM eligible_courses");
-    const preferred = requestedCourses.map((name) => `'${name.replaceAll("'", "''")}'`);
-    const priority = preferred.length ? `CASE WHEN code_module IN (${preferred.join(", ")}) THEN 0 ELSE 1 END,` : "";
-    await sql(`CREATE TEMP TABLE selected_courses AS SELECT * FROM eligible_courses
+      const [total] = await sql("SELECT COUNT(*) AS total FROM eligible_courses");
+      const preferred = requestedCourses.map((name) => `'${name.replaceAll("'", "''")}'`);
+      const priority = preferred.length
+        ? `CASE WHEN code_module IN (${preferred.join(", ")}) THEN 0 ELSE 1 END,`
+        : "";
+      await sql(`CREATE TEMP TABLE selected_courses AS SELECT * FROM eligible_courses
       ORDER BY ${priority} sample_size DESC, code_module ASC LIMIT ${courseLimit}`);
-    const courses = await sql("SELECT * FROM selected_courses ORDER BY code_module ASC");
-    const pairs = await sql(`
+      const courses = await sql("SELECT * FROM selected_courses ORDER BY code_module ASC");
+      const pairs = await sql(`
       WITH selected_scores AS (
         SELECT s.* FROM student_scores s JOIN selected_courses c USING (code_module)
         WHERE s.code_presentation = ${literal}
@@ -459,17 +503,25 @@ export async function courseRelations(
       HAVING common_count >= ${minSampleSize} AND below_count >= ${minSampleSize}
       ORDER BY below_count DESC, source ASC, target ASC
     `);
-    return {
-      ...empty,
-      totalCourses: Number(total.total),
-      courses: courses.map((row) => ({ name: String(row.code_module), count: Number(row.sample_size) })),
-      relations: pairs.map((row) => ({
-        source: String(row.source), target: String(row.target),
-        commonCount: Number(row.common_count), belowCount: Number(row.below_count),
-        rate: Math.round(Number(row.below_count) / Number(row.common_count) * 10000) / 100,
-      })),
-    };
-  }, API_QUERY_LIMITS.analysis, options);
+      return {
+        ...empty,
+        totalCourses: Number(total.total),
+        courses: courses.map((row) => ({
+          name: String(row.code_module),
+          count: Number(row.sample_size),
+        })),
+        relations: pairs.map((row) => ({
+          source: String(row.source),
+          target: String(row.target),
+          commonCount: Number(row.common_count),
+          belowCount: Number(row.below_count),
+          rate: Math.round((Number(row.below_count) / Number(row.common_count)) * 10000) / 100,
+        })),
+      };
+    },
+    API_QUERY_LIMITS.analysis,
+    options,
+  );
 }
 
 /** All layers share a student/term cohort; identifiers remain inside DuckDB. */
@@ -477,41 +529,65 @@ export async function coursePanorama(
   input: unknown,
   options: QueryExecutionOptions = {},
 ): Promise<CoursePanoramaData> {
-  const { datasetId, term, threshold, source, target, courses: requestedCourses = [] } = coursePanoramaRequestSchema.parse(input);
+  const {
+    datasetId,
+    term,
+    threshold,
+    source,
+    target,
+    courses: requestedCourses = [],
+  } = coursePanoramaRequestSchema.parse(input);
+  assertCurrentAccess(datasetId);
   if (!validateFiles(datasetId))
-    throw new QueryExecutionError("DATA_SOURCE_UNAVAILABLE", "成绩数据源不可用，请检查本地数据文件。");
+    throw new QueryExecutionError(
+      "DATA_SOURCE_UNAVAILABLE",
+      "成绩数据源不可用，请检查本地数据文件。",
+    );
   const minSampleSize = 3;
   const courseLimit = 12;
   const literal = (value: string) => `'${value.replaceAll("'", "''")}'`;
-  return withBoundedQueryConnection(async (sql) => {
-    await sql(`CREATE TEMP TABLE student_scores AS ${studentScoreSource(datasetId)}`);
-    const termRows = await sql(`SELECT DISTINCT code_presentation FROM student_scores
+  return withBoundedQueryConnection(
+    async (sql) => {
+      await sql(`CREATE TEMP TABLE student_scores AS ${studentScoreSource(datasetId)}`);
+      const termRows = await sql(`SELECT DISTINCT code_presentation FROM student_scores
       GROUP BY code_presentation, code_module HAVING COUNT(*) >= ${minSampleSize}
       ORDER BY code_presentation DESC`);
-    const terms = termRows.map((row) => String(row.code_presentation));
-    const activeTerm = term ?? terms[0] ?? null;
-    const empty: CoursePanoramaData = {
-      datasetId, term: activeTerm, terms, threshold, minSampleSize, courseLimit,
-      totalCourses: 0, courses: [], relations: [], totalStudents: 0, selection: null, columns: [],
-    };
-    if (!activeTerm || !terms.includes(activeTerm)) {
-      if (source) throw new PanoramaSelectionError();
-      return empty;
-    }
-    await sql(`CREATE TEMP TABLE eligible_courses AS
+      const terms = termRows.map((row) => String(row.code_presentation));
+      const activeTerm = term ?? terms[0] ?? null;
+      const empty: CoursePanoramaData = {
+        datasetId,
+        term: activeTerm,
+        terms,
+        threshold,
+        minSampleSize,
+        courseLimit,
+        totalCourses: 0,
+        courses: [],
+        relations: [],
+        totalStudents: 0,
+        selection: null,
+        columns: [],
+      };
+      if (!activeTerm || !terms.includes(activeTerm)) {
+        if (source) throw new PanoramaSelectionError();
+        return empty;
+      }
+      await sql(`CREATE TEMP TABLE eligible_courses AS
       SELECT code_module, COUNT(*) AS sample_size FROM student_scores
       WHERE code_presentation = ${literal(activeTerm)}
       GROUP BY code_module HAVING COUNT(*) >= ${minSampleSize}`);
-    const [total] = await sql("SELECT COUNT(*) AS total FROM eligible_courses");
-    const preferred = requestedCourses.map((name) => `'${name.replaceAll("'", "''")}'`);
-    const priority = preferred.length ? `CASE WHEN code_module IN (${preferred.join(", ")}) THEN 0 ELSE 1 END,` : "";
-    await sql(`CREATE TEMP TABLE selected_courses AS SELECT * FROM eligible_courses
+      const [total] = await sql("SELECT COUNT(*) AS total FROM eligible_courses");
+      const preferred = requestedCourses.map((name) => `'${name.replaceAll("'", "''")}'`);
+      const priority = preferred.length
+        ? `CASE WHEN code_module IN (${preferred.join(", ")}) THEN 0 ELSE 1 END,`
+        : "";
+      await sql(`CREATE TEMP TABLE selected_courses AS SELECT * FROM eligible_courses
       ORDER BY ${priority} sample_size DESC, code_module ASC LIMIT ${courseLimit}`);
-    await sql(`CREATE TEMP TABLE selected_scores AS
+      await sql(`CREATE TEMP TABLE selected_scores AS
       SELECT s.* FROM student_scores s JOIN selected_courses c USING (code_module)
       WHERE s.code_presentation = ${literal(activeTerm)}`);
-    const courses = await sql("SELECT * FROM selected_courses ORDER BY code_module ASC");
-    const pairs = await sql(`SELECT a.code_module AS source, b.code_module AS target,
+      const courses = await sql("SELECT * FROM selected_courses ORDER BY code_module ASC");
+      const pairs = await sql(`SELECT a.code_module AS source, b.code_module AS target,
         COUNT(*) AS common_count,
         COUNT(*) FILTER (WHERE a.score < ${threshold} AND b.score < ${threshold}) AS below_count
       FROM selected_scores a JOIN selected_scores b
@@ -520,23 +596,31 @@ export async function coursePanorama(
       GROUP BY a.code_module, b.code_module
       HAVING common_count >= ${minSampleSize} AND below_count >= ${minSampleSize}
       ORDER BY below_count DESC, source ASC, target ASC`);
-    const relations = pairs.map((row) => ({
-      source: String(row.source), target: String(row.target),
-      commonCount: Number(row.common_count), belowCount: Number(row.below_count),
-      rate: Math.round(Number(row.below_count) / Number(row.common_count) * 10000) / 100,
-    }));
-    const relation = source ? relations.find((item) =>
-      (item.source === source && item.target === target) ||
-      (item.source === target && item.target === source)) : undefined;
-    if (source && !relation) throw new PanoramaSelectionError();
-    if (relation) {
-      await sql(`CREATE TEMP TABLE cohort_students AS
+      const relations = pairs.map((row) => ({
+        source: String(row.source),
+        target: String(row.target),
+        commonCount: Number(row.common_count),
+        belowCount: Number(row.below_count),
+        rate: Math.round((Number(row.below_count) / Number(row.common_count)) * 10000) / 100,
+      }));
+      const relation = source
+        ? relations.find(
+            (item) =>
+              (item.source === source && item.target === target) ||
+              (item.source === target && item.target === source),
+          )
+        : undefined;
+      if (source && !relation) throw new PanoramaSelectionError();
+      if (relation) {
+        await sql(`CREATE TEMP TABLE cohort_students AS
         SELECT a.id_student FROM selected_scores a JOIN selected_scores b USING (id_student, code_presentation)
         WHERE a.code_module = ${literal(relation.source)} AND b.code_module = ${literal(relation.target)}
           AND a.score < ${threshold} AND b.score < ${threshold}`);
-    }
-    const [population] = await sql("SELECT COUNT(DISTINCT id_student) AS total FROM selected_scores");
-    const summary = (table: string) => `WITH stats AS (
+      }
+      const [population] = await sql(
+        "SELECT COUNT(DISTINCT id_student) AS total FROM selected_scores",
+      );
+      const summary = (table: string) => `WITH stats AS (
         SELECT code_module, COUNT(*) AS count, ROUND(AVG(score), 2) AS mean,
           ROUND(100.0 * COUNT(*) FILTER (WHERE score >= 60) / COUNT(*), 2) AS pass_rate
         FROM ${table} GROUP BY code_module HAVING COUNT(*) >= ${minSampleSize}
@@ -545,30 +629,52 @@ export async function coursePanorama(
         FROM ${table} GROUP BY code_module, bin
       ) SELECT s.*, LIST(struct_pack(bin := b.bin, frequency := b.frequency) ORDER BY b.bin) AS histogram
         FROM stats s JOIN bins b USING (code_module) GROUP BY ALL ORDER BY code_module ASC`;
-    const baselineRows = await sql(summary("selected_scores"));
-    let cohortRows = baselineRows;
-    if (relation) {
-      await sql(`CREATE TEMP TABLE cohort_scores AS SELECT s.* FROM selected_scores s
+      const baselineRows = await sql(summary("selected_scores"));
+      let cohortRows = baselineRows;
+      if (relation) {
+        await sql(`CREATE TEMP TABLE cohort_scores AS SELECT s.* FROM selected_scores s
         JOIN cohort_students c USING (id_student)`);
-      cohortRows = await sql(summary("cohort_scores"));
-    }
-    const stats = (row: Record<string, unknown>): CoursePanoramaStats => {
-      const bins = Array<number>(20).fill(0);
-      for (const cell of row.histogram as { bin: number; frequency: number | string }[])
-        bins[Number(cell.bin)] = Number(cell.frequency);
-      return { count: Number(row.count), mean: Number(row.mean), passRate: Number(row.pass_rate), bins };
-    };
-    const cohort = new Map(cohortRows.map((row) => [String(row.code_module), stats(row)]));
-    return {
-      ...empty,
-      totalCourses: Number(total.total), totalStudents: Number(population.total), relations,
-      courses: courses.map((row) => ({ name: String(row.code_module), count: Number(row.sample_size) })),
-      selection: relation ? { source: relation.source, target: relation.target,
-        count: relation.belowCount, commonCount: relation.commonCount } : null,
-      columns: baselineRows.map((row) => ({ course: String(row.code_module),
-        baseline: stats(row), cohort: cohort.get(String(row.code_module)) ?? null })),
-    };
-  }, API_QUERY_LIMITS.analysis, options);
+        cohortRows = await sql(summary("cohort_scores"));
+      }
+      const stats = (row: Record<string, unknown>): CoursePanoramaStats => {
+        const bins = Array<number>(20).fill(0);
+        for (const cell of row.histogram as { bin: number; frequency: number | string }[])
+          bins[Number(cell.bin)] = Number(cell.frequency);
+        return {
+          count: Number(row.count),
+          mean: Number(row.mean),
+          passRate: Number(row.pass_rate),
+          bins,
+        };
+      };
+      const cohort = new Map(cohortRows.map((row) => [String(row.code_module), stats(row)]));
+      return {
+        ...empty,
+        totalCourses: Number(total.total),
+        totalStudents: Number(population.total),
+        relations,
+        courses: courses.map((row) => ({
+          name: String(row.code_module),
+          count: Number(row.sample_size),
+        })),
+        selection: relation
+          ? {
+              source: relation.source,
+              target: relation.target,
+              count: relation.belowCount,
+              commonCount: relation.commonCount,
+            }
+          : null,
+        columns: baselineRows.map((row) => ({
+          course: String(row.code_module),
+          baseline: stats(row),
+          cohort: cohort.get(String(row.code_module)) ?? null,
+        })),
+      };
+    },
+    API_QUERY_LIMITS.analysis,
+    options,
+  );
 }
 
 export async function chartStudioData(
@@ -576,66 +682,101 @@ export async function chartStudioData(
   term?: string,
   course = "",
   options: QueryExecutionOptions = {},
-  selection: { courses?: string[]; beforeTerm?: string; densityMetric?: StudioRelationshipMetric } = {},
+  selection: {
+    courses?: string[];
+    beforeTerm?: string;
+    densityMetric?: StudioRelationshipMetric;
+  } = {},
 ): Promise<StudioProjectData> {
+  assertCurrentAccess(datasetId);
   if (!validateFiles(datasetId))
     throw new QueryExecutionError("DATA_SOURCE_UNAVAILABLE", "数据源不可用，请检查本地数据文件。");
   const literal = (value: string) => `'${value.replaceAll("'", "''")}'`;
-  const table = (rows: Record<string, unknown>[], columns: string[], description: string): StudioTable => ({
-    columns, rows: rows as StudioRow[], description,
+  const table = (
+    rows: Record<string, unknown>[],
+    columns: string[],
+    description: string,
+  ): StudioTable => ({
+    columns,
+    rows: rows as StudioRow[],
+    description,
   });
-  return withBoundedQueryConnection(async (sql) => {
-    await sql(`CREATE TEMP TABLE all_scores AS ${studentScoreSource(datasetId)}`);
-    const termRows = await sql(`SELECT DISTINCT code_presentation FROM all_scores
+  return withBoundedQueryConnection(
+    async (sql) => {
+      await sql(`CREATE TEMP TABLE all_scores AS ${studentScoreSource(datasetId)}`);
+      const termRows = await sql(`SELECT DISTINCT code_presentation FROM all_scores
       GROUP BY code_module, code_presentation HAVING COUNT(*) >= 3 ORDER BY code_presentation DESC`);
-    const terms = termRows.map((row) => String(row.code_presentation));
-    const activeTerm = term ?? terms[0] ?? null;
-    const result: StudioProjectData = { datasetId, term: activeTerm, terms, course, courses: [], tables: {} };
-    if (!activeTerm || !terms.includes(activeTerm)) return result;
-    const whereTerm = `code_presentation = ${literal(activeTerm)}`;
-    const chosen = selection.courses?.length ? selection.courses : course ? [course] : [];
-    const whereCourse = chosen.length ? ` AND code_module IN (${chosen.map(literal).join(", ")})` : "";
-    const courses = await sql(`SELECT code_module FROM all_scores WHERE ${whereTerm}
+      const terms = termRows.map((row) => String(row.code_presentation));
+      const activeTerm = term ?? terms[0] ?? null;
+      const result: StudioProjectData = {
+        datasetId,
+        term: activeTerm,
+        terms,
+        course,
+        courses: [],
+        tables: {},
+      };
+      if (!activeTerm || !terms.includes(activeTerm)) return result;
+      const whereTerm = `code_presentation = ${literal(activeTerm)}`;
+      const chosen = selection.courses?.length ? selection.courses : course ? [course] : [];
+      const whereCourse = chosen.length
+        ? ` AND code_module IN (${chosen.map(literal).join(", ")})`
+        : "";
+      const courses = await sql(`SELECT code_module FROM all_scores WHERE ${whereTerm}
       GROUP BY code_module HAVING COUNT(*) >= 3 ORDER BY code_module ASC`);
-    result.courses = courses.map((row) => String(row.code_module));
-    await sql(`CREATE TEMP TABLE studio_scores AS SELECT * FROM all_scores
+      result.courses = courses.map((row) => String(row.code_module));
+      await sql(`CREATE TEMP TABLE studio_scores AS SELECT * FROM all_scores
       WHERE ${whereTerm}${whereCourse}`);
-    const box = await sql(`SELECT code_module AS "课程", MIN(score) AS "最小值",
+      const box = await sql(`SELECT code_module AS "课程", MIN(score) AS "最小值",
       QUANTILE_CONT(score, 0.25) AS "下四分位数", MEDIAN(score) AS "中位数",
       QUANTILE_CONT(score, 0.75) AS "上四分位数", MAX(score) AS "最大值", COUNT(*) AS "样本数"
       FROM studio_scores GROUP BY code_module HAVING COUNT(*) >= 3 ORDER BY code_module LIMIT 40`);
-    result.tables.boxplot = table(box, ["课程", "最小值", "下四分位数", "中位数", "上四分位数", "最大值", "样本数"],
-      `${activeTerm} · 有效成绩五数概要，须线表示最小值和最大值；每组至少 3 人。`);
-    const index = terms.indexOf(activeTerm);
-    const previous = selection.beforeTerm ?? terms[index + 1];
-    if (previous && !terms.includes(previous)) throw new Error("对比学期不在当前数据中。");
-    const comparison = previous ? await sql(`
+      result.tables.boxplot = table(
+        box,
+        ["课程", "最小值", "下四分位数", "中位数", "上四分位数", "最大值", "样本数"],
+        `${activeTerm} · 有效成绩五数概要，须线表示最小值和最大值；每组至少 3 人。`,
+      );
+      const index = terms.indexOf(activeTerm);
+      const previous = selection.beforeTerm ?? terms[index + 1];
+      if (previous && !terms.includes(previous)) throw new Error("对比学期不在当前数据中。");
+      const comparison = previous
+        ? await sql(`
       WITH before AS (SELECT code_module, AVG(score) AS mean, COUNT(*) AS n FROM all_scores
         WHERE code_presentation = ${literal(previous)}${whereCourse} GROUP BY code_module HAVING COUNT(*) >= 3),
       after AS (SELECT code_module, AVG(score) AS mean, COUNT(*) AS n FROM studio_scores
         GROUP BY code_module HAVING COUNT(*) >= 3)
       SELECT code_module AS "课程", ROUND(b.mean, 2) AS "前期均分", ROUND(a.mean, 2) AS "后期均分",
         b.n AS "前期样本", a.n AS "后期样本"
-      FROM before b JOIN after a USING(code_module) ORDER BY code_module LIMIT 40`) : [];
-    result.tables.dumbbell = table(comparison, ["课程", "前期均分", "后期均分", "前期样本", "后期样本"],
-      previous ? `${previous} → ${activeTerm} · 两学期各自选课样本的课程均分比较，不等同于同一批学生的个人进步。` : "当前学期之前没有可比较的学期，可导入自己的前后对比数据。");
+      FROM before b JOIN after a USING(code_module) ORDER BY code_module LIMIT 40`)
+        : [];
+      result.tables.dumbbell = table(
+        comparison,
+        ["课程", "前期均分", "后期均分", "前期样本", "后期样本"],
+        previous
+          ? `${previous} → ${activeTerm} · 两学期各自选课样本的课程均分比较，不等同于同一批学生的个人进步。`
+          : "当前学期之前没有可比较的学期，可导入自己的前后对比数据。",
+      );
 
-    const activitySource = datasetId === "demo"
-      ? `SELECT code_module, code_presentation, id_student, TRY_CAST(week AS INTEGER) AS week,
+      const activitySource =
+        datasetId === "demo"
+          ? `SELECT code_module, code_presentation, id_student, TRY_CAST(week AS INTEGER) AS week,
            SUM(TRY_CAST(activity_count AS DOUBLE)) AS activity
          FROM ${csv(DEMO_ACTIVITY)} WHERE TRY_CAST(activity_count AS DOUBLE) >= 0 GROUP BY ALL`
-      : `SELECT code_module, code_presentation, id_student, FLOOR(TRY_CAST(date AS DOUBLE) / 7)::INTEGER + 1 AS week,
+          : `SELECT code_module, code_presentation, id_student, FLOOR(TRY_CAST(date AS DOUBLE) / 7)::INTEGER + 1 AS week,
            SUM(TRY_CAST(sum_click AS DOUBLE)) AS activity
          FROM ${csv(OULAD.studentVle)} WHERE TRY_CAST(sum_click AS DOUBLE) >= 0 GROUP BY ALL`;
-    await sql(`CREATE TEMP TABLE studio_activity AS ${activitySource}`);
-    const rhythm = await sql(`SELECT week AS "周次", code_module AS "课程",
+      await sql(`CREATE TEMP TABLE studio_activity AS ${activitySource}`);
+      const rhythm = await sql(`SELECT week AS "周次", code_module AS "课程",
         ROUND(AVG(activity), 2) AS "人均访问次数", COUNT(DISTINCT id_student) AS "当周有记录人数"
       FROM studio_activity WHERE ${whereTerm}${whereCourse} AND week IS NOT NULL AND id_student IS NOT NULL
       GROUP BY week, code_module HAVING COUNT(DISTINCT id_student) >= 3 ORDER BY code_module, week LIMIT 2000`);
-    result.tables.heatmap = table(rhythm, ["周次", "课程", "人均访问次数", "当周有记录人数"],
-      `${activeTerm} · 按学生-课程-周汇总访问次数，再计算当周有记录学生的人均值；缺失组合留空，不当作零。`);
-    if (datasetId === "demo") {
-      await sql(`CREATE TEMP TABLE studio_attributes AS
+      result.tables.heatmap = table(
+        rhythm,
+        ["周次", "课程", "人均访问次数", "当周有记录人数"],
+        `${activeTerm} · 按学生-课程-周汇总访问次数，再计算当周有记录学生的人均值；缺失组合留空，不当作零。`,
+      );
+      if (datasetId === "demo") {
+        await sql(`CREATE TEMP TABLE studio_attributes AS
         SELECT code_module, code_presentation, id_student,
           AVG(CASE WHEN TRY_CAST(attendance_rate AS DOUBLE) BETWEEN 0 AND 100 THEN TRY_CAST(attendance_rate AS DOUBLE) END) AS attendance,
           AVG(CASE WHEN TRY_CAST(homework_completion_rate AS DOUBLE) BETWEEN 0 AND 100 THEN TRY_CAST(homework_completion_rate AS DOUBLE) END) AS homework,
@@ -646,50 +787,73 @@ export async function chartStudioData(
           AVG(CASE WHEN TRY_CAST(absent_sessions AS DOUBLE) BETWEEN 0 AND TRY_CAST(scheduled_sessions AS DOUBLE)
             THEN TRY_CAST(absent_sessions AS DOUBLE) END) AS unexcused
         FROM ${csv(DEMO_OUTCOMES)} WHERE ${whereTerm}${whereCourse} GROUP BY ALL`);
-      const paths = await sql(`SELECT
+        const paths = await sql(`SELECT
           CASE WHEN attendance < 80 THEN '出勤低于80%' WHEN attendance < 95 THEN '出勤80–95%' ELSE '出勤至少95%' END AS "出勤档位",
           CASE WHEN homework < 60 THEN '作业完成低于60%' WHEN homework < 90 THEN '作业完成60–90%' ELSE '作业完成至少90%' END AS "作业档位",
           CASE WHEN score < 60 THEN '成绩低于60分' WHEN score < 80 THEN '成绩60–80分' ELSE '成绩至少80分' END AS "成绩档位",
           COUNT(*) AS "数量"
         FROM studio_scores JOIN studio_attributes USING(code_module, code_presentation, id_student)
         WHERE attendance IS NOT NULL AND homework IS NOT NULL GROUP BY ALL HAVING COUNT(*) >= 3 ORDER BY ALL`);
-      result.tables.sankey = table(paths, ["出勤档位", "作业档位", "成绩档位", "数量"],
-        `${activeTerm} · ${course ? "人数" : "选课人次"}，完整三层路径少于 3 人的不展示；按层汇总连接带，不表示因果或同一学生的时间流转。`);
-      const density = await sql(`SELECT LEAST(9, FLOOR(attendance / 10)) * 10 + 5 AS "出勤率区间中心",
+        result.tables.sankey = table(
+          paths,
+          ["出勤档位", "作业档位", "成绩档位", "数量"],
+          `${activeTerm} · ${course ? "人数" : "选课人次"}，完整三层路径少于 3 人的不展示；按层汇总连接带，不表示因果或同一学生的时间流转。`,
+        );
+        const density =
+          await sql(`SELECT LEAST(9, FLOOR(attendance / 10)) * 10 + 5 AS "出勤率区间中心",
           LEAST(19, FLOOR(score / 5)) * 5 + 2.5 AS "成绩区间中心", COUNT(*) AS "频数"
         FROM studio_scores JOIN studio_attributes USING(code_module, code_presentation, id_student)
         WHERE attendance IS NOT NULL GROUP BY ALL HAVING COUNT(*) >= 3 ORDER BY ALL`);
-      result.tables.density = table(density, ["出勤率区间中心", "成绩区间中心", "频数"],
-        `${activeTerm} · 按出勤率 10 个百分点、成绩 5 分聚合；坐标为区间中心，频数少于 3 人不展示。`);
-    }
-    if (datasetId === "demo" && (selection.densityMetric === "absence" || selection.densityMetric === "unexcused")) {
-      const metric = selection.densityMetric;
-      const label = metric === "absence" ? "缺勤课时" : "旷课课时";
-      const density = await sql(`SELECT ${metric} AS "${label}",
+        result.tables.density = table(
+          density,
+          ["出勤率区间中心", "成绩区间中心", "频数"],
+          `${activeTerm} · 按出勤率 10 个百分点、成绩 5 分聚合；坐标为区间中心，频数少于 3 人不展示。`,
+        );
+      }
+      if (
+        datasetId === "demo" &&
+        (selection.densityMetric === "absence" || selection.densityMetric === "unexcused")
+      ) {
+        const metric = selection.densityMetric;
+        const label = metric === "absence" ? "缺勤课时" : "旷课课时";
+        const density = await sql(`SELECT ${metric} AS "${label}",
           LEAST(19, FLOOR(score / 5)) * 5 + 2.5 AS "成绩区间中心", COUNT(*) AS "频数"
         FROM studio_scores JOIN studio_attributes USING(code_module, code_presentation, id_student)
         WHERE ${metric} IS NOT NULL GROUP BY ALL HAVING COUNT(*) >= 3 ORDER BY ALL`);
-      result.tables.density = table(density, [label, "成绩区间中心", "频数"],
-        `${activeTerm} · ${label}按学生-课程-学期统计，${metric === "absence" ? "包含请假缺席与旷课" : "仅无有效批准请假的旷课，不含请假缺席"}；每课时45分钟，不等同于请假申请或缺勤事件次数。成绩按5分分档，频数为选课人次；少于3人的组合不展示，缺失记录不当作零，也不以活跃度替代。`);
-    }
-    if (datasetId === "oulad" || selection.densityMetric === "activity") {
-      const density = await sql(`WITH activity AS (SELECT code_module, code_presentation, id_student, SUM(activity) AS activity
+        result.tables.density = table(
+          density,
+          [label, "成绩区间中心", "频数"],
+          `${activeTerm} · ${label}按学生-课程-学期统计，${metric === "absence" ? "包含请假缺席与旷课" : "仅无有效批准请假的旷课，不含请假缺席"}；每课时45分钟，不等同于请假申请或缺勤事件次数。成绩按5分分档，频数为选课人次；少于3人的组合不展示，缺失记录不当作零，也不以活跃度替代。`,
+        );
+      }
+      if (datasetId === "oulad" || selection.densityMetric === "activity") {
+        const density =
+          await sql(`WITH activity AS (SELECT code_module, code_presentation, id_student, SUM(activity) AS activity
           FROM studio_activity WHERE ${whereTerm}${whereCourse} GROUP BY ALL)
         SELECT FLOOR(activity / 100) * 100 + 50 AS "活动量区间中心",
           LEAST(19, FLOOR(score / 5)) * 5 + 2.5 AS "成绩区间中心", COUNT(*) AS "频数"
         FROM studio_scores JOIN activity USING(code_module, code_presentation, id_student)
         GROUP BY ALL HAVING COUNT(*) >= 3 ORDER BY ALL LIMIT 2000`);
-      result.tables.density = table(density, ["活动量区间中心", "成绩区间中心", "频数"],
-        `${activeTerm} · 活动量按 100 次、成绩按 5 分汇总，频数少于 3 人不展示；${datasetId === "oulad" ? "OULAD 不含校园出勤和作业完成率。" : "演示数据，活动量与成绩不代表因果关系。"}`);
-    }
-    return result;
-  }, { ...API_QUERY_LIMITS.analysis, maxResultRows: 2500 }, options);
+        result.tables.density = table(
+          density,
+          ["活动量区间中心", "成绩区间中心", "频数"],
+          `${activeTerm} · 活动量按 100 次、成绩按 5 分汇总，频数少于 3 人不展示；${datasetId === "oulad" ? "OULAD 不含校园出勤和作业完成率。" : "演示数据，活动量与成绩不代表因果关系。"}`,
+        );
+      }
+      return result;
+    },
+    { ...API_QUERY_LIMITS.analysis, maxResultRows: 2500 },
+    options,
+  );
 }
 
 export async function profileDatasets(
   options: QueryExecutionOptions = {},
+  datasetIds: DataSource[] = ["demo", "oulad"],
 ): Promise<DatasetProfile[]> {
-  const signature = profileCacheSignature();
+  if (!datasetIds.length) return [];
+  for (const id of datasetIds) assertCurrentAccess(id);
+  const signature = profileCacheSignature() + ":" + [...datasetIds].sort().join(",");
   const cacheNow = Date.now();
   // Cancellation must stay observable even when a warm snapshot exists.
   const cached = options.signal?.aborted
@@ -704,12 +868,16 @@ export async function profileDatasets(
     async (sql) => {
       const tables = new Map<string, Awaited<ReturnType<typeof profileTable>>>();
       const candidates: ProfileTable[] = [
-        ...demoTables,
-        { name: "studentInfo", grain: "学生-课程-开课期", path: OULAD.studentInfo },
-        { name: "studentVle", grain: "学生-课程-开课期-日期-资源", path: OULAD.studentVle },
-        { name: "studentAssessment", grain: "学生-考核项", path: OULAD.studentAssessment },
-        { name: "assessments", grain: "课程-开课期-考核项", path: OULAD.assessments },
-        { name: "courses", grain: "课程-开课期", path: OULAD.courses },
+        ...(datasetIds.includes("demo") ? demoTables : []),
+        ...(datasetIds.includes("oulad")
+          ? [
+              { name: "studentInfo", grain: "学生-课程-开课期", path: OULAD.studentInfo },
+              { name: "studentVle", grain: "学生-课程-开课期-日期-资源", path: OULAD.studentVle },
+              { name: "studentAssessment", grain: "学生-考核项", path: OULAD.studentAssessment },
+              { name: "assessments", grain: "课程-开课期-考核项", path: OULAD.assessments },
+              { name: "courses", grain: "课程-开课期", path: OULAD.courses },
+            ]
+          : []),
       ];
       for (const candidate of candidates) {
         if (fileExists(candidate.path))
@@ -783,8 +951,9 @@ export async function profileDatasets(
       ],
     },
   ];
-  profileCache = { signature, expiresAt: cacheNow + PROFILE_CACHE_TTL_MS, profiles };
-  return profiles;
+  const scoped = profiles.filter((profile) => datasetIds.includes(profile.id));
+  profileCache = { signature, expiresAt: cacheNow + PROFILE_CACHE_TTL_MS, profiles: scoped };
+  return scoped;
 }
 
 /**
@@ -798,6 +967,7 @@ export async function absenceStats(
   options: QueryExecutionOptions = {},
 ): Promise<AbsenceStats> {
   const request = absenceRequestSchema.parse(input);
+  assertCurrentAccess(request.datasetId);
   const support = absenceSupport(request.datasetId, request.unit);
   if (!support.supported)
     return {

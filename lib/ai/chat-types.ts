@@ -107,6 +107,8 @@ export type ChatArtifact =
       table: StudioTable;
       densityMode?: "density" | "scatter";
       term: string;
+      /** Reference term is part of a comparison result's identity. */
+      comparisonTerm?: string;
       view: "chart" | "table";
       /**
        * Courses the chart was narrowed to. Optional for older snapshots, but

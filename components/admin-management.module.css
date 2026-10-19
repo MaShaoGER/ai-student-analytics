@@ -1,0 +1,1227 @@
+/* Stage 2–4 admin workbench. Tokens come from app/theme.css for both themes. */
+.intro {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.introWithAction {
+  align-items: center;
+}
+
+.intro h2 {
+  margin: 3px 0 6px;
+  color: var(--ink);
+  font-size: clamp(22px, 2.3vw, 32px);
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+}
+
+.intro p {
+  max-width: 68ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.eyebrow {
+  color: var(--accent-ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.windowControl {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.dashboard {
+  display: grid;
+  gap: 16px;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--line);
+  background: var(--sage-soft);
+}
+
+.metricCard {
+  position: relative;
+  display: flex;
+  min-height: 130px;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px;
+  border-right: 1px solid var(--line);
+  background: var(--sage-soft);
+}
+
+.metricCard:last-child {
+  border-right: 0;
+}
+
+.metricCard::after {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  width: 30px;
+  height: 6px;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0 4px,
+    color-mix(in srgb, var(--ink) 34%, transparent) 4px 6px
+  );
+  content: "";
+}
+
+.metricCard > span {
+  color: var(--muted-on-sage);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.metricCard strong {
+  color: var(--ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: clamp(27px, 3vw, 40px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.metricCard small {
+  max-width: 27ch;
+  padding-right: 28px;
+  color: var(--muted-on-sage);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.costMetric {
+  background: color-mix(in srgb, var(--sage-soft) 68%, var(--accent) 32%);
+}
+
+.overviewGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
+  gap: 16px;
+}
+
+.dataPanel {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.panelBody {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+
+.requestBreakdown {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--line);
+  background: var(--surface-inset);
+}
+
+.requestBreakdown > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-right: 1px solid var(--line);
+}
+
+.requestBreakdown > div:last-child {
+  border-right: 0;
+}
+
+.requestBreakdown span,
+.requestBreakdown small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.requestBreakdown strong {
+  color: var(--ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.factList {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.factList > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  min-width: 0;
+  padding: 9px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+.factList > div:first-child {
+  padding-top: 0;
+}
+
+.factList > div:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.factList dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.factList dd {
+  margin: 0;
+  color: var(--ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.rangeNote {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--surface-inset);
+  color: var(--muted);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  line-height: 1.65;
+}
+
+.coverageLayout {
+  grid-template-columns: minmax(230px, 0.75fr) minmax(0, 1.25fr);
+  align-items: start;
+}
+
+.limitations {
+  padding: 13px;
+  border: 1px solid var(--line);
+  background: var(--surface-inset);
+}
+
+.limitations strong {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.limitations ul,
+.limitations p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.limitations ul {
+  padding-left: 18px;
+}
+
+.limitations p + p {
+  margin-top: 7px;
+}
+
+.warningText {
+  color: var(--warning) !important;
+  font-weight: 650;
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(126px, 0.35fr)) auto;
+  align-items: end;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-inset);
+}
+
+.searchField {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--muted);
+}
+
+.searchField:focus-within {
+  border-color: var(--accent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 38%, transparent);
+  outline-offset: 1px;
+}
+
+.searchField input {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  padding: 0;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.compactField {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.035em;
+}
+
+.compactField select,
+.logFilters input,
+.logFilters select,
+.pagination select {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+}
+
+.tablePanel {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tableScroll {
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.table {
+  width: 100%;
+  min-width: 800px;
+  border-collapse: collapse;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.table th {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-raised);
+  color: var(--muted);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.table td {
+  padding: 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  vertical-align: top;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table tbody tr:hover {
+  background: color-mix(in srgb, var(--sage-soft) 58%, var(--paper));
+}
+
+.table td > small,
+.table td > span > small,
+.table td > div > small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.table strong {
+  font-weight: 650;
+}
+
+.accountIdentity {
+  display: flex;
+  min-width: 170px;
+  align-items: center;
+  gap: 10px;
+}
+
+.accountIdentity > span:last-child {
+  min-width: 0;
+}
+
+.avatar {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  border: 1px solid var(--line);
+  background: var(--sage-soft);
+  color: var(--ink);
+  font-weight: 750;
+}
+
+.grantList,
+.rowActions,
+.capabilities {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.grantList > span {
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  background: var(--surface-inset);
+  color: var(--ink);
+  font-size: 10px;
+}
+
+.rowActions {
+  min-width: 210px;
+  gap: 2px 10px;
+}
+
+.rowActions .text-button,
+.rowActions button {
+  min-height: 32px;
+  padding: 4px 0;
+  font-size: 11px;
+}
+
+.protectedText {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.mutedCell {
+  color: var(--muted) !important;
+  font-size: 11px;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 54px;
+  padding: 9px 12px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-inset);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.paginationControls {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.paginationControls label {
+  min-width: 116px;
+}
+
+.paginationControls select {
+  min-height: 36px;
+  padding: 6px 8px;
+}
+
+.paginationControls button {
+  width: 38px;
+  min-width: 38px;
+  height: 36px;
+  min-height: 36px;
+  padding: 8px;
+}
+
+.pageIndicator {
+  min-width: 52px;
+  color: var(--ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.emptyState,
+.loadingState {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 100px;
+  margin: 12px;
+  padding: 18px;
+  border: 1px dashed var(--line);
+  background: var(--surface-inset);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.emptyState > div {
+  flex: 1;
+}
+
+.emptyState strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.emptyState p {
+  margin: 0;
+}
+
+.emptyIcon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  place-items: center;
+  border: 1px solid var(--line);
+  background: var(--sage-soft);
+  color: var(--ink);
+}
+
+.loadingMark {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: adminSpin 900ms linear infinite;
+}
+
+@keyframes adminSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.inlineNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0 12px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  background: var(--surface-inset);
+  color: var(--ink);
+  font-size: 11px;
+}
+
+.createPanel {
+  margin: 0 0 16px;
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--line));
+  overflow: hidden;
+}
+
+.createGrid,
+.editGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 16px;
+}
+
+.createGrid > .datasetChoices,
+.editGrid > .datasetChoices,
+.createGrid > .panelSubtitle {
+  grid-column: 1 / -1;
+}
+
+.panelSubtitle {
+  margin: 0 0 2px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.datasetChoices {
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+}
+
+.datasetChoices legend {
+  padding: 0 5px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.datasetChoices > .form-help {
+  margin: 8px 0 0;
+}
+
+.checkRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-height: 40px;
+  padding: 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
+  cursor: pointer;
+}
+
+.checkRow:last-of-type {
+  border-bottom: 0;
+}
+
+.checkRow input {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+  margin: 1px 0 0;
+}
+
+.checkRow span {
+  display: grid;
+  gap: 2px;
+}
+
+.checkRow small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.formActions,
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.formActions {
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-inset);
+}
+
+.dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(82svh, 760px);
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 16px 16px 0 color-mix(in srgb, var(--ink) 22%, transparent);
+}
+
+.dialogWide {
+  width: min(720px, calc(100vw - 32px));
+}
+
+.dialog::backdrop {
+  background: color-mix(in srgb, var(--ink) 58%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.dialogHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-raised);
+}
+
+.dialogHeader > div {
+  min-width: 0;
+}
+
+.dialogHeader h2 {
+  margin: 1px 0 5px;
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.dialogHeader p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.dialogIcon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  border: 1px solid var(--line);
+  background: var(--sage-soft);
+  color: var(--ink);
+}
+
+.dangerIcon {
+  border-color: color-mix(in srgb, var(--danger) 58%, var(--line));
+  background: color-mix(in srgb, var(--danger) 12%, var(--paper));
+  color: var(--danger);
+}
+
+.dialogActions {
+  padding: 14px 18px 18px;
+}
+
+.dangerButton {
+  min-height: 40px;
+  padding: 9px 14px;
+  border: 1px solid var(--danger);
+  border-radius: 0;
+  background: var(--danger);
+  color: var(--paper);
+  font-weight: 700;
+}
+
+.passwordReveal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px;
+}
+
+.passwordReveal code {
+  min-width: 0;
+  flex: 1;
+  padding: 12px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  background: var(--surface-inset);
+  color: var(--ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 14px;
+  white-space: nowrap;
+  user-select: all;
+}
+
+.datasetGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.datasetCard {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.datasetCard[data-enabled="false"] {
+  background: color-mix(in srgb, var(--paper) 84%, var(--surface-inset));
+}
+
+.datasetHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 15px;
+  border-bottom: 1px solid var(--line);
+}
+
+.datasetHeader > div:last-child {
+  min-width: 0;
+}
+
+.datasetHeader h3 {
+  margin: 1px 0 3px;
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.datasetHeader p {
+  margin: 0;
+  color: var(--muted);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.datasetIcon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  border: 1px solid var(--line);
+  background: var(--sage-soft);
+  color: var(--ink);
+}
+
+.datasetFacts {
+  display: grid;
+  margin: 0;
+  padding: 4px 15px;
+}
+
+.datasetFacts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
+}
+
+.datasetFacts dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.datasetFacts dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 11px;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.capabilities {
+  padding: 11px 15px;
+}
+
+.capabilities span {
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  background: var(--surface-inset);
+  color: var(--ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 9px;
+}
+
+.datasetFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+  padding: 12px 15px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-inset);
+}
+
+.switchButton {
+  display: inline-flex;
+  min-width: 92px;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.switchButton span {
+  width: 8px;
+  height: 8px;
+  background: var(--muted);
+}
+
+.switchButton[data-checked="true"] {
+  border-color: color-mix(in srgb, var(--success) 65%, var(--line));
+}
+
+.switchButton[data-checked="true"] span {
+  background: var(--success);
+}
+
+.logFilters {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
+}
+
+.filterGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.logFilters label {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.logFilters input {
+  font-size: 11px;
+}
+
+.filterActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.logTime {
+  color: var(--ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.summaryList {
+  display: grid;
+  gap: 3px;
+  max-width: 320px;
+  color: var(--ink);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.summaryList span {
+  overflow-wrap: anywhere;
+}
+
+.coverageStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 12px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-inset);
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.coverageStrip > strong {
+  margin-right: 4px;
+  color: var(--ink);
+}
+
+@media (max-width: 980px) {
+  .metricGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metricCard:nth-child(2) {
+    border-right: 0;
+  }
+
+  .metricCard:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .overviewGrid,
+  .coverageLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .filterGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .toolbar {
+    grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(120px, 0.35fr));
+  }
+
+  .toolbar > .text-button {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
+@media (max-width: 680px) {
+  .intro,
+  .introWithAction {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 13px;
+  }
+
+  .windowControl {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .windowControl .text-button {
+    min-height: 40px;
+    justify-content: center;
+  }
+
+  .metricGrid,
+  .datasetGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .metricCard {
+    min-height: 116px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .metricCard:nth-child(2) {
+    border-right: 0;
+  }
+
+  .metricCard:last-child {
+    border-bottom: 0;
+  }
+
+  .requestBreakdown {
+    grid-template-columns: 1fr;
+  }
+
+  .requestBreakdown > div {
+    grid-template-columns: 1fr auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .requestBreakdown > div:last-child {
+    border-bottom: 0;
+  }
+
+  .requestBreakdown small {
+    grid-column: 2;
+  }
+
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .toolbar > .text-button {
+    grid-column: auto;
+  }
+
+  .filterGrid,
+  .createGrid,
+  .editGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .createGrid > .datasetChoices,
+  .editGrid > .datasetChoices,
+  .createGrid > .panelSubtitle {
+    grid-column: auto;
+  }
+
+  .formActions,
+  .dialogActions,
+  .filterActions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .formActions > button,
+  .dialogActions > button,
+  .filterActions > button {
+    width: 100%;
+    min-height: 42px;
+  }
+
+  .pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .paginationControls {
+    justify-content: space-between;
+  }
+
+  .paginationControls label {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .tableScroll {
+    overflow: visible;
+  }
+
+  .table {
+    display: block;
+    min-width: 0;
+  }
+
+  .table thead {
+    display: none;
+  }
+
+  .table tbody {
+    display: grid;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .table tr {
+    display: grid;
+    border: 1px solid var(--line);
+    background: var(--paper);
+  }
+
+  .table td {
+    display: grid;
+    grid-template-columns: minmax(88px, 0.34fr) minmax(0, 0.66fr);
+    gap: 10px;
+    min-width: 0;
+    padding: 9px 10px;
+  }
+
+  .table td::before {
+    align-self: start;
+    color: var(--muted);
+    content: attr(data-label);
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .table td > * {
+    min-width: 0;
+  }
+
+  .accountIdentity,
+  .rowActions {
+    min-width: 0;
+  }
+
+  .rowActions {
+    gap: 1px 12px;
+  }
+
+  .table td > small,
+  .table td > span > small,
+  .table td > div > small {
+    margin-top: 2px;
+  }
+
+  .passwordReveal {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .passwordReveal code {
+    width: 100%;
+  }
+
+  .dialog {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 92svh;
+    margin: auto 0 0;
+    border-bottom: 0;
+    box-shadow: 0 -12px 30px color-mix(in srgb, var(--ink) 24%, transparent);
+  }
+
+  .dialogWide {
+    width: 100vw;
+  }
+
+  .dialogHeader {
+    padding: 15px;
+  }
+
+  .dialogActions {
+    padding: 12px 15px 16px;
+  }
+
+  .emptyState {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loadingMark {
+    animation-duration: 1800ms;
+  }
+
+  .table tbody tr,
+  .switchButton,
+  .rowActions button {
+    transition: none;
+  }
+}
+
+/* Keep every management category legible; narrow screens scroll the tab rail. */
+:global(.admin-tabs) {
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+
+:global(.admin-tabs > [role="group"]) {
+  width: auto;
+  max-width: none;
+  min-width: max-content;
+  flex: 0 0 auto;
+  grid-auto-columns: max-content;
+}
+
+:global(.admin-tabs [role="group"] > button) {
+  width: auto;
+  min-width: max-content;
+  flex: 0 0 auto;
+}

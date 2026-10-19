@@ -39,6 +39,13 @@ import type {
   Metric,
 } from "@/lib/analysis/types";
 import type { ChartViewType } from "@/lib/analysis/visualization";
+import {
+  capabilitiesFor,
+  datasetAccessKey,
+  isDatasetEligible,
+  isPasswordChangeRequired,
+  sessionScopeKey,
+} from "@/lib/client-capabilities";
 import type { SessionUser } from "@/lib/client-types";
 
 const CourseRelations = dynamic(
@@ -196,6 +203,20 @@ function DataSourceDetails({ profile }: { profile?: DatasetProfile }) {
       </summary>
       <div className="source-details-body">
         <p className="muted">{profile.description}</p>
+        {profile.enabled === false && (
+          <div className="notice notice-warning" role="status">
+            <Icon name="info" size={17} />
+            <span>此数据集已停用。账号仍保留读取授权，但工作台不会发起数据查询。</span>
+          </div>
+        )}
+        {profile.enabled !== false && !profile.available && (
+          <div className="notice notice-warning" role="status">
+            <Icon name="info" size={17} />
+            <span>
+              {profile.unavailableReason || "源文件暂不可用"}。请联系管理员检查数据文件或启用状态。
+            </span>
+          </div>
+        )}
         <div className="source-tables">
           {profile.tables.map((table) => (
             <article key={table.name}>
@@ -251,7 +272,80 @@ function DataSourceDetails({ profile }: { profile?: DatasetProfile }) {
   );
 }
 
-function AccountPanel({ user, expire }: { user: SessionUser; expire: () => void }) {
+function sourceStatusLabel(profile: DatasetProfile): string {
+  if (profile.enabled === false && !profile.available) return "（已停用 · 源文件不可用）";
+  if (profile.enabled === false) return "（已停用）";
+  if (!profile.available) return "（源文件不可用）";
+  return "";
+}
+
+function ReadonlyOverview({
+  heading,
+  sourceControl,
+  profile,
+  profilesLoading,
+  profilesError,
+  onAnalyze,
+  onData,
+}: {
+  heading: React.ReactNode;
+  sourceControl: React.ReactNode;
+  profile?: DatasetProfile;
+  profilesLoading: boolean;
+  profilesError: string | null;
+  onAnalyze: () => void;
+  onData: () => void;
+}) {
+  const eligible = Boolean(profile && isDatasetEligible(profile));
+  return (
+    <section className="panel analysis-empty readonly-overview" data-enter="rise">
+      <Icon name="shield" size={28} />
+      <h2>只读分析工作台</h2>
+      {heading}
+      <p>
+        {profilesLoading
+          ? "正在读取账号的数据授权和源文件状态。"
+          : profilesError
+            ? profilesError
+            : !profile
+              ? "当前账号尚未授权任何数据集，请联系管理员分配数据范围。"
+              : eligible
+                ? `已授权 ${profile.name}。可以查看确定性指标、标准图表和报告预览；AI 对话与浏览器导出已关闭。`
+                : `${profile.name}${sourceStatusLabel(profile)}，当前不能发起数据查询。`}
+      </p>
+      {sourceControl}
+      <div className="account-actions">
+        <button className="primary-button" type="button" disabled={!eligible} onClick={onAnalyze}>
+          查看指标分析
+          <Icon name="arrow" size={16} />
+        </button>
+        <button className="secondary-button" type="button" onClick={onData}>
+          查看数据权限
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function sameSessionPresentation(left: SessionUser, right: SessionUser): boolean {
+  return (
+    sessionScopeKey(left) === sessionScopeKey(right) &&
+    left.username === right.username &&
+    left.displayName === right.displayName
+  );
+}
+
+function AccountPanel({
+  user,
+  passwordChangeRequired,
+  onPasswordChanged,
+  onSessionExpired,
+}: {
+  user: SessionUser;
+  passwordChangeRequired: boolean;
+  onPasswordChanged: () => void;
+  onSessionExpired: () => void;
+}) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -285,13 +379,13 @@ function AccountPanel({ user, expire }: { user: SessionUser; expire: () => void 
       });
       if (!active.current || controller.signal.aborted) return;
       if (response.status === 401) {
-        expire();
+        onSessionExpired();
         return;
       }
       const payload = await response.json();
       if (!active.current || controller.signal.aborted) return;
       if (!response.ok) throw new Error(payload.error ?? "密码修改失败。");
-      expire();
+      onPasswordChanged();
     } catch (e) {
       if (active.current && !controller.signal.aborted)
         setError(requestMessage(e, "密码修改失败。"));
@@ -309,7 +403,13 @@ function AccountPanel({ user, expire }: { user: SessionUser; expire: () => void 
         <span className="avatar avatar-large">{user.displayName.slice(0, 1)}</span>
         <h2>{user.displayName}</h2>
         <p>{user.username}</p>
-        <span className="badge badge-teal">{user.role === "admin" ? "管理员" : "分析用户"}</span>
+        <span className="badge badge-teal">
+          {user.role === "admin"
+            ? "管理员"
+            : user.role === "readonly"
+              ? "只读用户"
+              : "教师／分析人员"}
+        </span>
         <div className="account-note">
           <Icon name="shield" size={19} />
           <span>你的账号权限由管理员统一管理。</span>
@@ -321,6 +421,12 @@ function AccountPanel({ user, expire }: { user: SessionUser; expire: () => void 
         </div>
       </section>
       <section className="panel password-panel">
+        {passwordChangeRequired && (
+          <div className="notice notice-warning" role="alert">
+            <Icon name="lock" size={18} />
+            <span>当前使用的是临时密码。请先在这里设置新密码，再使用学习分析工作台。</span>
+          </div>
+        )}
         <div className="section-heading">
           <div>
             <h2>修改登录密码</h2>
@@ -385,11 +491,13 @@ function ReportCenter({
   selectedKey,
   onSelect,
   onStart,
+  canExport,
 }: {
   analyses: SessionAnalysis[];
   selectedKey: string;
   onSelect: (key: string) => void;
   onStart: () => void;
+  canExport: boolean;
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [loadedHtml, setLoadedHtml] = useState("");
@@ -399,6 +507,7 @@ function ReportCenter({
   const { theme } = useTheme();
   const html = useMemo(() => (result ? analysisReportHtml(result, theme) : ""), [result, theme]);
   function printReport() {
+    if (!canExport) return;
     setPrintError("");
     try {
       const reportWindow = frame.current?.contentWindow;
@@ -458,36 +567,42 @@ function ReportCenter({
             ))}
           </select>
         </label>
-        <div className="report-actions">
-          <button
-            className="primary-button"
-            disabled={loadedHtml !== html}
-            onClick={printReport}
-            type="button"
-          >
-            <Icon name="file" size={16} />
-            打印 / 另存 PDF
-          </button>
-          <button
-            className="secondary-button"
-            onClick={() => downloadAnalysisFile(result, "html")}
-            type="button"
-          >
-            <Icon name="download" size={16} />
-            下载 HTML 报告
-          </button>
-          <button
-            className="secondary-button"
-            onClick={() => downloadAnalysisFile(result, "csv")}
-            type="button"
-          >
-            <Icon name="download" size={16} />
-            下载 CSV 数据
-          </button>
-        </div>
-        <p className="report-help">
-          点击打印后，在浏览器的打印窗口中选择“另存为 PDF”。HTML 报告可下载后独立打开。
-        </p>
+        {canExport ? (
+          <>
+            <div className="report-actions">
+              <button
+                className="primary-button"
+                disabled={loadedHtml !== html}
+                onClick={printReport}
+                type="button"
+              >
+                <Icon name="file" size={16} />
+                打印 / 另存 PDF
+              </button>
+              <button
+                className="secondary-button"
+                onClick={() => downloadAnalysisFile(result, "html")}
+                type="button"
+              >
+                <Icon name="download" size={16} />
+                下载 HTML 报告
+              </button>
+              <button
+                className="secondary-button"
+                onClick={() => downloadAnalysisFile(result, "csv")}
+                type="button"
+              >
+                <Icon name="download" size={16} />
+                下载 CSV 数据
+              </button>
+            </div>
+            <p className="report-help">
+              点击打印后，在浏览器的打印窗口中选择“另存为 PDF”。HTML 报告可下载后独立打开。
+            </p>
+          </>
+        ) : (
+          <p className="muted">只读账号可以预览报告，浏览器导出已关闭。</p>
+        )}
         {printError && (
           <p className="notice notice-error" role="alert">
             {printError}
@@ -499,7 +614,7 @@ function ReportCenter({
         data-enter="fade"
         style={{ "--enter-delay": "280ms" } as CSSProperties}
         ref={frame}
-        sandbox="allow-same-origin allow-modals"
+        sandbox={canExport ? "allow-same-origin allow-modals" : "allow-same-origin"}
         srcDoc={html}
         title={`${result.metricLabel}分析报告预览`}
         onLoad={() => setLoadedHtml(html)}
@@ -523,7 +638,9 @@ export function Workspace() {
   const [logoutError, setLogoutError] = useState("");
   const [profiles, setProfiles] = useState<DatasetProfile[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(true);
-  const [datasetId, setDatasetId] = useState<DataSource>("demo");
+  const profilesLoaded = useRef(false);
+  const [profilesError, setProfilesError] = useState<string | null>(null);
+  const [datasetId, setDatasetId] = useState<DataSource | null>(null);
   const [aiStatus, setAIStatus] = useState<AIStatus>({
     configured: false,
     enabled: false,
@@ -558,12 +675,27 @@ export function Workspace() {
   const [inputError, setInputError] = useState<string | null>(null);
   const [failedAsk, setFailedAsk] = useState<FailedAsk | null>(null);
   const [loginNotice, setLoginNotice] = useState<string | null>(null);
+  const [profileRefreshCount, setProfileRefreshCount] = useState(0);
   const [refreshCount, setRefreshCount] = useState(0);
   const generation = useRef(0);
   const askPending = useRef<AbortController | null>(null);
+  const sessionSyncPending = useRef<{
+    controller: AbortController;
+    promise: Promise<void>;
+  } | null>(null);
+  const userScope = useRef("");
+  const profileAccessKey = useRef("");
   const selectedProfile = profiles.find((profile) => profile.id === datasetId);
-  const canRun = !profilesLoading && Boolean(selectedProfile?.available);
+  const capabilities = capabilitiesFor(user);
+  const passwordChangeRequired = isPasswordChangeRequired(user);
+  const canRun =
+    capabilities.canViewBusiness &&
+    !profilesLoading &&
+    Boolean(selectedProfile && isDatasetEligible(selectedProfile));
+  const eligibleDatasetId =
+    datasetId && selectedProfile && isDatasetEligible(selectedProfile) ? datasetId : null;
   const aiReady = aiStatus.configured && aiStatus.enabled;
+  const aiAllowed = capabilities.canUseAI && canRun;
   const showDistribution = mode === "metrics" && metric === "score" && scoreView === "distribution";
   const showRelations = mode === "metrics" && metric === "score" && scoreView === "relations";
   const showPanorama = mode === "metrics" && metric === "score" && scoreView === "panorama";
@@ -576,11 +708,162 @@ export function Workspace() {
       [{ key, result }, ...previous.filter((entry) => entry.key !== key)].slice(0, 20),
     );
   }, []);
+
+  const expire = useCallback(
+    (notice: string | null = null) => {
+      generation.current++;
+      sessionSyncPending.current?.controller.abort();
+      sessionSyncPending.current = null;
+      askPending.current?.abort();
+      askPending.current = null;
+      setLoginNotice(notice);
+      setUser(null);
+      userScope.current = "";
+      setProfiles([]);
+      profilesLoaded.current = false;
+      setProfilesLoading(false);
+      setProfilesError(null);
+      setDatasetId(null);
+      profileAccessKey.current = "";
+      setOverview({});
+      setOverviewLoading(false);
+      setAnalysis(null);
+      setAskResult(null);
+      setSessionAnalyses([]);
+      setSelectedReportKey("");
+      setChatMessages([]);
+      setPendingQuestion("");
+      setPendingSteps([]);
+      setChatContext(null);
+      setExpandedChartId(null);
+      setQuestion("");
+      setError(null);
+      setInputError(null);
+      setFailedAsk(null);
+      setAskLoading(false);
+      setBrowseLoading(false);
+      sidebar.current?.hidePopover();
+      logoutDialog.current?.close();
+      setSidebarOpen(false);
+      setMode("metrics");
+      setView("overview");
+    },
+    [],
+  );
+
+  const clearScopedState = useCallback(
+    (nextView: View = "overview", notice: string | null = null) => {
+      generation.current++;
+      askPending.current?.abort();
+      askPending.current = null;
+      setProfiles([]);
+      profilesLoaded.current = false;
+      setProfilesLoading(true);
+      setProfilesError(null);
+      setDatasetId(null);
+      profileAccessKey.current = "";
+      setOverview({});
+      setOverviewLoading(false);
+      setAIStatus({ configured: false, enabled: false, model: null });
+      setAnalysis(null);
+      setAskResult(null);
+      setSessionAnalyses([]);
+      setSelectedReportKey("");
+      setChatMessages([]);
+      setPendingQuestion("");
+      setPendingSteps([]);
+      setChatContext(null);
+      setExpandedChartId(null);
+      setQuestion("");
+      setError(null);
+      setInputError(null);
+      setFailedAsk(null);
+      setAskLoading(false);
+      setBrowseLoading(false);
+      setLoginNotice(notice);
+      setMode("metrics");
+      setView(nextView);
+    },
+    [],
+  );
+
+  // Focus, visibility, and polling share one request. Overlapping events must
+  // not cancel the active check and strand boot or permission refresh in a
+  // half-applied state. Logout and unmount remain the only cancellation owners.
+  const syncAccess = useCallback(
+    (options: { boot?: boolean } = {}): Promise<void> => {
+      const active = sessionSyncPending.current;
+      if (active) {
+        if (!options.boot) return active.promise;
+        return active.promise.catch((requestError) => {
+          throw requestError;
+        });
+      }
+
+      const controller = new AbortController();
+      const promise = (async () => {
+        let response: Response;
+        try {
+          response = await fetch("/api/auth/session", {
+            cache: "no-store",
+            signal: controller.signal,
+          });
+        } catch (requestError) {
+          if (controller.signal.aborted) return;
+          if (options.boot) throw requestError;
+          return;
+        }
+        if (!response.ok) {
+          if (response.status === 401) expire("登录已过期，请重新登录。");
+          else if (options.boot)
+            throw new Error("暂时无法连接工作台，请检查服务后重试。");
+          return;
+        }
+        const payload = (await response.json().catch(() => null)) as
+          | { user?: SessionUser | null; setupRequired?: boolean }
+          | null;
+        if (!payload) {
+          if (options.boot) throw new Error("返回数据格式异常，请稍后重试。");
+          return;
+        }
+        if (controller.signal.aborted || sessionSyncPending.current?.controller !== controller)
+          return;
+        const nextUser = payload.user ?? null;
+        setSetupRequired(Boolean(payload.setupRequired));
+        if (!nextUser) {
+          expire("登录已过期，请重新登录。");
+          return;
+        }
+        const nextScope = sessionScopeKey(nextUser);
+        const changed = nextScope !== userScope.current;
+        setUser((previous) =>
+          previous && sameSessionPresentation(previous, nextUser) ? previous : nextUser,
+        );
+        userScope.current = nextScope;
+        setProfileRefreshCount((count) => count + 1);
+        if (changed) {
+          clearScopedState(nextUser.mustChangePassword ? "account" : "overview");
+        } else if (nextUser.mustChangePassword) {
+          setMode("metrics");
+          setView("account");
+        }
+      })().finally(() => {
+        if (sessionSyncPending.current?.controller === controller)
+          sessionSyncPending.current = null;
+      });
+      sessionSyncPending.current = { controller, promise };
+      return promise;
+    },
+    [clearScopedState, expire],
+  );
+
   useEffect(
     () => () => {
       generation.current++;
       askPending.current?.abort();
       askPending.current = null;
+      sessionSyncPending.current?.controller.abort();
+      sessionSyncPending.current = null;
     },
     [],
   );
@@ -589,33 +872,28 @@ export function Workspace() {
     pageHeading.current?.focus({ preventScroll: true });
     window.scrollTo(0, 0);
   }, [view, mode, user]);
-  const expire = useCallback(() => {
-    generation.current++;
-    askPending.current?.abort();
-    askPending.current = null;
-    setUser(null);
-    setProfiles([]);
-    setOverview({});
-    setAnalysis(null);
-    setAskResult(null);
-    setSessionAnalyses([]);
-    setSelectedReportKey("");
-    setChatMessages([]);
-    setPendingSteps([]);
-    setChatContext(null);
-    setExpandedChartId(null);
-    setQuestion("");
-    setError(null);
-    setInputError(null);
-    setFailedAsk(null);
-    setAskLoading(false);
-    setBrowseLoading(false);
-    sidebar.current?.hidePopover();
-    logoutDialog.current?.close();
-    setSidebarOpen(false);
-    setMode("metrics");
-    setView("overview");
-  }, []);
+  useEffect(() => {
+    void syncAccess({ boot: true })
+      .catch((requestError) => {
+        setBootError(requestMessage(requestError, "暂时无法连接工作台，请检查服务后重试。"));
+      })
+      .finally(() => setBootLoading(false));
+  }, [syncAccess]);
+  useEffect(() => {
+    if (!user) return;
+    const timer = window.setInterval(() => void syncAccess(), 45_000);
+    const onFocus = () => void syncAccess();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void syncAccess();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [user, syncAccess]);
   const api = useCallback(
     async (url: string, options?: RequestInit, onStep?: (step: AnalysisStep) => void) => {
       const current = generation.current;
@@ -630,10 +908,7 @@ export function Workspace() {
       }
       if (options?.signal?.aborted) throw new DOMException("Request cancelled", "AbortError");
       if (response.status === 401) {
-        if (current === generation.current) {
-          setLoginNotice("登录已过期，请重新登录。");
-          expire();
-        }
+        if (current === generation.current) expire("登录已过期，请重新登录。");
         throw new ApiError("登录已过期，请重新登录。", "UNAUTHORIZED", false, 401, null);
       }
       if (response.ok && response.headers.get("content-type")?.includes("text/event-stream")) {
@@ -690,46 +965,76 @@ export function Workspace() {
     [expire],
   );
   useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/auth/session", { cache: "no-store", signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("暂时无法连接工作台，请检查服务后重试。");
-        const payload = await response.json();
-        if (!controller.signal.aborted) {
-          setUser(payload.user);
-          setSetupRequired(payload.setupRequired);
-        }
-      })
-      .catch((requestError) => {
-        if (!controller.signal.aborted)
-          setBootError(requestMessage(requestError, "暂时无法连接工作台，请检查服务后重试。"));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setBootLoading(false);
-      });
-    return () => controller.abort();
-  }, []);
-  useEffect(() => {
-    if (!user) return;
+    if (!user || passwordChangeRequired) {
+      setProfilesLoading(false);
+      return;
+    }
     const controller = new AbortController();
     const current = generation.current;
-    setProfilesLoading(true);
+    const scope = sessionScopeKey(user);
+    const showLoading = !profilesLoaded.current;
+    if (showLoading) setProfilesLoading(true);
+    setProfilesError(null);
     api("/api/profile", { signal: controller.signal })
       .then((payload) => {
-        if (!controller.signal.aborted && current === generation.current)
-          setProfiles(payload.datasets);
+        if (
+          controller.signal.aborted ||
+          current !== generation.current ||
+          scope !== userScope.current ||
+          !Array.isArray(payload.datasets)
+        )
+          return;
+        const nextProfiles = payload.datasets as DatasetProfile[];
+        const nextKey = datasetAccessKey(nextProfiles);
+        if (profileAccessKey.current !== "" && profileAccessKey.current !== nextKey) {
+          generation.current++;
+          setOverview({});
+          setAnalysis(null);
+          setAskResult(null);
+          setSessionAnalyses([]);
+          setSelectedReportKey("");
+          setChatMessages([]);
+          setPendingQuestion("");
+          setPendingSteps([]);
+          setChatContext(null);
+          setExpandedChartId(null);
+          setQuestion("");
+          setError(null);
+          setInputError(null);
+          setFailedAsk(null);
+          setAskLoading(false);
+          setBrowseLoading(false);
+        }
+        profileAccessKey.current = nextKey;
+        profilesLoaded.current = true;
+        setProfiles(nextProfiles);
+        setDatasetId((previous) => {
+          const previousProfile = nextProfiles.find((profile) => profile.id === previous);
+          if (previousProfile && isDatasetEligible(previousProfile)) return previous;
+          return nextProfiles.find(isDatasetEligible)?.id ?? nextProfiles[0]?.id ?? null;
+        });
       })
       .catch((requestError) => {
-        if (!controller.signal.aborted && current === generation.current)
-          setError(requestMessage(requestError, "请求失败，请稍后重试。"));
+        if (!controller.signal.aborted && current === generation.current) {
+          profilesLoaded.current = false;
+          setProfiles([]);
+          setDatasetId(null);
+          setProfilesError(requestMessage(requestError, "数据源读取失败，请稍后重试。"));
+        }
       })
       .finally(() => {
-        if (!controller.signal.aborted && current === generation.current) setProfilesLoading(false);
+        if (!controller.signal.aborted && current === generation.current) {
+          profilesLoaded.current = true;
+          setProfilesLoading(false);
+        }
       });
     return () => controller.abort();
-  }, [user, api]);
+  }, [user, api, profileRefreshCount, passwordChangeRequired]);
   useEffect(() => {
-    if (!user) return;
+    if (!user || passwordChangeRequired || !capabilities.canUseAI) {
+      setAIStatus({ configured: false, enabled: false, model: null });
+      return;
+    }
     const controller = new AbortController();
     const current = generation.current;
     api("/api/ai/status", { signal: controller.signal })
@@ -737,7 +1042,7 @@ export function Workspace() {
         if (!controller.signal.aborted && current === generation.current)
           setAIStatus({
             configured: Boolean(payload.configured),
-            enabled: Boolean(payload.enabled),
+            enabled: capabilities.canUseAI && Boolean(payload.enabled),
             model: typeof payload.model === "string" && payload.model ? payload.model : null,
           });
       })
@@ -746,14 +1051,15 @@ export function Workspace() {
           setAIStatus({ configured: false, enabled: false, model: null });
       });
     return () => controller.abort();
-  }, [user, api, aiStatusRefresh]);
+  }, [user, api, aiStatusRefresh, capabilities.canUseAI]);
   useEffect(() => {
     const previous = previousView.current;
     previousView.current = view;
     if (previous === "admin" && view !== "admin") setAiStatusRefresh((count) => count + 1);
   }, [view]);
   useEffect(() => {
-    if (!user || !canRun) return;
+    if (!user || !eligibleDatasetId || passwordChangeRequired) return;
+    const currentDatasetId = eligibleDatasetId;
     const controller = new AbortController();
     const current = generation.current;
     setOverviewLoading(true);
@@ -761,7 +1067,7 @@ export function Workspace() {
     Promise.allSettled(
       metrics.map(async (value) => {
         const plan = createPlan({
-          datasetId,
+          datasetId: currentDatasetId,
           metric: value,
           dimension: "course",
           chartType: "bar",
@@ -793,18 +1099,26 @@ export function Workspace() {
         );
     });
     return () => controller.abort();
-  }, [user, datasetId, canRun, api, rememberResult]);
+  }, [user, eligibleDatasetId, passwordChangeRequired, api, rememberResult]);
   useEffect(() => {
-    if (!user || view !== "analysis" || mode !== "metrics" || !canRun || showSpecialScore) {
+    if (
+      !user ||
+      passwordChangeRequired ||
+      view !== "analysis" ||
+      mode !== "metrics" ||
+      !eligibleDatasetId ||
+      showSpecialScore
+    ) {
       setBrowseLoading(false);
       return;
     }
+    const currentDatasetId = eligibleDatasetId;
     const controller = new AbortController();
     const current = generation.current;
     setBrowseLoading(true);
     setError(null);
     const plan = createPlan({
-      datasetId,
+      datasetId: currentDatasetId,
       metric,
       dimension,
       chartType: dimension === "term" ? "line" : "bar",
@@ -834,10 +1148,10 @@ export function Workspace() {
     user,
     view,
     mode,
-    datasetId,
+    eligibleDatasetId,
     metric,
     dimension,
-    canRun,
+    passwordChangeRequired,
     api,
     refreshCount,
     rememberResult,
@@ -864,6 +1178,7 @@ export function Workspace() {
     setFailedAsk(null);
   }
   function navigate(next: View) {
+    if (passwordChangeRequired && next !== "account") return;
     delete document.documentElement.dataset.motionReplayGuard;
     if (next !== "analysis") {
       askPending.current?.abort();
@@ -875,6 +1190,7 @@ export function Workspace() {
     setError(null);
   }
   function changeMode(next: AnalysisMode) {
+    if (passwordChangeRequired || (next === "question" && !capabilities.canUseAI)) return;
     delete document.documentElement.dataset.motionReplayGuard;
     askPending.current?.abort();
     askPending.current = null;
@@ -899,7 +1215,7 @@ export function Workspace() {
     setLogoutError("");
     try {
       await api("/api/auth/logout", { method: "POST" });
-      expire();
+      expire(null);
     } catch (requestError) {
       setLogoutError(requestMessage(requestError, "退出失败，请重试。"));
     } finally {
@@ -907,6 +1223,8 @@ export function Workspace() {
     }
   }
   async function ask(nextQuestion = question, options: { fresh?: boolean } = {}) {
+    if (!aiAllowed || !eligibleDatasetId || passwordChangeRequired) return;
+    const currentDatasetId = eligibleDatasetId;
     const trimmed = nextQuestion.trim();
     if (trimmed.length < 2 || trimmed.length > 500) {
       const message = "请写下 2–500 字的分析问题。";
@@ -949,7 +1267,7 @@ export function Workspace() {
           },
           body: JSON.stringify({
             question: trimmed,
-            datasetId,
+            datasetId: currentDatasetId,
             // Assistant turns carry a compact summary of the results they produced
             // so a follow-up keeps "相关结果与条件" without replaying full artifacts.
             // User turns stay plain, and empty result lists are omitted entirely.
@@ -1093,9 +1411,9 @@ export function Workspace() {
         setupRequired={setupRequired}
         notice={loginNotice}
         onLogin={(nextUser) => {
-          generation.current++;
+          clearScopedState(nextUser.mustChangePassword ? "account" : "overview");
+          userScope.current = sessionScopeKey(nextUser);
           setUser(nextUser);
-          setProfilesLoading(true);
           setBootError("");
           setLoginNotice(null);
         }}
@@ -1118,7 +1436,7 @@ export function Workspace() {
       <Icon name="info" size={18} />
       <span>
         {error}
-        {visibleResult && view === "analysis" && " 上次成功的结果仍可查看和导出。"}
+        {visibleResult && view === "analysis" && " 上次成功的结果仍可查看。"}
       </span>
       {retryableAsk && (
         <button
@@ -1147,14 +1465,21 @@ export function Workspace() {
       </button>
     </div>
   );
-  const navigation = (
+  const navigation = passwordChangeRequired ? (
+    <nav className="workspace-nav" aria-label="主要功能">
+      <NavigationIndicator activeKey="account" />
+      <button type="button" aria-current="page" onClick={() => navigate("account")}>
+        <span>修改密码</span>
+      </button>
+    </nav>
+  ) : (
     <nav className="workspace-nav" aria-label="主要功能">
       <NavigationIndicator activeKey={`${view}-${mode}`} />
       {(
         [
           ["overview", "学习全景"],
           ["analysis", "指标分析"],
-          ["question", "一句话分析"],
+          ...(capabilities.canUseAI ? ([["question", "一句话分析"]] as const) : []),
           ["data", "数据"],
           ["reports", "分析报告"],
         ] as const
@@ -1214,7 +1539,7 @@ export function Workspace() {
       </p>
     </div>
   );
-  const sourcePicker = showDataset && (
+  const sourcePicker = showDataset && !passwordChangeRequired && (
     <label
       className="workbench-source"
       key={`source-${view}-${mode}`}
@@ -1227,21 +1552,39 @@ export function Workspace() {
       </span>
       <select
         aria-label="选择当前数据源"
-        value={datasetId}
-        disabled={profilesLoading}
-        onChange={(event) => changeSource(event.target.value as DataSource)}
+        value={datasetId ?? ""}
+        disabled={profilesLoading || profilesError !== null || profiles.length === 0}
+        onChange={(event) => {
+          if (event.target.value) changeSource(event.target.value as DataSource);
+        }}
       >
-        {profiles.length === 0 ? (
-          <option value="demo">{profilesLoading ? "正在读取…" : "暂无可用数据"}</option>
+        {profilesLoading ? (
+          <option value="">正在读取授权数据源…</option>
+        ) : profilesError ? (
+          <option value="">数据源读取失败</option>
+        ) : profiles.length === 0 ? (
+          <option value="">未授权任何数据集</option>
         ) : (
-          profiles.map((profile) => (
-            <option key={profile.id} value={profile.id} disabled={!profile.available}>
-              {profile.name}
-              {!profile.available ? "（未导入）" : ""}
-            </option>
-          ))
+          <>
+            {!datasetId && <option value="">请选择数据源</option>}
+            {profiles.map((profile) => (
+              <option
+                key={profile.id}
+                value={profile.id}
+                disabled={!isDatasetEligible(profile)}
+              >
+                {profile.name}
+                {sourceStatusLabel(profile)}
+              </option>
+            ))}
+          </>
         )}
       </select>
+      {profilesError && (
+        <small className="form-help" role="alert">
+          {profilesError}
+        </small>
+      )}
     </label>
   );
   return (
@@ -1293,7 +1636,9 @@ export function Workspace() {
               className="icon-button"
               aria-label="打开设置"
               title="设置"
-              onClick={() => navigate(user.role === "admin" ? "admin" : "account")}
+              onClick={() =>
+                navigate(passwordChangeRequired || user.role !== "admin" ? "account" : "admin")
+              }
             >
               <Icon name="settings" size={18} />
             </button>
@@ -1357,33 +1702,44 @@ export function Workspace() {
           )}
           <div key={view} className="view-surface">
             {view !== "analysis" && notice}
-            {view === "overview" && (
-              <LearningOverview
-                heading={pageHeader}
-                sourceControl={sourcePicker}
-                results={overview}
-                loading={profilesLoading || (overviewLoading && canRun)}
-                profile={selectedProfile}
-                canRun={canRun}
-                aiReady={aiReady}
-                onExplore={(nextMetric) => {
-                  setAnalysisView("standard");
-                  setMetric(nextMetric);
-                  setScoreView("comparison");
-                  setDimension("course");
-                  setChartType("bar");
-                  changeMode("metrics");
-                  navigate("analysis");
-                }}
-                onQuestion={(nextQuestion) => {
-                  changeMode("question");
-                  navigate("analysis");
-                  if (nextQuestion) void ask(nextQuestion, { fresh: true });
-                }}
-                onData={() => navigate("data")}
-                onReport={previewReport}
-              />
-            )}
+            {view === "overview" &&
+              (capabilities.canUseAI ? (
+                <LearningOverview
+                  heading={pageHeader}
+                  sourceControl={sourcePicker}
+                  results={overview}
+                  loading={profilesLoading || (overviewLoading && canRun)}
+                  profile={selectedProfile}
+                  canRun={canRun}
+                  aiReady={aiReady}
+                  onExplore={(nextMetric) => {
+                    setAnalysisView("standard");
+                    setMetric(nextMetric);
+                    setScoreView("comparison");
+                    setDimension("course");
+                    setChartType("bar");
+                    changeMode("metrics");
+                    navigate("analysis");
+                  }}
+                  onQuestion={(nextQuestion) => {
+                    changeMode("question");
+                    navigate("analysis");
+                    if (nextQuestion) void ask(nextQuestion, { fresh: true });
+                  }}
+                  onData={() => navigate("data")}
+                  onReport={previewReport}
+                />
+              ) : (
+                <ReadonlyOverview
+                  heading={pageHeader}
+                  sourceControl={sourcePicker}
+                  profile={selectedProfile}
+                  profilesLoading={profilesLoading}
+                  profilesError={profilesError}
+                  onAnalyze={() => navigate("analysis")}
+                  onData={() => navigate("data")}
+                />
+              ))}
             {view === "analysis" &&
               (mode === "question" ? (
                 <ConversationWorkspace
@@ -1393,7 +1749,9 @@ export function Workspace() {
                   pendingQuestion={pendingQuestion}
                   pendingSteps={pendingSteps}
                   aiReady={aiReady}
+                  aiAllowed={capabilities.canUseAI}
                   canRun={canRun}
+                  canExport={capabilities.canExport}
                   model={aiStatus.model}
                   contextLabel={describeChatContext(chatContext)}
                   inputError={inputError}
@@ -1563,20 +1921,14 @@ export function Workspace() {
                       </div>
                     )}
                   </div>
-                  {showChartStudio ? (
-                    <ChartStudio key={datasetId} datasetId={datasetId} api={api} />
-                  ) : showPanorama ? (
-                    canRun ? (
-                      <CoursePanorama key={datasetId} datasetId={datasetId} api={api} />
-                    ) : null
-                  ) : showRelations ? (
-                    canRun ? (
-                      <CourseRelations key={datasetId} datasetId={datasetId} api={api} />
-                    ) : null
-                  ) : showDistribution ? (
-                    canRun ? (
-                      <ScoreDistribution key={datasetId} datasetId={datasetId} api={api} />
-                    ) : null
+                  {showChartStudio && eligibleDatasetId ? (
+                    <ChartStudio key={eligibleDatasetId} datasetId={eligibleDatasetId} api={api} />
+                  ) : showPanorama && eligibleDatasetId ? (
+                    <CoursePanorama key={eligibleDatasetId} datasetId={eligibleDatasetId} api={api} />
+                  ) : showRelations && eligibleDatasetId ? (
+                    <CourseRelations key={eligibleDatasetId} datasetId={eligibleDatasetId} api={api} />
+                  ) : showDistribution && eligibleDatasetId ? (
+                    <ScoreDistribution key={eligibleDatasetId} datasetId={eligibleDatasetId} api={api} />
                   ) : (
                     <AnalysisResultView
                       result={visibleResult}
@@ -1584,6 +1936,7 @@ export function Workspace() {
                       onChartChange={setChartType}
                       loading={loading}
                       onReport={previewReport}
+                      canExport={capabilities.canExport}
                     />
                   )}
                 </section>
@@ -1649,17 +2002,26 @@ export function Workspace() {
                 selectedKey={selectedReportKey}
                 onSelect={setSelectedReportKey}
                 onStart={() => navigate("analysis")}
+                canExport={capabilities.canExport}
               />
             )}
             {view === "admin" && user.role === "admin" && (
-              <AdminPanel user={user} onSessionExpired={expire} />
+              <AdminPanel
+                user={user}
+                onSessionExpired={() => expire("登录已过期，请重新登录。")}
+              />
             )}
             {view === "account" && (
               <>
                 <div className="settings-section-label" data-enter="fade">
                   我的账号
                 </div>
-                <AccountPanel user={user} expire={expire} />
+                <AccountPanel
+                  user={user}
+                  passwordChangeRequired={passwordChangeRequired}
+                  onPasswordChanged={() => expire("密码已更新，请重新登录。")}
+                  onSessionExpired={() => expire("登录已过期，请重新登录。")}
+                />
               </>
             )}
           </div>

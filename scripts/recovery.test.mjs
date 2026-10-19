@@ -19,7 +19,7 @@ function fixture(t) {
   mkdirSync(path.join(source, "system"), { recursive: true, mode: 0o700 });
   mkdirSync(path.join(source, "archive", "empty"), { recursive: true });
   writeFileSync(path.join(source, "analysis.jsonl"), '{"id":"old-record","userId":null}\n{"id":"owned-record","userId":"user-1"}\n');
-  for (const [name, data] of Object.entries({ "accounts.json": { users: [{ id: "admin-1", passwordHash: "fixture-hash" }] }, "sessions.json": { sessions: [{ id: "fixture-session" }] }, "cost-history.json": { records: [{ cost: 0.12 }] }, "login-rate-limits.json": { attempts: [] } })) writeFileSync(path.join(source, "system", name), JSON.stringify(data), { mode: 0o600 });
+  for (const [name, data] of Object.entries({ "accounts.json": { version: 2, users: [{ id: "admin-1", role: "admin", datasetIds: [], mustChangePassword: false, passwordHash: "fixture-hash" }, { id: "reader-1", role: "readonly", datasetIds: ["demo"], mustChangePassword: true, passwordHash: "fixture-reader-hash" }], sessions: [], __adminAudit: { version: 1, events: [{ id: "fixture-event", action: "user.create", actorId: "admin-1" }] } }, "datasets.json": { version: 1, datasets: [{ id: "demo", enabled: true }, { id: "oulad", enabled: false }] }, "sessions.json": { sessions: [{ id: "fixture-session" }] }, "cost-history.json": { records: [{ cost: 0.12 }] }, "login-rate-limits.json": { attempts: [] } })) writeFileSync(path.join(source, "system", name), JSON.stringify(data), { mode: 0o600 });
   const key = randomBytes(32);
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key, iv);
@@ -52,7 +52,7 @@ test("complete records snapshot/restore preserves accounts, sessions, ciphertext
   const restored = f.restore();
   succeeds(restored);
   const manifest = JSON.parse(readFileSync(path.join(f.backup, "manifest.json"), "utf8"));
-  assert.equal(manifest.entries.filter((entry) => entry.type === "file").length, 6);
+  assert.equal(manifest.entries.filter((entry) => entry.type === "file").length, 7);
   for (const entry of manifest.entries.filter((item) => item.type === "file")) assert.deepEqual(readFileSync(path.join(f.target, entry.path)), readFileSync(path.join(f.source, entry.path)));
   assert.ok(existsSync(path.join(f.target, "archive", "empty")));
   for (const secret of [f.encodedKey, f.plaintext]) {

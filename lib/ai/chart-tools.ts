@@ -1,3 +1,4 @@
+import { assertCurrentAccess } from "../auth/access";
 import { chartStudioData, courseRelations, coursePanorama } from "../analysis/duckdb";
 import type { QueryExecutionOptions } from "../security/query-execution";
 import { clearsScope, contextScope, mentionedLabels, type ChatTool } from "./chart-capabilities";
@@ -145,6 +146,7 @@ export async function executeChartTool(
   options: QueryExecutionOptions,
   dependencies: Partial<typeof toolQueries>,
 ): Promise<ChatArtifact> {
+  assertCurrentAccess(input.datasetId, "ai");
   const deps = { ...toolQueries, ...dependencies };
   if (intent.tool === "chord" || intent.tool === "panorama") {
     const request = {
@@ -240,6 +242,7 @@ export async function executeChartTool(
   }
   return {
     kind: "studio",
+    ...(intent.comparisonTerm ? { comparisonTerm: intent.comparisonTerm } : {}),
     tool: intent.tool,
     table,
     term: project.term ?? "",

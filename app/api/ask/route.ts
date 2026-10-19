@@ -1,3 +1,5 @@
+import { assertBusinessAccess, withBusinessAccess } from "@/lib/auth/access";
+import type { SessionUser } from "@/lib/client-types";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { runAnalysis } from "@/lib/analysis/duckdb";
@@ -31,37 +33,71 @@ import { PROMPT_VERSION } from "@/lib/ai/prompts/version";
 export const runtime = "nodejs";
 const MAX_REQUEST_BODY_BYTES = 64 * 1024;
 
-function askHttpError(error: unknown, stage: AnalysisRecord["stage"]): AnalysisHttpError & { clarificationQuestion?: string } {
+function askHttpError(
+  error: unknown,
+  stage: AnalysisRecord["stage"],
+): AnalysisHttpError & { clarificationQuestion?: string } {
   if (error instanceof RequestBodyTooLargeError)
     return { error: REQUEST_TOO_LARGE_MESSAGE, code: REQUEST_TOO_LARGE_CODE, status: 413 };
   const queryFailure = queryExecutionHttpError(error);
   if (queryFailure) return queryFailure;
-  if (error instanceof AuthError) return { error: error.message, code: error.code, status: error.status };
-  if (error instanceof AIProviderError) return { error: error.message, code: error.code, status: error.status };
-  if (error instanceof BudgetExceededError) return { error: error.message, code: "AI_BUDGET_EXCEEDED", status: 429 };
-  if (error instanceof UnknownModelPricingError) return { error: error.message, code: "AI_PRICING_REQUIRED", status: 503 };
+  if (error instanceof AuthError)
+    return { error: error.message, code: error.code, status: error.status };
+  if (error instanceof AIProviderError)
+    return { error: error.message, code: error.code, status: error.status };
+  if (error instanceof BudgetExceededError)
+    return { error: error.message, code: "AI_BUDGET_EXCEEDED", status: 429 };
+  if (error instanceof UnknownModelPricingError)
+    return { error: error.message, code: "AI_PRICING_REQUIRED", status: 503 };
   if (error instanceof AIClarificationError) {
-    return { error: error.message, code: "CLARIFICATION_REQUIRED", clarificationQuestion: error.clarificationQuestion, status: 422 };
+    return {
+      error: error.message,
+      code: "CLARIFICATION_REQUIRED",
+      clarificationQuestion: error.clarificationQuestion,
+      status: 422,
+    };
   }
-  if (error instanceof AIConfigurationError) return { error: error.message, code: "AI_NOT_CONFIGURED", status: 503 };
+  if (error instanceof AIConfigurationError)
+    return { error: error.message, code: "AI_NOT_CONFIGURED", status: 503 };
   if (stage === "validation" && (error instanceof z.ZodError || error instanceof SyntaxError)) {
-    return { error: "问题不合法，请输入 2–500 个字符并选择有效数据源。", code: "INVALID_QUESTION", status: 400 };
+    return {
+      error: "问题不合法，请输入 2–500 个字符并选择有效数据源。",
+      code: "INVALID_QUESTION",
+      status: 400,
+    };
   }
   if (stage === "execution" && error instanceof z.ZodError) {
-    return { error: "分析计划不合法，请检查指标、聚合方式、维度和返回条数。", code: "INVALID_PLAN", status: 400 };
+    return {
+      error: "分析计划不合法，请检查指标、聚合方式、维度和返回条数。",
+      code: "INVALID_PLAN",
+      status: 400,
+    };
   }
   if (stage === "execution") {
-    return { error: "分析执行失败，请稍后重试或联系管理员检查数据源。", code: "ANALYSIS_FAILED", status: 500 };
+    return {
+      error: "分析执行失败，请稍后重试或联系管理员检查数据源。",
+      code: "ANALYSIS_FAILED",
+      status: 500,
+    };
   }
-  return { error: "AI 暂时无法生成分析计划，请稍后重试。", code: "AI_PLANNING_FAILED", status: 502 };
+  return {
+    error: "AI 暂时无法生成分析计划，请稍后重试。",
+    code: "AI_PLANNING_FAILED",
+    status: 502,
+  };
 }
 
 export async function POST(request: Request) {
+  const requestId = crypto.randomUUID();
   let userId: string;
+  let user: SessionUser;
   try {
     assertSameOrigin(request);
-    userId = (await requireUser(request)).id;
-  } catch (error) { return apiError(error); }
+    user = await requireUser(request);
+    userId = user.id;
+  } catch (error) {
+    return apiError(error);
+  }
   // Check rate limit (stricter for ask due to AI cost)
   const rateLimitResult = checkRateLimit(`ask:${userId}`, rateLimitConfigs.ask);
 
@@ -76,8 +112,9 @@ export async function POST(request: Request) {
         status: 429,
         headers: {
           "Retry-After": Math.ceil(rateLimitResult.resetAfter / 1000).toString(),
+          "Cache-Control": "no-store",
         },
-      }
+      },
     );
   }
 
@@ -89,16 +126,23 @@ export async function POST(request: Request) {
     // Question input has no metric yet; never infer one before a plan exists.
     context = { ...analysisRecordContext(payload), metricId: null, plan: null };
     const input = planQuestionInputSchema.parse(payload);
+    assertBusinessAccess(user, input.datasetId, "ai");
     stage = "planning";
-    const planned = await planQuestion(input, undefined, { signal: request.signal });
+    const planned = await withBusinessAccess(user, input.datasetId, "ai", () =>
+      planQuestion(input, undefined, { signal: request.signal }),
+    );
     context = analysisRecordContext(planned.plan);
     stage = "execution";
-    const analysis = await runAnalysis(planned.plan, { signal: request.signal });
+    const analysis = await withBusinessAccess(user, input.datasetId, "ai", () =>
+      runAnalysis(planned.plan, { signal: request.signal }),
+    );
 
     const emptyResult = analysis.result.rows.length === 0 ? noDataHttpError(analysis.result) : null;
     await saveAnalysisAudit({
       ...analysisRecordContext(analysis.plan),
       userId,
+      requestId,
+      outcome: emptyResult ? "failure" : "success",
       requestSource: "ask",
       stage,
       // Success and failure audits carry the same traceability fields.
@@ -113,29 +157,41 @@ export async function POST(request: Request) {
       errorMessage: emptyResult?.error ?? null,
     });
     if (emptyResult) {
-      return NextResponse.json({ error: emptyResult.error, code: emptyResult.code, ...analysis }, { status: emptyResult.status });
+      return NextResponse.json(
+        { error: emptyResult.error, code: emptyResult.code, ...analysis },
+        { status: emptyResult.status, headers: { "Cache-Control": "no-store" } },
+      );
     }
 
-    return NextResponse.json({
-      question: input.question,
-      planning: {
-        source: planned.source,
-        rationale: planned.rationale,
-        matchedCaseId: planned.matchedCaseId,
-        model: planned.model,
+    return NextResponse.json(
+      {
+        question: input.question,
+        planning: {
+          source: planned.source,
+          rationale: planned.rationale,
+          matchedCaseId: planned.matchedCaseId,
+          model: planned.model,
+        },
+        ...analysis,
       },
-      ...analysis,
-    });
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (error) {
     const failure = askHttpError(error, stage);
     // Clarification/configuration errors may quote user or provider text; audit a safe summary.
-    const auditMessage = failure.code === "CLARIFICATION_REQUIRED" ? "问题口径需要澄清。"
-      : failure.code === "AI_NOT_CONFIGURED" ? "AI 未配置或已停用。"
-      : error instanceof AuthError ? "分析请求权限校验失败。"
-      : failure.error;
+    const auditMessage =
+      failure.code === "CLARIFICATION_REQUIRED"
+        ? "问题口径需要澄清。"
+        : failure.code === "AI_NOT_CONFIGURED"
+          ? "AI 未配置或已停用。"
+          : error instanceof AuthError
+            ? "分析请求权限校验失败。"
+            : failure.error;
     await saveAnalysisAudit({
       ...context,
       userId,
+      requestId,
+      outcome: "failure",
       requestSource: "ask",
       stage,
       promptVersion: PROMPT_VERSION,
@@ -148,12 +204,14 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { ...body, retryable: isRetryableErrorCode(failure.code) },
       {
-      status,
-      ...(error instanceof AIProviderError && error.status === 429
-        ? { headers: { "Cache-Control": "no-store", "Retry-After": String(AI_PROVIDER_RETRY_AFTER) } }
-        : status === 413
-          ? { headers: { "Cache-Control": "no-store" } }
-          : {}),
-    });
+        status,
+        headers: {
+          "Cache-Control": "no-store",
+          ...(error instanceof AIProviderError && error.status === 429
+            ? { "Retry-After": String(AI_PROVIDER_RETRY_AFTER) }
+            : {}),
+        },
+      },
+    );
   }
 }

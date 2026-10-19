@@ -1,3 +1,4 @@
+import { withBusinessAccess } from "@/lib/auth/access";
 import { NextResponse } from "next/server";
 import { scoreDistribution } from "@/lib/analysis/duckdb";
 import { queryExecutionHttpError } from "@/lib/analysis/http-errors";
@@ -24,7 +25,11 @@ export async function GET(request: Request) {
       );
     }
     const datasetId = dataSourceSchema.parse(new URL(request.url).searchParams.get("datasetId"));
-    return noStoreJson(await scoreDistribution(datasetId, { signal: request.signal }));
+    return noStoreJson(
+      await withBusinessAccess(user, datasetId, "view", () =>
+        scoreDistribution(datasetId, { signal: request.signal }),
+      ),
+    );
   } catch (error) {
     const failure = queryExecutionHttpError(error);
     if (failure)

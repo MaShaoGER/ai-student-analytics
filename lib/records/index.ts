@@ -95,6 +95,7 @@ export async function saveAnalysisRecord(record: RecordInput): Promise<string> {
   const completeRecord: AnalysisRecord = {
     id,
     timestamp,
+    ...(["success", "partial", "failure"].includes(record.outcome ?? "") ? { outcome: record.outcome } : {}),
     datasetId: record.datasetId,
     datasetVersion: record.datasetVersion,
     metricId: record.metricId,
@@ -140,6 +141,7 @@ export async function saveAnalysisAudit(
   record: AnalysisRecordContext &
     Pick<
       RecordInput,
+      | "outcome"
       | "userId"
       | "requestSource"
       | "stage"

@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -14,10 +15,10 @@ import type {
   AIConfigResponse,
   AICostStats,
   AITestResponse,
-  ManagedUser,
   SessionUser,
 } from "@/lib/client-types";
 import { Icon } from "@/components/app-icons";
+import { AdminManagement } from "@/components/admin-management";
 import { AnimatedNumber, useCountUp } from "@/components/ui/animated-number";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { ThemeToggle } from "@/components/ui/theme-provider";
@@ -26,7 +27,7 @@ import { AnalysisControls } from "@/components/analysis-controls";
 import { BAILIAN_QWEN_FLASH, isBailianQwenFlash } from "@/lib/ai/bailian";
 import { ZHIPU_GLM_FLASH, isZhipuGLMFlash } from "@/lib/ai/zhipu";
 
-type AdminTab = "ai" | "users" | "account";
+type AdminTab = "overview" | "users" | "datasets" | "logs" | "ai" | "account";
 type Feedback = { kind: "success" | "error"; message: string } | null;
 /** Inline custom properties carry entrance delays defined by app/motion.css. */
 type MotionStyle = CSSProperties & { [key: `--${string}`]: string };
@@ -99,12 +100,6 @@ function AnimatedCost({ value }: { value?: string }) {
   return <>${(display ?? amount).toFixed(4)}</>;
 }
 
-function createdLabel(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "创建日期未记录";
-  return `${new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(date)} 创建`;
-}
-
 export function AdminPanel({
   user,
   onSessionExpired,
@@ -112,7 +107,7 @@ export function AdminPanel({
   user: SessionUser;
   onSessionExpired: () => void;
 }) {
-  const [tab, setTab] = useState<AdminTab>("ai");
+  const [tab, setTab] = useState<AdminTab>(user.role === "admin" ? "overview" : "account");
   const [config, setConfig] = useState<AIConfig | null>(null);
   const [draft, setDraft] = useState<ConfigDraft | null>(null);
   const [stats, setStats] = useState<AICostStats | null>(null);
@@ -120,30 +115,24 @@ export function AdminPanel({
   const [configFeedback, setConfigFeedback] = useState<Feedback>(null);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [users, setUsers] = useState<ManagedUser[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
-  const [userFeedback, setUserFeedback] = useState<Feedback>(null);
-  const [newUser, setNewUser] = useState({ username: "", displayName: "", password: "" });
-  const [creatingUser, setCreatingUser] = useState(false);
-  const [updatingUser, setUpdatingUser] = useState<string | null>(null);
   const [passwords, setPasswords] = useState({ current: "", next: "", confirm: "" });
   const [passwordFeedback, setPasswordFeedback] = useState<Feedback>(null);
   const [changingPassword, setChangingPassword] = useState(false);
   const sessionExpired = useRef(onSessionExpired);
   const active = useRef(true);
   const pendingRequests = useRef(new Set<AbortController>());
-  const usersRequestId = useRef(0);
 
   useEffect(() => {
     sessionExpired.current = onSessionExpired;
   }, [onSessionExpired]);
 
-  useEffect(() => {
+  // Layout setup runs before passive child fetches. This closes the Strict Mode
+  // replay window where AdminManagement could observe the parent's cleanup flag.
+  useLayoutEffect(() => {
     active.current = true;
     const requests = pendingRequests.current;
     return () => {
       active.current = false;
-      usersRequestId.current++;
       requests.forEach((controller) => controller.abort());
       requests.clear();
     };
@@ -204,30 +193,9 @@ export function AdminPanel({
     }
   }, [request]);
 
-  const loadUsers = useCallback(async () => {
-    const requestId = ++usersRequestId.current;
-    setUsersLoading(true);
-    try {
-      const payload = await request<{ users: ManagedUser[] }>("/api/admin/users");
-      if (!active.current || requestId !== usersRequestId.current) return;
-      setUsers(payload.users);
-    } catch (error) {
-      if (!active.current || requestId !== usersRequestId.current || isAbortError(error)) return;
-      setUserFeedback({
-        kind: "error",
-        message: requestMessage(error, "账号列表加载失败，请稍后重试。"),
-      });
-    } finally {
-      if (active.current && requestId === usersRequestId.current) setUsersLoading(false);
-    }
-  }, [request]);
-
   useEffect(() => {
     void loadConfig();
   }, [loadConfig]);
-  useEffect(() => {
-    if (tab === "users") void loadUsers();
-  }, [tab, loadUsers]);
 
   const hasChanges = Boolean(
     draft && config && JSON.stringify(draft) !== JSON.stringify(makeDraft(config)),
@@ -325,65 +293,6 @@ export function AdminPanel({
     }
   }
 
-  async function createUser(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (creatingUser) return;
-    setCreatingUser(true);
-    setUserFeedback(null);
-    try {
-      await request("/api/admin/users", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          ...newUser,
-          username: newUser.username.trim(),
-          displayName: newUser.displayName.trim(),
-          role: "user",
-        }),
-      });
-      setNewUser({ username: "", displayName: "", password: "" });
-      setUserFeedback({
-        kind: "success",
-        message: "账号已创建。请通过安全渠道把账号和初始密码交给使用者。",
-      });
-      await loadUsers();
-    } catch (error) {
-      setUserFeedback({
-        kind: "error",
-        message: requestMessage(error, "账号创建失败，请稍后重试。"),
-      });
-    } finally {
-      setCreatingUser(false);
-    }
-  }
-
-  async function changeUserStatus(account: ManagedUser) {
-    if (updatingUser || account.role === "admin") return;
-    setUpdatingUser(account.id);
-    setUserFeedback(null);
-    try {
-      await request("/api/admin/users", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id: account.id, disabled: !account.disabled }),
-      });
-      setUserFeedback({
-        kind: "success",
-        message: account.disabled
-          ? `${account.displayName}的账号已启用。`
-          : `${account.displayName}的账号已停用，已有登录会话已退出。`,
-      });
-      await loadUsers();
-    } catch (error) {
-      setUserFeedback({
-        kind: "error",
-        message: requestMessage(error, "账号状态修改失败，请稍后重试。"),
-      });
-    } finally {
-      setUpdatingUser(null);
-    }
-  }
-
   async function changePassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (changingPassword) return;
@@ -424,12 +333,20 @@ export function AdminPanel({
           value={tab}
           onChange={setTab}
           options={[
-            { value: "ai", label: "AI 设置", icon: <Icon name="sparkles" size={18} /> },
+            { value: "overview", label: "系统总览", icon: <Icon name="dashboard" size={18} /> },
             { value: "users", label: "账号管理", icon: <Icon name="users" size={18} /> },
+            { value: "datasets", label: "数据集", icon: <Icon name="database" size={18} /> },
+            { value: "logs", label: "操作日志", icon: <Icon name="activity" size={18} /> },
+            { value: "ai", label: "AI 设置", icon: <Icon name="sparkles" size={18} /> },
             { value: "account", label: "我的账号", icon: <Icon name="shield" size={18} /> },
           ]}
         />
       </nav>
+
+      {tab === "overview" && <AdminManagement request={request} user={user} section="overview" />}
+      {tab === "users" && <AdminManagement request={request} user={user} section="users" />}
+      {tab === "datasets" && <AdminManagement request={request} user={user} section="datasets" />}
+      {tab === "logs" && <AdminManagement request={request} user={user} section="logs" />}
 
       {tab === "ai" && (
         <>
@@ -834,163 +751,6 @@ export function AdminPanel({
         </>
       )}
 
-      {tab === "users" && (
-        <>
-          <div
-            className="admin-intro"
-            data-enter="rise-sm"
-            style={{ "--enter-delay": "60ms" } as MotionStyle}
-          >
-            <div>
-              <h2>为团队开通访问账号</h2>
-              <p>普通用户可以查看与分析数据，系统设置只向管理员开放。</p>
-            </div>
-            <span className="badge badge-muted">按角色开放功能</span>
-          </div>
-          <FeedbackNotice feedback={userFeedback} />
-          <div
-            className="admin-user-layout"
-            data-enter-group="rise"
-            style={{ "--enter-group-delay": "140ms" } as MotionStyle}
-          >
-            <section className="panel">
-              <div className="panel-header">
-                <h3 className="panel-title">已创建的账号</h3>
-                <button
-                  type="button"
-                  className="text-button"
-                  disabled={usersLoading || Boolean(updatingUser)}
-                  onClick={() => {
-                    setUserFeedback(null);
-                    void loadUsers();
-                  }}
-                >
-                  <Icon name="refresh" size={16} />
-                  刷新
-                </button>
-              </div>
-              {usersLoading ? (
-                <div className="admin-state" role="status">
-                  正在读取账号列表…
-                </div>
-              ) : (
-                <div
-                  className="admin-user-list"
-                  data-enter-group="rise"
-                  style={{ "--enter-group-delay": "300ms" } as MotionStyle}
-                >
-                  {users.length === 0 ? (
-                    <div className="admin-state">还没有读取到账号，请刷新重试。</div>
-                  ) : (
-                    users.map((account) => (
-                      <div className="admin-user-row" key={account.id}>
-                        <div className="admin-user-avatar">
-                          {(account.displayName || account.username).slice(0, 1)}
-                        </div>
-                        <div className="admin-user-detail">
-                          <strong>
-                            {account.displayName}{" "}
-                            {account.id === user.id && (
-                              <span className="badge badge-muted">你</span>
-                            )}
-                          </strong>
-                          <span>
-                            {account.username} · {createdLabel(account.createdAt)}
-                          </span>
-                        </div>
-                        <div className="admin-user-actions">
-                          <span
-                            className={`badge ${account.disabled ? "badge-warning" : account.role === "admin" ? "badge-muted" : "badge-success"}`}
-                          >
-                            {account.role === "admin"
-                              ? "管理员"
-                              : account.disabled
-                                ? "已停用"
-                                : "普通用户"}
-                          </span>
-                          {account.role === "user" && (
-                            <button
-                              type="button"
-                              className="text-button"
-                              disabled={Boolean(updatingUser)}
-                              onClick={() => void changeUserStatus(account)}
-                              aria-label={`${account.disabled ? "启用" : "停用"}${account.displayName}的账号`}
-                            >
-                              {updatingUser === account.id
-                                ? "处理中…"
-                                : account.disabled
-                                  ? "启用"
-                                  : "停用"}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-              <p className="form-help">
-                停用后，该账号立即退出且无法登录；启用后可以重新登录。管理员账号受保护。
-              </p>
-            </section>
-            <form className="panel" onSubmit={createUser} aria-busy={creatingUser}>
-              <div className="panel-header">
-                <h3 className="panel-title">创建普通用户</h3>
-                <Icon name="plus" size={20} />
-              </div>
-              <div className="form-field">
-                <label htmlFor="admin-new-name">使用者姓名</label>
-                <input
-                  id="admin-new-name"
-                  required
-                  maxLength={60}
-                  value={newUser.displayName}
-                  onChange={(event) => setNewUser({ ...newUser, displayName: event.target.value })}
-                  placeholder="填写姓名或显示名称"
-                  disabled={creatingUser}
-                />
-              </div>
-              <div className="form-field">
-                <label htmlFor="admin-new-username">登录账号</label>
-                <input
-                  id="admin-new-username"
-                  autoComplete="off"
-                  required
-                  minLength={3}
-                  maxLength={40}
-                  pattern={"[A-Za-z0-9._\\-]{3,40}"}
-                  value={newUser.username}
-                  onChange={(event) => setNewUser({ ...newUser, username: event.target.value })}
-                  placeholder="例如 teacher.zhang"
-                  disabled={creatingUser}
-                />
-                <span className="form-help">3–40 个字母、数字、点、下划线或短横线。</span>
-              </div>
-              <div className="form-field">
-                <label htmlFor="admin-new-password">初始密码</label>
-                <input
-                  id="admin-new-password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  minLength={12}
-                  maxLength={128}
-                  value={newUser.password}
-                  onChange={(event) => setNewUser({ ...newUser, password: event.target.value })}
-                  placeholder="至少 12 个字符"
-                  disabled={creatingUser}
-                />
-                <span className="form-help">使用至少 12 个字符，不要与其他账号共用密码。</span>
-              </div>
-              <button type="submit" className="primary-button" disabled={creatingUser}>
-                <Icon name="plus" size={17} />
-                {creatingUser ? "正在创建…" : "创建账号"}
-              </button>
-            </form>
-          </div>
-        </>
-      )}
-
       {tab === "account" && (
         <>
           <div
@@ -1015,10 +775,20 @@ export function AdminPanel({
               </div>
               <h3>{user.displayName}</h3>
               <p>{user.username}</p>
-              <span className="badge badge-muted">管理员</span>
+              <span className="badge badge-muted">
+                {user.role === "admin"
+                  ? "管理员"
+                  : user.role === "readonly"
+                    ? "只读用户"
+                    : "分析用户"}
+              </span>
               <div className="notice notice-info">
                 <Icon name="shield" />
-                <span>你的账号可以管理 AI 设置和普通用户，请妥善保管登录信息。</span>
+                <span>
+                  {user.role === "admin"
+                    ? "你的账号可以管理账号、数据集与 AI 设置，请妥善保管登录信息。"
+                    : "请妥善保管登录信息，并只访问已授权的数据集。"}
+                </span>
               </div>
               <div className="account-appearance">
                 <h3>外观与动效</h3>

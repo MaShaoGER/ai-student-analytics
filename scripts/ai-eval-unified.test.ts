@@ -19,6 +19,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadEnvFile } from "./ai-eval/environment";
+import { comparisonAnswerChecks, comparisonFromCsv } from "./ai-eval/answer-semantics";
 import {
   answerHasVerifiedNumber,
   buildReport,
@@ -37,6 +38,7 @@ import type { ChatResponse } from "../lib/ai/chat-types";
 import type { UnifiedDependencies } from "../lib/ai/unified";
 import type { ToolMessage, ToolModelOptions, ToolTurn } from "../lib/ai/tool-provider";
 import type { RequestUsage } from "../lib/security/ai-cost";
+import type { FactRef } from "../lib/ai/result-contract";
 
 // Mock the SDK only in mock mode; live mode receives the real `openai` module so
 // `AI_EVAL_UNIFIED=1` exercises the production provider path.
@@ -148,7 +150,7 @@ function lastToolPayload(messages: ToolMessage[]): Record<string, unknown> | nul
   }
 }
 
-type DigestFact = { factId: string; text: string };
+type DigestFact = Pick<FactRef, "factId" | "text" | "semantic">;
 
 /** The tool result carries the fact digest the model may cite via `{{factId}}`. */
 function digestFacts(messages: ToolMessage[]): DigestFact[] {
@@ -532,9 +534,11 @@ describe.skipIf(!ENABLED).sequential("unified conversation evaluation", () => {
               binWidth: 5,
             });
           }
-          const fact = digestFacts(messages)[0];
+          const fact = digestFacts(messages).find((item) => item.semantic?.largestDecline);
           return answerTurn(
-            fact ? `对比之后可以看到：${cite(fact)}。` : "对比完成，但没有可引用事实。",
+            fact
+              ? `${previousTerm}到${latestTerm}，${fact.semantic!.subject}均分下降最多，下降${cite(fact)}。`
+              : "对比完成，但没有可引用事实。",
           );
         },
         check: (response) => {
@@ -1055,6 +1059,12 @@ describe.skipIf(!ENABLED).sequential("unified conversation evaluation", () => {
     }, 240_000);
 
     it("explains a term comparison with a bound decline number", async () => {
+      const independent = comparisonFromCsv(
+        readFileSync(join(DATA_DIR, "student_outcomes.csv"), "utf8"),
+        previousTerm,
+        latestTerm,
+      );
+      expect(independent, "sample CSV must contain a comparable decline").not.toBeNull();
       const report = await runLiveScenario({
         id: "compare-natural-answer",
         label: "学期比较 + 自然回答",
@@ -1073,6 +1083,7 @@ describe.skipIf(!ENABLED).sequential("unified conversation evaluation", () => {
             !response.answer.startsWith("本轮仅完成部分分析") &&
             naturalProseChars(response.answer, response, catalogLabels) >= 6;
           return [
+            ...comparisonAnswerChecks(response.answer, independent!),
             { name: "comparison artifact present", passed: hasComparison },
             { name: "resultRefs present", passed: (response.resultRefs?.length ?? 0) >= 1 },
             {

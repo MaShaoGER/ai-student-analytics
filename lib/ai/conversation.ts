@@ -1,3 +1,4 @@
+import { assertCurrentAccess } from "../auth/access";
 import { runAnalysis, scoreDistribution } from "../analysis/duckdb";
 import { findGoldenCase, planForDataset } from "../analysis/golden-cases";
 import { analysisPlanSchema } from "../analysis/types";
@@ -301,6 +302,7 @@ export async function converse(
 ): Promise<ChatResponse> {
   assertActive(options);
   const input = chatInputSchema.parse(raw);
+  assertCurrentAccess(input.datasetId, "ai");
   try {
     return await runConversation(input, options, dependencies);
   } catch (error) {

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import type { SessionUser } from "../client-types";
-import { AuthError, getSessionUser } from "./service";
+import { REQUEST_TOO_LARGE_CODE, RequestBodyTooLargeError } from "../security/request-body";
+import { AuthError, assertOperation, getSessionUser } from "./service";
 
 export const cookieName = "analytics_session";
 
@@ -9,15 +10,24 @@ export function readSessionToken(request: Request): string | undefined {
   return request.headers.get("cookie")?.split(";").map((part) => part.trim()).find((part) => part.startsWith(`${cookieName}=`))?.slice(cookieName.length + 1);
 }
 
+const PASSWORD_CHANGE_PATHS = new Set([
+  "/api/auth/session",
+  "/api/auth/password",
+  "/api/auth/logout",
+]);
+
 export async function requireUser(request: Request): Promise<SessionUser> {
   const user = await getSessionUser(readSessionToken(request));
   if (!user) throw new AuthError(401, "UNAUTHENTICATED", "请先登录，再查看数据。");
+  if (user.mustChangePassword && !PASSWORD_CHANGE_PATHS.has(new URL(request.url).pathname)) {
+    throw new AuthError(403, "PASSWORD_CHANGE_REQUIRED", "请先修改临时密码，再继续使用系统。");
+  }
   return user;
 }
 
 export async function requireAdmin(request: Request): Promise<SessionUser> {
   const user = await requireUser(request);
-  if (user.role !== "admin") throw new AuthError(403, "FORBIDDEN", "只有管理员可以修改系统设置。");
+  assertOperation(user, "manage");
   return user;
 }
 
@@ -49,6 +59,7 @@ export function clearSessionCookie(response: NextResponse, request: Request): vo
 
 export function apiError(error: unknown): NextResponse {
   if (error instanceof AuthError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.status, headers: { "Cache-Control": "no-store", ...(error.status === 429 ? { "Retry-After": "900" } : {}) } });
+  if (error instanceof RequestBodyTooLargeError) return NextResponse.json({ error: error.message, code: REQUEST_TOO_LARGE_CODE }, { status: 413, headers: { "Cache-Control": "no-store" } });
   if (error instanceof z.ZodError || error instanceof SyntaxError) return NextResponse.json({ error: "提交内容不完整或格式不正确，请检查后重试。", code: "INVALID_INPUT" }, { status: 400, headers: { "Cache-Control": "no-store" } });
   // Do not log messages: upstream API errors can contain credentials or user text.
   console.error("API 请求处理失败", safeErrorDetails(error));

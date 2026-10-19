@@ -106,6 +106,7 @@ export function AnalysisResultView({
   onChartChange,
   loading,
   planning,
+  canExport,
   onReport,
 }: {
   result: AnalysisResult | null;
@@ -113,6 +114,8 @@ export function AnalysisResultView({
   onChartChange: (chart: ChartViewType) => void;
   loading: boolean;
   planning?: AnalysisPlanning | null;
+  /** Browser-side CSV/HTML downloads are unavailable to read-only accounts. */
+  canExport: boolean;
   onReport: (result: AnalysisResult) => void;
 }) {
   const [search, setSearch] = useState("");
@@ -360,55 +363,59 @@ export function AnalysisResultView({
               {animateCounts ? <AnimatedNumber value={rows.length} decimals={0} /> : rows.length}{" "}
               个可见分组 · 每组至少 {result.minSampleSize} 人
             </p>
-            <details
-              className="result-export result-disclosure"
-              data-enter="rise-sm"
-              style={enterAt(500)}
-              onKeyDown={(event) => {
-                if (event.key === "Escape") {
-                  event.currentTarget.open = false;
-                  event.currentTarget.querySelector("summary")?.focus();
-                }
-              }}
-              onBlur={(event) => {
-                if (!event.currentTarget.contains(event.relatedTarget))
-                  event.currentTarget.open = false;
-              }}
-            >
-              <summary>
-                <Icon name="download" size={16} />
-                导出结果
-                <Icon name="chevron" size={14} />
-              </summary>
-              <div
-                className="export-options disclosure-content"
+            {canExport ? (
+              <details
+                className="result-export result-disclosure"
                 data-enter="rise-sm"
-                style={{ "--enter-delay": "0ms", "--enter-dur": "320ms" } as CSSProperties}
+                style={enterAt(500)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    event.currentTarget.open = false;
+                    event.currentTarget.querySelector("summary")?.focus();
+                  }
+                }}
+                onBlur={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget))
+                    event.currentTarget.open = false;
+                }}
               >
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    downloadAnalysisFile(result, "csv");
-                    event.currentTarget.closest("details")?.removeAttribute("open");
-                  }}
+                <summary>
+                  <Icon name="download" size={16} />
+                  导出结果
+                  <Icon name="chevron" size={14} />
+                </summary>
+                <div
+                  className="export-options disclosure-content"
+                  data-enter="rise-sm"
+                  style={{ "--enter-delay": "0ms", "--enter-dur": "320ms" } as CSSProperties}
                 >
-                  下载 CSV
-                </button>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    downloadAnalysisFile(result, "html");
-                    event.currentTarget.closest("details")?.removeAttribute("open");
-                  }}
-                >
-                  下载 HTML 报告
-                </button>
-                <button type="button" onClick={() => onReport(result)}>
-                  预览 / 打印报告
-                </button>
-                <p>导出全部返回分组，保留原始顺序。</p>
-              </div>
-            </details>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      downloadAnalysisFile(result, "csv");
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                    }}
+                  >
+                    下载 CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      downloadAnalysisFile(result, "html");
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                    }}
+                  >
+                    下载 HTML 报告
+                  </button>
+                  <button type="button" onClick={() => onReport(result)}>
+                    预览 / 打印报告
+                  </button>
+                  <p>导出全部返回分组，保留原始顺序。</p>
+                </div>
+              </details>
+            ) : (
+              <p className="muted">只读账号可以预览报告，浏览器导出已关闭。</p>
+            )}
           </div>
           <details
             className="result-technical result-disclosure"

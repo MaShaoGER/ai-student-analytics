@@ -65,8 +65,8 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   try {
     assertSameOrigin(request);
-    await requireAdmin(request);
-    saveAnalysisSettings(await request.json());
+    const actor = await requireAdmin(request);
+    saveAnalysisSettings(await request.json(), actor.id);
     return noStoreJson(state());
   } catch (error) {
     return failure(error);
@@ -90,14 +90,14 @@ export async function POST(request: Request) {
       const fingerprint = analysisConfigFingerprint();
       try {
         await probeToolCalling(request.signal);
-        saveAnalysisCapability(fingerprint, true);
+        saveAnalysisCapability(fingerprint, true, user.id);
       } catch (error) {
         // A transient network/price/budget failure is not evidence of an unsupported protocol.
         if (
           error instanceof AIProviderError &&
           (error.code === "AI_INVALID_OUTPUT" || error.code === "AI_PROVIDER_BAD_REQUEST")
         )
-          saveAnalysisCapability(fingerprint, false);
+          saveAnalysisCapability(fingerprint, false, user.id);
         throw error;
       }
     }

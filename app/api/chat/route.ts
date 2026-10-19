@@ -1,3 +1,5 @@
+import { assertBusinessAccess, withBusinessAccess } from "@/lib/auth/access";
+import type { SessionUser } from "@/lib/client-types";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createChatStream } from "@/lib/ai/chat-stream";
@@ -26,9 +28,11 @@ export async function POST(request: Request) {
   // and in the audit row under this id, including failures before a response.
   const requestId = crypto.randomUUID();
   let userId: string;
+  let user: SessionUser;
   try {
     assertSameOrigin(request);
-    userId = (await requireUser(request)).id;
+    user = await requireUser(request);
+    userId = user.id;
   } catch (error) {
     // Every /api/chat error carries the same { error, code, retryable } shape.
     if (error instanceof AuthError)
@@ -82,6 +86,7 @@ export async function POST(request: Request) {
     period = "",
     model: string | null = null,
     usage?: RequestUsage,
+    outcome: "success" | "partial" | "failure" = errorCode ? "failure" : "success",
   ) =>
     saveAnalysisAudit({
       ...context,
@@ -91,6 +96,7 @@ export async function POST(request: Request) {
       promptVersion: PROMPT_VERSION,
       model,
       requestId,
+      outcome,
       ...(usage ? { usage } : {}),
       ...(executionSteps.size ? { executionSteps: [...executionSteps.values()] } : {}),
       result: { rowCount, period, durationMs: Math.round(performance.now() - startedAt) },
@@ -163,27 +169,29 @@ export async function POST(request: Request) {
     const payload: unknown = JSON.parse(text);
     context = { ...analysisRecordContext(payload), metricId: null, plan: null };
     const input = chatInputSchema.parse(payload);
-    stage = "planning";
+    assertBusinessAccess(user, input.datasetId, "ai");
     const run = async (signal: AbortSignal, onStep?: (step: AnalysisStep) => void) => {
-      const response = await converse(input, {
-        signal,
-        requestId,
-        onStep(step) {
-          const operation = operations[step.label];
-          if (operation)
-            executionSteps.set(step.id, {
-              operation,
-              status: step.status,
-              durationMs: step.durationMs,
-            });
-          stage = operation === "decision" ? "planning" : "execution";
-          onStep?.(step);
-        },
-        onExecution(plan) {
-          stage = "execution";
-          if (plan) context = analysisRecordContext(plan);
-        },
-      });
+      const response = await withBusinessAccess(user, input.datasetId, "ai", () =>
+        converse(input, {
+          signal,
+          requestId,
+          onStep(step) {
+            const operation = operations[step.label];
+            if (operation)
+              executionSteps.set(step.id, {
+                operation,
+                status: step.status,
+                durationMs: step.durationMs,
+              });
+            stage = operation === "decision" ? "planning" : "execution";
+            onStep?.(step);
+          },
+          onExecution(plan) {
+            stage = "execution";
+            if (plan) context = analysisRecordContext(plan);
+          },
+        }),
+      );
       const artifact = response.artifact;
       await audit(
         response.failureCode ?? null,
@@ -201,6 +209,7 @@ export async function POST(request: Request) {
         response.planning.model,
         // Partial results still report the usage/cost already spent this request.
         response.usage,
+        response.failureCode ? "partial" : "success",
       );
       return response;
     };

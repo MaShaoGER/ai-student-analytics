@@ -1,3 +1,4 @@
+import { withBusinessAccess } from "@/lib/auth/access";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { chartStudioData } from "@/lib/analysis/duckdb";
@@ -34,7 +35,9 @@ export async function GET(request: Request) {
       course: params.get("course") ?? "",
     });
     return noStoreJson(
-      await chartStudioData(input.datasetId, input.term, input.course, { signal: request.signal }),
+      await withBusinessAccess(user, input.datasetId, "view", () =>
+        chartStudioData(input.datasetId, input.term, input.course, { signal: request.signal }),
+      ),
     );
   } catch (error) {
     const failure = queryExecutionHttpError(error);

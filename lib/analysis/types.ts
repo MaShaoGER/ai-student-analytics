@@ -79,6 +79,8 @@ export type AnalysisResult = {
 };
 
 export type AnalysisRecord = {
+  /** Explicit terminal outcome for new requests; older rows use documented inference. */
+  outcome?: "success" | "partial" | "failure";
   executionSteps?: {
     operation: string;
     status: "running" | "completed" | "failed" | "cancelled";
@@ -113,6 +115,8 @@ export type AnalysisRecord = {
 };
 
 export type DatasetProfile = {
+  enabled?: boolean;
+  unavailableReason?: string;
   id: DataSource;
   name: string;
   description: string;

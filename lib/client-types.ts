@@ -1,13 +1,33 @@
 /** Public API contracts. Never add credential or session secrets here. */
+export type UserRole = "admin" | "user" | "readonly";
+export type DatasetId = "demo" | "oulad";
+
 export type SessionUser = {
   id: string;
   username: string;
   displayName: string;
-  role: "admin" | "user";
+  role: UserRole;
+  /** Missing only in compatibility fixtures; actual auth responses always include it. */
+  datasetIds?: DatasetId[];
+  /** Missing only in compatibility fixtures; actual auth responses always include it. */
+  mustChangePassword?: boolean;
 };
 
 export type ManagedUser = SessionUser & { disabled: boolean; createdAt: string };
 export type SessionResponse = { user: SessionUser | null; setupRequired: boolean };
+export type AdminUserListResponse = {
+  users: ManagedUser[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+export type AdminUserListFilter = {
+  q?: string;
+  role?: UserRole;
+  disabled?: boolean;
+  page?: number;
+  pageSize?: number;
+};
 
 export type AIBudgets = {
   perRequest: number;

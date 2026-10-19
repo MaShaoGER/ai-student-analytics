@@ -91,6 +91,16 @@ export type FactRef = {
     numerator?: number;
     denominator?: number;
   } | null;
+  /** Meaning of an atomic value; never infer a score from a change or a headcount. */
+  semantic?: {
+    subject: string;
+    metric: string;
+    role:
+      "before" | "after" | "change" | "decrease" | "sample_size" | "maximum" | "minimum" | "range";
+    term?: string;
+    comparisonTerm?: string;
+    largestDecline?: boolean;
+  };
   limitations: string[];
 };
 

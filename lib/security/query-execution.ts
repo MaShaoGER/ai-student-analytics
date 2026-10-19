@@ -1,3 +1,4 @@
+import { assertCurrentAccess } from "../auth/access";
 import { DuckDBInstance, type DuckDBConnection } from "@duckdb/node-api";
 import { validateQueryResult, type QueryLimits } from "./query-limits";
 
@@ -92,6 +93,7 @@ export async function withBoundedQueryConnection<T>(
   };
   const onAbort = () => stop("CANCELLED");
   const checkStopped = () => {
+    assertCurrentAccess();
     if (options.signal?.aborted) onAbort();
     if (performance.now() >= deadline) stop("TIMEOUT");
     if (stopped) throw stopped;

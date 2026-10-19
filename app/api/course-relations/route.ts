@@ -1,3 +1,4 @@
+import { withBusinessAccess } from "@/lib/auth/access";
 import { NextResponse } from "next/server";
 import { courseRelations } from "@/lib/analysis/duckdb";
 import { courseRelationRequestSchema } from "@/lib/analysis/course-relations";
@@ -29,7 +30,11 @@ export async function GET(request: Request) {
       term: params.get("term") ?? undefined,
       threshold: params.get("threshold") ?? undefined,
     });
-    return noStoreJson(await courseRelations(input, { signal: request.signal }));
+    return noStoreJson(
+      await withBusinessAccess(user, input.datasetId, "view", () =>
+        courseRelations(input, { signal: request.signal }),
+      ),
+    );
   } catch (error) {
     const failure = queryExecutionHttpError(error);
     if (failure)

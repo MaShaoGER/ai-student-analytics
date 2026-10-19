@@ -118,6 +118,25 @@ describe("chart and table share one result identity", () => {
     expect(once.facts).toEqual(twice.facts);
   });
 
+  it("distinguishes comparison results with different reference terms", () => {
+    const comparison: ChatArtifact = {
+      kind: "studio",
+      tool: "dumbbell",
+      term: "2025J",
+      comparisonTerm: "2025B",
+      courses: ["数学"],
+      view: "chart",
+      table: { columns: [], rows: [], description: "两个学期的均分比较" },
+    };
+    const first = describeArtifact(comparison, "demo")!;
+    const second = describeArtifact({ ...comparison, comparisonTerm: "2024J" }, "demo")!;
+    expect(first.result.terms).toEqual(["2025B", "2025J"]);
+    expect(first.result.resultId).not.toBe(second.result.resultId);
+    expect(describeArtifact(artifactWithView(comparison, "table"), "demo")!.result.resultId).toBe(
+      first.result.resultId,
+    );
+  });
+
   it("fails a dangling reference instead of presenting the number", () => {
     const { resultRefs, factRefs } = describeArtifacts([analysisArtifact("bar")], "demo");
     const forged = buildFactRef(resultRefs[0], {

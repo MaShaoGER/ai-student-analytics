@@ -43,6 +43,7 @@ async function createAccount(account: string): Promise<{ cookie: string; id: str
       displayName: "接口测试用户",
       password: secret,
       role: "user",
+      datasetIds: ["demo", "oulad"],
     }),
   });
   expect(response.status).toBe(201);
@@ -100,7 +101,7 @@ integration("authenticated application HTTP API", () => {
           datasetId: "demo",
           context: result.context,
           history: [
-            { role: "user", content: "哪门课程平均成绩最高？" },
+            { role: "user", datasetIds: ["demo", "oulad"], content: "哪门课程平均成绩最高？" },
             { role: "assistant", content: result.answer },
           ],
         }),
@@ -194,7 +195,14 @@ integration("authenticated application HTTP API", () => {
     const response = await request("/api/auth/session");
     const payload = await response.json();
     expect(payload.user.role).toBe("admin");
-    expect(Object.keys(payload.user).sort()).toEqual(["displayName", "id", "role", "username"]);
+    expect(Object.keys(payload.user).sort()).toEqual([
+      "datasetIds",
+      "displayName",
+      "id",
+      "mustChangePassword",
+      "role",
+      "username",
+    ]);
     expect(response.headers.get("cache-control")).toContain("no-store");
   });
 
@@ -367,7 +375,7 @@ integration("authenticated application HTTP API", () => {
     });
     expect(empty?.userId).toBeTruthy();
     expect(empty?.result.rowCount).toBe(0);
-    const invalid = records.find((record) => record.errorCode === "INVALID_PLAN");
+    const invalid = [...records].reverse().find((record) => record.errorCode === "INVALID_PLAN");
     expect(invalid).toMatchObject({ datasetId: "demo", metricId: null, plan: null });
     const invalidQuestion = records.find((record) => record.errorCode === "INVALID_QUESTION");
     expect(invalidQuestion).toMatchObject({

@@ -122,7 +122,7 @@ describe("controlled multi-step analysis with real DuckDB", () => {
     // numbers (30/80/50/3/3 in the fixture).
     const comparisonFact = result.factRefs?.find((fact) => fact.text.includes("AAA均分下降最多"));
     expect(comparisonFact).toBeTruthy();
-    expect(comparisonFact!.numeric).toMatchObject({ value: 30, unit: "分" });
+    expect(comparisonFact!.numeric).toBeNull();
     expect(comparisonFact!.resultId).toBe(result.resultRefs![0].resultId);
     // The displayed comparison sentence is now exactly the fact text, which is
     // what the UI needs to render its factId.
@@ -676,6 +676,164 @@ describe("controlled multi-step analysis with real DuckDB", () => {
     );
     expect(missing.answer).toContain("没有找到适用依据");
     expect(missing.citations).toHaveLength(0);
+  });
+
+  it("answers the requested largest decline even when a qualitative sentence survives filtering", async () => {
+    sequence(call("compare_terms", { beforeTerm: "2024B", afterTerm: "2024J", courses: [] }), {
+      model: "fixture",
+      message: {
+        role: "assistant",
+        content: "AAA下降999分。其余课程呈上升趋势。",
+        calls: [],
+      },
+    });
+    const result = await converseUnified(
+      { question: "比较2024B与2024J，哪门课程下降最多，下降多少？", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(deps.compose).toHaveBeenCalledTimes(1);
+    expect(result.answer).toContain("AAA均分下降最多");
+    expect(result.answer).toContain("下降 30 分");
+    expect(result.answer).toContain("80 → 50");
+    expect(result.answer).not.toContain("999");
+    expect(result.warning).toContain("未完整回答");
+  });
+
+  it("exposes separate scoped facts for the before score, after score, change and sample sizes", async () => {
+    sequence(
+      call("compare_terms", { beforeTerm: "2024B", afterTerm: "2024J", courses: [] }),
+      finish,
+    );
+    const result = await converseUnified(
+      { question: "比较2024B和2024J", datasetId: "demo" },
+      {},
+      deps,
+    );
+    const atomic = result.factRefs?.filter((fact) => fact.semantic?.subject === "AAA") ?? [];
+    expect(atomic).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          semantic: expect.objectContaining({ role: "before", term: "2024B" }),
+          numeric: expect.objectContaining({ value: 80, unit: "分" }),
+        }),
+        expect.objectContaining({
+          semantic: expect.objectContaining({ role: "after", term: "2024J" }),
+          numeric: expect.objectContaining({ value: 50, unit: "分" }),
+        }),
+        expect.objectContaining({
+          semantic: expect.objectContaining({ role: "change" }),
+          numeric: expect.objectContaining({ value: -30, unit: "分" }),
+        }),
+        expect.objectContaining({
+          semantic: expect.objectContaining({ role: "decrease" }),
+          numeric: expect.objectContaining({ value: 30, unit: "分" }),
+        }),
+        expect.objectContaining({
+          semantic: expect.objectContaining({ role: "sample_size", term: "2024B" }),
+          numeric: expect.objectContaining({ value: 3, unit: "人" }),
+        }),
+        expect.objectContaining({
+          semantic: expect.objectContaining({ role: "sample_size", term: "2024J" }),
+          numeric: expect.objectContaining({ value: 3, unit: "人" }),
+        }),
+      ]),
+    );
+    expect(new Set(atomic.map((fact) => fact.factId)).size).toBe(atomic.length);
+  });
+
+  it.each(["wrong-role", "wrong-course", "wrong-term", "sample-only", "summary-as-score"] as const)(
+    "does not accept an apparently bound comparison with %s",
+    async (mistake) => {
+      sequence(call("compare_terms", { beforeTerm: "2024B", afterTerm: "2024J", courses: [] }));
+      vi.mocked(deps.generate).mockImplementationOnce(async (messages) => {
+        const { facts } = JSON.parse(messages.at(-1)!.content);
+        const find = (role: string) =>
+          facts.find(
+            (fact: { semantic?: { subject: string; role: string } }) =>
+              fact.semantic?.subject === "AAA" && fact.semantic.role === role,
+          ).factId;
+        const content =
+          mistake === "wrong-role"
+            ? `AAA最低分为 {{${find("decrease")}}}。`
+            : mistake === "wrong-course"
+              ? `BBB均分下降最多，下降 {{${find("decrease")}}}。`
+              : mistake === "wrong-term"
+                ? `AAA在2024J均分为 {{${find("before")}}}。`
+                : mistake === "summary-as-score"
+                  ? `AAA最低分为 {{${facts.find((fact: { label: string }) => fact.label === "学期比较结论").factId}}}。`
+                  : `AAA有 {{${find("sample_size")}}} 参与统计。`;
+        return {
+          model: "fixture",
+          message: { role: "assistant", content: `${content}其余课程值得继续观察。`, calls: [] },
+        };
+      });
+      const result = await converseUnified(
+        { question: "比较2024B与2024J，哪门课程下降最多，下降多少？", datasetId: "demo" },
+        {},
+        deps,
+      );
+      expect(deps.compose).toHaveBeenCalledTimes(1);
+      expect(result.answer).toContain("AAA均分下降最多");
+      expect(result.answer).toContain("下降 30 分");
+      expect(result.answer).not.toContain("最低分为");
+      expect(result.answer).not.toContain("BBB均分下降最多");
+      expect(result.answer).not.toContain("AAA在2024J均分为 80");
+    },
+  );
+
+  it("renders distinct before, after and decline placeholders in a complete comparison", async () => {
+    sequence(call("compare_terms", { beforeTerm: "2024B", afterTerm: "2024J", courses: [] }));
+    vi.mocked(deps.generate).mockImplementationOnce(async (messages) => {
+      const { facts } = JSON.parse(messages.at(-1)!.content);
+      const find = (role: string) =>
+        facts.find(
+          (fact: { semantic?: { subject: string; role: string } }) =>
+            fact.semantic?.subject === "AAA" && fact.semantic.role === role,
+        ).factId;
+      return {
+        model: "fixture",
+        message: {
+          role: "assistant",
+          content: `AAA均分下降最多，从2024B的 {{${find("before")}}} 降至2024J的 {{${find("after")}}}，下降 {{${find("decrease")}}}。`,
+          calls: [],
+        },
+      };
+    });
+    const result = await converseUnified(
+      { question: "比较2024B与2024J，哪门课程下降最多，下降多少？", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(result.answer).toContain("2024B的 80分");
+    expect(result.answer).toContain("2024J的 50分");
+    expect(result.answer).toContain("下降 30分");
+    expect(result.warning).toBeUndefined();
+    expect(deps.compose).not.toHaveBeenCalled();
+  });
+
+  it("does not present the gap between averages as the lowest average", async () => {
+    sequence(call("aggregate", { metric: "score", dimension: "course", filters: [] }));
+    vi.mocked(deps.generate).mockImplementationOnce(async (messages) => {
+      const { facts } = JSON.parse(messages.at(-1)!.content);
+      const gap = facts.find((fact: { label: string }) => fact.label === "平均值差");
+      return {
+        model: "fixture",
+        message: {
+          role: "assistant",
+          content: `AAA最低均分为 {{${gap.factId}}}。结论值得关注。`,
+          calls: [],
+        },
+      };
+    });
+    const result = await converseUnified(
+      { question: "哪门课程平均成绩最低，是多少？", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(deps.compose).toHaveBeenCalledTimes(1);
+    expect(result.answer).toContain("最低：AAA，65 分");
+    expect(result.answer).not.toContain("最低均分为 10");
   });
 
   it("uses the model's natural answer when every cited sentence is a verified fact", async () => {

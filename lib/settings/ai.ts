@@ -1,10 +1,16 @@
+import { appendAdminEvent } from "../admin/audit";
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { z } from "zod";
 import type { AIBudgets, AIConfig, AIPricing } from "../client-types";
 import { AuthError } from "../auth/service";
 import { readState, updateState } from "./storage";
 
-export const DEFAULT_BUDGETS: AIBudgets = { perRequest: 0.1, perHour: 5, perDay: 20, perMonth: 200 };
+export const DEFAULT_BUDGETS: AIBudgets = {
+  perRequest: 0.1,
+  perHour: 5,
+  perDay: 20,
+  perMonth: 200,
+};
 /** Reference estimates only. Administrators can override them for their account. */
 export const REFERENCE_PRICING: Record<string, AIPricing> = {
   "gpt-4o": { inputPerMillion: 2.5, outputPerMillion: 10 },
@@ -14,22 +20,40 @@ export const REFERENCE_PRICING: Record<string, AIPricing> = {
   "gpt-3.5-turbo": { inputPerMillion: 0.5, outputPerMillion: 1.5 },
 };
 const amount = z.number().finite().nonnegative().max(1_000_000);
-export const aiConfigInputSchema = z.object({
-  enabled: z.boolean(),
-  apiFormat: z.enum(["responses", "chat_completions"]),
-  baseUrl: z.string().trim().max(2048).refine((value) => {
-    if (!value) return true;
-    try {
-      const url = new URL(value);
-      return url.protocol === "https:" && !url.username && !url.password && !url.search && !url.hash;
-    } catch { return false; }
-  }, "接口地址必须是 HTTPS URL，且不能包含账号、查询参数或片段。"),
-  model: z.string().trim().max(100).regex(/^(?:[a-zA-Z0-9][a-zA-Z0-9._:-]{0,99})?$/),
-  keyConfigured: z.boolean().optional(),
-  apiKey: z.string().trim().max(1024).optional(),
-  budgets: z.object({ perRequest: amount, perHour: amount, perDay: amount, perMonth: amount }).strict(),
-  pricing: z.object({ inputPerMillion: amount.nullable(), outputPerMillion: amount.nullable() }).strict(),
-}).strict();
+export const aiConfigInputSchema = z
+  .object({
+    enabled: z.boolean(),
+    apiFormat: z.enum(["responses", "chat_completions"]),
+    baseUrl: z
+      .string()
+      .trim()
+      .max(2048)
+      .refine((value) => {
+        if (!value) return true;
+        try {
+          const url = new URL(value);
+          return (
+            url.protocol === "https:" && !url.username && !url.password && !url.search && !url.hash
+          );
+        } catch {
+          return false;
+        }
+      }, "接口地址必须是 HTTPS URL，且不能包含账号、查询参数或片段。"),
+    model: z
+      .string()
+      .trim()
+      .max(100)
+      .regex(/^(?:[a-zA-Z0-9][a-zA-Z0-9._:-]{0,99})?$/),
+    keyConfigured: z.boolean().optional(),
+    apiKey: z.string().trim().max(1024).optional(),
+    budgets: z
+      .object({ perRequest: amount, perHour: amount, perDay: amount, perMonth: amount })
+      .strict(),
+    pricing: z
+      .object({ inputPerMillion: amount.nullable(), outputPerMillion: amount.nullable() })
+      .strict(),
+  })
+  .strict();
 
 type EncryptedKey = { iv: string; tag: string; ciphertext: string };
 type Settings = {
@@ -50,16 +74,24 @@ function endpointOrigin(baseUrl: string | undefined): string {
   return new URL(baseUrl || OFFICIAL_AI_BASE_URL).origin;
 }
 function environmentKey(state: Settings): string | null {
-  if (!aiConfigInputSchema.shape.baseUrl.safeParse(process.env.OPENAI_BASE_URL?.trim() || "").success ||
-      !aiConfigInputSchema.shape.baseUrl.safeParse(state.baseUrl || "").success) return null;
+  if (
+    !aiConfigInputSchema.shape.baseUrl.safeParse(process.env.OPENAI_BASE_URL?.trim() || "")
+      .success ||
+    !aiConfigInputSchema.shape.baseUrl.safeParse(state.baseUrl || "").success
+  )
+    return null;
   const environmentOrigin = endpointOrigin(process.env.OPENAI_BASE_URL?.trim());
   return endpointOrigin(state.baseUrl) === environmentOrigin
-    ? process.env.OPENAI_API_KEY?.trim() || null : null;
+    ? process.env.OPENAI_API_KEY?.trim() || null
+    : null;
 }
 function savedKeyMatches(state: Settings): boolean {
   // Legacy ciphertext belongs to its existing endpoint; the next save persists the binding.
-  return Boolean(state.encryptedApiKey) && aiConfigInputSchema.shape.baseUrl.safeParse(state.baseUrl || "").success &&
-    (!state.apiKeyOrigin || state.apiKeyOrigin === endpointOrigin(state.baseUrl));
+  return (
+    Boolean(state.encryptedApiKey) &&
+    aiConfigInputSchema.shape.baseUrl.safeParse(state.baseUrl || "").success &&
+    (!state.apiKeyOrigin || state.apiKeyOrigin === endpointOrigin(state.baseUrl))
+  );
 }
 
 function envPrice(value: string | undefined): number | null {
@@ -69,7 +101,9 @@ function envPrice(value: string | undefined): number | null {
 }
 function defaults(): Settings {
   const model = process.env.OPENAI_MODEL?.trim() || "";
-  const reference = Object.hasOwn(REFERENCE_PRICING, model) ? REFERENCE_PRICING[model] : { inputPerMillion: null, outputPerMillion: null };
+  const reference = Object.hasOwn(REFERENCE_PRICING, model)
+    ? REFERENCE_PRICING[model]
+    : { inputPerMillion: null, outputPerMillion: null };
   return {
     version: 1,
     enabled: Boolean(process.env.OPENAI_API_KEY?.trim() && model),
@@ -88,7 +122,11 @@ function defaults(): Settings {
 function encryptionKey(): Buffer {
   const encoded = process.env.APP_SETTINGS_KEY?.trim() || "";
   if (!/^[A-Za-z0-9+/]{43}=$/.test(encoded) || Buffer.from(encoded, "base64").length !== 32) {
-    throw new AuthError(503, "SETTINGS_KEY_REQUIRED", "服务器尚未配置有效的 APP_SETTINGS_KEY（32 字节 base64），无法安全保存或使用已保存的 AI 密钥。");
+    throw new AuthError(
+      503,
+      "SETTINGS_KEY_REQUIRED",
+      "服务器尚未配置有效的 APP_SETTINGS_KEY（32 字节 base64），无法安全保存或使用已保存的 AI 密钥。",
+    );
   }
   return Buffer.from(encoded, "base64");
 }
@@ -98,7 +136,11 @@ function encrypt(value: string): EncryptedKey {
   const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv);
   cipher.setAAD(encryptionContext);
   const encrypted = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
-  return { iv: iv.toString("base64"), tag: cipher.getAuthTag().toString("base64"), ciphertext: encrypted.toString("base64") };
+  return {
+    iv: iv.toString("base64"),
+    tag: cipher.getAuthTag().toString("base64"),
+    ciphertext: encrypted.toString("base64"),
+  };
 }
 function decrypt(key: EncryptedKey): string {
   const secret = encryptionKey();
@@ -106,9 +148,16 @@ function decrypt(key: EncryptedKey): string {
     const decipher = createDecipheriv("aes-256-gcm", secret, Buffer.from(key.iv, "base64"));
     decipher.setAAD(encryptionContext);
     decipher.setAuthTag(Buffer.from(key.tag, "base64"));
-    return Buffer.concat([decipher.update(Buffer.from(key.ciphertext, "base64")), decipher.final()]).toString("utf8");
+    return Buffer.concat([
+      decipher.update(Buffer.from(key.ciphertext, "base64")),
+      decipher.final(),
+    ]).toString("utf8");
   } catch {
-    throw new AuthError(503, "SETTINGS_KEY_INVALID", "AI 密钥无法解密，请恢复保存时使用的 APP_SETTINGS_KEY，或重新保存 AI 密钥。");
+    throw new AuthError(
+      503,
+      "SETTINGS_KEY_INVALID",
+      "AI 密钥无法解密，请恢复保存时使用的 APP_SETTINGS_KEY，或重新保存 AI 密钥。",
+    );
   }
 }
 function publicConfig(state: Settings): AIConfig {
@@ -127,16 +176,23 @@ export function getAIConfig(): AIConfig {
   return publicConfig(readState("ai-config.json", defaults));
 }
 
-export function saveAIConfig(payload: unknown): AIConfig {
+export function saveAIConfig(payload: unknown, actorId?: string): AIConfig {
   const input = aiConfigInputSchema.parse(payload);
   const encryptedApiKey = input.apiKey ? encrypt(input.apiKey) : undefined;
   return updateState("ai-config.json", defaults, (state) => {
+    const before = publicConfig(state);
     const origin = endpointOrigin(input.baseUrl);
-    if (!encryptedApiKey && (
-      (origin !== endpointOrigin(state.baseUrl) && (state.encryptedApiKey || environmentKey(state))) ||
-      (state.encryptedApiKey && !savedKeyMatches(state))
-    )) {
-      throw new AuthError(400, "AI_KEY_REENTRY_REQUIRED", "接口所属域名或端口已更换，请重新填写该接口对应的 API 密钥。");
+    if (
+      !encryptedApiKey &&
+      ((origin !== endpointOrigin(state.baseUrl) &&
+        (state.encryptedApiKey || environmentKey(state))) ||
+        (state.encryptedApiKey && !savedKeyMatches(state)))
+    ) {
+      throw new AuthError(
+        400,
+        "AI_KEY_REENTRY_REQUIRED",
+        "接口所属域名或端口已更换，请重新填写该接口对应的 API 密钥。",
+      );
     }
     state.enabled = input.enabled;
     state.apiFormat = input.apiFormat;
@@ -146,6 +202,34 @@ export function saveAIConfig(payload: unknown): AIConfig {
     state.pricing = { ...input.pricing };
     if (encryptedApiKey) state.encryptedApiKey = encryptedApiKey;
     if (state.encryptedApiKey) state.apiKeyOrigin = origin;
+    if (actorId)
+      appendAdminEvent(state, {
+        actorId,
+        action: "ai-config.update",
+        targetType: "ai-config",
+        targetId: "system",
+        summary: {
+          beforeEnabled: before.enabled,
+          enabled: state.enabled,
+          beforeApiFormat: before.apiFormat,
+          apiFormat: state.apiFormat,
+          modelChanged: before.model !== state.model,
+          endpointChanged: before.baseUrl !== state.baseUrl,
+          keyChanged: Boolean(encryptedApiKey),
+          beforePerRequest: before.budgets.perRequest,
+          perRequest: state.budgets.perRequest,
+          beforePerHour: before.budgets.perHour,
+          perHour: state.budgets.perHour,
+          beforePerDay: before.budgets.perDay,
+          perDay: state.budgets.perDay,
+          beforePerMonth: before.budgets.perMonth,
+          perMonth: state.budgets.perMonth,
+          beforeInputPerMillion: before.pricing.inputPerMillion,
+          inputPerMillion: state.pricing.inputPerMillion,
+          beforeOutputPerMillion: before.pricing.outputPerMillion,
+          outputPerMillion: state.pricing.outputPerMillion,
+        },
+      });
     return publicConfig(state);
   });
 }
@@ -154,7 +238,9 @@ export function saveAIConfig(payload: unknown): AIConfig {
 export function getRuntimeAIConfig(): AIConfig & { apiKey: string | null } {
   const state = readState("ai-config.json", defaults);
   const apiKey = state.encryptedApiKey
-    ? savedKeyMatches(state) ? decrypt(state.encryptedApiKey) : null
+    ? savedKeyMatches(state)
+      ? decrypt(state.encryptedApiKey)
+      : null
     : environmentKey(state);
   return { ...publicConfig(state), apiKey };
 }

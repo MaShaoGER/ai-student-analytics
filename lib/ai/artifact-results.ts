@@ -214,6 +214,7 @@ function describeAnalysis(artifact: Extract<ChatArtifact, { kind: "analysis" }>)
           // A rate keeps its denominator so the ratio can be recomputed.
           ...(plan.metric === "completion_rate" ? { numerator: own.value, denominator: 100 } : {}),
         },
+        semantic: { subject: top.dimension, metric: plan.metric, role: "maximum" },
         limitations: [],
       }),
     );
@@ -228,7 +229,15 @@ function describeAnalysis(artifact: Extract<ChatArtifact, { kind: "analysis" }>)
             unit: result.unit === "%" ? "个百分点" : result.unit,
             sampleSize: null,
           },
+          semantic: { subject: top.dimension, metric: plan.metric, role: "range" },
           limitations: ["差值由各组自己的样本计算，样本可能重叠。"],
+        }),
+        buildFactRef(resultRef, {
+          label: `最低分组的${metric.label}`,
+          text: `返回分组中最低：${low.dimension}，${result.metricLabel} ${low.value} ${result.unit}，参与统计 ${low.sampleSize} 人。`,
+          numeric: { value: low.value, unit: result.unit, sampleSize: low.sampleSize },
+          semantic: { subject: low.dimension, metric: plan.metric, role: "minimum" },
+          limitations: [],
         }),
       );
     }
@@ -346,7 +355,7 @@ function describeTool(
     metric: kind,
     granularity: "student_course_term",
     courses,
-    terms: studio.term ? [studio.term] : [],
+    terms: [studio.comparisonTerm, studio.term].filter((term): term is string => Boolean(term)),
     filters: courses.map((course) => ({
       field: "course" as const,
       op: "eq" as const,

@@ -1,3 +1,4 @@
+import { withBusinessAccess } from "@/lib/auth/access";
 import { NextResponse } from "next/server";
 import { coursePanorama } from "@/lib/analysis/duckdb";
 import {
@@ -33,7 +34,11 @@ export async function GET(request: Request) {
       source: params.get("source") ?? undefined,
       target: params.get("target") ?? undefined,
     });
-    return noStoreJson(await coursePanorama(input, { signal: request.signal }));
+    return noStoreJson(
+      await withBusinessAccess(user, input.datasetId, "view", () =>
+        coursePanorama(input, { signal: request.signal }),
+      ),
+    );
   } catch (error) {
     if (error instanceof PanoramaSelectionError)
       return NextResponse.json(

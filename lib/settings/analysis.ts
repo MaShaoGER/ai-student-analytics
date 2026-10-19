@@ -1,3 +1,4 @@
+import { appendAdminEvent } from "../admin/audit";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { getRuntimeAIConfig } from "./ai";
@@ -45,13 +46,40 @@ export function getAnalysisCapability() {
     checkedAt: matches ? stored!.checkedAt : null,
   };
 }
-export function saveAnalysisSettings(input: unknown) {
+export function saveAnalysisSettings(input: unknown, actorId?: string) {
   const settings = analysisSettingsSchema.parse(input);
-  return updateState("analysis-settings.json", initial, (state) => (state.settings = settings));
+  return updateState("analysis-settings.json", initial, (state) => {
+    const before = state.settings;
+    state.settings = settings;
+    if (actorId)
+      appendAdminEvent(state, {
+        actorId,
+        action: "analysis-settings.update",
+        targetType: "analysis-settings",
+        targetId: "system",
+        summary: {
+          beforeEnabled: before.enabled,
+          enabled: settings.enabled,
+          beforeMaxToolCalls: before.maxToolCalls,
+          maxToolCalls: settings.maxToolCalls,
+          beforeTimeoutSeconds: before.timeoutSeconds,
+          timeoutSeconds: settings.timeoutSeconds,
+        },
+      });
+    return settings;
+  });
 }
-export function saveAnalysisCapability(fingerprint: string, supported: boolean) {
+export function saveAnalysisCapability(fingerprint: string, supported: boolean, actorId?: string) {
   updateState("analysis-settings.json", initial, (state) => {
     state.capability = { fingerprint, supported, checkedAt: new Date().toISOString() };
+    if (actorId)
+      appendAdminEvent(state, {
+        actorId,
+        action: "analysis-capability.update",
+        targetType: "analysis-settings",
+        targetId: "model-capability",
+        summary: { supported },
+      });
   });
   return getAnalysisCapability();
 }

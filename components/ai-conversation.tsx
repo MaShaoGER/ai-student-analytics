@@ -145,7 +145,9 @@ export function ConversationWorkspace({
   pendingQuestion,
   pendingSteps,
   aiReady,
+  aiAllowed,
   canRun,
+  canExport,
   model,
   contextLabel,
   inputError,
@@ -167,7 +169,10 @@ export function ConversationWorkspace({
   pendingQuestion: string;
   pendingSteps: AnalysisStep[];
   aiReady: boolean;
+  /** Account permission for AI; deployment availability alone is insufficient. */
+  aiAllowed: boolean;
   canRun: boolean;
+  canExport: boolean;
   model?: string | null;
   contextLabel?: string | null;
   inputError?: string | null;
@@ -312,8 +317,12 @@ export function ConversationWorkspace({
         data-enter="fade"
         style={{ "--enter-delay": "300ms" } as CSSProperties}
       >
-        <span className={aiReady ? "status-dot" : "status-dot is-muted"} />
-        {aiReady ? `连续对话已开启${model ? ` · ${model}` : ""}` : "推荐问题可直接使用"}
+        <span className={aiAllowed && aiReady ? "status-dot" : "status-dot is-muted"} />
+        {!aiAllowed
+          ? "当前账号不能使用 AI 对话"
+          : aiReady
+            ? `连续对话已开启${model ? ` · ${model}` : ""}`
+            : "推荐问题可直接使用"}
       </p>
       <div
         className={styles.transcript}
@@ -332,25 +341,33 @@ export function ConversationWorkspace({
           >
             <Speaker role="assistant" />
             <p>
-              可以直接说想比较什么、观察趋势、分布或指标关系。我会选择合适的文字、图表或数值表，也可以按你的要求调整。继续追问会沿用当前筛选。
+              {aiAllowed
+                ? "可以直接说想比较什么、观察趋势、分布或指标关系。我会选择合适的文字、图表或数值表，也可以按你的要求调整。继续追问会沿用当前筛选。"
+                : "只读账号可使用指标分析，不能使用 AI 对话。请返回指标分析查看确定性统计结果。"}
             </p>
-            <div className={styles.suggestions} aria-label="推荐问题">
-              {suggestedQuestionsFor(aiReady).map((item) => (
-                <button
-                  type="button"
-                  className="secondary-button"
-                  key={item.id}
-                  disabled={loading || !canRun}
-                  onClick={() => onAsk(item.question)}
-                >
-                  {item.question}
-                </button>
-              ))}
-            </div>
-            <p className={styles.privacy}>
-              AI
-              负责理解问题、选择工具和组织说明；统计数字由本地计算；只做群体统计，不提供个体名单或排名；对话正文不写入审计记录。
-            </p>
+            {aiAllowed && (
+              <div className={styles.suggestions} aria-label="推荐问题">
+                {suggestedQuestionsFor(aiReady).map((item) => (
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    key={item.id}
+                    disabled={loading || !canRun}
+                    onClick={() => {
+                      if (aiAllowed) onAsk(item.question);
+                    }}
+                  >
+                    {item.question}
+                  </button>
+                ))}
+              </div>
+            )}
+            {aiAllowed && (
+              <p className={styles.privacy}>
+                AI
+                负责理解问题、选择工具和组织说明；统计数字由本地计算；只做群体统计，不提供个体名单或排名；对话正文不写入审计记录。
+              </p>
+            )}
           </div>
         )}
         {messages.map((message, index) => {
@@ -455,13 +472,14 @@ export function ConversationWorkspace({
                           response={response}
                           artifact={artifact}
                           onChartChange={(view) => onChartChange(message.id, view, artifactIndex)}
+                          canExport={canExport}
                           onReport={onReport}
                         />
                       </ChartAttachmentBody>
                     </div>
                   );
                 })}
-              {index === messages.length - 1 && response?.suggestions.length ? (
+              {aiAllowed && index === messages.length - 1 && response?.suggestions.length ? (
                 <div
                   className={styles.suggestions}
                   aria-label="继续探索"
@@ -474,7 +492,9 @@ export function ConversationWorkspace({
                       className="secondary-button"
                       key={suggestion}
                       disabled={loading}
-                      onClick={() => onAsk(suggestion)}
+                      onClick={() => {
+                        if (aiAllowed) onAsk(suggestion);
+                      }}
                     >
                       {suggestion}
                     </button>
@@ -513,7 +533,7 @@ export function ConversationWorkspace({
         )}
       </div>
       {!loading && pendingSteps.length > 0 ? <ExecutionSteps steps={pendingSteps} /> : null}
-      {!aiReady && (
+      {aiAllowed && !aiReady && (
         <p className={styles.note}>
           推荐问题和已有结果的表格切换无需连接 AI。自由对话需要管理员开启并配置 AI。
           {onConfigure && (
@@ -530,9 +550,10 @@ export function ConversationWorkspace({
           aria-label="对话输入"
           data-enter="rise"
           style={{ "--enter-delay": "420ms" } as CSSProperties}
+          aria-disabled={!aiAllowed}
           onSubmit={(event) => {
             event.preventDefault();
-            onAsk();
+            if (aiAllowed) onAsk();
           }}
         >
           <div id={COMPOSER_FIELDS_ID} className={styles.composerFields} hidden={composerCollapsed}>
@@ -571,7 +592,7 @@ export function ConversationWorkspace({
                   <>
                     {/* Without a model the deterministic presets only work in a
                       fresh conversation; offering them mid-transcript would fail. */}
-                    {aiReady || !messages.length ? (
+                    {aiAllowed && (aiReady || !messages.length) ? (
                       <details className={styles.presets}>
                         <summary>推荐问题</summary>
                         <div>
@@ -582,7 +603,7 @@ export function ConversationWorkspace({
                               disabled={loading || !canRun}
                               onClick={(event) => {
                                 event.currentTarget.closest("details")?.removeAttribute("open");
-                                onAsk(item.question);
+                                if (aiAllowed) onAsk(item.question);
                               }}
                             >
                               {item.question}
@@ -652,13 +673,25 @@ export function ConversationWorkspace({
               maxLength={500}
               value={question}
               placeholder={
-                messages.length ? "只看上学期、换成表格，或继续追问…" : "你想了解哪些学习情况？"
+                aiAllowed
+                  ? messages.length
+                    ? "只看上学期、换成表格，或继续追问…"
+                    : "你想了解哪些学习情况？"
+                  : "只读账号不能使用 AI 对话"
               }
+              disabled={!aiAllowed}
               aria-invalid={inputError ? true : undefined}
               aria-describedby={inputError ? QUESTION_ERROR_ID : undefined}
-              onChange={(event) => onQuestionChange(event.target.value)}
+              onChange={(event) => {
+                if (aiAllowed) onQuestionChange(event.target.value);
+              }}
               onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                if (
+                  aiAllowed &&
+                  event.key === "Enter" &&
+                  !event.shiftKey &&
+                  !event.nativeEvent.isComposing
+                ) {
                   event.preventDefault();
                   onAsk();
                 }
@@ -694,7 +727,7 @@ export function ConversationWorkspace({
                   type="submit"
                   key="send"
                   className={styles.send}
-                  disabled={(!canRun && !aiReady) || question.trim().length < 2}
+                  disabled={!aiAllowed || (!canRun && !aiReady) || question.trim().length < 2}
                   aria-label="发送"
                 >
                   <Icon name="arrow" size={19} />
@@ -851,11 +884,13 @@ function ConversationResult({
   response,
   artifact,
   onChartChange,
+  canExport,
   onReport,
 }: {
   response: ChatResponse;
   artifact: ChatArtifact;
   onChartChange: (view: ChatDisplayView) => void;
+  canExport: boolean;
   onReport: (result: AnalysisResult) => void;
 }) {
   return (
@@ -867,6 +902,7 @@ function ConversationResult({
           onChartChange={onChartChange}
           loading={false}
           planning={response.planning}
+          canExport={canExport}
           onReport={onReport}
         />
       ) : artifact.kind === "distribution" ? (

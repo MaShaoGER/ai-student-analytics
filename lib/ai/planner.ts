@@ -1,3 +1,4 @@
+import { assertCurrentAccess } from "../auth/access";
 import OpenAI from "openai";
 import { APIConnectionTimeoutError, APIUserAbortError } from "openai/core/error";
 import { zodTextFormat } from "openai/helpers/zod";
@@ -135,6 +136,7 @@ export async function generateStructured<T extends z.ZodObject<z.ZodRawShape>>(
   maxTokens = 500,
   parseResponse: (value: unknown) => z.infer<T> = (value) => schema.parse(value),
 ): Promise<{ fields: z.infer<T>; usedModel: string }> {
+  assertCurrentAccess(undefined, "ai");
   assertPlanningActive(options.signal);
   if (!getAIConfig().enabled)
     throw new AIConfigurationError("AI 当前已停用，请使用常用分析问题，或联系管理员开启 AI。");
@@ -320,6 +322,7 @@ export async function planQuestion(
   generator: StructuredPlanGenerator = generateWithOpenAI,
   options: PlanningOptions = {},
 ): Promise<PlannedQuestion> {
+  assertCurrentAccess(undefined, "ai");
   assertPlanningActive(options.signal);
   const parsed = planQuestionInputSchema.parse(input);
   const goldenCase = findGoldenCase(parsed.question);
@@ -334,6 +337,7 @@ export async function planQuestion(
   }
 
   const fields = await generator(parsed.question, options);
+  assertCurrentAccess(undefined, "ai");
   assertPlanningActive(options.signal);
   if (!fields.canAnalyze) {
     throw new AIClarificationError(

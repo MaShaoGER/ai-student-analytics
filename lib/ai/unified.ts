@@ -1,3 +1,4 @@
+import { assertCurrentAccess } from "../auth/access";
 import { z } from "zod";
 import { absenceStats, runAnalysis, scoreDistribution } from "../analysis/duckdb";
 import {
@@ -36,6 +37,7 @@ import { buildFactRef, danglingFactRefs, type FactRef, type ResultRef } from "./
 import type { DataSource } from "../analysis/types";
 import { resultFacts } from "./result-facts";
 import { describeAbsence, describeResponseArtifacts } from "./artifact-results";
+import { answerCoverageProblems, factUseMatchesMeaning } from "./answer-quality";
 
 const text = z.string().min(1).max(100);
 const schemas = {
@@ -119,6 +121,7 @@ const INSTRUCTIONS = `你是群体教学分析助手。用户只负责提问，�
 工具能力：aggregate 查询聚合指标（可指定 bar/line/table 展示、排序与条数）；compare_terms 比较两个明确学期的同名课程；score_distribution 查询单门课程单学期的成绩分布；absence_stats 统计缺勤；search_knowledge 检索指标定义、数据说明与限制；advanced_chart 生成受控高级图表；clarify 在范围确实有歧义时追问。
 信息足够时停止调用工具，并用 2–4 句完整的中文句子给出结论；不要只写标题、列表标签或空项目，不要罗列全部事实，也不要重复表格内容。
 回答中引用任何统计数字（数值、百分比、人数、课时等）时，只能使用本轮工具返回的 facts 数组里的占位符 {{factId}}（例如 {{f-0123456789abcdef}}），程序会把占位符替换为该事实的数值与单位；占位符已包含数值和单位，不要再重复写数字或单位。不得自己写出数字（包括全角数字、中文数字），也不得使用历史回答、previousResults 或记忆中的数字。没有对应事实时就不写数字。用户明确问“下降多少/多少人/比例/幅度”等数值时，回答必须包含对应占位符，不能只给定性结论。不要使用 Markdown 加粗、标题或列表标记，用完整句子作答。
+facts 的 label 和 semantic 指定数字的课程、学期及含义。before 是前期均分，after 是后期均分，change 是后期减前期的有符号差值，decrease 是下降幅度，sample_size 是样本人数，range 是高低差；不得混用。学期比较应点名课程和前后学期，用户问下降最多时必须引用对应课程的 decrease 事实。value 为 null 的“学期比较结论”是整句依据，只能作为完整结论引用，不能当作单个分数使用。
 给出“最好/最低/偏高/偏低/最多/最少”等评价时，必须紧接至少一个本轮 facts 占位符作为依据，并使用数据中的课程/学期全名，不要用“理工类/文科类”等类别概括代替具体分组；没有可引用事实时只陈述已有结果，不做评价。
 没有调用工具的直接回答不需要占位符，但同样不要编造统计数字。
 定义、规则、“是什么/有什么区别/如何计算”这类问题必须先调用 search_knowledge；不得凭记忆直接回答。检索不到依据时如实说明没有收录，不编造规则。
@@ -177,9 +180,17 @@ export function composeBoundAnswer(text: string, facts: FactRef[], catalogLabels
   const kept: string[] = [];
   let dropped = 0;
   let bound = 0;
+  const citedFactIds: string[] = [];
   for (const sentence of sentences) {
-    const ids = [...sentence.matchAll(FACT_PLACEHOLDER)].map((match) => match[1]);
-    if (ids.some((id) => !byId.has(id))) {
+    const matches = [...sentence.matchAll(FACT_PLACEHOLDER)];
+    const ids = matches.map((match) => match[1]);
+    if (
+      ids.some((id) => !byId.has(id)) ||
+      matches.some(
+        (match) =>
+          !factUseMatchesMeaning(sentence.slice(0, match.index), byId.get(match[1])!, facts),
+      )
+    ) {
       dropped++;
       continue;
     }
@@ -192,9 +203,10 @@ export function composeBoundAnswer(text: string, facts: FactRef[], catalogLabels
       continue;
     }
     bound += ids.length;
+    citedFactIds.push(...ids);
     const rendered = sentence.replace(FACT_PLACEHOLDER, (_match: string, id: string) => {
       const fact = byId.get(id)!;
-      if (!fact.numeric) return fact.label;
+      if (!fact.numeric) return fact.text;
       const value = fact.numeric.value.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
       return fact.numeric.unit === "%" ? `${value}%` : `${value}${fact.numeric.unit}`;
     });
@@ -202,7 +214,7 @@ export function composeBoundAnswer(text: string, facts: FactRef[], catalogLabels
     // "79.42分分" that the model may write after it.
     kept.push(rendered.replace(/([0-9])\s*(%|％|分|人|门|次|课时|天)\s*\2/g, "$1$2"));
   }
-  return { answer: kept.join("").trim(), dropped, total: sentences.length, bound };
+  return { answer: kept.join("").trim(), dropped, total: sentences.length, bound, citedFactIds };
 }
 
 export class UnifiedConversationError extends Error {
@@ -290,6 +302,7 @@ export async function converseUnified(
   deps: UnifiedDependencies = unifiedDefaults,
 ): Promise<ChatResponse> {
   const input = chatInputSchema.parse(raw);
+  assertCurrentAccess(input.datasetId, "ai");
   const settings = deps.settings();
   if (!settings.enabled) throw new AIConfigurationError("AI 对话分析已停用，请联系管理员开启。");
   if (deps.capability().status !== "supported")
@@ -323,6 +336,7 @@ export async function converseUnified(
     requestId: options.requestId,
   };
   const active = () => {
+    assertCurrentAccess(input.datasetId, "ai");
     if (timedOut) throw new QueryExecutionError("TIMEOUT", "本轮对话已达到总时间上限。");
     if (localAbort.signal.aborted) throw new QueryExecutionError("CANCELLED", "分析请求已取消。");
   };
@@ -382,9 +396,11 @@ export async function converseUnified(
       ...extraResults.flatMap((entry) => entry.facts),
     ].map((fact) => ({
       factId: fact.factId,
+      label: fact.label,
       text: fact.text,
       value: fact.numeric?.value ?? null,
       unit: fact.numeric?.unit ?? null,
+      ...(fact.semantic ? { semantic: fact.semantic } : {}),
     }));
   };
   const citations = new Map<string, KnowledgeCitation>();
@@ -448,7 +464,7 @@ export async function converseUnified(
     const bound =
       measuredAnswer && !failureCode
         ? composeBoundAnswer(finalText, mergedFacts, catalogLabels)
-        : { answer: "", dropped: 0, total: 0, bound: 0 };
+        : { answer: "", dropped: 0, total: 0, bound: 0, citedFactIds: [] };
     const templateAnswer = [
       failureCode ? "本轮仅完成部分分析，以下结果可核对：" : "已按实际数据完成以下分析：",
       ...uniqueFacts,
@@ -458,7 +474,19 @@ export async function converseUnified(
       .join("\n");
     // Drop decorative Markdown emphasis from model prose; the answer is rendered
     // as plain text and `**` would otherwise be shown literally.
-    const naturalText = bound.answer.replace(/\*\*(.+?)\*\*/g, "$1").replace(/__(.+?)__/g, "$1");
+    const coverageProblems = answerCoverageProblems(
+      input.question,
+      bound.answer,
+      bound.citedFactIds,
+      mergedFacts,
+    );
+    const naturalText = (coverageProblems.length ? "" : bound.answer)
+      .replace(/\*\*(.+?)\*\*/g, "$1")
+      .replace(/__(.+?)__/g, "$1");
+    if (coverageProblems.length)
+      warning = [warning, `AI 解释${coverageProblems.join("、")}，已保留可核对的事实。`]
+        .filter(Boolean)
+        .join(" ");
     const naturalAnswer = naturalText
       ? `${naturalText}${snippets.length ? "\n指标口径与限制见下方引用。" : ""}`
       : "";
@@ -538,7 +566,7 @@ export async function converseUnified(
         // The UI shows this sentence under every answer: it must describe what
         // actually happened in this turn (tools vs direct prose vs citations).
         rationale: measuredAnswer
-          ? "本轮结论来自服务端工具结果，数字与引用由程序核验。"
+          ? "本轮结论来自服务端工具结果，数字来源与引用由程序核对。"
           : knowledgeAnswer
             ? "知识库资料不足或存在版本冲突，未调用统计工具。"
             : citations.size
@@ -810,6 +838,7 @@ export async function converseUnified(
               kind: "studio",
               tool: "dumbbell",
               term: params.afterTerm,
+              comparisonTerm: params.beforeTerm,
               view: "chart",
               courses: params.courses,
               datasetId: input.datasetId,
@@ -832,17 +861,99 @@ export async function converseUnified(
               [comparisonArtifact],
               input.datasetId,
             ).resultRefs[0];
-            if (comparisonResult)
+            if (comparisonResult) {
               extraFacts.push(
                 buildFactRef(comparisonResult, {
                   label: "学期比较结论",
                   text: comparisonFact,
-                  numeric: rows.length
-                    ? { value: Math.abs(rows[0].变化), unit: "分", sampleSize: null }
-                    : null,
+                  // This sentence contains several values. It is a complete
+                  // conclusion, never an alias for one of its numbers.
+                  numeric: null,
                   limitations: ["两期学生构成可能不同，变化不能证明个体进步或教学因果。"],
                 }),
               );
+              for (const row of rows) {
+                const atoms: {
+                  role: NonNullable<FactRef["semantic"]>["role"];
+                  term?: string;
+                  value: number;
+                  unit: string;
+                  label: string;
+                  sample: number | null;
+                }[] = [
+                  {
+                    role: "before",
+                    term: params.beforeTerm,
+                    value: row.前期均分,
+                    unit: "分",
+                    label: "前期均分",
+                    sample: row.前期人数,
+                  },
+                  {
+                    role: "after",
+                    term: params.afterTerm,
+                    value: row.后期均分,
+                    unit: "分",
+                    label: "后期均分",
+                    sample: row.后期人数,
+                  },
+                  {
+                    role: "change",
+                    value: row.变化,
+                    unit: "分",
+                    label: "后期减前期变化",
+                    sample: null,
+                  },
+                  ...(row.变化 < 0
+                    ? [
+                        {
+                          role: "decrease" as const,
+                          value: -row.变化,
+                          unit: "分",
+                          label: "下降幅度",
+                          sample: null,
+                        },
+                      ]
+                    : []),
+                  {
+                    role: "sample_size",
+                    term: params.beforeTerm,
+                    value: row.前期人数,
+                    unit: "人",
+                    label: "前期样本人数",
+                    sample: row.前期人数,
+                  },
+                  {
+                    role: "sample_size",
+                    term: params.afterTerm,
+                    value: row.后期人数,
+                    unit: "人",
+                    label: "后期样本人数",
+                    sample: row.后期人数,
+                  },
+                ];
+                for (const atom of atoms)
+                  extraFacts.push(
+                    buildFactRef(comparisonResult, {
+                      label: `${row.课程}·${atom.label}`,
+                      text: `${row.课程} · ${atom.term ?? scope} · ${atom.label}：${n(atom.value)} ${atom.unit}。`,
+                      numeric: { value: atom.value, unit: atom.unit, sampleSize: atom.sample },
+                      semantic: {
+                        subject: row.课程,
+                        metric: "score",
+                        role: atom.role,
+                        ...(atom.term ? { term: atom.term } : {}),
+                        comparisonTerm:
+                          atom.term === params.beforeTerm ? params.afterTerm : params.beforeTerm,
+                        ...(atom.role === "decrease" && row === rows[0]
+                          ? { largestDecline: true }
+                          : {}),
+                      },
+                      limitations: comparisonResult.limitations,
+                    }),
+                  );
+              }
+            }
             facts.push("两期学生构成可能不同；课程均分变化不能证明个人进步或教学因果。");
             context = {
               kind: "tool",
@@ -924,7 +1035,12 @@ export async function converseUnified(
       // trusted; ask once for a placeholder-bound answer before falling back.
       const retryFacts = currentFacts();
       const initial = composeBoundAnswer(finalText, retryFacts, catalogLabels);
-      if (retryFacts.length && !initial.answer) {
+      if (
+        retryFacts.length &&
+        (!initial.answer ||
+          answerCoverageProblems(input.question, initial.answer, initial.citedFactIds, retryFacts)
+            .length > 0)
+      ) {
         const digest = currentFactDigest();
         try {
           const retry = await step("重写最终回答", () =>
@@ -962,6 +1078,9 @@ export async function converseUnified(
     });
     return response();
   } catch (error) {
+    // Partial-result recovery must never return artifacts after scope/role
+    // revocation. Recheck before every recovery branch, including timeouts.
+    assertCurrentAccess(input.datasetId, "ai");
     if (timedOut && !options.signal?.aborted && artifacts.length) {
       failureCode = "TIMEOUT";
       warning = "本轮达到总时间上限，已保留完成的结果；后续步骤尚未完成。";

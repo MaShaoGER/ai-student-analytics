@@ -16,9 +16,10 @@ CSV/Excel 上传导入仍属于后续计划。测试环境已于 2026-10-13 发�
 
 ## 当前目录
 
+- [后台管理首期](docs/admin-management.md)：阶段 0–5 已本地实施，包含角色与数据授权、账号、目录、系统总览和操作日志；[验收记录](docs/admin-management-acceptance.md)、[实施路线](docs/admin-management-roadmap.md)。数据导入留待后续。
 - [AI学生数据分析系统开发路线图.md](AI学生数据分析系统开发路线图.md)：产品、架构、开发计划和验收标准。
 - [赛事改进路线](docs/competition-improvement-roadmap.md)：2026-10-18 确认的优先顺序、实施范围和验收标准；第一阶段已本地实施，见[实施记录](docs/competition-phase1.md)；第二阶段首版见[实施与验收](docs/competition-phase2.md)。
-- [AI 统一对话与统计分析改进路线图](docs/unified-ai-workflow-roadmap.md)：2026-10-19 确认的后续调整，合并问答模式，统一上下文、统计计算、表格图表和预算；第 2 步「接好统计与展示」已局部实施，见[实施记录](docs/unified-ai-phase2.md)，整体合并仍未完成。
+- [AI 统一对话与统计分析改进路线图](docs/unified-ai-workflow-roadmap.md)：第 1–4 步已本地实施，统一问答入口、上下文、统计结果与请求用量；后续[回答可靠性修正](docs/ai-answer-reliability.md)补充完整性检查、数字含义绑定与独立语义评测，旧评测未通过项仍如实保留。
 - `oulad_raw/OULAD.names`：OULAD 数据字段说明。
 - `app/`、`components/`、`lib/`：Next.js 页面、图表和受控 DuckDB 分析链路。
 - `data/sample/`、`data/schema/`：虚构演示数据、数据字典和冻结的指标口径。
