@@ -191,3 +191,73 @@ CI 里没有 `records/system/ai-config.json`，真实评测走环境变量配置
 每轮按 `planning`（指标、范围、排序、限制、澄清）、`query`（执行计划、查询行、数值、人数）、`presentation`（展示形式、视图、降级说明）记录 `pass/fail/blocked`。前一阶段失败后，依赖阶段记为 blocked，避免将未验证的后续步骤算作成功。运行异常发生在执行回调前归于规划，执行回调后归于查询；提供者和配置细节不写入扩展异常报告。
 
 本轮仅执行模拟评测；真实模型评测尚未运行，不能据此宣称真实 AI 准确率提升。统一对话第 1 步同样只做受控测试与 HTTP 测试，真实模型与浏览器验收仍未执行。
+
+## 统一对话评测（2026-10-19 第 4 步重建）
+
+统一对话第 1 步删除 JSON 规划器后，原先注入规划器依赖的「模拟规划器」夹具（`scripts/ai-eval/phase1.ts`、`phase1-cases.jsonl`、`scripts/ai-eval-phase1.test.ts`）保持**退役**，不恢复、不维护第二套流程。第 4 步改为直接评测唯一入口 `lib/ai/unified.ts` 的**工具循环**：模型自行决定直接回答、调用统计工具、检索知识或生成图表，评测检查工具返回、结果契约与请求级用量，而不是比对某个固定规划动作。
+
+| 文件 | 作用 |
+| --- | --- |
+| `scripts/ai-eval-unified.test.ts` | 评测入口；默认整文件 `describe.skipIf` 跳过，不产生任何网络请求与费用 |
+| `scripts/ai-eval/unified-scenarios.ts` | 纯函数辅助：报告结构、factRef 绑定、答案数字核验、模板/自然回答判定、usage 合理性检查 |
+
+### 运行方式
+
+| 命令 | 行为 | 是否发网络请求 | 费用 |
+| --- | --- | --- | --- |
+| `pnpm test` | 常规测试；两个 `describe` 均跳过，不写报告 | 否 | 0 |
+| `pnpm eval:ai:unified:mock` | `AI_EVAL_UNIFIED_MOCK=1`：脚本化模型轮次 + 真实 DuckDB（固定 `data/sample`）；global `fetch` 被替换为抛错，任何网络访问即失败 | 否 | 0 |
+| `pnpm eval:ai:unified` | `AI_EVAL_UNIFIED=1`：真实模型 + 真实 DuckDB，7 个场景 | 是 | 计入应用预算与真实账单 |
+
+两个变量同时设置时以 mock 为准。真实模式的配置来源与旧评测相同：进程环境变量优先，缺失时依次尝试 `AI_EVAL_ENV_FILE`、`records/.env`、`.env.local`；要求 AI 已开启、模型名非空、密钥可用、输入/输出单价已填写。若设置中尚无有效的工具调用能力检测记录，脚本会先执行一次 `probeToolCalling()`（额外 2 次短模型调用）再开始场景。
+
+### Mock 模式证明什么、不证明什么
+
+Mock 模式把 `UnifiedDependencies.generate` 替换为脚本化工具轮，但 `analyze` / `distribution` / `absence` / `chart` / `search` 全部是**真实实现**，数据源为 `data/sample`（18 门课程、4 个学期、1200 名学生）。它证明的是：
+
+- 引擎接线与结果契约：工具输出 → artifact / `resultRefs` / `factRefs` 严格绑定，悬空 fact 会被丢弃并给出 warning；
+- 依赖流：`compare_terms` 返回的 `largestDecline` 被下一轮 `score_distribution` 真实继承，图表/分布结果身份一致；
+- 数字防编造：模型终轮**只能**用工具返回的 `{{factId}}` 占位符引用数字，占位符之外出现任何数字（含全角/中文数字）整句丢弃并提示「未核验」；所有句子都被判为不合格时会做一次修正重试（部分合格不重试），仍失败则回退可核对的事实模板；
+- 缺勤不被活动量替代、知识无依据时如实拒绝、连续追问继承 `confirmedContext` 并只覆盖学期；
+- 请求级用量：所有模型轮共享同一个 `usageContext`，`modelCalls` 等于真实调用次数，token 与 `costUsd` 逐次累加；
+- 产品路径（无网络）：mock 掉 OpenAI SDK 后调用真实 `generateToolTurn`，验证成功与失败两条路径都在 cost history 中写入同一个 `requestId`，失败调用仍按估算计入用量（`estimated=true`）。
+
+它**不**证明真实模型会选择正确工具、写出自然语言结论或达到任何准确率；这部分只能看真实模式。
+
+Mock 模式的 6 个场景：聚合→自然回答绑定、比较→依赖分布、明确图表、缺勤、知识拒绝、多轮上下文继承。任何场景失败都会让对应 `it` 失败，报告同时保留逐项 `checks`。
+
+### 真实模式（7 个场景）
+
+真实模式使用 `converseUnified` + 真实 `generateToolTurn` + 真实 DuckDB（固定 `data/sample`），逐场景记录 `passed`、`kind`、artifacts、`resultRefs`/`factRefs` 数量、耗时、`usage`/`cost`、模型与失败摘要：
+
+| 场景 | 问题形态 | 关键检查 |
+| --- | --- | --- |
+| `direct-answer` | 无需工具的说明/寒暄 | 无 artifact、无 resultRefs；若出现数字须带「未经统计核验」提示 |
+| `aggregate-natural-answer` | 按课程看某学期平均成绩 | 有 analysis artifact 与 resultRefs；回答是自然语言而非模板（fact 占位符绑定成功），数字全部可核验 |
+| `followup-context-inheritance` | 先问 2025J，再追问「换成 2025B」 | 第二轮继承上一轮的指标/维度，只覆盖学期；先决条件为第一轮确实返回了 `context`（该前置请求的 usage 不并入报告） |
+| `compare-natural-answer` | 比较两个学期并说明下降幅度 | 哑铃图 artifact、覆盖两个学期、自然回答且至少一个数字经事实核验 |
+| `explicit-chart` | 明确要求箱线图 | 生成图表 artifact 与 resultRefs |
+| `absence` | 某学期缺勤课时 | 结果来自 `absence_stats`（`kind=absence`），不替换为活动量，数字可核验 |
+| `knowledge-citations` | 完成率与出勤率的区别 | 必须返回版本化 `citations`，不能用模板或编造规则代替 |
+
+真实模式的断言刻意保持温和但诚实：不硬编码任何期望数值（一致性一律对照本次真实 DuckDB 结果），但**不把模板答案当自然回答**、不放过编造数字、定义类问题必须带引用。因此单个场景失败是有效信号，而不是把失败算作通过。
+
+**检查项在审查后收紧过**：数字采用整 token 精确匹配（不再用子串包含），核验语料只取 `factRefs`/`facts`/知识引用（不包含 artifact 原始行），并移除了"答案点名真实课程即算接地"的放宽；全角数字与中文数字也算未核验。真实报告不收录 `followup` 场景前置请求的用量，成本需结合 cost-history 时间窗核对。
+
+### 报告文件
+
+`output/ai-eval/unified-mock-<时间戳>.json`（`mocked: true`）或 `output/ai-eval/unified-live-<时间戳>.json`；`output/` 已在 `.gitignore`，不会进仓库。报告只覆盖 7 个场景本身：`followup` 场景的前置请求与工具能力探针（若触发）另有调用，需查 `cost-history`。顶层字段：`mode`、`mocked`、`startedAt` / `finishedAt`、`dataset`、`dataDir`、`model`、`envFile`、`total` / `passed` / `passRate`（百分比）。`scenarios[]` 每条含 `id`、`label`、`passed`、`kind`、`completion`、`artifacts`、`resultRefCount`、`factRefCount`、`durationMs`、`usage`、`costUsd`、`model`、`requestId`、`answerPreview`、`answerNumbers`（去掉课程/学期标签后回答里出现的数字）、`inventedNumbers`（没有事实支撑的数字，期望为空）、`warning`、`checks[]` 与可选 `error`。mock 与 live 报告分开命名，不会混写。
+
+### 请求级用量关联
+
+- 每个 `/api/chat` 请求生成一个 `requestId`，经 `converse` → `converseUnified` → `generateToolTurn` 逐层传递；每次真实模型调用在 `finally` 中把 prompt/completion/total token、`costUsd`、`estimated` 累加到同一个 `RequestUsage`，并以 `requestId` 结算写入 cost history（`endpoint: "chat"`）。
+- 响应 `ChatResponse.usage` / `requestId` 返回聚合后的请求级用量；审计记录（`records/analysis.jsonl`）持久化经过校验的 `requestId` 与 `usage`（数值有限、非负、有上限，非法形状直接丢弃而不是抛错），仍**不**保存问答正文或原始数据行。
+- 因此「本次请求花了多少、由哪些模型调用构成、对应哪条审计」可以用 `requestId` 串起来；失败/部分结果返回时，已发生的用量仍会出现在响应与审计里。
+
+### 使用约定
+
+1. **mock 不是模型能力验收**：对外汇报时单列 live 结果；mock 只说明「引擎没坏」。
+2. **live 不是广泛准确率声明**：7 个场景是冒烟级验收，覆盖接线与关键行为；单次采样波动、模型/提示词变化都会影响结果，不能把一次通过率当作产品准确率。
+3. **改了工具循环、提示词或模型后重跑 live**；报告里的 `model` 与时间戳用于区分版本。
+4. **成本可控**：每个场景通常 2–4 次短请求；mock 为 0。先确认预算余量，不要在演示前最后几分钟跑 live。
+5. **不要提交真实报告**：`output/` 已忽略；需要留证据时复制到私有目录，不要放进仓库或聊天记录。

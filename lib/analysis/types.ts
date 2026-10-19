@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { RequestUsage } from "../security/ai-cost";
 
 export const metricSchema = z.enum(["score", "activity", "completion_rate"]);
 export const dimensionSchema = z.enum(["course", "term"]);
@@ -98,6 +99,10 @@ export type AnalysisRecord = {
   promptVersion?: string;
   /** Model that produced the plan, when one was actually called. Never a key or base URL. */
   model?: string | null;
+  /** Server-generated request id, correlating this audit row with cost history. */
+  requestId?: string;
+  /** Aggregated model usage/cost for the request, when it called a model. */
+  usage?: RequestUsage;
   result: {
     rowCount: number;
     period: string;

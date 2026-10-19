@@ -43,7 +43,9 @@ function valuesOf(filters: PlanFilter[] | undefined, field: "course" | "term") {
 }
 
 function scopeLabel(datasetId: DataSource, parts: string[]): string {
-  return [datasetId === "demo" ? "模拟校园数据" : "OULAD 本地数据", ...parts.filter(Boolean)].join(" · ");
+  return [datasetId === "demo" ? "模拟校园数据" : "OULAD 本地数据", ...parts.filter(Boolean)].join(
+    " · ",
+  );
 }
 
 /**
@@ -65,7 +67,9 @@ export function describeAbsence(
     courses: stats.course ? [stats.course] : stats.rows.map((row) => row.course),
     terms: stats.term ? [stats.term] : stats.terms,
     filters: [
-      ...(stats.course ? [{ field: "course" as const, op: "eq" as const, value: stats.course }] : []),
+      ...(stats.course
+        ? [{ field: "course" as const, op: "eq" as const, value: stats.course }]
+        : []),
       ...(stats.term ? [{ field: "term" as const, op: "eq" as const, value: stats.term }] : []),
     ],
     extra: { absenceMetric: stats.metric, unit: stats.unit },
@@ -188,7 +192,9 @@ function describeAnalysis(artifact: Extract<ChatArtifact, { kind: "analysis" }>)
         ? ["各组样本可能重叠，人数不能直接相加；汇总差异不能证明原因或评价个体。"]
         : []),
       ...(result.filteredOutGroupCount
-        ? [`有 ${result.filteredOutGroupCount} 个分组因不足 ${result.minSampleSize} 人被隐藏；隐藏不表示为零。`]
+        ? [
+            `有 ${result.filteredOutGroupCount} 个分组因不足 ${result.minSampleSize} 人被隐藏；隐藏不表示为零。`,
+          ]
         : []),
     ],
   });
@@ -206,9 +212,7 @@ function describeAnalysis(artifact: Extract<ChatArtifact, { kind: "analysis" }>)
           unit: result.unit,
           sampleSize: own.sampleSize,
           // A rate keeps its denominator so the ratio can be recomputed.
-          ...(plan.metric === "completion_rate"
-            ? { numerator: own.value, denominator: 100 }
-            : {}),
+          ...(plan.metric === "completion_rate" ? { numerator: own.value, denominator: 100 } : {}),
         },
         limitations: [],
       }),
@@ -343,14 +347,22 @@ function describeTool(
     granularity: "student_course_term",
     courses,
     terms: studio.term ? [studio.term] : [],
-    filters: courses.map((course) => ({ field: "course" as const, op: "eq" as const, value: course })),
+    filters: courses.map((course) => ({
+      field: "course" as const,
+      op: "eq" as const,
+      value: course,
+    })),
     extra: { tool: kind },
     unit: kind === "density" ? "频数" : "分",
     minSampleSize: 3,
     sampleSize: null,
     scopeLabel: [
       studio.term || "所选学期",
-      courses.length ? (courses.length > 2 ? `${courses[0]} 等 ${courses.length} 门课程` : courses.join("、")) : "全部课程",
+      courses.length
+        ? courses.length > 2
+          ? `${courses[0]} 等 ${courses.length} 门课程`
+          : courses.join("、")
+        : "全部课程",
       toolLabel(kind),
     ].join(" · "),
     limitations: [studio.table.description].filter(Boolean),
@@ -360,7 +372,9 @@ function describeTool(
     facts: [
       buildFactRef(resultRef, {
         label: "聚合数据行",
-        text: `返回 ${studio.table.rows.length} 个聚合数据行。`,
+        // Same wording as `toolFacts()` so the UI can bind the displayed prose
+        // fact to this factId (exact text match).
+        text: `返回 ${studio.table.rows.length} 个聚合数据行；下方图表和数值表使用同一份真实统计。`,
         numeric: { value: studio.table.rows.length, unit: "行", sampleSize: null },
         limitations: [],
       }),

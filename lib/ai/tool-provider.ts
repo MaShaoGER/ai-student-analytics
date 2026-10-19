@@ -2,7 +2,14 @@ import OpenAI from "openai";
 import { APIConnectionTimeoutError, APIUserAbortError } from "openai/core/error";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import type { ResponseInputItem } from "openai/resources/responses/responses";
-import { calculateCost, reserveBudget, settleBudget, type TokenUsage } from "../security/ai-cost";
+import {
+  accumulateRequestUsage,
+  calculateCost,
+  reserveBudget,
+  settleBudget,
+  type RequestUsage,
+  type TokenUsage,
+} from "../security/ai-cost";
 import { QueryExecutionError } from "../security/query-execution";
 import { getRuntimeAIConfig, OFFICIAL_AI_BASE_URL } from "../settings/ai";
 import { AIConfigurationError, estimatePromptTokens, type PlanningOptions } from "./planner";
@@ -25,7 +32,14 @@ export type ToolMessage = {
   responseItems?: ResponseInputItem[];
 };
 export type ToolTurn = { message: ToolMessage; model: string };
-export type ToolModelOptions = PlanningOptions & { required?: boolean; maxTokens?: number };
+export type ToolModelOptions = PlanningOptions & {
+  required?: boolean;
+  maxTokens?: number;
+  /** Request-level accumulator shared by every model round of one user request. */
+  usageContext?: RequestUsage;
+  /** Server-generated request id; written to cost history for traceability. */
+  requestId?: string;
+};
 
 function chatMessages(messages: ToolMessage[]): ChatCompletionMessageParam[] {
   return messages.map((message): ChatCompletionMessageParam => {
@@ -175,7 +189,12 @@ export async function generateToolTurn(
       "chat",
       config.pricing,
       estimated,
+      { requestId: options.requestId },
     );
+    // Count this call exactly once, including failed calls: the finally block
+    // runs once per model request and `usage` is the actual or estimated usage.
+    if (options.usageContext)
+      accumulateRequestUsage(options.usageContext, usage, cost.totalCost, estimated);
     if (options.budgetContext) options.budgetContext.spent += cost.totalCost;
   }
 }

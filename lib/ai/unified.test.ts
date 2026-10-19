@@ -70,6 +70,12 @@ describe("controlled multi-step analysis with real DuckDB", () => {
       absence: vi.fn(real.absenceStats),
       chart: vi.fn(executeChartTool),
       search: searchKnowledge,
+      // The corrective compose turn is scripted separately; empty text means
+      // "no better answer", so the template fallback stays observable.
+      compose: vi.fn(async () => ({
+        model: "fixture",
+        message: { role: "assistant" as const, content: "", calls: [] },
+      })),
       settings: () => ({ enabled: true, maxToolCalls: 6, timeoutSeconds: 60 }),
       capability: () => ({ status: "supported", checkedAt: null }),
     };
@@ -89,6 +95,12 @@ describe("controlled multi-step analysis with real DuckDB", () => {
         前期人数: 3,
         后期人数: 3,
       });
+      // The rich comparison sentence is exposed to the model as a citable fact,
+      // so it can use `{{factId}}` instead of writing the numbers itself.
+      const comparisonFact = (result.facts as { factId: string; text: string }[]).find((fact) =>
+        fact.text.includes("AAA均分下降最多"),
+      );
+      expect(comparisonFact?.factId).toMatch(/^f-[0-9a-f]{16}$/);
       return call("score_distribution", {
         ...result.largestDecline,
         term: result.afterTerm,
@@ -105,6 +117,16 @@ describe("controlled multi-step analysis with real DuckDB", () => {
     );
     expect(result.artifacts?.map((item) => item.kind)).toEqual(["studio", "distribution"]);
     expect(result.planning.rationale).toContain("服务端工具结果");
+    // The rich comparison sentence shown to the user is itself a verifiable fact:
+    // the UI can show its factId and the natural-answer number check trusts its
+    // numbers (30/80/50/3/3 in the fixture).
+    const comparisonFact = result.factRefs?.find((fact) => fact.text.includes("AAA均分下降最多"));
+    expect(comparisonFact).toBeTruthy();
+    expect(comparisonFact!.numeric).toMatchObject({ value: 30, unit: "分" });
+    expect(comparisonFact!.resultId).toBe(result.resultRefs![0].resultId);
+    // The displayed comparison sentence is now exactly the fact text, which is
+    // what the UI needs to render its factId.
+    expect(result.facts).toContain(comparisonFact!.text);
     expect(result.answer).toContain("下降 30 分");
     expect(result.answer).not.toContain("999");
     expect(result.answer).not.toContain("原因已经确认");
@@ -574,6 +596,34 @@ describe("controlled multi-step analysis with real DuckDB", () => {
     expect(result.kind).toBe("answer");
     expect(result.warning).toBeUndefined();
   });
+  it("does not treat common quantifiers as unverified statistics", async () => {
+    vi.mocked(deps.generate).mockResolvedValueOnce({
+      model: "fixture",
+      message: {
+        role: "assistant",
+        content: "你可以比较两个学期的平均成绩，也可以查看多门课程的情况。",
+        calls: [],
+      },
+    });
+    const result = await converseUnified({ question: "你能做什么", datasetId: "demo" }, {}, deps);
+    expect(result.warning).toBeUndefined();
+  });
+  it("warns about Chinese numeric claims in a direct answer", async () => {
+    vi.mocked(deps.generate).mockResolvedValueOnce({
+      model: "fixture",
+      message: {
+        role: "assistant",
+        content: "大约有三成课程低于平均分，需要进一步核验。",
+        calls: [],
+      },
+    });
+    const result = await converseUnified(
+      { question: "整体情况怎么样", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(result.warning).toContain("未经统计核验");
+  });
   it("tells the user when a long direct answer was truncated", async () => {
     vi.mocked(deps.generate).mockResolvedValueOnce({
       model: "fixture",
@@ -626,5 +676,265 @@ describe("controlled multi-step analysis with real DuckDB", () => {
     );
     expect(missing.answer).toContain("没有找到适用依据");
     expect(missing.citations).toHaveLength(0);
+  });
+
+  it("uses the model's natural answer when every cited sentence is a verified fact", async () => {
+    vi.mocked(deps.generate).mockImplementationOnce(async () =>
+      call("aggregate", { metric: "score", dimension: "course", filters: [] }),
+    );
+    let citedFact: { value: number | null; unit: string | null } | null = null;
+    vi.mocked(deps.generate).mockImplementationOnce(async (messages) => {
+      const toolOutput = JSON.parse(messages.at(-1)!.content) as {
+        facts: { factId: string; text: string; value: number | null; unit: string | null }[];
+      };
+      expect(toolOutput.facts.length).toBeGreaterThan(0);
+      citedFact = { value: toolOutput.facts[1].value, unit: toolOutput.facts[1].unit };
+      return {
+        model: "fixture",
+        message: {
+          role: "assistant",
+          content: "先看本轮已核验的事实：" + "{{" + toolOutput.facts[1].factId + "}}。",
+          calls: [],
+        },
+      };
+    });
+    const result = await converseUnified(
+      { question: "各课程成绩如何", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(result.kind).toBe("result");
+    // The template is replaced by natural prose rendered from the fact text.
+    expect(result.answer).not.toContain("已按实际数据完成以下分析");
+    expect(result.answer).toContain("先看本轮已核验的事实");
+    expect(citedFact).toBeTruthy();
+    // The placeholder is rendered as the verified value + unit, inside the
+    // model's own sentence, not pasted as a whole fact sentence.
+    const rendered = `${(citedFact!.value as number).toLocaleString("zh-CN", {
+      maximumFractionDigits: 2,
+    })}${citedFact!.unit}`;
+    expect(result.answer).toContain(rendered);
+    expect(result.answer).not.toContain("返回分组中最高：");
+    expect(result.factRefs!.length).toBeGreaterThan(0);
+    expect(result.warning).toBeUndefined();
+  });
+  it("drops sentences with self-written numbers or unknown fact references", async () => {
+    sequence(call("aggregate", { metric: "score", dimension: "course", filters: [] }), {
+      model: "fixture",
+      message: {
+        role: "assistant",
+        content:
+          "最高均分是 999 分。另一句引用不存在的事实 {{f-0000000000000000}}。结论需要结合课程考核。",
+        calls: [],
+      },
+    });
+    const result = await converseUnified(
+      { question: "各课程成绩如何", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(result.answer).not.toContain("999");
+    expect(result.answer).not.toContain("f-0000000000000000");
+    // The only safe sentence survives, so the answer is neither the template nor empty.
+    expect(result.answer).toContain("结论需要结合课程考核");
+    expect(result.warning).toContain("已省略这些句子");
+  });
+  it("falls back to the verified fact list when the whole explanation fails validation", async () => {
+    sequence(call("aggregate", { metric: "score", dimension: "course", filters: [] }), finish);
+    const result = await converseUnified(
+      { question: "各课程成绩如何", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(result.answer).toContain("已按实际数据完成以下分析");
+    expect(result.answer).not.toContain("999");
+    expect(result.warning).toContain("未通过数字/事实引用核验");
+  });
+  it("honors an explicitly requested view, sort and limit in the aggregate call", async () => {
+    sequence(
+      call("aggregate", {
+        metric: "score",
+        dimension: "course",
+        filters: [],
+        view: "table",
+        sort: { by: "dimension", direction: "asc" },
+        limit: 5,
+      }),
+      finish,
+    );
+    const result = await converseUnified(
+      { question: "用表格按课程名排序显示前5门课程平均成绩", datasetId: "demo" },
+      {},
+      deps,
+    );
+    const artifact = result.artifacts?.[0];
+    expect(artifact).toMatchObject({ kind: "analysis", view: "table" });
+    if (artifact?.kind === "analysis") {
+      expect(artifact.plan.chartType).toBe("table");
+      expect(artifact.plan.sort).toEqual({ by: "dimension", direction: "asc" });
+      expect(artifact.plan.limit).toBe(5);
+    }
+    expect(result.context).toMatchObject({ kind: "analysis", view: "table", limit: 5 });
+  });
+  it("asks once for a corrected answer when the first prose fails fact binding", async () => {
+    sequence(call("aggregate", { metric: "score", dimension: "course", filters: [] }), finish);
+    vi.mocked(deps.compose).mockImplementationOnce(async (messages) => {
+      const last = messages.at(-1)!.content;
+      const digest = JSON.parse(last.slice(last.indexOf("facts=") + "facts=".length)) as {
+        factId: string;
+      }[];
+      return {
+        model: "fixture",
+        message: {
+          role: "assistant" as const,
+          content: "已核验结论：" + "{{" + digest[0].factId + "}}。",
+          calls: [],
+        },
+      };
+    });
+    const result = await converseUnified(
+      { question: "各课程成绩如何", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(deps.compose).toHaveBeenCalledTimes(1);
+    expect(result.answer).not.toContain("已按实际数据完成以下分析");
+    expect(result.answer).toContain("已核验结论");
+    expect(result.warning).toBeUndefined();
+  });
+  it("keeps a complete analysis when the corrective rewrite fails", async () => {
+    sequence(call("aggregate", { metric: "score", dimension: "course", filters: [] }), finish);
+    vi.mocked(deps.compose).mockRejectedValueOnce(new Error("provider down"));
+    const result = await converseUnified(
+      { question: "各课程成绩如何", datasetId: "demo" },
+      {},
+      deps,
+    );
+    // The statistics are complete; only the optional prose rewrite failed.
+    expect(result.completion).toBe("complete");
+    expect(result.failureCode).toBeUndefined();
+    expect(result.answer).toContain("已按实际数据完成以下分析");
+    expect(result.warning).toContain("解释改写未完成");
+    expect(result.resultRefs).toHaveLength(1);
+  });
+  it("cleans Markdown bold and a duplicated unit in the rendered answer", async () => {
+    vi.mocked(deps.generate).mockImplementationOnce(async () =>
+      call("aggregate", { metric: "score", dimension: "course", filters: [] }),
+    );
+    vi.mocked(deps.generate).mockImplementationOnce(async (messages) => {
+      const toolOutput = JSON.parse(messages.at(-1)!.content) as {
+        facts: { factId: string }[];
+      };
+      return {
+        model: "fixture",
+        message: {
+          role: "assistant",
+          content: "**结论**：最高均分为 {{" + toolOutput.facts[0].factId + "}}分。",
+          calls: [],
+        },
+      };
+    });
+    const result = await converseUnified(
+      { question: "各课程成绩如何", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(result.answer).not.toContain("**");
+    expect(result.answer).not.toContain("分分");
+    expect(result.answer).toContain("结论：最高均分为");
+  });
+  it("aggregates request-level usage and request id across model rounds", async () => {
+    vi.mocked(deps.generate).mockImplementationOnce(async (_messages, _tools, options) => {
+      const usage = options!.usageContext!;
+      usage.modelCalls += 1;
+      usage.promptTokens += 100;
+      usage.completionTokens += 20;
+      usage.totalTokens += 120;
+      usage.costUsd += 0.0001;
+      usage.estimated = true;
+      return call("aggregate", { metric: "score", dimension: "course", filters: [] });
+    });
+    vi.mocked(deps.generate).mockImplementationOnce(async (_messages, _tools, options) => {
+      const usage = options!.usageContext!;
+      usage.modelCalls += 1;
+      usage.promptTokens += 50;
+      usage.completionTokens += 10;
+      usage.totalTokens += 60;
+      usage.costUsd += 0.00005;
+      return finish;
+    });
+    const result = await converseUnified(
+      { question: "各课程成绩如何", datasetId: "demo" },
+      { requestId: "req-test-1" },
+      deps,
+    );
+    expect(result.requestId).toBe("req-test-1");
+    expect(result.usage).toMatchObject({
+      modelCalls: 2,
+      promptTokens: 150,
+      completionTokens: 30,
+      totalTokens: 180,
+      estimated: true,
+    });
+    expect(result.usage!.costUsd).toBeCloseTo(0.00015, 10);
+  });
+
+  it("trusts only placeholders, even when a self-written number matches a verified value", async () => {
+    sequence(call("aggregate", { metric: "score", dimension: "course", filters: [] }), {
+      model: "fixture",
+      message: {
+        role: "assistant",
+        content: "最高的是 BBB，平均分为 75 分；2024J 的分组也在统计范围内。",
+        calls: [],
+      },
+    });
+    const result = await converseUnified(
+      { question: "各课程成绩如何", datasetId: "demo" },
+      {},
+      deps,
+    );
+    // 75 exists in a fact, but a self-written number could attribute it to the
+    // wrong metric/group; only placeholders are trusted, so that sentence drops.
+    expect(result.answer).not.toContain("75");
+    // The safe sentence (catalog label only, no statistic) survives.
+    expect(result.answer).toContain("2024J 的分组也在统计范围内");
+    expect(result.warning).toContain("已省略这些句子");
+  });
+  it("drops full-width digits and Chinese numeric claims written by the model", async () => {
+    sequence(call("aggregate", { metric: "score", dimension: "course", filters: [] }), {
+      model: "fixture",
+      message: {
+        role: "assistant",
+        content: "平均分会提高７９.４２分。大约有三成课程低于平均分。结论仍需结合考核方式。",
+        calls: [],
+      },
+    });
+    const result = await converseUnified(
+      { question: "各课程成绩如何", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(result.answer).not.toContain("７９");
+    expect(result.answer).not.toContain("三成");
+    expect(result.answer).toContain("结论仍需结合考核方式");
+    expect(result.warning).toContain("已省略这些句子");
+  });
+  it("drops model-written numbers that do not match any verified fact", async () => {
+    sequence(call("aggregate", { metric: "score", dimension: "course", filters: [] }), {
+      model: "fixture",
+      message: {
+        role: "assistant",
+        content: "最高的是 BBB，平均分为 999 分。整体情况需要结合课程考核方式。",
+        calls: [],
+      },
+    });
+    const result = await converseUnified(
+      { question: "各课程成绩如何", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(result.answer).not.toContain("999");
+    expect(result.answer).toContain("整体情况需要结合课程考核方式");
+    expect(result.warning).toContain("已省略这些句子");
   });
 });

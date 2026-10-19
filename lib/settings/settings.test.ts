@@ -117,6 +117,12 @@ describe("persistent AI settings and usage", () => {
       });
       const toolCallId = "call-aggregate";
       const modelNarration = "模型编造数字 999 分，并声称查询过完整名单。";
+      // The unified loop retries once with a corrective compose prompt; answer it
+      // with a real placeholder from the facts digest to exercise binding.
+      const composeAnswer = (payload: unknown) => {
+        const factId = String(JSON.stringify(payload)).match(/f-[0-9a-f]{16}/)?.[0];
+        return factId ? `已核验结果：{{${factId}}}。` : "本轮没有可引用的事实。";
+      };
       if (apiFormat === "responses") {
         openAIStub.responsesCreate
           .mockResolvedValueOnce({
@@ -137,7 +143,13 @@ describe("persistent AI settings and usage", () => {
             output: [],
             output_text: modelNarration,
             usage: { input_tokens: 250, output_tokens: 100, total_tokens: 350 },
-          });
+          })
+          .mockImplementationOnce(async (payload: unknown) => ({
+            status: "completed",
+            output: [],
+            output_text: composeAnswer(payload),
+            usage: { input_tokens: 300, output_tokens: 80, total_tokens: 380 },
+          }));
       } else {
         openAIStub.create
           .mockResolvedValueOnce({
@@ -161,7 +173,11 @@ describe("persistent AI settings and usage", () => {
           .mockResolvedValueOnce({
             choices: [{ finish_reason: "stop", message: { content: modelNarration } }],
             usage: { prompt_tokens: 250, completion_tokens: 100, total_tokens: 350 },
-          });
+          })
+          .mockImplementationOnce(async (payload: unknown) => ({
+            choices: [{ finish_reason: "stop", message: { content: composeAnswer(payload) } }],
+            usage: { prompt_tokens: 300, completion_tokens: 80, total_tokens: 380 },
+          }));
       }
       const result = await converse(
         { question: "只看AAA课程在2024J的平均成绩，用表格显示", datasetId: "demo" },
@@ -193,7 +209,7 @@ describe("persistent AI settings and usage", () => {
         apiFormat === "responses"
           ? openAIStub.responsesCreate.mock.calls
           : openAIStub.create.mock.calls;
-      expect(calls).toHaveLength(2);
+      expect(calls).toHaveLength(3);
       // The real saved key and endpoint drive both model turns.
       expect(openAIStub.options).toMatchObject({
         apiKey: SAVED_KEY,
@@ -201,16 +217,18 @@ describe("persistent AI settings and usage", () => {
         maxRetries: 0,
         timeout: 20_000,
       });
-      // The loop sees the catalog first, then the actual aggregate rows.
+      // The loop sees the catalog first, the actual aggregate rows second, and a
+      // corrective compose turn third (the narration above failed binding).
       expect(JSON.stringify(calls[0][0])).toContain("aggregate");
       expect(JSON.stringify(calls[1][0])).toContain("79.67");
+      expect(JSON.stringify(calls[2][0])).toMatch(/f-[0-9a-f]{16}/);
 
-      expect(getCostStats().total).toBe(2);
-      expect(getTotalCost().totalCost).toBeCloseTo(0.0019, 8);
+      expect(getCostStats().total).toBe(3);
+      expect(getTotalCost().totalCost).toBeCloseTo(0.0029, 8);
       const cost = readState("cost-history.json", () => ({
         records: [] as { endpoint: string; usageEstimated: boolean }[],
       }));
-      expect(cost.records.map((record) => record.endpoint)).toEqual(["chat", "chat"]);
+      expect(cost.records.map((record) => record.endpoint)).toEqual(["chat", "chat", "chat"]);
       expect(cost.records.every((record) => record.usageEstimated === false)).toBe(true);
     },
   );

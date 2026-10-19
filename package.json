@@ -18,7 +18,9 @@
     "eval:ai": "AI_EVAL=1 vitest run scripts/ai-eval.test.ts",
     "eval:ai:mock": "AI_EVAL_MOCK=1 vitest run scripts/ai-eval.test.ts",
     "postbuild": "node scripts/prepare-standalone-native.mjs",
-    "eval:ai:phase2": "AI_EVAL_PHASE2=1 vitest run scripts/ai-eval-phase2.test.ts"
+    "eval:ai:phase2": "AI_EVAL_PHASE2=1 vitest run scripts/ai-eval-phase2.test.ts",
+    "eval:ai:unified": "AI_EVAL_UNIFIED=1 vitest run scripts/ai-eval-unified.test.ts",
+    "eval:ai:unified:mock": "AI_EVAL_UNIFIED_MOCK=1 vitest run scripts/ai-eval-unified.test.ts"
   },
   "dependencies": {
     "@duckdb/node-api": "^1.5.5-r.5",

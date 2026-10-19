@@ -162,9 +162,10 @@
 .composerHeading {
   position: relative;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px 12px;
 }
 .composerHeading > label {
   font-size: 12px;
@@ -172,8 +173,12 @@
 }
 .composerTools {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 16px;
+  min-width: 0;
+  max-width: 100%;
 }
 .composerTools > button,
 .presets > summary {
@@ -191,6 +196,64 @@
 }
 .presets {
   position: static;
+}
+/* ---- Collapsible input (roadmap step 3) ---------------------------------
+   Folding only hides controls; the draft stays in the parent's `question`
+   state. The collapsed bar keeps one compact, focusable row so folding is
+   always reversible, and the toggle keeps a 32px target plus focus ring. */
+.composerFields {
+  min-width: 0;
+}
+.composerCollapsed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+.composer .collapseToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--instrument-ink);
+  background: transparent;
+  border: 1px solid var(--instrument-line);
+  cursor: pointer;
+}
+.composer .collapseToggle > svg {
+  flex: 0 0 auto;
+  transition: transform 200ms var(--ease-out);
+}
+.composer .collapseToggle[aria-expanded="true"] > svg {
+  transform: rotate(90deg);
+}
+.composer .collapseToggle[aria-expanded="false"] > svg {
+  transform: rotate(-90deg);
+}
+.composer .collapseToggle:hover:not(:disabled) {
+  background: var(--instrument-inset);
+}
+.composer .collapseToggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.collapsedHint {
+  min-width: 0;
+  margin: 0;
+  color: var(--instrument-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.collapsedDraft {
+  color: var(--instrument-ink);
 }
 .presets > summary {
   list-style: none;
@@ -644,6 +707,9 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   .composerTools {
     gap: 12px;
   }
+  .composerCollapsed {
+    gap: 8px;
+  }
   .shortcut {
     display: none;
   }
@@ -664,5 +730,33 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   }
   .search input {
     font-size: 16px;
+  }
+}
+
+/* Phones: the folded bar stacks its hint under the expand button, so a long
+   draft preview or a disabled-control label never pushes the row sideways. */
+@media (max-width: 390px) {
+  .composerHeading {
+    gap: 6px 8px;
+  }
+  .composerTools {
+    gap: 8px 10px;
+  }
+  .composerCollapsed {
+    align-items: flex-start;
+    gap: 6px 8px;
+  }
+  .collapsedHint {
+    flex: 1 1 100%;
+  }
+  .composer .collapseToggle {
+    padding-inline: 8px;
+  }
+}
+/* Reduced motion: the chevron swap is instant; folding itself is a plain
+   show/hide with no entrance or layout animation. */
+@media (prefers-reduced-motion: reduce) {
+  .composer .collapseToggle > svg {
+    transition: none;
   }
 }

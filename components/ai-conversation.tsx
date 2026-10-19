@@ -37,6 +37,9 @@ export type ConversationTurn = ChatMessage & {
 };
 
 const QUESTION_ERROR_ID = "analysis-question-error";
+const COMPOSER_FIELDS_ID = "analysis-composer-fields";
+/** Enough of the draft to recognise it in the collapsed bar, without wrapping. */
+const DRAFT_PREVIEW_LENGTH = 24;
 
 function Speaker({ role }: { role: ChatMessage["role"] }) {
   return (
@@ -184,11 +187,35 @@ export function ConversationWorkspace({
   const composer = useRef<HTMLDivElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const sendButton = useRef<HTMLButtonElement>(null);
+  const expandButton = useRef<HTMLButtonElement>(null);
   const newest = useRef<HTMLElement>(null);
   const pending = useRef<HTMLDivElement>(null);
   const [clearConfirming, setClearConfirming] = useState(false);
   const [contextNotice, setContextNotice] = useState("");
+  // Collapsing only hides controls: the draft lives in the parent's `question`
+  // state, so the textarea keeps its value while folded away.
+  const [composerCollapsed, setComposerCollapsed] = useState(false);
+  const wasCollapsed = useRef(false);
   const stopRequested = useRef(false);
+
+  // A reply can start while the composer is folded (e.g. a transcript
+  // suggestion); unfold so "停止回复" stays on screen and reachable.
+  useEffect(() => {
+    if (loading) setComposerCollapsed(false);
+  }, [loading]);
+
+  // Collapse and expand move focus with the control that survives the swap:
+  // folding hands focus to the expand button, unfolding returns it to the
+  // textarea without scrolling the page.
+  useEffect(() => {
+    if (wasCollapsed.current === composerCollapsed) return;
+    wasCollapsed.current = composerCollapsed;
+    const frame = requestAnimationFrame(() => {
+      if (composerCollapsed) expandButton.current?.focus({ preventScroll: true });
+      else textarea.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [composerCollapsed]);
 
   // Stopping swaps the stop button for the send button, which would otherwise
   // drop keyboard focus to the body; hand it back once the swap has rendered.
@@ -256,10 +283,11 @@ export function ConversationWorkspace({
   }, []);
 
   useLayoutEffect(() => {
-    if (!textarea.current) return;
+    // A hidden textarea reports a scrollHeight of 0; remeasure after unfolding.
+    if (composerCollapsed || !textarea.current) return;
     textarea.current.style.height = "auto";
     textarea.current.style.height = `${Math.min(144, textarea.current.scrollHeight)}px`;
-  }, [question]);
+  }, [question, composerCollapsed]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -268,6 +296,14 @@ export function ConversationWorkspace({
     });
     return () => cancelAnimationFrame(frame);
   }, [messages.length, loading]);
+
+  // Collapsed bar hint: "草稿已保留" plus a short, whitespace-normalised preview
+  // so a folded draft is recognisable at a glance.
+  const draftText = question.replace(/\s+/g, " ").trim();
+  const draftPreview =
+    Array.from(draftText).length > DRAFT_PREVIEW_LENGTH
+      ? `${Array.from(draftText).slice(0, DRAFT_PREVIEW_LENGTH).join("")}…`
+      : draftText;
 
   return (
     <div ref={root} className={styles.conversation}>
@@ -499,156 +535,199 @@ export function ConversationWorkspace({
             onAsk();
           }}
         >
-          <div className={styles.composerHeading}>
-            <label htmlFor="analysis-question">{messages.length ? "继续追问" : "分析问题"}</label>
-            <div className={styles.composerTools}>
-              {clearConfirming && messages.length > 0 ? (
-                <div
-                  className={styles.clearConfirm}
-                  role="group"
-                  aria-label="确认清空对话"
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape") {
-                      event.preventDefault();
-                      setClearConfirming(false);
-                    }
-                  }}
-                >
-                  <span>将清空当前 {rounds} 轮对话</span>
-                  <button type="button" autoFocus onClick={() => setClearConfirming(false)}>
-                    取消
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.clearConfirmAction}
-                    onClick={() => {
-                      setClearConfirming(false);
-                      onClear();
-                      textarea.current?.focus({ preventScroll: true });
+          <div id={COMPOSER_FIELDS_ID} className={styles.composerFields} hidden={composerCollapsed}>
+            <div className={styles.composerHeading}>
+              <label htmlFor="analysis-question">{messages.length ? "继续追问" : "分析问题"}</label>
+              <div className={styles.composerTools}>
+                {clearConfirming && messages.length > 0 ? (
+                  <div
+                    className={styles.clearConfirm}
+                    role="group"
+                    aria-label="确认清空对话"
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        event.preventDefault();
+                        setClearConfirming(false);
+                      }
                     }}
                   >
-                    清空
-                  </button>
-                </div>
-              ) : (
-                <>
-                  {/* Without a model the deterministic presets only work in a
-                      fresh conversation; offering them mid-transcript would fail. */}
-                  {aiReady || !messages.length ? (
-                    <details className={styles.presets}>
-                      <summary>推荐问题</summary>
-                      <div>
-                        {suggestedQuestionsFor(aiReady).map((item) => (
-                          <button
-                            type="button"
-                            key={item.id}
-                            disabled={loading || !canRun}
-                            onClick={(event) => {
-                              event.currentTarget.closest("details")?.removeAttribute("open");
-                              onAsk(item.question);
-                            }}
-                          >
-                            {item.question}
-                          </button>
-                        ))}
-                      </div>
-                    </details>
-                  ) : null}
-                  {messages.length > 0 && (
+                    <span>将清空当前 {rounds} 轮对话</span>
+                    <button type="button" autoFocus onClick={() => setClearConfirming(false)}>
+                      取消
+                    </button>
                     <button
                       type="button"
-                      disabled={loading}
-                      onClick={() => setClearConfirming(true)}
+                      className={styles.clearConfirmAction}
+                      onClick={() => {
+                        setClearConfirming(false);
+                        onClear();
+                        textarea.current?.focus({ preventScroll: true });
+                      }}
                     >
-                      <Icon name="plus" size={13} />
-                      新对话
+                      清空
                     </button>
-                  )}
-                </>
+                  </div>
+                ) : (
+                  <>
+                    {/* Without a model the deterministic presets only work in a
+                      fresh conversation; offering them mid-transcript would fail. */}
+                    {aiReady || !messages.length ? (
+                      <details className={styles.presets}>
+                        <summary>推荐问题</summary>
+                        <div>
+                          {suggestedQuestionsFor(aiReady).map((item) => (
+                            <button
+                              type="button"
+                              key={item.id}
+                              disabled={loading || !canRun}
+                              onClick={(event) => {
+                                event.currentTarget.closest("details")?.removeAttribute("open");
+                                onAsk(item.question);
+                              }}
+                            >
+                              {item.question}
+                            </button>
+                          ))}
+                        </div>
+                      </details>
+                    ) : null}
+                    {messages.length > 0 && (
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => setClearConfirming(true)}
+                      >
+                        <Icon name="plus" size={13} />
+                        新对话
+                      </button>
+                    )}
+                  </>
+                )}
+                <button
+                  type="button"
+                  className={styles.collapseToggle}
+                  aria-expanded="true"
+                  aria-controls={COMPOSER_FIELDS_ID}
+                  title={loading ? "回复中不能收起输入区" : "收起输入区"}
+                  disabled={loading}
+                  onClick={() => {
+                    setClearConfirming(false);
+                    setComposerCollapsed(true);
+                  }}
+                >
+                  <Icon name="chevron" size={13} />
+                  <span>收起输入区</span>
+                </button>
+              </div>
+            </div>
+            {contextLabel ? (
+              <div className={styles.contextRow}>
+                <span className={styles.contextChip}>
+                  <Icon name="sliders" size={12} />
+                  <span>{contextLabel}</span>
+                  <button
+                    type="button"
+                    aria-label={`清除筛选：${contextLabel}`}
+                    onClick={() => {
+                      onClearContext?.();
+                      setContextNotice("已清除筛选，后续追问不再沿用当前范围。");
+                    }}
+                  >
+                    <Icon name="close" size={12} />
+                  </button>
+                </span>
+                <span className={styles.contextHint}>仅影响后续追问</span>
+              </div>
+            ) : null}
+            {contextNotice ? (
+              <p className={styles.contextNotice} role="status" aria-live="polite">
+                {contextNotice}
+              </p>
+            ) : null}
+            <textarea
+              ref={textarea}
+              id="analysis-question"
+              name="analysis-question"
+              rows={2}
+              maxLength={500}
+              value={question}
+              placeholder={
+                messages.length ? "只看上学期、换成表格，或继续追问…" : "你想了解哪些学习情况？"
+              }
+              aria-invalid={inputError ? true : undefined}
+              aria-describedby={inputError ? QUESTION_ERROR_ID : undefined}
+              onChange={(event) => onQuestionChange(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                  event.preventDefault();
+                  onAsk();
+                }
+              }}
+            />
+            {inputError ? (
+              <p className={styles.fieldError} id={QUESTION_ERROR_ID} role="alert">
+                {inputError}
+              </p>
+            ) : null}
+            <div className={styles.composerActions}>
+              <span>
+                {question.length}/500
+                <span className={styles.shortcut}> · Enter 发送，Shift + Enter 换行</span>
+              </span>
+              {loading ? (
+                <button
+                  type="button"
+                  key="stop"
+                  className={styles.stop}
+                  onClick={(event) => {
+                    // Cancelling swaps this control for a submit button during the click.
+                    event.preventDefault();
+                    stopRequested.current = true;
+                    onStop();
+                  }}
+                >
+                  停止回复
+                </button>
+              ) : (
+                <button
+                  ref={sendButton}
+                  type="submit"
+                  key="send"
+                  className={styles.send}
+                  disabled={(!canRun && !aiReady) || question.trim().length < 2}
+                  aria-label="发送"
+                >
+                  <Icon name="arrow" size={19} />
+                </button>
               )}
             </div>
           </div>
-          {contextLabel ? (
-            <div className={styles.contextRow}>
-              <span className={styles.contextChip}>
-                <Icon name="sliders" size={12} />
-                <span>{contextLabel}</span>
-                <button
-                  type="button"
-                  aria-label={`清除筛选：${contextLabel}`}
-                  onClick={() => {
-                    onClearContext?.();
-                    setContextNotice("已清除筛选，后续追问不再沿用当前范围。");
-                  }}
-                >
-                  <Icon name="close" size={12} />
-                </button>
-              </span>
-              <span className={styles.contextHint}>仅影响后续追问</span>
+          {composerCollapsed ? (
+            <div className={styles.composerCollapsed}>
+              <button
+                ref={expandButton}
+                type="button"
+                className={styles.collapseToggle}
+                aria-expanded="false"
+                aria-controls={COMPOSER_FIELDS_ID}
+                title="展开输入区"
+                onClick={() => setComposerCollapsed(false)}
+              >
+                <Icon name="chevron" size={13} />
+                <span>展开输入区</span>
+              </button>
+              <p className={styles.collapsedHint}>
+                {draftPreview ? (
+                  <>
+                    输入区已收起，草稿已保留
+                    <span className={styles.collapsedDraft}>：「{draftPreview}」</span>
+                  </>
+                ) : (
+                  "输入区已收起"
+                )}
+              </p>
             </div>
           ) : null}
-          {contextNotice ? (
-            <p className={styles.contextNotice} role="status" aria-live="polite">
-              {contextNotice}
-            </p>
-          ) : null}
-          <textarea
-            ref={textarea}
-            id="analysis-question"
-            name="analysis-question"
-            rows={2}
-            maxLength={500}
-            value={question}
-            placeholder={
-              messages.length ? "只看上学期、换成表格，或继续追问…" : "你想了解哪些学习情况？"
-            }
-            aria-invalid={inputError ? true : undefined}
-            aria-describedby={inputError ? QUESTION_ERROR_ID : undefined}
-            onChange={(event) => onQuestionChange(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-                event.preventDefault();
-                onAsk();
-              }
-            }}
-          />
-          {inputError ? (
-            <p className={styles.fieldError} id={QUESTION_ERROR_ID} role="alert">
-              {inputError}
-            </p>
-          ) : null}
-          <div className={styles.composerActions}>
-            <span>
-              {question.length}/500
-              <span className={styles.shortcut}> · Enter 发送，Shift + Enter 换行</span>
-            </span>
-            {loading ? (
-              <button
-                type="button"
-                key="stop"
-                className={styles.stop}
-                onClick={(event) => {
-                  // Cancelling swaps this control for a submit button during the click.
-                  event.preventDefault();
-                  stopRequested.current = true;
-                  onStop();
-                }}
-              >
-                停止回复
-              </button>
-            ) : (
-              <button
-                ref={sendButton}
-                type="submit"
-                key="send"
-                className={styles.send}
-                disabled={(!canRun && !aiReady) || question.trim().length < 2}
-                aria-label="发送"
-              >
-                <Icon name="arrow" size={19} />
-              </button>
-            )}
-          </div>
         </form>
       </div>
     </div>

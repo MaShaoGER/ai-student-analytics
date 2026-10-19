@@ -2,7 +2,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { saveAnalysisRecord, loadAnalysisRecords, findRecordById, analysisRecordContext } from "./index";
+import {
+  saveAnalysisRecord,
+  saveAnalysisAudit,
+  loadAnalysisRecords,
+  findRecordById,
+  analysisRecordContext,
+} from "./index";
 
 describe("analysis records", () => {
   let testRoot: string;
@@ -228,5 +234,49 @@ describe("analysis records", () => {
     fs.writeFileSync(path.join(testRecordsDir, "analysis.jsonl"), `${JSON.stringify(legacy)}\n`);
     expect(loadAnalysisRecords()).toEqual([{ ...legacy, plan: null }]);
     expect(findRecordById("legacy")?.userId).toBeUndefined();
+  });
+
+  it("validates requestId and usage instead of persisting malformed AI metadata", async () => {
+    const base = {
+      datasetId: "demo" as const,
+      metricId: "score" as const,
+      plan: null,
+      userId: "user-1",
+      requestSource: "ask" as const,
+      stage: "execution" as const,
+      promptVersion: "test",
+      model: "fixture",
+      result: { rowCount: 0, period: "", durationMs: 1 },
+      errorCode: null,
+      errorMessage: null,
+    };
+    const validUsage = {
+      modelCalls: 2,
+      promptTokens: 100,
+      completionTokens: 20,
+      totalTokens: 120,
+      costUsd: 0.001,
+      estimated: false,
+    };
+    // Malformed shapes are dropped, not thrown.
+    await saveAnalysisAudit({
+      ...base,
+      requestId: "bad id!",
+      usage: { ...validUsage, modelCalls: -1 },
+    });
+    let records = loadAnalysisRecords();
+    expect(records[0].requestId).toBeUndefined();
+    expect(records[0].usage).toBeUndefined();
+    // Valid shapes are persisted for request-level tracing.
+    await saveAnalysisAudit({
+      ...base,
+      requestId: "11111111-1111-4111-8111-111111111111",
+      usage: validUsage,
+    });
+    records = loadAnalysisRecords();
+    expect(records[1]).toMatchObject({
+      requestId: "11111111-1111-4111-8111-111111111111",
+      usage: validUsage,
+    });
   });
 });

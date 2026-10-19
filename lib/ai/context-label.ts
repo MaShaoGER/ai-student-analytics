@@ -18,8 +18,11 @@ const METRIC_SCOPE_LABELS: Record<"score" | "activity" | "completion_rate", stri
 const ALL_TERMS = "全部学期";
 const ALL_COURSES = "全部课程";
 
-function joinScope(values: string[]): string {
-  if (values.length > 2) return `${values[0]} 等 ${values.length} 项`;
+function joinScope(values: string[], noun: "门课程" | "个学期"): string {
+  // A long list is a data scope, not something the user filtered by hand:
+  // phrase it as a count so the chip is not read as a user condition.
+  if (values.length > 6) return `共 ${values.length} ${noun}（含 ${values[0]}）`;
+  if (values.length > 2) return `${values[0]} 等 ${values.length} ${noun}`;
   return values.join("、");
 }
 
@@ -30,7 +33,7 @@ function filterValues(
   const filter = filters.find((item) => item.field === field);
   if (!filter) return null;
   const values = filter.op === "eq" ? [filter.value as string] : (filter.value as string[]);
-  const joined = joinScope(values);
+  const joined = joinScope(values, field === "course" ? "门课程" : "个学期");
   return joined || null;
 }
 
@@ -50,7 +53,7 @@ export function describeChatContext(intent: ChatIntent | null | undefined): stri
     return `限定：${intent.term || ALL_TERMS} · ${intent.course || ALL_COURSES} · 成绩分布`;
   }
   const term = intent.term || ALL_TERMS;
-  const course = intent.courses.length ? joinScope(intent.courses) : ALL_COURSES;
+  const course = intent.courses.length ? joinScope(intent.courses, "门课程") : ALL_COURSES;
   return `限定：${term} · ${course} · ${toolLabel(intent.tool)}`;
 }
 

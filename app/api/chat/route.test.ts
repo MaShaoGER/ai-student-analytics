@@ -212,6 +212,42 @@ describe("conversation HTTP boundary", () => {
     expect(readFileSync(join(directory, "analysis.jsonl"), "utf8")).not.toContain(secret);
   });
 
+  it("persists the request-level requestId and usage in the audit", async () => {
+    vi.mocked(converse).mockResolvedValueOnce({
+      kind: "result",
+      presentation: "text",
+      answer: "本次共返回 1 个分组。",
+      facts: ["本次返回 1 个分组。"],
+      suggestions: [],
+      artifact: null,
+      context: null,
+      planning: { source: "external", rationale: "按问题选择真实统计。", model: "fixture-model" },
+      usage: {
+        modelCalls: 2,
+        promptTokens: 100,
+        completionTokens: 20,
+        totalTokens: 120,
+        costUsd: 0.001,
+        estimated: false,
+      },
+    });
+    const response = await POST(request({ question: secret, datasetId: "demo" }));
+    expect(response.status).toBe(200);
+    const record = loadAnalysisRecords()[0];
+    // The route generates the id, so the audit row is traceable even if the
+    // response does not echo it back.
+    expect(record.requestId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(record.usage).toEqual({
+      modelCalls: 2,
+      promptTokens: 100,
+      completionTokens: 20,
+      totalTokens: 120,
+      costUsd: 0.001,
+      estimated: false,
+    });
+    expect(readFileSync(join(directory, "analysis.jsonl"), "utf8")).not.toContain(secret);
+  });
+
   it("records prompt version and the model without persisting question text", async () => {
     vi.mocked(converse).mockResolvedValue({
       kind: "result",

@@ -22,6 +22,7 @@ const deps: UnifiedDependencies = {
   absence: absenceStats,
   chart: executeChartTool,
   search: searchKnowledge,
+  compose: generateToolTurn,
   settings: getAnalysisSettings,
   capability: () => ({ status: probePassed ? "supported" : "unknown", checkedAt: null }),
 };

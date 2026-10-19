@@ -13,6 +13,9 @@ import type { CourseRelationData } from "../analysis/course-relations";
 import type { CoursePanoramaData } from "../analysis/course-panorama";
 import { toolSchema, type ChatTool } from "./chart-capabilities";
 import { RESULT_KINDS, type FactRef, type ResultRef } from "./result-contract";
+// Type-only import: keeps this module (and every client component importing it)
+// free of the server-only ai-cost runtime (node:crypto, settings storage).
+import type { RequestUsage } from "../security/ai-cost";
 
 export const chatViewSchema = z.enum([
   "bar",
@@ -156,6 +159,10 @@ export type ChatResponse = {
    */
   resultRefs?: ResultRef[];
   factRefs?: FactRef[];
+  /** Server-generated id correlating every model call made for this request. */
+  requestId?: string;
+  /** Aggregated model usage/cost for this request, when it called a model. */
+  usage?: RequestUsage;
 };
 
 export type KnowledgeCitation = {

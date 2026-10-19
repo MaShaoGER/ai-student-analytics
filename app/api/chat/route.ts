@@ -12,12 +12,19 @@ import { apiError, assertSameOrigin, noStoreJson, requireUser } from "@/lib/auth
 import { AuthError } from "@/lib/auth/service";
 import { isRetryableErrorCode, queryExecutionHttpError } from "@/lib/analysis/http-errors";
 import { analysisRecordContext, saveAnalysisAudit } from "@/lib/records";
-import { BudgetExceededError, UnknownModelPricingError } from "@/lib/security/ai-cost";
+import {
+  BudgetExceededError,
+  UnknownModelPricingError,
+  type RequestUsage,
+} from "@/lib/security/ai-cost";
 import { checkRateLimit, rateLimitConfigs } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  // One id per HTTP request: every model call made for it lands in cost history
+  // and in the audit row under this id, including failures before a response.
+  const requestId = crypto.randomUUID();
   let userId: string;
   try {
     assertSameOrigin(request);
@@ -61,6 +68,8 @@ export async function POST(request: Request) {
     检索指标与教学依据: "search_knowledge",
     生成高级分析图表: "advanced_chart",
     确认分析范围: "clarify",
+    // One corrective answer attempt after failed fact binding.
+    重写最终回答: "compose_retry",
     校验统计结果与来源: "validate",
   };
   let stage: "validation" | "planning" | "execution" = "validation";
@@ -72,6 +81,7 @@ export async function POST(request: Request) {
     rowCount = 0,
     period = "",
     model: string | null = null,
+    usage?: RequestUsage,
   ) =>
     saveAnalysisAudit({
       ...context,
@@ -80,6 +90,8 @@ export async function POST(request: Request) {
       stage,
       promptVersion: PROMPT_VERSION,
       model,
+      requestId,
+      ...(usage ? { usage } : {}),
       ...(executionSteps.size ? { executionSteps: [...executionSteps.values()] } : {}),
       result: { rowCount, period, durationMs: Math.round(performance.now() - startedAt) },
       errorCode,
@@ -155,6 +167,7 @@ export async function POST(request: Request) {
     const run = async (signal: AbortSignal, onStep?: (step: AnalysisStep) => void) => {
       const response = await converse(input, {
         signal,
+        requestId,
         onStep(step) {
           const operation = operations[step.label];
           if (operation)
@@ -186,6 +199,8 @@ export async function POST(request: Request) {
                 : 0,
         artifact?.kind === "analysis" ? artifact.result.period : "",
         response.planning.model,
+        // Partial results still report the usage/cost already spent this request.
+        response.usage,
       );
       return response;
     };
