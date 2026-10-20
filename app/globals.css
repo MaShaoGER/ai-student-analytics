@@ -1092,6 +1092,20 @@ table caption {
   padding: 6px;
   margin-bottom: 24px;
   overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+.admin-tabs > [role="group"] {
+  width: auto;
+  max-width: none;
+  min-width: max-content;
+  flex: 0 0 auto;
+  grid-auto-columns: max-content;
+}
+.admin-tabs [role="group"] > button {
+  width: auto;
+  min-width: max-content;
+  flex: 0 0 auto;
 }
 .admin-tabs > button {
   display: inline-flex;

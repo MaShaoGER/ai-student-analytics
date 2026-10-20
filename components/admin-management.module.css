@@ -1204,24 +1204,3 @@
     transition: none;
   }
 }
-
-/* Keep every management category legible; narrow screens scroll the tab rail. */
-:global(.admin-tabs) {
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-  scrollbar-width: thin;
-}
-
-:global(.admin-tabs > [role="group"]) {
-  width: auto;
-  max-width: none;
-  min-width: max-content;
-  flex: 0 0 auto;
-  grid-auto-columns: max-content;
-}
-
-:global(.admin-tabs [role="group"] > button) {
-  width: auto;
-  min-width: max-content;
-  flex: 0 0 auto;
-}
