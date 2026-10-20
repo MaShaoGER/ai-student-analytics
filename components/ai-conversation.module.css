@@ -180,8 +180,7 @@
   min-width: 0;
   max-width: 100%;
 }
-.composerTools > button,
-.presets > summary {
+.composerTools > button {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -193,9 +192,6 @@
   background: transparent;
   border: 0;
   cursor: pointer;
-}
-.presets {
-  position: static;
 }
 /* ---- Collapsible input (roadmap step 3) ---------------------------------
    Folding only hides controls; the draft stays in the parent's `question`
@@ -254,35 +250,6 @@
 }
 .collapsedDraft {
   color: var(--instrument-ink);
-}
-.presets > summary {
-  list-style: none;
-}
-.presets > summary::-webkit-details-marker {
-  display: none;
-}
-.presets > div {
-  position: absolute;
-  max-height: min(280px, 40dvh);
-  overflow-y: auto;
-  right: 0;
-  bottom: calc(100% + 12px);
-  width: min(300px, calc(100vw - var(--rail-width) - 48px));
-  padding: 8px;
-  border: 1px solid var(--line);
-  background: var(--surface-raised);
-  color: var(--ink);
-}
-.presets button {
-  display: block;
-  text-align: left;
-  width: 100%;
-  padding: 12px;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: 13px;
 }
 .composer textarea {
   display: block;
@@ -424,7 +391,6 @@
   cursor: not-allowed;
 }
 .composer button:focus-visible,
-.presets summary:focus-visible,
 .chartToggle:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
@@ -838,12 +804,20 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   margin-top: 20px;
   max-width: 760px;
 }
-.welcomeSuggestions > span {
+.suggestionHeading {
   grid-column: 1 / -1;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   color: var(--muted);
   font-size: 10px;
   margin-bottom: 12px;
+}
+.suggestionHeading > span:last-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 .welcomeSuggestions button {
   display: flex;
@@ -851,7 +825,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   gap: 12px;
   width: 100%;
   min-height: 36px;
-  padding: 8px 0;
+  padding: 10px 8px;
   border: 0;
   background: transparent;
   color: var(--ink);
@@ -871,6 +845,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 }
 .welcomeSuggestions button:hover:not(:disabled) {
   color: var(--accent-ink);
+  background: var(--surface-inset);
 }
 .welcomeSuggestions button:disabled {
   opacity: 0.5;
@@ -891,9 +866,6 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   max-width: 944px;
   margin-inline: auto;
 }
-.composerDock[data-collapsed="true"] {
-  max-width: 620px;
-}
 .composer {
   border-top: 3px solid var(--accent);
   box-shadow: 5px 5px 0 color-mix(in srgb, var(--ink) 15%, transparent);
@@ -908,6 +880,16 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 }
 .composerCollapsed {
   justify-content: space-between;
+  flex-wrap: nowrap;
+}
+.composerCollapsed > .collapsedHint {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.composerCollapsed > .collapseToggle {
+  margin-left: auto;
 }
 .message {
   border-bottom: 0;

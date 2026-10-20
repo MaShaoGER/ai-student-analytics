@@ -333,7 +333,7 @@ export function ConversationWorkspace({
         data-enter="fade"
         style={{ "--enter-delay": "340ms" } as CSSProperties}
       >
-        {!messages.length && (
+        {!messages.length && !loading && (
           <div
             className={styles.empty}
             data-enter="rise-sm"
@@ -354,7 +354,13 @@ export function ConversationWorkspace({
             </p>
             {aiAllowed && (
               <div className={styles.welcomeSuggestions} aria-label="推荐问题">
-                <span>没想好怎么问？从一条线索开始</span>
+                <div className={styles.suggestionHeading}>
+                  <span>没想好怎么问？从一条线索开始</span>
+                  <span>
+                    点击直接分析
+                    <Icon name="arrowUpRight" size={12} />
+                  </span>
+                </div>
                 {suggestedQuestionsFor(aiReady).map((item) => (
                   <button
                     type="button"
@@ -362,9 +368,7 @@ export function ConversationWorkspace({
                     disabled={loading || !canRun}
                     onClick={() => {
                       if (!aiAllowed) return;
-                      onQuestionChange(item.question);
-                      setComposerCollapsed(false);
-                      requestAnimationFrame(() => textarea.current?.focus({ preventScroll: true }));
+                      onAsk(item.question);
                     }}
                   >
                     <Icon
@@ -614,28 +618,6 @@ export function ConversationWorkspace({
                   </div>
                 ) : (
                   <>
-                    {/* Without a model the deterministic presets only work in a
-                      fresh conversation; offering them mid-transcript would fail. */}
-                    {aiAllowed && (aiReady || !messages.length) ? (
-                      <details className={styles.presets}>
-                        <summary>推荐问题</summary>
-                        <div>
-                          {suggestedQuestionsFor(aiReady).map((item) => (
-                            <button
-                              type="button"
-                              key={item.id}
-                              disabled={loading || !canRun}
-                              onClick={(event) => {
-                                event.currentTarget.closest("details")?.removeAttribute("open");
-                                if (aiAllowed) onAsk(item.question);
-                              }}
-                            >
-                              {item.question}
-                            </button>
-                          ))}
-                        </div>
-                      </details>
-                    ) : null}
                     {messages.length > 0 && (
                       <button
                         type="button"
@@ -761,6 +743,16 @@ export function ConversationWorkspace({
           </div>
           {composerCollapsed ? (
             <div className={styles.composerCollapsed}>
+              <p className={styles.collapsedHint}>
+                {draftPreview ? (
+                  <>
+                    输入区已收起，草稿已保留
+                    <span className={styles.collapsedDraft}>：「{draftPreview}」</span>
+                  </>
+                ) : (
+                  "输入区已收起"
+                )}
+              </p>
               <button
                 ref={expandButton}
                 type="button"
@@ -773,16 +765,6 @@ export function ConversationWorkspace({
                 <Icon name="chevron" size={13} />
                 <span>展开输入区</span>
               </button>
-              <p className={styles.collapsedHint}>
-                {draftPreview ? (
-                  <>
-                    输入区已收起，草稿已保留
-                    <span className={styles.collapsedDraft}>：「{draftPreview}」</span>
-                  </>
-                ) : (
-                  "输入区已收起"
-                )}
-              </p>
             </div>
           ) : null}
         </form>
