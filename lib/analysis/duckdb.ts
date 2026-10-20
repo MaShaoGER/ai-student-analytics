@@ -1,3 +1,6 @@
+import { isGradeDataset } from "../datasets/id";
+import { getGradeSnapshot } from "../datasets/grade-store";
+import { AuthError } from "../auth/service";
 import { assertCurrentAccess } from "../auth/access";
 import { createHash } from "node:crypto";
 import { existsSync, statSync } from "node:fs";
@@ -102,6 +105,30 @@ function csv(filePath: string, options = "") {
   return `read_csv_auto(${sqlPath(filePath)}, header=true, nullstr=['?', '']${extras})`;
 }
 
+function gradeSource(datasetId: DataSource): string {
+  const snapshot = getGradeSnapshot(datasetId);
+  if (!snapshot) throw new AuthError(503, "DATA_SOURCE_UNAVAILABLE", "成绩数据版本不可用。");
+  return `(SELECT id_student, code_module, code_presentation,
+    CAST(NULLIF(score, '') AS DECIMAL(5,2)) AS score,
+    CAST(NULLIF(completed, '') AS INTEGER) AS completed
+    FROM read_csv(${sqlPath(snapshot.path)}, header=true, all_varchar=true, nullstr=''))`;
+}
+function importedMetadata(datasetId: DataSource): {
+  datasetVersion?: string;
+  datasetName?: string;
+} {
+  if (!isGradeDataset(datasetId)) return {};
+  const snapshot = getGradeSnapshot(datasetId);
+  return { datasetVersion: snapshot.version, datasetName: snapshot.name };
+}
+function datasetName(datasetId: DataSource): string {
+  return isGradeDataset(datasetId)
+    ? getGradeSnapshot(datasetId).name
+    : datasetId === "demo"
+      ? "模拟校园数据"
+      : "OULAD 本地数据";
+}
+
 function dimensionExpression(plan: AnalysisPlan, alias = "") {
   const prefix = alias ? `${alias}.` : "";
   const dimensions = plan.dimensions.map((dimension) => `${prefix}${DIMENSIONS[dimension].column}`);
@@ -131,6 +158,23 @@ function orderClause(plan: AnalysisPlan): string {
 /** All rows and scope metadata use this exact filtered source. */
 function analysisSource(plan: AnalysisPlan): { source: string; aggregate: string } {
   const where = whereClause(plan);
+  if (isGradeDataset(plan.datasetId)) {
+    const snapshot = getGradeSnapshot(plan.datasetId);
+    if (
+      plan.metric === "activity" ||
+      (plan.metric === "completion_rate" && !snapshot.hasCompletion)
+    )
+      throw new AuthError(
+        422,
+        "UNSUPPORTED_METRIC",
+        "该数据集未提供此指标所需的原始记录，请选择成绩分析。",
+      );
+    const predicate = plan.metric === "score" ? "score IS NOT NULL" : "completed IS NOT NULL";
+    return {
+      source: `SELECT * FROM ${gradeSource(plan.datasetId)} ${where ? `${where} AND` : "WHERE"} ${predicate}`,
+      aggregate: plan.metric === "score" ? "AVG(score)" : "AVG(completed) * 100",
+    };
+  }
   if (plan.datasetId === "demo") {
     return {
       source: `SELECT * FROM ${csv(plan.metric === "activity" ? DEMO_ACTIVITY : DEMO_OUTCOMES)} ${where}`,
@@ -183,7 +227,7 @@ function analysisQueries(plan: AnalysisPlan) {
 }
 
 function analysisPeriod(plan: AnalysisPlan, terms: string[]): string {
-  const source = plan.datasetId === "demo" ? "模拟校园数据" : "OULAD 本地数据";
+  const source = datasetName(plan.datasetId);
   const filters = plan.filters.map(
     (filter) =>
       `${filter.field === "course" ? "课程" : "学期"}筛选：${[filter.value].flat().join("、")}`,
@@ -201,6 +245,7 @@ function analysisPeriod(plan: AnalysisPlan, terms: string[]): string {
 }
 
 function validateFiles(source: DataSource) {
+  if (isGradeDataset(source)) return fileExists(getGradeSnapshot(source).path);
   if (source === "demo") return fileExists(DEMO_ACTIVITY) && fileExists(DEMO_OUTCOMES);
   return Object.values(OULAD).every(fileExists);
 }
@@ -326,6 +371,7 @@ export async function runAnalysis(
     plan,
     result: {
       datasetId: plan.datasetId,
+      ...importedMetadata(plan.datasetId),
       dimension: plan.dimensions[0],
       dimensions: plan.dimensions,
       chartType: plan.chartType,
@@ -337,7 +383,11 @@ export async function runAnalysis(
       unit: METRICS[plan.metric].unit,
       metricLabel: METRICS[plan.metric].label,
       period: analysisPeriod(plan, terms),
-      query: queryForDisplay(query),
+      query: queryForDisplay(
+        isGradeDataset(plan.datasetId)
+          ? query.replaceAll(sqlPath(getGradeSnapshot(plan.datasetId).path), "'[私有成绩版本]'")
+          : query,
+      ),
       durationMs,
       minSampleSize,
       filteredOutGroupCount,
@@ -347,10 +397,10 @@ export async function runAnalysis(
 
 /** Aggregate on the server; no student identifiers leave the query boundary. */
 function studentScoreSource(datasetId: DataSource) {
-  return datasetId === "demo"
+  return datasetId !== "oulad"
     ? `SELECT code_module, code_presentation, id_student,
               AVG(TRY_CAST(score AS DOUBLE)) AS score
-       FROM ${csv(DEMO_OUTCOMES)}
+       FROM ${isGradeDataset(datasetId) ? gradeSource(datasetId) : csv(DEMO_OUTCOMES)}
        WHERE TRY_CAST(score AS DOUBLE) BETWEEN 0 AND 100
          AND id_student IS NOT NULL AND code_module IS NOT NULL AND code_presentation IS NOT NULL
        GROUP BY ALL`
@@ -404,6 +454,7 @@ export async function scoreDistribution(
   );
   return {
     datasetId,
+    ...importedMetadata(datasetId),
     minSampleSize: 3,
     groups: rows.map((row) => {
       const bins = Array<number>(100).fill(0);
@@ -465,6 +516,7 @@ export async function courseRelations(
       const activeTerm = term ?? terms[0] ?? null;
       const empty: CourseRelationData = {
         datasetId,
+        ...importedMetadata(datasetId),
         term: activeTerm,
         terms,
         threshold,
@@ -556,6 +608,7 @@ export async function coursePanorama(
       const activeTerm = term ?? terms[0] ?? null;
       const empty: CoursePanoramaData = {
         datasetId,
+        ...importedMetadata(datasetId),
         term: activeTerm,
         terms,
         threshold,
@@ -710,6 +763,7 @@ export async function chartStudioData(
       const activeTerm = term ?? terms[0] ?? null;
       const result: StudioProjectData = {
         datasetId,
+        ...importedMetadata(datasetId),
         term: activeTerm,
         terms,
         course,
@@ -756,6 +810,8 @@ export async function chartStudioData(
           ? `${previous} → ${activeTerm} · 两学期各自选课样本的课程均分比较，不等同于同一批学生的个人进步。`
           : "当前学期之前没有可比较的学期，可导入自己的前后对比数据。",
       );
+
+      if (isGradeDataset(datasetId)) return result;
 
       const activitySource =
         datasetId === "demo"
@@ -853,6 +909,52 @@ export async function profileDatasets(
 ): Promise<DatasetProfile[]> {
   if (!datasetIds.length) return [];
   for (const id of datasetIds) assertCurrentAccess(id);
+  const importedIds = datasetIds.filter(isGradeDataset);
+  if (importedIds.length) {
+    const builtins = datasetIds.filter((id) => !isGradeDataset(id));
+    const profiles = builtins.length ? await profileDatasets(options, builtins) : [];
+    for (const id of importedIds) {
+      const snapshot = getGradeSnapshot(id);
+      const table = await withBoundedQueryConnection(
+        async (sql) => {
+          const [counts] = await sql(
+            `SELECT COUNT(*) AS rows, COUNT(*) FILTER (WHERE score IS NULL) AS missing_score FROM ${gradeSource(id)}`,
+          );
+          return {
+            name: "student_outcomes",
+            grain: "学生-课程-学期",
+            rows: Number(counts.rows),
+            status: "ready" as const,
+            fields: [
+              { name: "id_student", type: "VARCHAR", missing: 0 },
+              { name: "code_module", type: "VARCHAR", missing: 0 },
+              { name: "code_presentation", type: "VARCHAR", missing: 0 },
+              { name: "score", type: "DECIMAL(5,2)", missing: Number(counts.missing_score) },
+              {
+                name: "completed",
+                type: "INTEGER",
+                missing: snapshot.hasCompletion ? 0 : Number(counts.rows),
+              },
+            ],
+          };
+        },
+        API_QUERY_LIMITS.profile,
+        options,
+      );
+      profiles.push({
+        id,
+        name: snapshot.name,
+        datasetVersion: snapshot.version,
+        available: true,
+        metrics: snapshot.hasCompletion ? ["score", "completion_rate"] : ["score"],
+        description:
+          "管理员导入的教学成绩。空成绩不作为零分；无出勤和活动记录。仅提供至少3名学生的聚合结果。",
+        source: "管理员上传 · " + snapshot.version,
+        tables: [table],
+      });
+    }
+    return profiles;
+  }
   const signature = profileCacheSignature() + ":" + [...datasetIds].sort().join(",");
   const cacheNow = Date.now();
   // Cancellation must stay observable even when a warm snapshot exists.
@@ -972,6 +1074,7 @@ export async function absenceStats(
   if (!support.supported)
     return {
       datasetId: request.datasetId,
+      ...importedMetadata(request.datasetId),
       term: request.term ?? null,
       terms: [],
       course: request.course ?? null,

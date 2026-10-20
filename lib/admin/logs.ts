@@ -10,12 +10,14 @@ import { readState } from "../settings/storage";
 export const ADMIN_AUDIT_SOURCES: readonly AdminAuditSource[] = [
   "accounts",
   "datasets",
+  "grades",
   "ai-config",
   "analysis-settings",
 ];
 const SOURCE_FILES: Record<AdminAuditSource, string> = {
   accounts: "accounts.json",
   datasets: "datasets.json",
+  grades: "grade-catalog.json",
   "ai-config": "ai-config.json",
   "analysis-settings": "analysis-settings.json",
 };

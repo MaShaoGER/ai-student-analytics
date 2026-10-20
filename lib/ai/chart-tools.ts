@@ -147,6 +147,13 @@ export async function executeChartTool(
   dependencies: Partial<typeof toolQueries>,
 ): Promise<ChatArtifact> {
   assertCurrentAccess(input.datasetId, "ai");
+  if (
+    input.datasetId.startsWith("grades_") &&
+    ["sankey", "rhythm", "density"].includes(intent.tool)
+  )
+    throw new ChartClarification(
+      "该成绩数据集没有活动、出勤或作业记录，无法生成此图。可选择成绩箱线图、学期对比或课程关联图。",
+    );
   const deps = { ...toolQueries, ...dependencies };
   if (intent.tool === "chord" || intent.tool === "panorama") {
     const request = {
@@ -250,6 +257,8 @@ export async function executeChartTool(
     // Result identity must distinguish different course scopes.
     courses: intent.courses,
     datasetId: input.datasetId,
+    datasetVersion: project.datasetVersion,
+    datasetName: project.datasetName,
     ...(intent.tool === "density" ? { densityMode: intent.densityMode ?? "scatter" } : {}),
   };
 }

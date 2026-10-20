@@ -6,7 +6,12 @@ export const ADMIN_AUDIT_EVENT_LIMIT = 5_000;
 
 export type AdminAuditScalar = string | number | boolean | null;
 export type AdminAuditResult = "success" | "failure";
-export type AdminAuditSource = "accounts" | "datasets" | "ai-config" | "analysis-settings";
+export type AdminAuditSource =
+  | "accounts"
+  | "datasets"
+  | "grades"
+  | "ai-config"
+  | "analysis-settings";
 
 export type AdminEventInput = {
   actorId: string;
@@ -65,6 +70,17 @@ export const ADMIN_AUDIT_RULES: Readonly<Record<string, AuditRule>> = {
     targetType: "dataset",
     fields: ["beforeEnabled", "enabled", ...common],
   },
+  "dataset.publish": {
+    targetType: "dataset",
+    fields: [
+      "rowCount",
+      "studentCount",
+      "courseCount",
+      "termCount",
+      "missingScores",
+      "versionNumber",
+    ],
+  },
   "ai-config.update": {
     targetType: "ai-config",
     fields: [
@@ -119,6 +135,8 @@ const changedFieldNames = new Set([
 ]);
 const modelPattern = /^(?:[A-Za-z0-9][A-Za-z0-9._:-]{0,99})?$/;
 const identifierPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
+const gradeDatasetIdPattern =
+  /^grades_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 const requestIdPattern = /^[A-Za-z0-9][A-Za-z0-9_-]{7,63}$/;
 const errorCodePattern = /^[A-Z][A-Z0-9_]{0,79}$/;
 const sensitiveValuePattern =
@@ -135,11 +153,23 @@ function safeString(value: unknown, max = 256): value is string {
 
 function safeSummaryString(field: string, value: unknown): value is string {
   // Empty grants, field lists and model names are meaningful state. Validate
-  // the field rule before requiring a non-empty string.
-  if (typeof value !== "string" || value.length > 256 || /[\u0000-\u001f\u007f]/.test(value))
+  // the field rule before requiring a non-empty string. Dataset grant lists can
+  // include the two builtins and up to 50 imported datasets.
+  const datasetList = field === "datasetIds" || field === "beforeDatasetIds";
+  if (
+    typeof value !== "string" ||
+    value.length > (datasetList ? 4096 : 256) ||
+    /[\u0000-\u001f\u007f]/.test(value)
+  )
     return false;
-  if (field === "datasetIds" || field === "beforeDatasetIds")
-    return value === "" || value.split(",").every((id) => id === "demo" || id === "oulad");
+  if (datasetList)
+    return (
+      value === "" ||
+      (value.split(",").length <= 52 &&
+        value
+          .split(",")
+          .every((id) => id === "demo" || id === "oulad" || gradeDatasetIdPattern.test(id)))
+    );
   if (field === "changedFields")
     return value === "" || value.split(",").every((name) => changedFieldNames.has(name));
   if (field === "model" || field === "beforeModel")
@@ -172,6 +202,13 @@ function sanitizeSummary(action: string, summary: unknown): Record<string, Admin
   return result;
 }
 
+function safeAuditTarget(action: string, targetId: string): boolean {
+  if (action === "dataset.publish") return gradeDatasetIdPattern.test(targetId);
+  if (action === "dataset.status")
+    return targetId === "demo" || targetId === "oulad" || gradeDatasetIdPattern.test(targetId);
+  return identifierPattern.test(targetId);
+}
+
 function parseStoredEvent(raw: unknown): StoredAdminEvent | null {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
   const event = raw as Partial<StoredAdminEvent>;
@@ -183,7 +220,12 @@ function parseStoredEvent(raw: unknown): StoredAdminEvent | null {
     return null;
   if (!safeString(event.action, 100) || !ADMIN_AUDIT_RULES[event.action]) return null;
   const rule = ADMIN_AUDIT_RULES[event.action];
-  if (event.targetType !== rule.targetType || !safeString(event.targetId, 256)) return null;
+  if (
+    event.targetType !== rule.targetType ||
+    !safeString(event.targetId, 256) ||
+    !safeAuditTarget(event.action, event.targetId)
+  )
+    return null;
   if (typeof event.timestamp !== "string" || !Number.isFinite(Date.parse(event.timestamp)))
     return null;
   if (event.result !== "success" && event.result !== "failure") return null;
@@ -274,7 +316,7 @@ export function readAdminAudit(raw: unknown): AdminAuditReadResult {
 function createEvent(input: AdminEventInput): StoredAdminEvent | null {
   const rule = ADMIN_AUDIT_RULES[input.action];
   if (!rule || input.targetType !== rule.targetType) return null;
-  if (!identifierPattern.test(input.actorId) || !identifierPattern.test(input.targetId))
+  if (!identifierPattern.test(input.actorId) || !safeAuditTarget(input.action, input.targetId))
     return null;
   if (input.result !== undefined && input.result !== "success" && input.result !== "failure")
     return null;

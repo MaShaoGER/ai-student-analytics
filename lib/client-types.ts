@@ -1,6 +1,6 @@
 /** Public API contracts. Never add credential or session secrets here. */
 export type UserRole = "admin" | "user" | "readonly";
-export type DatasetId = "demo" | "oulad";
+export type DatasetId = import("./datasets/id").RegisteredDatasetId;
 
 export type SessionUser = {
   id: string;

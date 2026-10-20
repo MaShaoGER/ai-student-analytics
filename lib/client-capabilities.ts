@@ -46,6 +46,8 @@ export function datasetAccessKey(datasets: DatasetProfile[]): string {
       .sort((left, right) => left.id.localeCompare(right.id))
       .map((dataset) => [
         dataset.id,
+        dataset.datasetVersion ?? null,
+        dataset.metrics ?? null,
         dataset.enabled !== false,
         dataset.available,
         dataset.unavailableReason ?? null,

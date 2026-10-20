@@ -20,6 +20,13 @@ export const SUGGESTED_QUESTIONS: readonly SuggestedQuestion[] = [
 ];
 
 /** Without a configured AI, hide rather than disable the questions that need it. */
-export function suggestedQuestionsFor(aiReady: boolean): readonly SuggestedQuestion[] {
-  return aiReady ? SUGGESTED_QUESTIONS : SUGGESTED_QUESTIONS.filter((item) => !item.requiresAI);
+export function suggestedQuestionsFor(
+  aiReady: boolean,
+  datasetId?: string,
+): readonly SuggestedQuestion[] {
+  return SUGGESTED_QUESTIONS.filter(
+    (item) =>
+      (aiReady || !item.requiresAI) &&
+      (!datasetId?.startsWith("grades_") || item.id !== "absence-relationship"),
+  );
 }

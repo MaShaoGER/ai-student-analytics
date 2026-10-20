@@ -1,10 +1,11 @@
 import { z } from "zod";
+import { datasetIdSchema } from "../datasets/id";
 import type { RequestUsage } from "../security/ai-cost";
 
 export const metricSchema = z.enum(["score", "activity", "completion_rate"]);
 export const dimensionSchema = z.enum(["course", "term"]);
 export const chartTypeSchema = z.enum(["line", "bar", "table"]);
-export const dataSourceSchema = z.enum(["demo", "oulad"]);
+export const dataSourceSchema = datasetIdSchema;
 
 export const filterSchema = z.discriminatedUnion("op", [
   z.object({ field: dimensionSchema, op: z.literal("eq"), value: z.string().min(1).max(200) }),
@@ -64,6 +65,8 @@ export type AnalysisRow = {
 };
 
 export type AnalysisResult = {
+  datasetVersion?: string;
+  datasetName?: string;
   datasetId: DataSource;
   dimension: Dimension;
   dimensions?: Dimension[];
@@ -115,6 +118,8 @@ export type AnalysisRecord = {
 };
 
 export type DatasetProfile = {
+  datasetVersion?: string;
+  metrics?: Metric[];
   enabled?: boolean;
   unavailableReason?: string;
   id: DataSource;

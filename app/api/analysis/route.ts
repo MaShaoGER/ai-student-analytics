@@ -66,6 +66,7 @@ export async function POST(request: Request) {
     const emptyResult = analysis.result.rows.length === 0 ? noDataHttpError(analysis.result) : null;
     await saveAnalysisAudit({
       ...analysisRecordContext(analysis.plan),
+      datasetVersion: analysis.result.datasetVersion,
       userId,
       requestId,
       outcome: emptyResult ? "failure" : "success",

@@ -11,6 +11,8 @@ export type StudioTable = {
 };
 export type StudioProjectData = {
   datasetId: DataSource;
+  datasetVersion?: string;
+  datasetName?: string;
   terms: string[];
   courses: string[];
   term: string | null;

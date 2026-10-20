@@ -167,6 +167,7 @@ export type ResultRefInput = Omit<
   "version" | "resultId" | "datasetId" | "datasetVersion" | "metricVersion"
 > & {
   datasetId: DataSource;
+  datasetVersion?: string;
 };
 
 /** Build a complete ref; the id is always derived, so callers cannot invent one. */
@@ -174,7 +175,7 @@ export function buildResultRef(input: ResultRefInput): ResultRef {
   const scope: ResultScope = {
     version: RESULT_CONTRACT_VERSION,
     datasetId: input.datasetId,
-    datasetVersion: DATASET_VERSIONS[input.datasetId],
+    datasetVersion: input.datasetVersion ?? DATASET_VERSIONS[input.datasetId] ?? "unversioned",
     metricVersion: METRIC_VERSION,
     kind: input.kind,
     metric: input.metric,
@@ -190,7 +191,9 @@ export function buildResultRef(input: ResultRefInput): ResultRef {
     unit: input.unit,
     minSampleSize: input.minSampleSize,
     sampleSize: input.sampleSize,
-    scopeLabel: input.scopeLabel,
+    scopeLabel: input.datasetVersion
+      ? `${input.scopeLabel} · 版本 ${input.datasetVersion}`
+      : input.scopeLabel,
     limitations: input.limitations,
   };
 }

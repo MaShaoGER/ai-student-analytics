@@ -10,6 +10,8 @@ export type ScoreDistributionGroup = {
 
 export type ScoreDistributionData = {
   datasetId: DataSource;
+  datasetVersion?: string;
+  datasetName?: string;
   groups: ScoreDistributionGroup[];
   minSampleSize: number;
 };
@@ -63,4 +65,3 @@ export function distributionCountingUnit(groups: ScoreDistributionGroup[], term?
   if (term) return "人" as const;
   return new Set(groups.map((group) => group.term)).size > 1 ? ("人次" as const) : ("人" as const);
 }
-

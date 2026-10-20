@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { datasetIdSchema } from "@/lib/datasets/id";
 import { NextResponse } from "next/server";
 import { apiError, assertSameOrigin, noStoreJson, requireAdmin } from "@/lib/auth/http";
 import {
@@ -13,7 +14,7 @@ import { readJsonBody } from "@/lib/security/request-body";
 
 export const runtime = "nodejs";
 
-const datasetIdsSchema = z.array(z.enum(["demo", "oulad"])).max(2);
+const datasetIdsSchema = z.array(datasetIdSchema).max(52);
 const createSchema = z
   .object({
     username: z.string().trim().min(3).max(40),
@@ -114,7 +115,9 @@ export async function PATCH(request: Request) {
   try {
     assertSameOrigin(request);
     const actor = await requireAdmin(request);
-    const { id, ...input } = updateSchema.parse(await readJsonBody(request, { maxBytes: 16 * 1024 }));
+    const { id, ...input } = updateSchema.parse(
+      await readJsonBody(request, { maxBytes: 16 * 1024 }),
+    );
     return noStoreJson({ user: updateUser(id, input, actor) });
   } catch (error) {
     return apiError(error);

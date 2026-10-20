@@ -1,8 +1,8 @@
-import { analysisPlanSchema, type AnalysisPlan, type Metric } from "./types";
+import { analysisPlanSchema, type AnalysisPlan, type Metric, type DataSource } from "./types";
 import { metricAggregation } from "./metrics";
 
 export function createPlan(options: {
-  datasetId: "demo" | "oulad";
+  datasetId: DataSource;
   metric: Metric;
   dimension: "course" | "term";
   chartType: "line" | "bar" | "table";

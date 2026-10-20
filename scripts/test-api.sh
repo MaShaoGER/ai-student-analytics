@@ -44,7 +44,7 @@ try {
   }
   if (!ready) throw new Error('HTTP test server did not become ready.');
   console.log('HTTP tests use isolated accounts and settings; AI provider calls are disabled.');
-  const tests = spawn('pnpm', ['exec', 'vitest', 'run', 'lib/api/api-integration.test.ts', 'lib/api/admin-integration.test.ts', '--no-file-parallelism'], { env, stdio: 'inherit' });
+  const tests = spawn('pnpm', ['exec', 'vitest', 'run', 'lib/api/api-integration.test.ts', 'lib/api/admin-integration.test.ts', 'lib/api/grade-import-integration.test.ts', '--no-file-parallelism'], { env, stdio: 'inherit' });
   process.exitCode = await new Promise(resolve => tests.on('exit', code => resolve(code ?? 1)));
   if (process.exitCode === 0) {
     const api = async (route, cookie, body, method = body ? 'POST' : 'GET') => fetch(base + route, { method, headers: { origin: base, 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
@@ -59,6 +59,13 @@ try {
     assert.equal((await api('/api/admin/users', adminCookie, { id: restartUser.id, datasetIds: [] }, 'PATCH')).status, 200);
     assert.equal((await api('/api/admin/datasets', adminCookie, { id: 'oulad', enabled: false }, 'PATCH')).status, 200);
     const beforeConfig = (await (await api('/api/admin/ai-config', adminCookie)).json()).config;
+    const imported = (await (await api('/api/admin/datasets', adminCookie)).json()).datasets.find(item => item.id.startsWith('grades_'));
+    assert.ok(imported, 'Published grades must exist before restart.');
+    const gradePlan = {version:1,datasetId:imported.id,metric:'score',aggregation:'avg',dimensions:['course'],filters:[],chartType:'bar'};
+    if (!imported.enabled) assert.equal((await api('/api/admin/datasets', adminCookie, {id:imported.id,enabled:true}, 'PATCH')).status,200);
+    const beforeGrades = (await (await api('/api/analysis', adminCookie, gradePlan)).json()).result;
+    assert.ok(beforeGrades?.datasetVersion);
+
     const stopped = new Promise(resolve => server.once('exit', resolve));
     stop();
     await Promise.race([stopped, new Promise(resolve => setTimeout(resolve, 4000))]);
@@ -82,9 +89,15 @@ try {
     const recoveredDatasets = await (await api('/api/admin/datasets', adminCookie)).json();
     assert.equal(recoveredDatasets.datasets.find(item => item.id === 'oulad').enabled, false);
     assert.deepEqual((await (await api('/api/admin/ai-config', adminCookie)).json()).config, beforeConfig);
+    const afterGrades = (await (await api('/api/analysis', adminCookie, gradePlan)).json()).result;
+    assert.deepEqual(afterGrades.rows, beforeGrades.rows);
+    assert.equal(afterGrades.datasetVersion,beforeGrades.datasetVersion);
+    const publicationLogs = await (await api('/api/admin/logs?action=dataset.publish',adminCookie)).json();
+    assert.ok(publicationLogs.events.some(event => event.targetId===imported.id));
+
     const recoveredLogs = await (await api('/api/admin/logs?action=user.update', adminCookie)).json();
     assert.ok(recoveredLogs.events.some(event => event.targetId === restartUser.id));
-    console.log('Isolated restart passed: sessions, readonly role, revoked grants, dataset status, AI config and atomic admin audit recovered.');
+    console.log('Isolated restart passed: sessions, readonly role, revoked grants, dataset status, AI config, imported grade versions and atomic admin audit recovered.');
   }
 
 } catch (error) {

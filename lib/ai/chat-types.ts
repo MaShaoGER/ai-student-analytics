@@ -116,7 +116,9 @@ export type ChatArtifact =
        * to the same `resultId`.
        */
       courses?: string[];
-      datasetId?: "demo" | "oulad";
+      datasetId?: import("../analysis/types").DataSource;
+      datasetVersion?: string;
+      datasetName?: string;
     }
   | { kind: "relations"; data: CourseRelationData; course: string; view: "chart" | "table" }
   | { kind: "panorama"; data: CoursePanoramaData; view: "chart" | "table" }

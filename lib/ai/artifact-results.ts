@@ -43,9 +43,14 @@ function valuesOf(filters: PlanFilter[] | undefined, field: "course" | "term") {
 }
 
 function scopeLabel(datasetId: DataSource, parts: string[]): string {
-  return [datasetId === "demo" ? "模拟校园数据" : "OULAD 本地数据", ...parts.filter(Boolean)].join(
-    " · ",
-  );
+  return [
+    datasetId === "demo"
+      ? "模拟校园数据"
+      : datasetId === "oulad"
+        ? "OULAD 本地数据"
+        : "导入成绩数据",
+    ...parts.filter(Boolean),
+  ].join(" · ");
 }
 
 /**
@@ -61,6 +66,7 @@ export function describeAbsence(
   const unit = stats.unit === "students" ? "人" : stats.unit === "days" ? "天" : "课时";
   const resultRef = buildResultRef({
     datasetId,
+    datasetVersion: stats.datasetVersion,
     kind: "absence",
     metric: stats.metric,
     granularity: "student_course_term",
@@ -78,7 +84,7 @@ export function describeAbsence(
     // Per-course groups can share students, so no single headcount is asserted;
     // the deduplicated figure is a separate measured fact below.
     sampleSize: null,
-    scopeLabel: `${datasetId === "demo" ? "模拟校园数据" : "OULAD 本地数据"} · ${
+    scopeLabel: `${datasetId === "demo" ? "模拟校园数据" : datasetId === "oulad" ? "OULAD 本地数据" : "导入成绩数据"} · ${
       stats.term ? `学期：${stats.term}` : "全部学期"
     } · ${stats.course ? `课程：${stats.course}` : "全部课程"} · ${ABSENCE_METRIC_LABELS[stats.metric]}`,
     limitations: ABSENCE_SCOPE_LIMITATIONS,
@@ -169,6 +175,7 @@ function describeAnalysis(artifact: Extract<ChatArtifact, { kind: "analysis" }>)
   };
   const resultRef = buildResultRef({
     datasetId: plan.datasetId,
+    datasetVersion: result.datasetVersion,
     kind: "aggregate",
     metric: plan.metric,
     granularity: dimensions.length > 1 ? "course_term" : dimensions[0],
@@ -252,6 +259,7 @@ function describeDistribution(artifact: Extract<ChatArtifact, { kind: "distribut
   const unit = distributionCountingUnit(groups, term);
   const resultRef = buildResultRef({
     datasetId: data.datasetId,
+    datasetVersion: data.datasetVersion,
     kind: "distribution",
     metric: "score",
     granularity: "student_course_term",
@@ -302,6 +310,7 @@ function describeTool(
     const { data } = relations;
     const resultRef = buildResultRef({
       datasetId: data.datasetId,
+      datasetVersion: data.datasetVersion,
       kind: "relations",
       metric: "chord",
       granularity: "course_term",
@@ -327,6 +336,7 @@ function describeTool(
     const { data } = artifact;
     const resultRef = buildResultRef({
       datasetId: data.datasetId,
+      datasetVersion: data.datasetVersion,
       kind: "panorama",
       metric: "panorama",
       granularity: "course_term",
@@ -351,6 +361,7 @@ function describeTool(
   const courses = studio.courses ?? [];
   const resultRef = buildResultRef({
     datasetId,
+    datasetVersion: studio.datasetVersion,
     kind: "advanced_chart",
     metric: kind,
     granularity: "student_course_term",

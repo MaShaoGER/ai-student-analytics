@@ -2,7 +2,14 @@ import { METRICS } from "@/lib/analysis/metrics";
 import type { AnalysisResult } from "@/lib/analysis/types";
 
 export function analysisSourceLabel(result: AnalysisResult): string {
-  return result.datasetId === "oulad" ? "OULAD 本地数据" : "模拟校园数据";
+  return (
+    result.datasetName ??
+    (result.datasetId === "oulad"
+      ? "OULAD 本地数据"
+      : result.datasetId === "demo"
+        ? "模拟校园数据"
+        : "导入成绩数据")
+  );
 }
 
 export function analysisDimensionLabel(result: AnalysisResult): string {
@@ -40,14 +47,27 @@ export function csvCell(value: string | number): string {
 export function analysisSuppressionNote(result: AnalysisResult): string {
   const count = result.filteredOutGroupCount;
   return typeof count === "number" && Number.isInteger(count) && count >= 0
-    ? count > 0 ? `本次因样本不足过滤 ${count} 个分组。` : "本次没有因样本不足被过滤的分组。"
+    ? count > 0
+      ? `本次因样本不足过滤 ${count} 个分组。`
+      : "本次没有因样本不足被过滤的分组。"
     : "本次未记录小样本过滤分组数，无法确定。";
 }
 
 export function analysisCsv(result: AnalysisResult): string {
   const dimension = analysisDimensionLabel(result);
   const records: (string | number)[][] = [
-    [dimension, "指标值", "参与统计人数", "数据源", "指标", "单位", "统计周期", "最小样本人数", "小样本过滤说明"],
+    [
+      dimension,
+      "指标值",
+      "参与统计人数",
+      "数据源",
+      "指标",
+      "单位",
+      "统计周期",
+      "最小样本人数",
+      "小样本过滤说明",
+      "数据版本",
+    ],
     ...(result.rows.length ? result.rows : [null]).map((row) => [
       row?.dimension ?? "",
       row?.value ?? "",
@@ -58,6 +78,7 @@ export function analysisCsv(result: AnalysisResult): string {
       result.period,
       result.minSampleSize,
       analysisSuppressionNote(result),
+      result.datasetVersion ?? "历史记录未标注",
     ]),
   ];
   return `\uFEFF${records.map((record) => record.map(csvCell).join(",")).join("\r\n")}\r\n`;
@@ -115,7 +136,7 @@ export function analysisReportHtml(
 </style></head><body><main>
 <span class="brand">学析台 · 学习数据分析报告</span><h1>${h(result.metricLabel)}按${h(dimension)}比较</h1>
 <p class="summary">${h(insight)}</p>
-<dl><div><dt>数据源</dt><dd>${h(analysisSourceLabel(result))}</dd></div><div><dt>统计周期</dt><dd>${h(result.period)}</dd></div><div><dt>统计指标与单位</dt><dd>${h(result.metricLabel)}（${h(result.unit)}）</dd></div><div><dt>展示范围</dt><dd>${h(result.rows.length)} 个${h(dimension)}分组；仅包含本次查询返回结果</dd></div><div><dt>指标口径</dt><dd>${h(analysisMetricDescription(result))}</dd></div><div><dt>样本与隐私</dt><dd>每组至少 ${h(result.minSampleSize)} 名学生；少于此阈值的分组不展示。${h(filtered)}</dd></div></dl>
+<dl><div><dt>数据源</dt><dd>${h(analysisSourceLabel(result))}${result.datasetVersion ? ` · 版本 ${h(result.datasetVersion)}` : ""}</dd></div><div><dt>统计周期</dt><dd>${h(result.period)}</dd></div><div><dt>统计指标与单位</dt><dd>${h(result.metricLabel)}（${h(result.unit)}）</dd></div><div><dt>展示范围</dt><dd>${h(result.rows.length)} 个${h(dimension)}分组；仅包含本次查询返回结果</dd></div><div><dt>指标口径</dt><dd>${h(analysisMetricDescription(result))}</dd></div><div><dt>样本与隐私</dt><dd>每组至少 ${h(result.minSampleSize)} 名学生；少于此阈值的分组不展示。${h(filtered)}</dd></div></dl>
 <h2>分组统计与数值对比</h2><table><caption>${h(result.metricLabel)}（${h(result.unit)}）</caption><thead><tr><th>${h(dimension)}</th><th>指标值</th><th>参与统计人数</th><th>数值对比</th></tr></thead><tbody>${rows}</tbody></table>
 <p class="note">参与统计人数按各分组去重，同一学生可能出现在多个分组；不能将各组人数相加作为独立学生总人数。结论只比较本次返回的分组，不代表未返回的数据范围。</p>
 <h2>实际查询与核对依据</h2><pre>${h(result.query)}</pre>

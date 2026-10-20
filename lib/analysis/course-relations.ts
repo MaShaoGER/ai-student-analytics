@@ -19,6 +19,8 @@ export type CourseRelation = {
 };
 export type CourseRelationData = {
   datasetId: DataSource;
+  datasetVersion?: string;
+  datasetName?: string;
   term: string | null;
   terms: string[];
   threshold: number;

@@ -1,3 +1,4 @@
+import { withGradeSnapshot } from "../datasets/grade-store";
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { DataSource } from "../analysis/types";
 import type { SessionUser } from "../client-types";
@@ -25,7 +26,9 @@ export function withBusinessAccess<T>(
   run: () => T,
 ): T {
   assertBusinessAccess(user, datasetId, operation);
-  return scopes.run({ userId: user.id, datasetId, operation }, run);
+  return scopes.run({ userId: user.id, datasetId, operation }, () =>
+    withGradeSnapshot(datasetId, run),
+  );
 }
 
 /** Re-read durable account/grants/status before each real query/model/tool and after awaits. */

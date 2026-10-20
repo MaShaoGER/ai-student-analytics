@@ -53,9 +53,7 @@ describe("unified result contract", () => {
     expect(makeResultId(scope)).toMatch(/^r-[0-9a-f]{16}$/);
     // A different scope must not collide with the same id.
     expect(makeResultId({ ...scope, terms: ["2025B"] })).not.toBe(makeResultId(scope));
-    expect(makeResultId({ ...scope, extra: { binWidth: 10 } })).not.toBe(
-      makeResultId(scope),
-    );
+    expect(makeResultId({ ...scope, extra: { binWidth: 10 } })).not.toBe(makeResultId(scope));
   });
 
   it("does not depend on key order, label order or filter order", () => {
@@ -78,9 +76,7 @@ describe("unified result contract", () => {
       ],
     });
     expect(canonicalJson(reordered)).toBe(canonicalJson(canonical));
-    expect(makeResultId({ ...scope, ...reordered })).toBe(
-      makeResultId({ ...scope, ...canonical }),
-    );
+    expect(makeResultId({ ...scope, ...reordered })).toBe(makeResultId({ ...scope, ...canonical }));
   });
 
   it("keeps the id when only presentation changes", () => {
@@ -138,8 +134,27 @@ describe("filter ordering cannot change the identity", () => {
   });
 
   it("still distinguishes genuinely different filter sets", () => {
-    const a = { ...scope, filters: [{ field: "term" as const, op: "eq" as const, value: "2025J" }] };
-    const b = { ...scope, filters: [{ field: "term" as const, op: "eq" as const, value: "2025B" }] };
+    const a = {
+      ...scope,
+      filters: [{ field: "term" as const, op: "eq" as const, value: "2025J" }],
+    };
+    const b = {
+      ...scope,
+      filters: [{ field: "term" as const, op: "eq" as const, value: "2025B" }],
+    };
     expect(makeResultId(a)).not.toBe(makeResultId(b));
+  });
+});
+
+describe("imported dataset version identity", () => {
+  it("uses the immutable version for result and fact identities even when values match", () => {
+    const datasetId = "grades_00000000-0000-4000-8000-000000000001" as const;
+    const old = ref({ datasetId, datasetVersion: "v1-content" });
+    const current = ref({ datasetId, datasetVersion: "v2-content" });
+    expect(old.datasetVersion).toBe("v1-content");
+    expect(current.datasetVersion).toBe("v2-content");
+    expect(old.resultId).not.toBe(current.resultId);
+    expect(makeFactId(old.resultId, "课程均分")).not.toBe(makeFactId(current.resultId, "课程均分"));
+    expect(ref({ datasetId, datasetVersion: "v1-content" }).resultId).toBe(old.resultId);
   });
 });

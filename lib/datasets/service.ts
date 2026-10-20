@@ -1,3 +1,6 @@
+import { isGradeDataset } from "./id";
+import { listGradeDatasets, getGradeSnapshot, setGradeDatasetEnabled } from "./grade-store";
+import type { GradeVersion } from "./grade-contract";
 import { statSync, accessSync, constants } from "node:fs";
 import path from "node:path";
 import type { DataSource } from "../analysis/types";
@@ -15,7 +18,9 @@ const initial = (): CatalogState => ({
 export type ManagedDataset = {
   id: DataSource;
   name: string;
-  owner: "system";
+  owner: string;
+  currentVersion?: string;
+  versions?: GradeVersion[];
   enabled: boolean;
   available: boolean;
   version: string;
@@ -66,7 +71,7 @@ function catalogState(): CatalogState {
 
 export function listManagedDatasets(): ManagedDataset[] {
   const state = catalogState();
-  return DATASET_IDS.map((id) => {
+  const builtins = DATASET_IDS.map((id) => {
     const ready = available(id);
     return {
       id,
@@ -90,6 +95,34 @@ export function listManagedDatasets(): ManagedDataset[] {
         : {}),
     };
   });
+  const imported: ManagedDataset[] = listGradeDatasets().map((dataset) => {
+    let available = true;
+    try {
+      getGradeSnapshot(dataset.id);
+    } catch {
+      available = false;
+    }
+    const version = dataset.versions.find((v) => v.version === dataset.currentVersion);
+    return {
+      ...dataset,
+      available,
+      version: dataset.currentVersion,
+      source: "管理员导入的教学成绩",
+      capabilities: [
+        "成绩均分",
+        "成绩分布",
+        "课程关联",
+        "课程全景",
+        "成绩箱线图",
+        "学期比较",
+        ...(version?.hasCompletion ? ["课程完成率"] : []),
+      ],
+      ...(!available
+        ? { unavailableReason: "成绩版本文件缺失或不可读，请管理员检查持久化存储。" }
+        : {}),
+    };
+  });
+  return [...builtins, ...imported];
 }
 
 export function authorizedDatasets(user: SessionUser): ManagedDataset[] {
@@ -115,6 +148,10 @@ export function setDatasetEnabled(
   enabled: boolean,
   actorId: string,
 ): ManagedDataset {
+  if (isGradeDataset(id)) {
+    setGradeDatasetEnabled(id, enabled, actorId);
+    return listManagedDatasets().find((dataset) => dataset.id === id)!;
+  }
   catalogState();
   updateState("datasets.json", initial, (state) => {
     const dataset = state.datasets.find((item) => item.id === id);

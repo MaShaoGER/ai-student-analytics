@@ -166,3 +166,19 @@ describe("analysis exports", () => {
     ).toBeLessThan(100);
   });
 });
+
+describe("imported report version snapshot", () => {
+  it("retains its source name and version without consulting the current catalog", () => {
+    const old: AnalysisResult = {
+      ...result,
+      datasetId: "grades_00000000-0000-4000-8000-000000000001",
+      datasetName: "教学成绩旧版",
+      datasetVersion: "v1-original",
+    };
+    const current = { ...old, datasetName: "教学成绩新版", datasetVersion: "v2-new" };
+    expect(analysisReportHtml(old)).toContain("教学成绩旧版 · 版本 v1-original");
+    expect(analysisCsv(old)).toContain("v1-original");
+    expect(analysisReportHtml(current)).toContain("教学成绩新版 · 版本 v2-new");
+    expect(analysisReportHtml(old)).not.toContain("v2-new");
+  });
+});

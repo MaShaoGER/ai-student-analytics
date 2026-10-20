@@ -1,3 +1,5 @@
+import { datasetIdSchema, isGradeDataset } from "../datasets/id";
+import { getGradeDataset } from "../datasets/grade-store";
 import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from "node:crypto";
 import type {
   AdminUserListFilter,
@@ -157,11 +159,17 @@ function normalizeDatasetIds(value: unknown, fallback: DatasetId[] = []): Datase
   if (!Array.isArray(value)) throw new AuthError(400, "INVALID_DATASETS", "数据集授权格式不正确。");
   const unique = new Set<DatasetId>();
   for (const item of value) {
-    if (item !== "demo" && item !== "oulad")
+    if (!datasetIdSchema.safeParse(item).success)
       throw new AuthError(400, "INVALID_DATASETS", "数据集授权包含未知数据集。");
-    unique.add(item);
+    unique.add(item as DatasetId);
   }
   return [...unique];
+}
+
+function assertRegisteredGrants(ids: DatasetId[]): void {
+  for (const id of ids)
+    if (isGradeDataset(id) && !getGradeDataset(id))
+      throw new AuthError(400, "INVALID_DATASETS", "数据集授权包含未登记的数据集。");
 }
 
 function publicUser(user: StoredUser): SessionUser {
@@ -411,6 +419,7 @@ export async function createUser(input: CreateUserInput, actor?: AuthActor): Pro
   const displayName = validateDisplayName(input.displayName);
   const role = validateRole(input.role ?? "user");
   const datasetIds = normalizeDatasetIds(input.datasetIds, []);
+  assertRegisteredGrants(datasetIds);
   const passwordHash = await hashPassword(input.password);
   return mutateAccounts((state) => {
     if (state.users.some((user) => user.username === username))
@@ -489,6 +498,7 @@ export function updateUser(id: string, input: UpdateUserInput, actor?: AuthActor
   const displayName = hasDisplayName ? validateDisplayName(input.displayName!) : undefined;
   const role = hasRole ? validateRole(input.role) : undefined;
   const datasetIds = hasDatasets ? normalizeDatasetIds(input.datasetIds) : undefined;
+  if (datasetIds) assertRegisteredGrants(datasetIds);
   return completedMutation(
     mutateAccounts<AccountMutationResult<ManagedUser>>((state) => {
       const user = state.users.find((candidate) => candidate.id === id);

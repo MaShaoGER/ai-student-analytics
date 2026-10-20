@@ -1,3 +1,5 @@
+import { isGradeDataset } from "@/lib/datasets/id";
+import { getGradeSnapshot } from "@/lib/datasets/grade-store";
 import { assertBusinessAccess, withBusinessAccess } from "@/lib/auth/access";
 import type { SessionUser } from "@/lib/client-types";
 import { NextResponse } from "next/server";
@@ -56,6 +58,7 @@ export async function POST(request: Request) {
       },
     );
   let context = analysisRecordContext(null);
+  let datasetVersion: string | undefined;
   const executionSteps = new Map<
     string,
     { operation: string; status: AnalysisStep["status"]; durationMs: number }
@@ -89,6 +92,7 @@ export async function POST(request: Request) {
     outcome: "success" | "partial" | "failure" = errorCode ? "failure" : "success",
   ) =>
     saveAnalysisAudit({
+      datasetVersion,
       ...context,
       userId,
       requestSource: "ask",
@@ -171,8 +175,11 @@ export async function POST(request: Request) {
     const input = chatInputSchema.parse(payload);
     assertBusinessAccess(user, input.datasetId, "ai");
     const run = async (signal: AbortSignal, onStep?: (step: AnalysisStep) => void) => {
-      const response = await withBusinessAccess(user, input.datasetId, "ai", () =>
-        converse(input, {
+      const response = await withBusinessAccess(user, input.datasetId, "ai", () => {
+        datasetVersion = isGradeDataset(input.datasetId)
+          ? getGradeSnapshot(input.datasetId).version
+          : undefined;
+        return converse(input, {
           signal,
           requestId,
           onStep(step) {
@@ -190,8 +197,8 @@ export async function POST(request: Request) {
             stage = "execution";
             if (plan) context = analysisRecordContext(plan);
           },
-        }),
-      );
+        });
+      });
       const artifact = response.artifact;
       await audit(
         response.failureCode ?? null,

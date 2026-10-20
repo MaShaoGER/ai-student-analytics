@@ -45,6 +45,8 @@ export type AbsenceCourseRow = {
 
 export type AbsenceStats = {
   datasetId: DataSource;
+  datasetVersion?: string;
+  datasetName?: string;
   term: string | null;
   terms: string[];
   course: string | null;
@@ -97,6 +99,11 @@ export function absenceSupport(
   datasetId: DataSource,
   unit: AbsenceUnit,
 ): { supported: boolean; reason: string | null } {
+  if (datasetId.startsWith("grades_"))
+    return {
+      supported: false,
+      reason: "该成绩数据集没有出勤、请假或旷课记录，无法计算缺勤；不能用成绩或活动量替代。",
+    };
   if (datasetId === "oulad") return { supported: false, reason: OULAD_ABSENCE_LIMITATION };
   if (unit === "days")
     return {

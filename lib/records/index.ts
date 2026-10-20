@@ -153,10 +153,10 @@ export async function saveAnalysisAudit(
       | "requestId"
       | "usage"
       | "executionSteps"
-    >,
+    > & {datasetVersion?: string},
 ): Promise<void> {
   try {
-    await saveAnalysisRecord({ datasetVersion: "1.0", metricVersion: "1.0", ...record });
+    await saveAnalysisRecord({ metricVersion: "1.0", ...record, datasetVersion: record.datasetVersion ?? "1.0" });
   } catch {
     // Whole errors can include request details or credentials from upstream services.
     console.warn("Warning: failed to save analysis audit record");
