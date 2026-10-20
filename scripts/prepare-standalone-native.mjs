@@ -12,7 +12,7 @@
  * Usage: node scripts/prepare-standalone-native.mjs [distDir]
  * distDir defaults to NEXT_DIST_DIR, then `.next` (same resolution as next.config.ts).
  */
-import { copyFileSync, existsSync, readdirSync, statSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const DIST_DIR = process.argv[2] || process.env.NEXT_DIST_DIR || ".next";
@@ -61,6 +61,17 @@ function sameFile(a, b) {
   } catch {
     return false;
   }
+}
+
+// Client bundling can strip source comments. Ship the complete upstream license
+// with standalone releases (including the Docker image), on every platform.
+if (existsSync(STANDALONE_DIR)) {
+  const licenseDir = join(STANDALONE_DIR, "licenses");
+  mkdirSync(licenseDir, { recursive: true });
+  copyFileSync(
+    resolve(process.cwd(), "licenses", "rare-ui-LICENSE.txt"),
+    join(licenseDir, "rare-ui-LICENSE.txt"),
+  );
 }
 
 if (process.platform === "win32") {

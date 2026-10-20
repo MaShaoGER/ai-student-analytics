@@ -6,6 +6,7 @@ const STORAGE_KEY = "student-analytics.motion";
 const MotionContext = createContext({
   enabled: true,
   reduced: false,
+  pointer: false,
   setEnabled: (_value: boolean) => {},
 });
 
@@ -13,6 +14,7 @@ const MotionContext = createContext({
 export function MotionPreferences({ children }: { children?: ReactNode }) {
   const [enabled, updateEnabled] = useState(true);
   const [reduced, setReduced] = useState(false);
+  const [pointer, setPointer] = useState(false);
   const setEnabled = (value: boolean) => {
     const root = document.documentElement;
     if (value) {
@@ -49,11 +51,15 @@ export function MotionPreferences({ children }: { children?: ReactNode }) {
       root.dataset.motion = value && !system.matches ? "on" : "off";
     }
     function markPointer() {
+      if (root.dataset.inputModality === "pointer") return;
       root.dataset.inputModality = "pointer";
+      setPointer(true);
     }
     function markKeyboard(event: KeyboardEvent) {
-      if (!["Alt", "Control", "Meta", "Shift"].includes(event.key))
+      if (!["Alt", "Control", "Meta", "Shift"].includes(event.key)) {
         root.dataset.inputModality = "keyboard";
+        setPointer(false);
+      }
     }
     function onStorage(event: StorageEvent) {
       if (event.key === STORAGE_KEY || event.key === null) readPreference();
@@ -78,7 +84,7 @@ export function MotionPreferences({ children }: { children?: ReactNode }) {
   }, []);
 
   return (
-    <MotionContext.Provider value={{ enabled, reduced, setEnabled }}>
+    <MotionContext.Provider value={{ enabled, reduced, pointer, setEnabled }}>
       {children}
     </MotionContext.Provider>
   );
