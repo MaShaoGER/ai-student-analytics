@@ -1,6 +1,6 @@
 # 后台管理首期使用与存储说明
 
-本轮实现范围为[路线图](admin-management-roadmap.md)阶段 0–5。Excel/CSV 上传导入、组织树、自定义角色、多租户和课程/班级级授权留待后续。
+本轮实现范围为[路线图](admin-management-roadmap.md)阶段 0–5。后续已新增[教学成绩 Excel/CSV 导入](grade-data-import.md)；组织树、自定义角色、多租户和课程/班级级授权仍留待后续。
 
 ## 使用
 

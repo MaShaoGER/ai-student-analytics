@@ -107,7 +107,9 @@ export function LearningOverview({
   onData: () => void;
   onReport: (result: AnalysisResult) => void;
 }) {
-  const [metric, setMetric] = useState<Metric>("score");
+  const [chosenMetric, setMetric] = useState<Metric>("score");
+  const availableMetrics: Metric[] = profile?.metrics ?? ["score", "activity", "completion_rate"];
+  const metric = availableMetrics.includes(chosenMetric) ? chosenMetric : "score";
   const [question, setQuestion] = useState("");
   const [selected, setSelected] = useState<string>();
   const [chartViews, setChartViews] = useState<Partial<Record<Metric, ChartViewType>>>({});
@@ -200,66 +202,68 @@ export function LearningOverview({
           </div>
         </div>
         <section className="overview-metrics" aria-label="学习表现速览">
-          {cards.map((card, index) => (
-            <button
-              className={`overview-metric${metric === card.metric ? " is-selected" : ""}`}
-              type="button"
-              key={card.metric}
-              data-metric={card.metric}
-              data-enter={index === 0 ? "scale" : "rise"}
-              style={
-                {
-                  "--enter-delay": `${[120, 230, 300][index] ?? 300}ms`,
-                } as CSSProperties
-              }
-              aria-pressed={metric === card.metric}
-              disabled={!results[card.metric]}
-              onClick={() => {
-                setMetric(card.metric);
-                setSelected(undefined);
-              }}
-            >
-              <span className="overview-metric-label">
-                <Icon name={card.icon} size={16} />
-                {card.label}
-                <span className="metric-index">0{index + 1}</span>
-              </span>
-              <span className="overview-metric-body">
-                <MetricNumber
-                  loading={loading}
-                  value={card.value}
-                  unit={card.unit}
-                  decimals={card.metric === "activity" ? 0 : 2}
-                />
-                <MetricBars result={card.result} />
-              </span>
-              {card.metric === "score" && card.value !== undefined && !loading && (
-                <span
-                  className="score-calibration"
-                  role="meter"
-                  aria-label="最高课程均分"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={card.value}
-                  key={card.value}
-                >
-                  <i
-                    data-grow
-                    style={
-                      {
-                        "--fill": Math.min(1, Math.max(0, card.value / 100)),
-                        "--enter-delay": "260ms",
-                      } as CSSProperties
-                    }
-                  />
+          {cards
+            .filter((card) => availableMetrics.includes(card.metric))
+            .map((card, index) => (
+              <button
+                className={`overview-metric${metric === card.metric ? " is-selected" : ""}`}
+                type="button"
+                key={card.metric}
+                data-metric={card.metric}
+                data-enter={index === 0 ? "scale" : "rise"}
+                style={
+                  {
+                    "--enter-delay": `${[120, 230, 300][index] ?? 300}ms`,
+                  } as CSSProperties
+                }
+                aria-pressed={metric === card.metric}
+                disabled={!results[card.metric]}
+                onClick={() => {
+                  setMetric(card.metric);
+                  setSelected(undefined);
+                }}
+              >
+                <span className="overview-metric-label">
+                  <Icon name={card.icon} size={16} />
+                  {card.label}
+                  <span className="metric-index">0{index + 1}</span>
                 </span>
-              )}
-              <span className="overview-metric-note">
-                {card.note}
-                <Icon name="arrowUpRight" size={14} />
-              </span>
-            </button>
-          ))}
+                <span className="overview-metric-body">
+                  <MetricNumber
+                    loading={loading}
+                    value={card.value}
+                    unit={card.unit}
+                    decimals={card.metric === "activity" ? 0 : 2}
+                  />
+                  <MetricBars result={card.result} />
+                </span>
+                {card.metric === "score" && card.value !== undefined && !loading && (
+                  <span
+                    className="score-calibration"
+                    role="meter"
+                    aria-label="最高课程均分"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={card.value}
+                    key={card.value}
+                  >
+                    <i
+                      data-grow
+                      style={
+                        {
+                          "--fill": Math.min(1, Math.max(0, card.value / 100)),
+                          "--enter-delay": "260ms",
+                        } as CSSProperties
+                      }
+                    />
+                  </span>
+                )}
+                <span className="overview-metric-note">
+                  {card.note}
+                  <Icon name="arrowUpRight" size={14} />
+                </span>
+              </button>
+            ))}
         </section>
       </div>
       <div
@@ -305,7 +309,7 @@ export function LearningOverview({
             </div>
             <div className="overview-chart-toolbar">
               <div className="overview-metric-tabs" aria-label="概览图表指标">
-                {(["score", "activity", "completion_rate"] as const).map((value) => (
+                {availableMetrics.map((value) => (
                   <button
                     key={value}
                     data-metric={value}
@@ -516,7 +520,7 @@ export function LearningOverview({
                 <h2>试着问问</h2>
                 <Icon name="messages" size={17} />
               </div>
-              {suggestedQuestionsFor(aiReady).map((item, index) => (
+              {suggestedQuestionsFor(aiReady, profile?.id).map((item, index) => (
                 <button
                   type="button"
                   key={item.id}

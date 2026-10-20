@@ -435,7 +435,10 @@ export function AnalysisResultView({
               <dl>
                 <div>
                   <dt>数据源</dt>
-                  <dd>{analysisSourceLabel(result)}</dd>
+                  <dd>
+                    {analysisSourceLabel(result)}
+                    {result.datasetVersion ? ` · 版本 ${result.datasetVersion}` : ""}
+                  </dd>
                 </div>
                 <div>
                   <dt>计算口径</dt>

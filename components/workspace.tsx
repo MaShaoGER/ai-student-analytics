@@ -694,6 +694,16 @@ export function Workspace() {
     Boolean(selectedProfile && isDatasetEligible(selectedProfile));
   const eligibleDatasetId =
     datasetId && selectedProfile && isDatasetEligible(selectedProfile) ? datasetId : null;
+  const availableMetrics: Metric[] = selectedProfile?.metrics ?? [
+    "score",
+    "activity",
+    "completion_rate",
+  ];
+  const metricCapabilityKey = availableMetrics.join(",");
+  const selectedDatasetVersion = selectedProfile?.datasetVersion;
+  useEffect(() => {
+    if (!(metricCapabilityKey.split(",") as Metric[]).includes(metric)) setMetric("score");
+  }, [metricCapabilityKey, metric]);
   const aiReady = aiStatus.configured && aiStatus.enabled;
   const aiAllowed = capabilities.canUseAI && canRun;
   const showDistribution = mode === "metrics" && metric === "score" && scoreView === "distribution";
@@ -709,47 +719,44 @@ export function Workspace() {
     );
   }, []);
 
-  const expire = useCallback(
-    (notice: string | null = null) => {
-      generation.current++;
-      sessionSyncPending.current?.controller.abort();
-      sessionSyncPending.current = null;
-      askPending.current?.abort();
-      askPending.current = null;
-      setLoginNotice(notice);
-      setUser(null);
-      userScope.current = "";
-      setProfiles([]);
-      profilesLoaded.current = false;
-      setProfilesLoading(false);
-      setProfilesError(null);
-      setDatasetId(null);
-      profileAccessKey.current = "";
-      setOverview({});
-      setOverviewLoading(false);
-      setAnalysis(null);
-      setAskResult(null);
-      setSessionAnalyses([]);
-      setSelectedReportKey("");
-      setChatMessages([]);
-      setPendingQuestion("");
-      setPendingSteps([]);
-      setChatContext(null);
-      setExpandedChartId(null);
-      setQuestion("");
-      setError(null);
-      setInputError(null);
-      setFailedAsk(null);
-      setAskLoading(false);
-      setBrowseLoading(false);
-      sidebar.current?.hidePopover();
-      logoutDialog.current?.close();
-      setSidebarOpen(false);
-      setMode("metrics");
-      setView("overview");
-    },
-    [],
-  );
+  const expire = useCallback((notice: string | null = null) => {
+    generation.current++;
+    sessionSyncPending.current?.controller.abort();
+    sessionSyncPending.current = null;
+    askPending.current?.abort();
+    askPending.current = null;
+    setLoginNotice(notice);
+    setUser(null);
+    userScope.current = "";
+    setProfiles([]);
+    profilesLoaded.current = false;
+    setProfilesLoading(false);
+    setProfilesError(null);
+    setDatasetId(null);
+    profileAccessKey.current = "";
+    setOverview({});
+    setOverviewLoading(false);
+    setAnalysis(null);
+    setAskResult(null);
+    setSessionAnalyses([]);
+    setSelectedReportKey("");
+    setChatMessages([]);
+    setPendingQuestion("");
+    setPendingSteps([]);
+    setChatContext(null);
+    setExpandedChartId(null);
+    setQuestion("");
+    setError(null);
+    setInputError(null);
+    setFailedAsk(null);
+    setAskLoading(false);
+    setBrowseLoading(false);
+    sidebar.current?.hidePopover();
+    logoutDialog.current?.close();
+    setSidebarOpen(false);
+    setMode("metrics");
+    setView("overview");
+  }, []);
 
   const clearScopedState = useCallback(
     (nextView: View = "overview", notice: string | null = null) => {
@@ -815,13 +822,13 @@ export function Workspace() {
         }
         if (!response.ok) {
           if (response.status === 401) expire("登录已过期，请重新登录。");
-          else if (options.boot)
-            throw new Error("暂时无法连接工作台，请检查服务后重试。");
+          else if (options.boot) throw new Error("暂时无法连接工作台，请检查服务后重试。");
           return;
         }
-        const payload = (await response.json().catch(() => null)) as
-          | { user?: SessionUser | null; setupRequired?: boolean }
-          | null;
+        const payload = (await response.json().catch(() => null)) as {
+          user?: SessionUser | null;
+          setupRequired?: boolean;
+        } | null;
         if (!payload) {
           if (options.boot) throw new Error("返回数据格式异常，请稍后重试。");
           return;
@@ -988,6 +995,7 @@ export function Workspace() {
         const nextKey = datasetAccessKey(nextProfiles);
         if (profileAccessKey.current !== "" && profileAccessKey.current !== nextKey) {
           generation.current++;
+          setRefreshCount((count) => count + 1);
           setOverview({});
           setAnalysis(null);
           setAskResult(null);
@@ -1055,7 +1063,10 @@ export function Workspace() {
   useEffect(() => {
     const previous = previousView.current;
     previousView.current = view;
-    if (previous === "admin" && view !== "admin") setAiStatusRefresh((count) => count + 1);
+    if (previous === "admin" && view !== "admin") {
+      setAiStatusRefresh((count) => count + 1);
+      setProfileRefreshCount((count) => count + 1);
+    }
   }, [view]);
   useEffect(() => {
     if (!user || !eligibleDatasetId || passwordChangeRequired) return;
@@ -1063,7 +1074,7 @@ export function Workspace() {
     const controller = new AbortController();
     const current = generation.current;
     setOverviewLoading(true);
-    const metrics = ["score", "activity", "completion_rate"] as const;
+    const metrics = metricCapabilityKey.split(",") as Metric[];
     Promise.allSettled(
       metrics.map(async (value) => {
         const plan = createPlan({
@@ -1099,7 +1110,16 @@ export function Workspace() {
         );
     });
     return () => controller.abort();
-  }, [user, eligibleDatasetId, passwordChangeRequired, api, rememberResult]);
+  }, [
+    user,
+    eligibleDatasetId,
+    selectedDatasetVersion,
+    refreshCount,
+    metricCapabilityKey,
+    passwordChangeRequired,
+    api,
+    rememberResult,
+  ]);
   useEffect(() => {
     if (
       !user ||
@@ -1163,6 +1183,7 @@ export function Workspace() {
     askPending.current?.abort();
     askPending.current = null;
     setDatasetId(value);
+    setMetric("score");
     setOverview({});
     setOverviewLoading(true);
     setAnalysis(null);
@@ -1568,11 +1589,7 @@ export function Workspace() {
           <>
             {!datasetId && <option value="">请选择数据源</option>}
             {profiles.map((profile) => (
-              <option
-                key={profile.id}
-                value={profile.id}
-                disabled={!isDatasetEligible(profile)}
-              >
+              <option key={profile.id} value={profile.id} disabled={!isDatasetEligible(profile)}>
                 {profile.name}
                 {sourceStatusLabel(profile)}
               </option>
@@ -1843,11 +1860,15 @@ export function Workspace() {
                               value={metric}
                               onChange={setMetric}
                               disabled={!canRun}
-                              options={[
-                                { value: "score", label: "成绩" },
-                                { value: "activity", label: "活跃次数" },
-                                { value: "completion_rate", label: "完成率" },
-                              ]}
+                              options={
+                                [
+                                  { value: "score", label: "成绩" },
+                                  { value: "activity", label: "活跃次数" },
+                                  { value: "completion_rate", label: "完成率" },
+                                ].filter((item) =>
+                                  availableMetrics.includes(item.value as Metric),
+                                ) as { value: Metric; label: string }[]
+                              }
                             />
                           </div>
                           {metric === "score" && (
@@ -1924,11 +1945,23 @@ export function Workspace() {
                   {showChartStudio && eligibleDatasetId ? (
                     <ChartStudio key={eligibleDatasetId} datasetId={eligibleDatasetId} api={api} />
                   ) : showPanorama && eligibleDatasetId ? (
-                    <CoursePanorama key={eligibleDatasetId} datasetId={eligibleDatasetId} api={api} />
+                    <CoursePanorama
+                      key={eligibleDatasetId}
+                      datasetId={eligibleDatasetId}
+                      api={api}
+                    />
                   ) : showRelations && eligibleDatasetId ? (
-                    <CourseRelations key={eligibleDatasetId} datasetId={eligibleDatasetId} api={api} />
+                    <CourseRelations
+                      key={eligibleDatasetId}
+                      datasetId={eligibleDatasetId}
+                      api={api}
+                    />
                   ) : showDistribution && eligibleDatasetId ? (
-                    <ScoreDistribution key={eligibleDatasetId} datasetId={eligibleDatasetId} api={api} />
+                    <ScoreDistribution
+                      key={eligibleDatasetId}
+                      datasetId={eligibleDatasetId}
+                      api={api}
+                    />
                   ) : (
                     <AnalysisResultView
                       result={visibleResult}
@@ -2006,10 +2039,7 @@ export function Workspace() {
               />
             )}
             {view === "admin" && user.role === "admin" && (
-              <AdminPanel
-                user={user}
-                onSessionExpired={() => expire("登录已过期，请重新登录。")}
-              />
+              <AdminPanel user={user} onSessionExpired={() => expire("登录已过期，请重新登录。")} />
             )}
             {view === "account" && (
               <>

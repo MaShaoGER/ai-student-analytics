@@ -395,7 +395,9 @@ export function ScoreDistribution({
             仅展示至少 {data?.minSampleSize ?? 3} 人的学科与学期分组；
             {datasetId === "oulad"
               ? "成绩为该学生在该课程、学期的有效考核均分。"
-              : "重复成绩记录先按学生、学科、学期取均分。"}
+              : datasetId.startsWith("grades_")
+                ? "成绩来自管理员发布的导入版本，每个学生-课程-学期只保留唯一记录。"
+                : "重复成绩记录先按学生、学科、学期取均分。"}
             无效或缺失成绩不计入。
           </p>
         </>

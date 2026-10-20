@@ -25,7 +25,9 @@ export function ChartStudio({
   datasetId: DataSource;
   api: (url: string, options?: RequestInit) => Promise<StudioProjectData>;
 }) {
-  const [type, setType] = useState<StudioChartType>("sankey");
+  const [type, setType] = useState<StudioChartType>(() =>
+    datasetId.startsWith("grades_") ? "boxplot" : "sankey",
+  );
   const [source, setSource] = useState<"project" | "custom">("project");
   const [project, setProject] = useState<StudioProjectData | null>(null);
   const [term, setTerm] = useState("");
@@ -92,6 +94,15 @@ export function ChartStudio({
       }),
     );
   }, [table, type, fieldOverrides]);
+  useEffect(() => {
+    if (
+      source === "project" &&
+      datasetId.startsWith("grades_") &&
+      type !== "boxplot" &&
+      type !== "dumbbell"
+    )
+      setType("boxplot");
+  }, [source, datasetId, type]);
   const chartInfo = STUDIO_CHARTS.find((item) => item.value === type)!;
   const summaryBox = type === "boxplot" && table?.columns.includes("下四分位数");
 
@@ -139,7 +150,13 @@ export function ChartStudio({
         data-enter-group="rise"
         style={{ "--enter-group-delay": "120ms" } as CSSProperties}
       >
-        {STUDIO_CHARTS.map((item, i) => (
+        {STUDIO_CHARTS.filter(
+          (item) =>
+            source !== "project" ||
+            !datasetId.startsWith("grades_") ||
+            item.value === "boxplot" ||
+            item.value === "dumbbell",
+        ).map((item, i) => (
           <button
             type="button"
             key={item.value}

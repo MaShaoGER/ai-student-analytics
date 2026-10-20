@@ -12,11 +12,11 @@
 - 展示数据来源、指标口径、统计周期和只读查询。
 - 下载当前聚合分析的 CSV，以及预览、下载和打印分析报告（可另存为 PDF）。
 
-CSV/Excel 上传导入仍属于后续计划。测试环境已于 2026-10-13 发布查询保护、失败审计和报告导出增量，并完成独立记录卷恢复及版本回退演练；仍使用模拟数据和自签名测试证书。
+管理员现可通过[教学成绩导入](docs/grade-data-import.md)上传 Excel/CSV，完成字段映射、质量校验后发布独立数据集或完整新版本，并在账号管理中授权使用。测试环境已于 2026-10-13 发布查询保护、失败审计和报告导出增量，并完成独立记录卷恢复及版本回退演练；仍使用模拟数据和自签名测试证书。
 
 ## 当前目录
 
-- [后台管理首期](docs/admin-management.md)：阶段 0–5 已本地实施，包含角色与数据授权、账号、目录、系统总览和操作日志；[验收记录](docs/admin-management-acceptance.md)、[实施路线](docs/admin-management-roadmap.md)。数据导入留待后续。
+- [后台管理首期](docs/admin-management.md)：阶段 0–5 已本地实施，包含角色与数据授权、账号、目录、系统总览和操作日志；[验收记录](docs/admin-management-acceptance.md)、[实施路线](docs/admin-management-roadmap.md)。另见[教学成绩导入](docs/grade-data-import.md)。
 - [AI学生数据分析系统开发路线图.md](AI学生数据分析系统开发路线图.md)：产品、架构、开发计划和验收标准。
 - [赛事改进路线](docs/competition-improvement-roadmap.md)：2026-10-18 确认的优先顺序、实施范围和验收标准；第一阶段已本地实施，见[实施记录](docs/competition-phase1.md)；第二阶段首版见[实施与验收](docs/competition-phase2.md)。
 - [AI 统一对话与统计分析改进路线图](docs/unified-ai-workflow-roadmap.md)：第 1–4 步已本地实施，统一问答入口、上下文、统计结果与请求用量；后续[回答可靠性修正](docs/ai-answer-reliability.md)补充完整性检查、数字含义绑定与独立语义评测，旧评测未通过项仍如实保留。

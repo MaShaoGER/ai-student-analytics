@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import type { DatasetId, ManagedUser, SessionUser, UserRole } from "@/lib/client-types";
+import { datasetIdSchema } from "@/lib/datasets/id";
+import type { GradeDataset, GradeVersion } from "@/lib/datasets/grade-contract";
 import { Icon } from "@/components/app-icons";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { GradeImport } from "@/components/grade-import";
 import styles from "./admin-management.module.css";
 
 export type AdminManagementSection = "overview" | "users" | "datasets" | "logs";
@@ -61,13 +64,17 @@ type OverviewResponse = {
 type DatasetEntry = {
   id: DatasetId;
   name: string;
-  owner: "system";
+  owner: string;
   enabled: boolean;
   available: boolean;
   version: string;
   source: string;
   capabilities: string[];
   unavailableReason?: string;
+  grade?: {
+    currentVersion: string;
+    versions: GradeVersion[];
+  };
 };
 
 type AccountsResponse = {
@@ -77,7 +84,7 @@ type AccountsResponse = {
   pageSize: number;
 };
 
-type LogSource = "accounts" | "datasets" | "ai-config" | "analysis-settings";
+type LogSource = "accounts" | "datasets" | "grades" | "ai-config" | "analysis-settings";
 type AuditLog = {
   version: 1;
   id: string;
@@ -130,6 +137,7 @@ const roleLabels: Record<UserRole, string> = {
 const sourceLabels: Record<LogSource, string> = {
   accounts: "账号",
   datasets: "数据集",
+  grades: "导入数据",
   "ai-config": "AI 配置",
   "analysis-settings": "分析设置",
 };
@@ -141,10 +149,17 @@ const actionLabels: Record<string, string> = {
   "user.password.reset": "重置密码",
   "user.sessions.revoke": "撤销会话",
   "dataset.status": "修改数据集状态",
+  "dataset.publish": "发布成绩数据版本",
   "ai-config.update": "更新 AI 配置",
   "analysis-settings.update": "更新分析设置",
 };
 const knownSummaryFields = new Set([
+  "rowCount",
+  "studentCount",
+  "courseCount",
+  "termCount",
+  "missingScores",
+  "versionNumber",
   "role",
   "beforeRole",
   "disabled",
@@ -219,8 +234,9 @@ function role(value: unknown, path: string): UserRole {
   return value;
 }
 function datasetId(value: unknown, path: string): DatasetId {
-  if (value !== "demo" && value !== "oulad") contractError(path);
-  return value;
+  const parsed = datasetIdSchema.safeParse(value);
+  if (!parsed.success) contractError(path);
+  return parsed.data;
 }
 function result(value: unknown, path: string): "success" | "failure" {
   if (value !== "success" && value !== "failure") contractError(path);
@@ -230,6 +246,7 @@ function source(value: unknown, path: string): LogSource {
   if (
     value !== "accounts" &&
     value !== "datasets" &&
+    value !== "grades" &&
     value !== "ai-config" &&
     value !== "analysis-settings"
   )
@@ -364,14 +381,59 @@ function parseAccounts(value: unknown): AccountsResponse {
   };
 }
 
+function parseGradeVersion(value: unknown, path: string): GradeVersion {
+  const item = record(value, path);
+  const count = (key: string) => integer(item[key], `${path}.${key}`);
+  return {
+    version: text(item.version, `${path}.version`),
+    createdAt: text(item.createdAt, `${path}.createdAt`),
+    rowCount: count("rowCount"),
+    studentCount: count("studentCount"),
+    courseCount: count("courseCount"),
+    termCount: count("termCount"),
+    missingScores: count("missingScores"),
+    hasCompletion: bool(item.hasCompletion, `${path}.hasCompletion`),
+  };
+}
+
 function parseDataset(value: unknown, path: string): DatasetEntry {
   const item = record(value, path);
-  if (item.owner !== "system") contractError(`${path}.owner`);
+  const id = datasetId(item.id, `${path}.id`);
+  const name = text(item.name, `${path}.name`);
+  const owner = text(item.owner, `${path}.owner`);
+  const enabled = bool(item.enabled, `${path}.enabled`);
+  if (id.startsWith("grades_")) {
+    const versions = array(item.versions, `${path}.versions`).map((entry, index) =>
+      parseGradeVersion(entry, `${path}.versions[${index}]`),
+    );
+    const currentVersion = text(item.currentVersion, `${path}.currentVersion`);
+    if (!versions.some((version) => version.version === currentVersion))
+      contractError(`${path}.currentVersion`);
+    return {
+      id,
+      name,
+      owner,
+      enabled,
+      available: item.available === undefined ? true : bool(item.available, `${path}.available`),
+      version: currentVersion,
+      source:
+        item.source === undefined
+          ? "管理员导入 · 版本化成绩数据"
+          : text(item.source, `${path}.source`),
+      capabilities:
+        item.capabilities === undefined
+          ? ["成绩分析", "版本历史"]
+          : stringArray(item.capabilities, `${path}.capabilities`),
+      unavailableReason: optionalText(item.unavailableReason, `${path}.unavailableReason`),
+      grade: { currentVersion, versions },
+    };
+  }
+  if (owner !== "system") contractError(`${path}.owner`);
   return {
-    id: datasetId(item.id, `${path}.id`),
-    name: text(item.name, `${path}.name`),
-    owner: "system",
-    enabled: bool(item.enabled, `${path}.enabled`),
+    id,
+    name,
+    owner,
+    enabled,
     available: bool(item.available, `${path}.available`),
     version: text(item.version, `${path}.version`),
     source: text(item.source, `${path}.source`),
@@ -1985,6 +2047,25 @@ function DatasetsWorkspace({ request }: { request: AdminRequest }) {
       </header>
       <FeedbackNotice feedback={feedback} />
       {error ? <ErrorState message={error} retry={() => void load()} busy={loading} /> : null}
+      <GradeImport
+        request={request}
+        targets={(datasets ?? []).flatMap((dataset) =>
+          dataset.grade
+            ? [
+                {
+                  id: dataset.id as GradeDataset["id"],
+                  name: dataset.name,
+                  owner: dataset.owner,
+                  currentVersion: dataset.grade.currentVersion,
+                  versions: dataset.grade.versions,
+                },
+              ]
+            : [],
+        )}
+        onPublished={async () => {
+          await load();
+        }}
+      />
       {loading && !datasets ? <LoadingState>正在检查数据集目录与源文件…</LoadingState> : null}
       {datasets ? (
         datasets.length ? (
@@ -2017,7 +2098,7 @@ function DatasetsWorkspace({ request }: { request: AdminRequest }) {
                   </div>
                   <div>
                     <dt>归属</dt>
-                    <dd>系统内置</dd>
+                    <dd>{dataset.owner === "system" ? "系统内置" : "管理员导入"}</dd>
                   </div>
                 </dl>
                 <div className={styles.capabilities}>
@@ -2034,6 +2115,22 @@ function DatasetsWorkspace({ request }: { request: AdminRequest }) {
                     <span>{dataset.unavailableReason || "必需源文件缺失或不可读。"}</span>
                   </p>
                 ) : null}
+                {dataset.grade && (
+                  <details>
+                    <summary>版本历史（{dataset.grade.versions.length}）</summary>
+                    <ul>
+                      {dataset.grade.versions.map((version) => (
+                        <li key={version.version}>
+                          {version.version}
+                          {version.version === dataset.grade?.currentVersion
+                            ? " · 当前"
+                            : ""} · {new Date(version.createdAt).toLocaleString("zh-CN")} ·{" "}
+                          {version.rowCount.toLocaleString("zh-CN")} 条记录
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
                 <div className={styles.datasetFooter}>
                   <span className={styles.mutedCell}>
                     {dataset.enabled ? "允许获授权账号发起新查询" : "所有新业务查询均已阻止"}
@@ -2077,6 +2174,12 @@ function summaryParts(log: AuditLog): string[] {
     .slice(0, 8)
     .map(([key, value]) => {
       const label: Record<string, string> = {
+        rowCount: "记录数",
+        studentCount: "学生数",
+        courseCount: "课程数",
+        termCount: "学期数",
+        missingScores: "缺失成绩",
+        versionNumber: "版本序号",
         role: "角色",
         beforeRole: "原角色",
         disabled: "停用",

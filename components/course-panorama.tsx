@@ -368,7 +368,9 @@ export function CoursePanorama({
               <p>
                 {datasetId === "demo"
                   ? "校园演示数据为虚构样本。"
-                  : "OULAD 成绩采用同一课程开课期内的有效考核均分。"}
+                  : datasetId === "oulad"
+                    ? "OULAD 成绩采用同一课程开课期内的有效考核均分。"
+                    : "使用管理员发布的成绩版本，空成绩不计入，重复的学生-课程-学期记录在导入时阻止发布。"}
               </p>
             </div>
           </>
