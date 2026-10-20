@@ -1,0 +1,302 @@
+.summaryDetail {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.trace,
+.evidence {
+  max-width: 90ch;
+  margin-top: 16px;
+  color: var(--ink);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 0;
+  list-style: none;
+  cursor: pointer;
+}
+.summary::-webkit-details-marker,
+.citation > summary::-webkit-details-marker {
+  display: none;
+}
+.summary strong {
+  font-weight: 500;
+}
+.summary > svg:last-child {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+:is(.trace, .evidence)[open] > .summary > svg:last-child,
+.citation[open] .previewLabel > svg {
+  transform: rotate(90deg);
+}
+.summary > svg:first-child {
+  color: var(--muted);
+}
+.traceSummary {
+  align-items: flex-start;
+  padding: 4px 0;
+}
+.traceSummary > [data-slot="ai-status"] {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+}
+.traceSummary > svg:last-child {
+  margin-top: 10px;
+}
+.waiting {
+  padding-left: 32px;
+  color: var(--muted);
+}
+.steps {
+  list-style: none;
+  margin: 4px 0 0 12px;
+  padding: 0 0 0 16px;
+  border-left: 1px solid var(--line);
+}
+.steps li {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 0;
+}
+.stepMark {
+  position: absolute;
+  left: -24px;
+  top: 9px;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 18px;
+  background: var(--paper);
+  color: var(--muted);
+}
+.steps [data-status="running"] .stepMark,
+.steps [data-status="running"] .stepLabel {
+  color: var(--accent-ink);
+}
+.steps [data-status="completed"] .stepMark {
+  color: var(--success);
+}
+.steps [data-status="failed"] .stepMark {
+  color: var(--danger);
+}
+.steps small {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.evidence {
+  border-block: 1px solid var(--line);
+}
+.sourceMarks {
+  display: flex;
+  padding-right: 16px;
+}
+.sourceMarks > span {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  position: relative;
+  z-index: 1;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface-inset);
+  color: var(--muted);
+}
+.sourceMarks > span + span {
+  margin-left: -9px;
+}
+.sourceMarks > span:first-child {
+  color: var(--accent-ink);
+}
+.evidenceBody {
+  padding: 4px 0 20px;
+}
+.evidenceBody section + section {
+  margin-top: 20px;
+}
+.evidenceBody h3 {
+  margin: 8px 0 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.scopeCards,
+.citationCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 8px;
+}
+.scopeCard,
+.citation {
+  min-width: 0;
+  padding: 14px 16px;
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+}
+.cardLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+.scopeCard p,
+.citationBody p {
+  margin: 8px 0;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+.scopeCard small,
+.scopeCard .limitation {
+  color: var(--muted);
+  font-size: 12px;
+}
+.facts {
+  margin: 16px 0 0;
+  padding-left: 20px;
+  line-height: 1.8;
+}
+.facts li + li {
+  margin-top: 6px;
+}
+.factId {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.citation > summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  list-style: none;
+  cursor: pointer;
+  min-height: 44px;
+}
+.citation strong {
+  font-weight: 500;
+  line-height: 1.7;
+}
+.citationVersion,
+.previewLabel {
+  color: var(--muted);
+}
+.previewLabel,
+.citationBody a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.citationBody {
+  padding-top: 8px;
+}
+.citationBody a {
+  min-height: 36px;
+  color: var(--ink);
+  text-underline-offset: 3px;
+}
+/* Native details owns focus, keyboard and visibility. Older browsers simply toggle. */
+@supports selector(details::details-content) {
+  :global(html[data-motion="on"][data-input-modality="pointer"])
+    :is(.trace, .evidence, .citation)::details-content {
+    opacity: 0;
+    transform: translateY(-4px);
+    transition:
+      opacity 200ms var(--ease-out),
+      transform 200ms var(--ease-out),
+      content-visibility 200ms allow-discrete;
+  }
+  :global(html[data-motion="on"][data-input-modality="pointer"])
+    :is(.trace, .evidence, .citation)[open]::details-content {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+:global(html[data-motion="on"][data-input-modality="pointer"]) .steps li {
+  transition: opacity 160ms var(--ease-out);
+  @starting-style {
+    opacity: 0;
+  }
+}
+:global(html[data-motion="on"][data-input-modality="pointer"]) .summary > svg:last-child,
+:global(html[data-motion="on"][data-input-modality="pointer"]) .previewLabel > svg,
+:global(html[data-motion="on"][data-input-modality="pointer"]) .sourceMarks > span {
+  transition: transform 160ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  :global(html[data-motion="on"][data-input-modality="pointer"])
+    .summary:hover
+    .sourceMarks
+    > span:nth-child(2) {
+    transform: translateX(5px) rotate(-8deg);
+  }
+  :global(html[data-motion="on"][data-input-modality="pointer"])
+    .summary:hover
+    .sourceMarks
+    > span:nth-child(3) {
+    transform: translateX(10px) rotate(8deg);
+  }
+}
+@media (max-width: 600px) {
+  .summary {
+    flex-wrap: wrap;
+  }
+  .summaryDetail {
+    order: 1;
+    flex-basis: 100%;
+  }
+  .steps li {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trace,
+  .evidence,
+  .citation {
+    animation: none !important;
+  }
+  .trace::details-content,
+  .evidence::details-content,
+  .citation::details-content,
+  .steps li,
+  .sourceMarks > span,
+  .summary > svg:last-child,
+  .previewLabel > svg {
+    transition: none !important;
+  }
+}
+
+/* Source-card reveal follows Rare UI Web Search's short stagger. Only actual
+   evidence is rendered; no synthetic search progress or placeholder sources. */
+@keyframes source-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+:global(html[data-motion="on"][data-input-modality="pointer"])
+  .evidence[open]
+  :is(.scopeCard, .citation) {
+  animation: source-reveal 240ms var(--ease-out) both;
+  animation-delay: var(--source-delay, 0ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .evidence[open] :is(.scopeCard, .citation) {
+    animation: none !important;
+  }
+}

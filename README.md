@@ -99,3 +99,7 @@ docker compose up --build
 ## 开发原则
 
 模型负责理解问题、生成结构化分析计划和解释结果；统计计算交给 DuckDB / SQL。所有模型输出都要经过字段、权限、查询和结果校验，不能让模型直接执行任意 SQL 或凭空生成数字。
+
+## 第三方来源与许可
+
+AI 状态提示改编自 [Rare UI](https://rareui.com) 的 [Inline AI Status](https://www.rareui.com/components/aistatus) 源码，使用 Motion 驱动阶段图标和状态过渡；分析依据卡片交互参考其 Web Search，执行记录结构参考 shadcn/ui Task。Rare UI 采用 MIT + Commons Clause + Attribution，已保留原作者版权和[许可证全文](licenses/rare-ui-LICENSE.txt)。来源版本、改编范围和后续参赛材料要求见[第三方来源与许可说明](docs/third-party-notices.md)。本地启动后可访问 `/preview/ai-motion` 查看共用正式组件的动效演示。

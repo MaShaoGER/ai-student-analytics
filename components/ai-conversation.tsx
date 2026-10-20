@@ -13,6 +13,7 @@ import {
 } from "react";
 import { AnalysisResultView } from "./analysis-result";
 import { Icon } from "./app-icons";
+import { ConversationEvidence, ExecutionSteps } from "./conversation-evidence";
 import { useMotionPreferences } from "./ui/motion-preferences";
 import { distributionRows, scoreInterval } from "@/lib/analysis/score-distribution";
 import type { AnalysisResult } from "@/lib/analysis/types";
@@ -413,63 +414,20 @@ export function ConversationWorkspace({
               }
             >
               <Speaker role={message.role} />
+              {message.role === "assistant" ? (
+                <ExecutionSteps
+                  steps={response?.steps ?? message.steps ?? []}
+                  completion={response?.completion}
+                />
+              ) : null}
               <p className={styles.messageText}>{message.content}</p>
               {response?.warning && (
                 <p className="notice notice-warning" role="status">
                   {response.warning}
                 </p>
               )}
-              {/* The unified path always has execution steps, so gating on
-                  "no steps" hid the numbers exactly where they matter most.
-                  Show the collapsed evidence whenever facts exist. */}
-              {response?.facts.length ? (
-                <details
-                  className={styles.facts}
-                  data-enter="fade"
-                  style={{ "--enter-delay": "120ms" } as CSSProperties}
-                >
-                  <summary>
-                    <strong>数字从哪来</strong>
-                    {response.resultRefs?.length ? (
-                      <span className={styles.resultScope}>
-                        {" "}
-                        · {response.resultRefs.length} 份统计结果
-                      </span>
-                    ) : null}
-                  </summary>
-                  <ul>
-                    {response.facts.map((fact, index) => {
-                      // Matching factRefs carry the verifiable identity; the
-                      // prose stays exactly as computed by the program.
-                      const ref = response.factRefs?.find((item) => item.text === fact);
-                      return (
-                        <li key={ref?.factId ?? index}>
-                          {fact}
-                          {ref ? <small className={styles.factId}>{ref.factId}</small> : null}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </details>
-              ) : null}
+              {response ? <ConversationEvidence response={response} /> : null}
               {response?.planning ? <PlanningNote planning={response.planning} /> : null}
-              <ExecutionSteps steps={response?.steps ?? message.steps ?? []} />
-              {response?.citations?.length ? (
-                <div className={styles.citations}>
-                  <strong>依据与引用</strong>
-                  {response.citations.map((citation, index) => (
-                    <details key={citation.id}>
-                      <summary>
-                        ［{index + 1}］{citation.title} · {citation.version}
-                      </summary>
-                      <p>{citation.excerpt}</p>
-                      <a href={citation.source} target="_blank" rel="noreferrer">
-                        查看来源与适用范围
-                      </a>
-                    </details>
-                  ))}
-                </div>
-              ) : null}
               {response &&
                 response.presentation !== "text" &&
                 artifacts.map((artifact, artifactIndex) => {
@@ -547,11 +505,6 @@ export function ConversationWorkspace({
               style={{ "--enter-delay": "60ms" } as CSSProperties}
             >
               <Speaker role="assistant" />
-              <p className={styles.pendingStatus} role="status">
-                <span className="spinner" />
-                {[...pendingSteps].reverse().find((step) => step.status === "running")?.label ??
-                  "正在处理分析请求…"}
-              </p>
               <ExecutionSteps steps={pendingSteps} live />
             </div>
           </div>
@@ -917,33 +870,5 @@ function ConversationResult({
         <ConversationToolResult artifact={artifact} onViewChange={onChartChange} />
       )}
     </div>
-  );
-}
-
-function ExecutionSteps({ steps, live = false }: { steps: AnalysisStep[]; live?: boolean }) {
-  if (!steps.length) return null;
-  const completed = steps.filter((step) => step.status === "completed").length;
-  return (
-    <details className={styles.executionSteps} open={live ? true : undefined}>
-      <summary>
-        执行记录 · 已完成 {completed}/{steps.length} 步
-      </summary>
-      <ol>
-        {steps.map((step) => (
-          <li key={step.id} data-status={step.status}>
-            <span>{step.label}</span>
-            <small>
-              {step.status === "running"
-                ? "执行中"
-                : step.status === "failed"
-                  ? "未完成"
-                  : step.status === "cancelled"
-                    ? "已停止"
-                    : `${(step.durationMs / 1000).toFixed(1)} 秒`}
-            </small>
-          </li>
-        ))}
-      </ol>
-    </details>
   );
 }
