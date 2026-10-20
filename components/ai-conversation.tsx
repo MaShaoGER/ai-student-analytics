@@ -339,33 +339,54 @@ export function ConversationWorkspace({
             data-enter="rise-sm"
             style={{ "--enter-delay": "400ms" } as CSSProperties}
           >
-            <Speaker role="assistant" />
+            <div className={styles.welcomeMark} aria-hidden="true">
+              <Icon name="sparkles" size={30} />
+            </div>
+            <span className={styles.welcomeEyebrow}>AI / LEARNING INTELLIGENCE</span>
+            <h2>
+              <em>一句话分析，</em>
+              把问题聊清楚。
+            </h2>
             <p>
               {aiAllowed
-                ? "可以直接说想比较什么、观察趋势、分布或指标关系。我会选择合适的文字、图表或数值表，也可以按你的要求调整。继续追问会沿用当前筛选。"
+                ? "问成绩、看趋势、找关联。用你习惯的方式提问，让 AI 帮你整理线索，给出有依据的回答。"
                 : "只读账号可使用指标分析，不能使用 AI 对话。请返回指标分析查看确定性统计结果。"}
             </p>
             {aiAllowed && (
-              <div className={styles.suggestions} aria-label="推荐问题">
+              <div className={styles.welcomeSuggestions} aria-label="推荐问题">
+                <span>没想好怎么问？从一条线索开始</span>
                 {suggestedQuestionsFor(aiReady).map((item) => (
                   <button
                     type="button"
-                    className="secondary-button"
                     key={item.id}
                     disabled={loading || !canRun}
                     onClick={() => {
-                      if (aiAllowed) onAsk(item.question);
+                      if (!aiAllowed) return;
+                      onQuestionChange(item.question);
+                      setComposerCollapsed(false);
+                      requestAnimationFrame(() => textarea.current?.focus({ preventScroll: true }));
                     }}
                   >
-                    {item.question}
+                    <Icon
+                      name={
+                        item.id === "term-trend"
+                          ? "line"
+                          : item.id === "absence-relationship"
+                            ? "link"
+                            : "chart"
+                      }
+                      size={17}
+                    />
+                    <span>{item.question}</span>
+                    <Icon name="arrowUpRight" size={14} />
                   </button>
                 ))}
               </div>
             )}
             {aiAllowed && (
               <p className={styles.privacy}>
-                AI
-                负责理解问题、选择工具和组织说明；统计数字由本地计算；只做群体统计，不提供个体名单或排名；对话正文不写入审计记录。
+                <Icon name="shield" size={13} />
+                仅分析群体统计 · 统计数字由本地计算 · 结论有据可查
               </p>
             )}
           </div>
@@ -543,7 +564,7 @@ export function ConversationWorkspace({
           )}
         </p>
       )}
-      <div ref={composer} className={styles.composerDock}>
+      <div ref={composer} className={styles.composerDock} data-collapsed={composerCollapsed}>
         {notice}
         <form
           className={styles.composer}
@@ -558,7 +579,10 @@ export function ConversationWorkspace({
         >
           <div id={COMPOSER_FIELDS_ID} className={styles.composerFields} hidden={composerCollapsed}>
             <div className={styles.composerHeading}>
-              <label htmlFor="analysis-question">{messages.length ? "继续追问" : "分析问题"}</label>
+              <label htmlFor="analysis-question">
+                <Icon name="sparkles" size={14} />
+                {messages.length ? "继续追问" : "把你的问题，交给 AI"}
+              </label>
               <div className={styles.composerTools}>
                 {clearConfirming && messages.length > 0 ? (
                   <div

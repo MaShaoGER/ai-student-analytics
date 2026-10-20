@@ -13,6 +13,7 @@ import { ThemeToggle, useTheme } from "@/components/ui/theme-provider";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { ScoreDistribution } from "@/components/score-distribution";
 import { ConversationWorkspace, type ConversationTurn } from "@/components/ai-conversation";
+import conversationStyles from "@/components/ai-conversation.module.css";
 import {
   artifactWithView,
   intentWithView,
@@ -623,7 +624,8 @@ function ReportCenter({
   );
 }
 
-export function Workspace() {
+export function Workspace({ initialConversation = false }: { initialConversation?: boolean } = {}) {
+  const initialEntryApplied = useRef(false);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [bootLoading, setBootLoading] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
@@ -901,6 +903,16 @@ export function Workspace() {
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [user, syncAccess]);
+  // The preview uses this same authenticated workspace and real conversation.
+  // Apply its entry point once, after session and password checks have settled.
+  useEffect(() => {
+    if (!initialConversation || initialEntryApplied.current || bootLoading || !user) return;
+    initialEntryApplied.current = true;
+    if (user.mustChangePassword || !capabilities.canUseAI) return;
+    setMode("question");
+    setView("analysis");
+  }, [initialConversation, bootLoading, user, capabilities.canUseAI]);
+
   const api = useCallback(
     async (url: string, options?: RequestInit, onStep?: (step: AnalysisStep) => void) => {
       const current = generation.current;
@@ -1524,7 +1536,9 @@ export function Workspace() {
             }}
           >
             {key === "overview" && <Icon name="dashboard" size={16} />}
+            {key === "question" && <Icon name="sparkles" size={16} />}
             <span>{label}</span>
+            {key === "question" && <span className={conversationStyles.navBadge}>AI</span>}
             {key === "reports" && sessionAnalyses.length > 0 && (
               <small>{sessionAnalyses.length}</small>
             )}
@@ -1712,7 +1726,9 @@ export function Workspace() {
       <div className="workbench-main">
         <main id="main-content" className="workbench-content" aria-labelledby="workspace-heading">
           {view !== "overview" && (
-            <div className="workbench-page-heading">
+            <div
+              className={`workbench-page-heading ${view === "analysis" && mode === "question" ? conversationStyles.workspaceHeading : ""}`}
+            >
               {pageHeader}
               {sourcePicker}
             </div>
@@ -2055,7 +2071,9 @@ export function Workspace() {
               </>
             )}
           </div>
-          <footer className="workbench-footer">
+          <footer
+            className={`workbench-footer ${view === "analysis" && mode === "question" ? conversationStyles.conversationFooter : ""}`}
+          >
             <span>学析台 · 学习数据分析</span>
             <span>
               <Icon name="shield" size={13} />
