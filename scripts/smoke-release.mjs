@@ -220,7 +220,7 @@ const exactKeys = (object, keys, label) =>
 function userDTO(user, managed = false) {
   exactKeys(
     user,
-    ["id", "username", "displayName", "role", ...(managed ? ["disabled", "createdAt"] : [])],
+    ["id", "username", "displayName", "role", "datasetIds", "mustChangePassword", ...(managed ? ["disabled", "createdAt"] : [])],
     "user",
   );
   assert(
@@ -231,7 +231,9 @@ function userDTO(user, managed = false) {
     typeof user.username === "string" && typeof user.displayName === "string",
     "user: invalid public identity fields",
   );
-  assert(["admin", "user"].includes(user.role), "user: invalid role");
+  assert(["admin", "user", "readonly"].includes(user.role), "user: invalid role");
+  assert(Array.isArray(user.datasetIds) && user.datasetIds.every((id) => typeof id === "string"), "user: invalid dataset grants");
+  assert(typeof user.mustChangePassword === "boolean", "user: invalid password state");
   if (managed)
     assert(
       typeof user.disabled === "boolean" && Number.isFinite(Date.parse(user.createdAt)),
@@ -427,10 +429,8 @@ function analysisDTO(json, expectedPlan) {
     "analysis: invalid metric label",
   );
   assert(
-    expectedPlan.metric === "activity"
-      ? result.period === "模拟数据全部周活动记录" ||
-          (legacyDemo && result.period === "模拟数据全部记录（课程第 1–3 周）")
-      : result.period === "模拟数据全部开课期记录",
+    result.period.startsWith("模拟校园数据 · 学期：") &&
+      result.period.endsWith(expectedPlan.metric === "activity" ? "周活动记录" : "开课期记录"),
     "analysis: invalid period",
   );
   const expectedRows = rows[`${expectedPlan.metric}_${expectedPlan.dimensions[0]}`];
@@ -549,9 +549,7 @@ async function verifyRecords() {
       );
       audits.forEach((record, index) => {
         const expected = expectedAudits[index];
-        exactKeys(
-          record,
-          [
+        const requiredAuditFields = [
             "id",
             "timestamp",
             "datasetId",
@@ -565,9 +563,15 @@ async function verifyRecords() {
             "result",
             "errorCode",
             "errorMessage",
-          ],
-          "audit",
-        );
+        ];
+        const optionalAuditFields = ["outcome", "model", "promptVersion", "requestId", "usage", "executionSteps"];
+        assert(requiredAuditFields.every((field) => Object.hasOwn(record, field)) &&
+          Object.keys(record).every((field) => requiredAuditFields.includes(field) || optionalAuditFields.includes(field)),
+          "audit: unexpected public DTO fields");
+        if (record.outcome !== undefined)
+          assert(["success", "partial", "failure"].includes(record.outcome), "audit: invalid outcome");
+        if (record.requestId !== undefined)
+          assert(typeof record.requestId === "string" && record.requestId.length >= 8, "audit: invalid request id");
         for (const field of [
           "userId",
           "requestSource",
@@ -832,9 +836,11 @@ async function main() {
     const reply = await request("/api/admin/users", { authenticated: true });
     expectStatus(reply, 200, "admin users");
     expectNoStore(reply, "admin users");
-    exactKeys(reply.json, ["users"], "admin users");
+    exactKeys(reply.json, ["users", "total", "page", "pageSize"], "admin users");
     assert(
-      Array.isArray(reply.json.users) && reply.json.users.length > 0,
+      Array.isArray(reply.json.users) && reply.json.users.length > 0 &&
+        Number.isInteger(reply.json.total) && reply.json.total >= reply.json.users.length &&
+        reply.json.page === 1 && reply.json.pageSize === 20,
       "admin users: empty list",
     );
     reply.json.users.forEach((user) => userDTO(user, true));
@@ -862,7 +868,7 @@ async function main() {
     const reply = await request("/api/ai/status", { authenticated: true });
     expectStatus(reply, 200, "AI status");
     expectNoStore(reply, "AI status");
-    exactKeys(reply.json, ["configured", "enabled"], "AI status");
+    exactKeys(reply.json, ["configured", "enabled", "model"], "AI status");
     const configured = Boolean(
       aiConfig.keyConfigured &&
       aiConfig.model &&
@@ -870,7 +876,8 @@ async function main() {
       aiConfig.pricing.outputPerMillion !== null,
     );
     assert(
-      reply.json.configured === configured && reply.json.enabled === aiConfig.enabled,
+      reply.json.configured === configured && reply.json.enabled === aiConfig.enabled &&
+        reply.json.model === (aiConfig.model || null),
       "AI status: does not match configuration",
     );
   });
