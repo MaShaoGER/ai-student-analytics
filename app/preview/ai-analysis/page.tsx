@@ -72,7 +72,10 @@ export default function AIAnalysisPreview() {
       <aside className={styles.sidebar} aria-label="对话导航">
         <a className={styles.brand} href="/">
           <span className={styles.brandIcon}>
-            <Icon name="sparkles" size={20} />
+            <i />
+            <i />
+            <i />
+            <i />
           </span>
           学析台<span className={styles.aiTag}>AI</span>
         </a>
@@ -119,15 +122,7 @@ export default function AIAnalysisPreview() {
             <span className={styles.headerHint}>你的教学数据搭档</span>
           </div>
           <div className={styles.headerRight}>
-            <span className={styles.previewBadge}>PREVIEW 03</span>
-            <button
-              className={styles.mobileNew}
-              onClick={reset}
-              type="button"
-              aria-label="开启新对话"
-            >
-              <Icon name="plus" size={20} />
-            </button>
+            <span className={styles.previewBadge}>PREVIEW 04</span>
           </div>
         </header>
         <main id="conversation" className={styles.conversation} aria-label="分析对话">
@@ -139,7 +134,11 @@ export default function AIAnalysisPreview() {
                 <i />
               </div>
               <div className={styles.eyebrow}>一起，把教学问题想明白</div>
-              <h1 id="welcome-title">有问题，就从这里聊起。</h1>
+              <h1 id="welcome-title">
+                <em>一句话分析，</em>
+                <br />
+                把问题聊清楚。
+              </h1>
               <p className={styles.intro}>
                 成绩里的变化、课程间的差异、还没想清楚的线索。
                 <br />
