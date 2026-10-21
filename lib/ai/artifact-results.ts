@@ -1,3 +1,4 @@
+import { studioComparisonFactRefs } from "./studio-comparison-facts";
 import type { ChatArtifact } from "./chat-types";
 import { METRICS } from "../analysis/metrics";
 import { distributionRows, distributionCountingUnit } from "../analysis/score-distribution";
@@ -390,6 +391,7 @@ function describeTool(
   return {
     result: resultRef,
     facts: [
+      ...studioComparisonFactRefs(studio, resultRef),
       buildFactRef(resultRef, {
         label: "聚合数据行",
         // Same wording as `toolFacts()` so the UI can bind the displayed prose

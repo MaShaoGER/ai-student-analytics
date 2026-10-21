@@ -9,6 +9,7 @@ import { planningMethodLabel } from "@/lib/ai/context-label";
 import { METRICS } from "@/lib/analysis/metrics";
 import type { AnalysisResult, AnalysisRow } from "@/lib/analysis/types";
 import { resolveChartView, type ChartViewType } from "@/lib/analysis/visualization";
+import { orderTimeRows } from "@/lib/analysis/presentation-policy";
 import {
   analysisDimensionLabel,
   analysisSourceLabel,
@@ -108,6 +109,10 @@ export function AnalysisResultView({
   planning,
   canExport,
   onReport,
+  allowedViews,
+  showViewPicker = true,
+  hideViewPicker = false,
+  barOrientation = "vertical",
 }: {
   result: AnalysisResult | null;
   chartType: ChartViewType;
@@ -117,6 +122,13 @@ export function AnalysisResultView({
   /** Browser-side CSV/HTML downloads are unavailable to read-only accounts. */
   canExport: boolean;
   onReport: (result: AnalysisResult) => void;
+  /** Optional semantic whitelist supplied by ConversationArtifact. */
+  allowedViews?: readonly ChartViewType[];
+  /** Deprecated compatibility flag; prefer hideViewPicker. */
+  showViewPicker?: boolean;
+  /** Hide the built-in picker when the conversation wrapper owns the choice. */
+  hideViewPicker?: boolean;
+  barOrientation?: "horizontal" | "vertical";
 }) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("default");
@@ -147,6 +159,12 @@ export function AnalysisResultView({
   const definition = Object.values(METRICS).find((metric) => metric.label === result?.metricLabel);
   const gap = highest && selected ? Math.round((highest.value - selected.value) * 100) / 100 : 0;
   const activeChart = resolveChartView(chartType, result?.unit ?? "", rows);
+  // Search/sort may reorder the visible table, but a term trend must never
+  // connect observations in an arbitrary alphabetical or value order.
+  const chartRows = useMemo(() => {
+    if (activeChart !== "line" || result?.dimension !== "term") return rows;
+    return orderTimeRows(rows) ?? rows;
+  }, [activeChart, result?.dimension, rows]);
   // Counts animate on data arrival; while the user searches, the visible number
   // must respond immediately, so those counts render as plain text.
   const animateCounts = search.trim() === "";
@@ -203,14 +221,17 @@ export function AnalysisResultView({
         </div>
       ) : (
         <>
-          <div className="result-chart-picker" data-enter="rise-sm" style={enterAt(120)}>
-            <ChartViewPicker
-              value={chartType}
-              onChange={onChartChange}
-              rows={rows}
-              unit={result.unit}
-            />
-          </div>
+          {!hideViewPicker && showViewPicker ? (
+            <div className="result-chart-picker" data-enter="rise-sm" style={enterAt(120)}>
+              <ChartViewPicker
+                value={chartType}
+                onChange={onChartChange}
+                rows={rows}
+                unit={result.unit}
+                allowedViews={allowedViews}
+              />
+            </div>
+          ) : null}
           <div
             className="result-filter"
             aria-label="筛选与排序"
@@ -275,9 +296,10 @@ export function AnalysisResultView({
                   />
                 ) : (
                   <AnalysisChart
-                    rows={rows}
+                    rows={chartRows}
                     chartType={activeChart}
                     unit={result.unit}
+                    barOrientation={barOrientation}
                     metricLabel={result.metricLabel}
                     dimensionLabel={dimension}
                     selectedDimension={selected?.dimension}

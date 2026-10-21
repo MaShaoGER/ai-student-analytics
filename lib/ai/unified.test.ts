@@ -896,6 +896,9 @@ describe("controlled multi-step analysis with real DuckDB", () => {
     // The only safe sentence survives, so the answer is neither the template nor empty.
     expect(result.answer).toContain("结论需要结合课程考核");
     expect(result.warning).toContain("已省略这些句子");
+    expect(result.warning).toContain("1 句数字未绑定统计事实");
+    expect(result.warning).toContain("1 句事实引用不存在或格式无效");
+    expect(result.warning).not.toContain("999");
   });
   it("falls back to the verified fact list when the whole explanation fails validation", async () => {
     sequence(call("aggregate", { metric: "score", dimension: "course", filters: [] }), finish);

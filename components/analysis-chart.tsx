@@ -24,6 +24,7 @@ export function AnalysisChart({
   onSelectDimension,
   comparison,
   entrance = false,
+  barOrientation = "vertical",
 }: {
   rows: AnalysisRow[];
   chartType: ChartViewType;
@@ -34,6 +35,7 @@ export function AnalysisChart({
   onSelectDimension?: (dimension: string) => void;
   comparison?: ChartComparison;
   entrance?: boolean;
+  barOrientation?: "horizontal" | "vertical";
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
@@ -113,6 +115,7 @@ export function AnalysisChart({
         fontFamily: styles.fontFamily,
         compact: root.clientWidth < 460,
         comparison,
+        barOrientation,
       });
       const dataKey = `${view}|${unit}|${metricLabel}|${rows
         .map((row) => `${row.dimension}:${row.value}:${row.sampleSize}`)
@@ -183,6 +186,7 @@ export function AnalysisChart({
     multicolor,
     motionEnabled,
     reducedMotion,
+    barOrientation,
   ]);
 
   const showSelectedTip = () => {

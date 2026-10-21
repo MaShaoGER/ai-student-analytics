@@ -37,6 +37,7 @@ export function buildChartOption({
   fontFamily,
   compact = false,
   comparison,
+  barOrientation = "vertical",
 }: {
   rows: AnalysisRow[];
   chartType: ChartViewType;
@@ -47,6 +48,8 @@ export function buildChartOption({
   fontFamily: string;
   compact?: boolean;
   comparison?: ChartComparison;
+  /** Category bars default to vertical; course lists may use horizontal bars. */
+  barOrientation?: "horizontal" | "vertical";
 }): EChartsOption {
   const view = resolveChartView(chartType, unit, rows);
   const total = rows.reduce((sum, row) => sum + row.value, 0);
@@ -300,6 +303,53 @@ export function buildChartOption({
     value: row.value,
     itemStyle: { color: selected(row) ? colors.primary : colors.neutral },
   }));
+  if (view === "bar" && barOrientation === "horizontal") {
+    // Horizontal bars keep long course names readable. Row order is preserved;
+    // the yAxis is inverted so the first result appears at the top.
+    option.grid = { top: 42, right: 34, bottom: 20, left: 12, containLabel: true };
+    option.xAxis = {
+      type: "value",
+      ...axisStyle,
+      max: unit === "%" ? 100 : undefined,
+      name: `${metricLabel}（${unit}）`,
+      nameLocation: "middle",
+      nameGap: 30,
+      nameTextStyle: { color: colors.muted, fontSize: 11 },
+    };
+    option.yAxis = {
+      type: "category",
+      ...axisStyle,
+      inverse: true,
+      data: rows.map((row) => row.dimension),
+      splitLine: { show: false },
+      axisLabel: {
+        color: colors.text,
+        fontSize: compact ? 10 : 11,
+        width: compact ? 88 : 140,
+        overflow: "truncate",
+        interval: 0,
+        rotate: 0,
+      },
+    };
+    option.series = [
+      {
+        type: "bar",
+        data,
+        barMaxWidth: 30,
+        itemStyle: { borderRadius: 0 },
+        label: {
+          show: rows.length <= (compact ? 6 : 16),
+          position: "right",
+          color: colors.text,
+          fontSize: 12,
+          distance: 8,
+          formatter: (params) => number(rows[params.dataIndex]?.value ?? 0),
+        },
+        emphasis: { disabled: true },
+      },
+    ];
+    return option;
+  }
   option.xAxis = {
     type: "category",
     ...axisStyle,
