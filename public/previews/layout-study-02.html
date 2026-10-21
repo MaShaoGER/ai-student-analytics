@@ -36,18 +36,19 @@
       .data-context strong { display: block; margin-top: 7px; font-size: 12px; font-weight: 500; }
       .data-context p { color: #77869b; font-size: 10px; margin-top: 6px; }
       .sidebar-note { font-size: 10px; color: #7a899e; margin-top: 14px; text-align: center; }
-      .work-areas { display: grid; grid-template-columns: minmax(0, 35fr) minmax(0, 65fr); gap: 16px; min-width: 0; }
-      .conversation { background: #dfeaf7; border: 1px solid #cadbed; border-radius: 8px; padding: 20px; display: grid; grid-template-rows: 68px minmax(0, 1fr) 100px; gap: 16px; }
+      .work-areas { min-width: 0; min-height: 0; height: 100%; }
+      .conversation { height: 100%; min-height: 0; background: #dfeaf7; border: 1px solid #cadbed; border-radius: 8px; padding: 20px; display: grid; grid-template-rows: 74px minmax(0, 1fr) 96px; gap: 16px; }
+      .conversation > .area-heading, .conversation > .messages, .conversation > .composer { width: 100%; max-width: 1000px; margin: 0 auto; }
       .area-heading { display: flex; justify-content: space-between; gap: 16px; }
       .area-heading h1, .area-heading h2 { font-size: 21px; font-weight: 500; margin-top: 4px; letter-spacing: .5px; }
       .area-heading p { font-size: 12px; color: #8091a6; margin-top: 4px; }
       .proportion { height: 25px; padding: 3px 9px; background: #c5d8ef; border-radius: 4px; color: #6784a9; font-size: 11px; white-space: nowrap; margin-top: 7px; }
-      .messages { display: flex; flex-direction: column; gap: 22px; padding-top: 8px; }
+      .messages { display: flex; flex-direction: column; gap: 14px; min-height: 0; overflow-y: auto; padding: 4px 0; }
       .role { font-size: 11px; color: #718ba8; margin-bottom: 8px; }
-      .question { margin-left: 45px; }
+      .question { max-width: 650px; margin-left: auto; }
       .question .role { text-align: right; }
-      .question-box { background: #b9d2ef; padding: 19px 20px; border-radius: 7px; color: #35567d; line-height: 1.9; font-size: 13px; }
-      .answer-box { background: #edf4fc; border: 1px solid #cbddef; padding: 20px; border-radius: 7px; }
+      .question-box { background: #b9d2ef; padding: 13px 20px; border-radius: 7px; color: #35567d; line-height: 1.9; font-size: 13px; }
+      .answer-box { background: #edf4fc; border: 1px solid #cbddef; padding: 16px 20px; border-radius: 7px; }
       .answer-box h3 { font-size: 14px; font-weight: 500; color: #456284; }
       .answer-box p { font-size: 12px; line-height: 1.9; color: #7690aa; margin-top: 10px; }
       .text-lines { display: grid; gap: 10px; margin-top: 21px; }
@@ -129,6 +130,18 @@
       .chart-block.compact { background: #d0e2d6; padding: 18px 21px; }
       .chart-block.compact .chart-area strong { font-size: 18px; }
       .chart-type { padding: 6px 10px; border-radius: 4px; background: #b4d0bf; font-size: 10px; color: #6d917b; }
+      .answer-box .answer-intro { margin-top: 7px; }
+      .answer-box .steps { margin-top: 13px; padding: 8px 12px; }
+      .message-result { background: #e3eee8; border: 1px solid #cddfd4; border-radius: 6px; padding: 15px; margin-top: 13px; }
+      .message-result-header { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+      .message-result-header h4 { margin: 0; color: #62816e; font-weight: 500; font-size: 12px; }
+      .message-result .result-tabs { gap: 6px; }
+      .message-result .result-tabs span { padding: 5px 12px; font-size: 10px; }
+      .inline-plot { height: 205px; margin-top: 12px; padding: 16px; display: flex; flex-direction: column; background: #c4dccc; border-radius: 4px; }
+      .inline-plot .plot-main h3 { color: #668b74; font-size: 22px; font-weight: 400; }
+      .inline-plot .plot-main p { margin-top: 8px; color: #80a18c; font-size: 11px; }
+      .result-context { display: flex; justify-content: space-between; gap: 14px; color: #7c9988; font-size: 10px; margin-top: 11px; }
+      .answer-box .answer-evidence { color: #7c8fa6; font-size: 10px; margin-top: 10px; }
     </style>
   </head>
   <body>
@@ -156,19 +169,21 @@
         </aside>
         <div class="work-areas">
           <section class="conversation" aria-labelledby="conversation-title">
-            <header class="area-heading"><div><span class="panel-number">02 / CONVERSATION</span><h1 id="conversation-title">AI 对话</h1><p>提出问题，理解分析过程。</p></div><span class="proportion">工作区 35%</span></header>
+            <header class="area-heading"><div><span class="panel-number">02 / CONVERSATION</span><h1 id="conversation-title">AI 对话</h1><p>回答、图表和分析依据，沿同一条对话呈现。</p></div><span class="proportion">统一对话流</span></header>
             <div class="messages">
-              <div class="question"><p class="role">你的问题</p><div class="question-box">比较本学期各课程的成绩表现，<br/>有哪些值得继续关注的差异？</div></div>
-              <div class="answer"><p class="role">学析台</p><div class="answer-box"><h3>回答与分析过程</h3><p>这里呈现解释、关键发现和追问线索。<br/>当前结果同步呈现在右侧画布。</p><div class="text-lines" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div class="steps">分析步骤　/　查询状态　/　引用线索</div></div></div>
-              <div class="follow-up">建议追问或继续比较</div>
+              <div class="question"><p class="role">你的问题</p><div class="question-box">比较本学期各课程的成绩表现，有哪些值得继续关注的差异？</div></div>
+              <div class="answer"><p class="role">学析台</p><div class="answer-box">
+                <h3>回答与分析结果</h3><p class="answer-intro">这里先呈现分析解释与关键发现，下方图表直接附在本条回答中。</p>
+                <div class="steps">分析步骤　/　查询状态　/　引用线索</div>
+                <section class="message-result" aria-labelledby="inline-result-title">
+                  <header class="message-result-header"><h4 id="inline-result-title">课程表现对比 · 当前回答的结果</h4><div class="result-tabs" aria-label="消息内结果视图示意"><span class="selected">图表</span><span>表格</span><span>分析依据</span></div></header>
+                  <div class="inline-plot"><div class="plot-topline"><span>指标与比较范围</span><span>结果随本条消息呈现</span></div><div class="plot-main"><h3>图表 / 数据表区域</h3><p>作为回答的一部分，沿对话上下阅读。</p></div></div>
+                  <div class="result-context"><span>数据范围　/　样本数　/　统计口径</span><span>导出　/　加入报告</span></div>
+                </section>
+                <p class="answer-evidence">来源与依据附在本条回答中，可继续展开核对。</p>
+              </div></div>
             </div>
             <div class="composer" aria-label="输入区示意，无交互"><p class="composer-placeholder">继续追问，或提出一个新问题……</p><div class="composer-bottom"><span>输入框固定在对话区底部</span><div class="send">发送 ↑</div></div></div>
-          </section>
-          <section class="result" aria-labelledby="result-title">
-            <header class="area-heading"><div><span class="panel-number">03 / ANALYSIS CANVAS</span><h2 id="result-title">分析结果画布</h2><p>当前问题对应的图表、数据与分析依据。</p></div><span class="proportion">工作区 65%</span></header>
-            <div class="result-tabs" aria-label="结果视图示意"><span class="selected">图表</span><span>表格</span><span>分析依据</span><span class="export">导出 / 加入报告</span></div>
-            <div class="plot-placeholder"><div class="plot-topline"><span>当前结果标题 / 课程表现对比</span><span>指标与比较范围</span></div><div class="plot-main"><h3>主图表 / 数据表区域</h3><p>让结果占据更大的空间，支持边对话、边核对。</p></div><p class="plot-footer">切换结果展示方式时，保留当前问题与分析上下文</p></div>
-            <div class="details"><section class="detail"><h3>关键结论摘要</h3><div class="detail-lines" aria-hidden="true"><i></i><i></i><i></i></div></section><section class="detail"><h3>数据来源与统计口径</h3><p>样本范围 · 指标定义 · 数据版本<br/>随当前结果展示，便于核对结论。</p></section></div>
           </section>
         </div>
       </div>
