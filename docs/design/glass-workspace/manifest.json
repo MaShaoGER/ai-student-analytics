@@ -1,0 +1,250 @@
+{
+  "title": "学析台 · 玻璃工作台阶段归档",
+  "date": "2026-10-21",
+  "branch": "codex/glass-interface-design",
+  "currentPreviewCommit": "bb72662",
+  "layoutCommit": "74c9dfe",
+  "status": "视觉探索；结构已按用户反馈调整；未接入正式业务",
+  "files": [
+    {
+      "file": "references/01-dot-matrix-dashboard.png",
+      "kind": "user-reference",
+      "source": "codex-clipboard-3fcedbee-720c-4bde-bae5-c873c652f819.png",
+      "note": "点阵数据仪表卡 · 模块密度、数字排版",
+      "sha256": "fc08cfc465b12e6738c6f128589fad32f025c4fa6470c9c8e103096a474e5b29",
+      "bytes": 855204
+    },
+    {
+      "file": "references/02-transparent-workspace.png",
+      "kind": "user-reference",
+      "source": "codex-clipboard-5d6eb9d7-b44c-4566-9fb3-828403ef480c.png",
+      "note": "透明支付工作台 · 面板与背景空间",
+      "sha256": "f9fafe1d2a501da0fcdb9fd941ee8d82e5085da67213aca19e39b9a23e6f5b34",
+      "bytes": 683678
+    },
+    {
+      "file": "references/03-floating-instruments.png",
+      "kind": "user-reference",
+      "source": "codex-clipboard-f0d32671-3ee2-4e6e-958f-a7ef22a70e42.png",
+      "note": "玻璃上的仪表图案 · 浮于表面的细线与数字",
+      "sha256": "89e5e7e033cee13e774ca0239c7968acff2f0a387d6515be55dab68a41375be2",
+      "bytes": 987354
+    },
+    {
+      "file": "references/04-optical-curves.png",
+      "kind": "user-reference",
+      "source": "codex-clipboard-5da0495d-c560-4ea7-aa89-fdcf67f619f8.png",
+      "note": "光学曲线与玻璃 · 透射、折射与色散",
+      "sha256": "b689424f4a9bc5118f85d33a6625b97bfef176233a5388ca84522e45a8ec674d",
+      "bytes": 1182430
+    },
+    {
+      "file": "references/05-frosted-tiles.png",
+      "kind": "user-reference",
+      "source": "codex-clipboard-b4a45b8d-bbcc-4e31-bab8-aae0c2612506.png",
+      "note": "浅色磨砂方块 · 颜色穿透与磨砂",
+      "sha256": "6b1f4cf7372c41576edb885cdbce2871b7af145c10810ef934be6b8bdf6a12ba",
+      "bytes": 219146
+    },
+    {
+      "file": "references/06-glass-materials.png",
+      "kind": "user-reference",
+      "source": "codex-clipboard-40916339-2595-4a55-8adc-3d7de6d96309.png",
+      "note": "多种玻璃材质 · 清透、磨砂、厚边",
+      "sha256": "7ca61d411260fef9bee7664cacc07c5e89e53dd70ff9771d881c06d66d203365",
+      "bytes": 210660
+    },
+    {
+      "file": "references/07-abstract-glass.png",
+      "kind": "user-reference",
+      "source": "codex-clipboard-c3474efa-cb7f-4497-987e-c86bfa432f7c.png",
+      "note": "抽象玻璃近景 · 边缘厚度与色差",
+      "sha256": "620b8293f032d64496ab59d4cd9e30b8b29752fe884e8f7a9188a5064db56fed",
+      "bytes": 1993584
+    },
+    {
+      "file": "references/08-prismatic-poster.png",
+      "kind": "user-reference",
+      "source": "codex-clipboard-be8c3e75-9d39-403b-8db6-d7a0911adbbc.png",
+      "note": "玻璃折射海报 · 宽面折光与光谱",
+      "sha256": "a4392c7609e2a00d78ef85c64ddad808fede24e9341a8adabd654894c95fe26a",
+      "bytes": 381300
+    },
+    {
+      "file": "references/09-clear-weather-card.png",
+      "kind": "user-reference",
+      "source": "codex-clipboard-fbbdcbf0-24b5-46e1-8548-63632f295527.png",
+      "note": "透明天气卡片 · 边缘放大与弯曲",
+      "sha256": "9c7a130a56e4d8c80d5a07ad0037a17cb31e709b7cfae8d6991e479bb71fadab",
+      "bytes": 1451275
+    },
+    {
+      "file": "references/10-frosted-layers.png",
+      "kind": "user-reference",
+      "source": "codex-clipboard-f8d25565-558b-4922-935a-4635e8b482b6.png",
+      "note": "磨砂几何叠层 · 层次距离与清晰度",
+      "sha256": "cb44529654e1d0c13e9e32492168b767750d813ca3fa59ace6b2986449d06b91",
+      "bytes": 291167
+    },
+    {
+      "file": "references/11-violet-fluted-refraction.png",
+      "kind": "user-reference",
+      "source": "codex-clipboard-909b2a5a-f89e-4753-9661-3cef4c13c9f4.png",
+      "note": "紫色条纹折射 · 连续切分与偏移",
+      "sha256": "87ee30e6197a2bc4297f4585daba70223930eee91937dce68d604628594b7dbc",
+      "bytes": 541833
+    },
+    {
+      "file": "references/12-magenta-fluted-refraction.png",
+      "kind": "user-reference",
+      "source": "codex-clipboard-77a8b7cc-d928-4b73-b237-c56c14e2453d.png",
+      "note": "粉紫光带与条纹 · 色散强度与节奏",
+      "sha256": "497e351f0afab169f1722fc2d36495a9d50c473ea454d3d438e17e7767a5f8a2",
+      "bytes": 753015
+    },
+    {
+      "file": "references/13-flowing-light-textured-glass.png",
+      "kind": "user-reference",
+      "source": "codex-clipboard-0a593218-b7ca-484f-80bb-69850934d71d.png",
+      "note": "流光与纹理玻璃 · 流动背景与纹理透射",
+      "sha256": "e1446c4dbd2e4bd6eb4bb77bc1d1766deac0102cb6bf20cd39b542279c5d70a6",
+      "bytes": 923761
+    },
+    {
+      "file": "previews/glass-overview.html",
+      "kind": "source-snapshot",
+      "source": "public/previews/glass-overview.html",
+      "note": "工作文件的阶段快照",
+      "sha256": "7b74c44a3a096596bc609972dec6a659fac25c84268080d9299fb454e2cf1b79",
+      "bytes": 37598
+    },
+    {
+      "file": "previews/glass-overview-v2.html",
+      "kind": "source-snapshot",
+      "source": "public/previews/glass-overview-v2.html",
+      "note": "工作文件的阶段快照",
+      "sha256": "f3ea0c623fc5ad37a8403eabc2f113930e8bd111a7df0b07a817fd3805994c1e",
+      "bytes": 44205
+    },
+    {
+      "file": "previews/glass-overview-v3.html",
+      "kind": "source-snapshot",
+      "source": "public/previews/glass-overview-v3.html",
+      "note": "工作文件的阶段快照",
+      "sha256": "c0cb15f26bb7d55a4c9c54f82c900d59d253d24f528593b35e317149482150f3",
+      "bytes": 51366
+    },
+    {
+      "file": "previews/glass-overview-v3.js",
+      "kind": "source-snapshot",
+      "source": "public/previews/glass-overview-v3.js",
+      "note": "工作文件的阶段快照",
+      "sha256": "52d2664ddb275de6f999741b18c07feab989abc91d8998bc2b2355f2be41edde",
+      "bytes": 14301
+    },
+    {
+      "file": "previews/layout-study-01.html",
+      "kind": "source-snapshot",
+      "source": "public/previews/layout-study-01.html",
+      "note": "工作文件的阶段快照",
+      "sha256": "efe9973be4a8b71b825dddcc4ff8f40f1038115b8db0a0dd1387a433d74e8e3d",
+      "bytes": 12017
+    },
+    {
+      "file": "previews/layout-study-02.html",
+      "kind": "source-snapshot",
+      "source": "public/previews/layout-study-02.html",
+      "note": "工作文件的阶段快照",
+      "sha256": "73cf65e5a20b3197d71f8d6eccf2323e86cb64bb1763da345a3eccc98b0f6e5f",
+      "bytes": 21427
+    },
+    {
+      "file": "previews/glass-workspace-v4.html",
+      "kind": "source-snapshot",
+      "source": "public/previews/glass-workspace-v4.html",
+      "note": "工作文件的阶段快照",
+      "sha256": "d3acbac492d2faa4ba041cd5b45c3e64faf2be4b9be965c725f3bc203f94f089",
+      "bytes": 59378
+    },
+    {
+      "file": "screenshots/glass-overview-v1.png",
+      "kind": "rendered-preview",
+      "source": "output/playwright/glass-overview-v1.png",
+      "note": "浏览器渲染截图",
+      "sha256": "61045d5705c8cc5afd6afa3225d4f89b6eb36aa588055b4645b27f6779098e9a",
+      "bytes": 1812717
+    },
+    {
+      "file": "screenshots/glass-overview-v2.png",
+      "kind": "rendered-preview",
+      "source": "output/playwright/glass-overview-v2.png",
+      "note": "浏览器渲染截图",
+      "sha256": "f84f99488f33de45ad31f5ad8a934715da668f183d0557eec3059ae7de590941",
+      "bytes": 2022000
+    },
+    {
+      "file": "screenshots/glass-overview-v3.png",
+      "kind": "rendered-preview",
+      "source": "output/playwright/glass-overview-v3.png",
+      "note": "浏览器渲染截图",
+      "sha256": "2a8e10cb371a31f7602699cff8bd409bc9ce3945971f089ea07ef4d8ebf59f58",
+      "bytes": 1901985
+    },
+    {
+      "file": "screenshots/layout-study-01.png",
+      "kind": "rendered-preview",
+      "source": "output/playwright/layout-study-01.png",
+      "note": "浏览器渲染截图",
+      "sha256": "9290369333d20f68bdcc2b187e5d0c5e9b87f403f9d9da0fa7da3714601cfcbf",
+      "bytes": 141024
+    },
+    {
+      "file": "screenshots/layout-study-02-ai-split-superseded.png",
+      "kind": "rendered-preview",
+      "source": "output/playwright/layout-study-02-ai.png",
+      "note": "已被统一对话替代的分栏稿",
+      "sha256": "07d840ddf40cc384f24613c86034ec32a7ddecb316ca029465c675ad669304a7",
+      "bytes": 141250
+    },
+    {
+      "file": "screenshots/layout-study-02-ai-unified.png",
+      "kind": "rendered-preview",
+      "source": "output/playwright/layout-study-02-ai-unified.png",
+      "note": "浏览器渲染截图",
+      "sha256": "6174d61bb26b7dfea6117ce3ee0fc60f7e0b1009622ff29554c048029a921383",
+      "bytes": 118513
+    },
+    {
+      "file": "screenshots/layout-study-02-data.png",
+      "kind": "rendered-preview",
+      "source": "output/playwright/layout-study-02-data.png",
+      "note": "浏览器渲染截图",
+      "sha256": "7ad63bb18ac29283ae5a4e08045d5890be78eed017d9075cf9b16e5ddd8e4a34",
+      "bytes": 113064
+    },
+    {
+      "file": "screenshots/glass-workspace-v4-ai.png",
+      "kind": "rendered-preview",
+      "source": "output/playwright/glass-workspace-v4-ai.png",
+      "note": "浏览器渲染截图",
+      "sha256": "599450a7f3c49cdb645ba82162a2d7704cd95f0dd7590df6ecd68dfeeb7ef29d",
+      "bytes": 1368151
+    },
+    {
+      "file": "screenshots/glass-workspace-v4-data.png",
+      "kind": "rendered-preview",
+      "source": "output/playwright/glass-workspace-v4-data.png",
+      "note": "浏览器渲染截图",
+      "sha256": "acb5444b99e868dbb0d500d00871c0edc1c6ff5eec0a56281bff50d09c556ab7",
+      "bytes": 1369346
+    },
+    {
+      "file": "motion/glass-overview-v3.mp4",
+      "kind": "motion-recording",
+      "source": "output/playwright/glass-overview-v3.mp4",
+      "note": "V3 历史动效录像，不是 V4",
+      "sha256": "0ef7a6da1b099fce5343e512d66d81fc668da7460091b8ab998690d04a1e314c",
+      "bytes": 3706033
+    }
+  ]
+}
