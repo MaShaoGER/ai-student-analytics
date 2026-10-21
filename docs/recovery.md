@@ -108,3 +108,7 @@ node scripts/recovery.mjs fixture-restore \
 私有完整备份分别位于 VPS 根目录的 `backups/recovery-20261013`（发布前）和 `backups/released-20261013`（发布后 59 条记录）；清单、脚本和回退证据位于 `acceptance/20261013`，这些目录不进入公开仓库。生产重启后全 records 与运行配置哈希一致，其他 8 个业务容器 ID 与运行状态未变。
 
 线上尚无真实 AI 密钥；实际 AES-GCM 密文与错误密钥拒绝由独立 CLI fixture 验证。备用主机恢复和真实 AI 连接仍需后续验收。
+
+## 对话历史与备份保留期
+
+2026-10-20 起，备份默认排除 `records/system/conversations/`，清单记录 `excludedPaths: ["system/conversations"]`。账号、登录会话、设置、数据集与分析记录仍按原流程校验和恢复；备份不再把短期 AI 对话正文永久归档。此排除不删除源目录。旧备份如已包含历史，恢复服务必须先执行启动清理；过期记录即使尚未物理删除，也不能访问或被续聊复活。自定义 `APP_STATE_DIR` 的外部备份须明确排除对应 conversations 子目录，见 [存储与清理](ai-conversation-storage.md)。

@@ -1,3 +1,15 @@
+import { registerTurnCancellation } from "@/lib/conversations/cancellation";
+import { assertTurnActive } from "@/lib/conversations/repository";
+import { getUserById } from "@/lib/auth/service";
+import { applyResponsePresentation } from "@/lib/analysis/presentation-policy";
+import {
+  beginConversationTurn,
+  replayConversationTurn,
+  presentationFromHistory,
+  persistConversationResponse,
+  failConversationTurn,
+} from "@/lib/ai/conversation-session";
+import { ConversationError, type ClaimTurnResult } from "@/lib/conversations/types";
 import { isGradeDataset } from "@/lib/datasets/id";
 import { getGradeSnapshot } from "@/lib/datasets/grade-store";
 import { assertBusinessAccess, withBusinessAccess } from "@/lib/auth/access";
@@ -57,6 +69,7 @@ export async function POST(request: Request) {
         },
       },
     );
+  let durableTurn: ClaimTurnResult | null = null;
   let context = analysisRecordContext(null);
   let datasetVersion: string | undefined;
   const executionSteps = new Map<
@@ -111,36 +124,38 @@ export async function POST(request: Request) {
     const queryFailure = queryExecutionHttpError(error);
     return (
       queryFailure ??
-      (error instanceof UnifiedConversationError
-        ? { status: 422, code: error.code, error: error.message }
-        : error instanceof AuthError
-          ? { status: error.status, code: error.code, error: error.message }
-          : error instanceof AIConfigurationError
-            ? { status: 503, code: "AI_NOT_CONFIGURED", error: error.message }
-            : error instanceof AIProviderError
-              ? { status: error.status, code: error.code, error: error.message }
-              : error instanceof BudgetExceededError
-                ? { status: 429, code: "AI_BUDGET_EXCEEDED", error: error.message }
-                : error instanceof UnknownModelPricingError
-                  ? { status: 503, code: "AI_PRICING_REQUIRED", error: error.message }
-                  : currentStage() === "validation" &&
-                      (error instanceof z.ZodError || error instanceof SyntaxError)
-                    ? {
-                        status: 400,
-                        code: "INVALID_QUESTION",
-                        error: "请输入2–500字的问题，或开始新对话后重试。",
-                      }
-                    : currentStage() === "execution"
+      (error instanceof ConversationError
+        ? { status: error.status, code: error.code, error: error.message }
+        : error instanceof UnifiedConversationError
+          ? { status: 422, code: error.code, error: error.message }
+          : error instanceof AuthError
+            ? { status: error.status, code: error.code, error: error.message }
+            : error instanceof AIConfigurationError
+              ? { status: 503, code: "AI_NOT_CONFIGURED", error: error.message }
+              : error instanceof AIProviderError
+                ? { status: error.status, code: error.code, error: error.message }
+                : error instanceof BudgetExceededError
+                  ? { status: 429, code: "AI_BUDGET_EXCEEDED", error: error.message }
+                  : error instanceof UnknownModelPricingError
+                    ? { status: 503, code: "AI_PRICING_REQUIRED", error: error.message }
+                    : currentStage() === "validation" &&
+                        (error instanceof z.ZodError || error instanceof SyntaxError)
                       ? {
-                          status: 500,
-                          code: "ANALYSIS_FAILED",
-                          error: "数据查询暂未完成，请稍后重试。",
+                          status: 400,
+                          code: "INVALID_QUESTION",
+                          error: "请输入2–500字的问题，或开始新对话后重试。",
                         }
-                      : {
-                          status: 502,
-                          code: "AI_PLANNING_FAILED",
-                          error: "AI 暂未完成回复，请稍后重试。",
-                        })
+                      : currentStage() === "execution"
+                        ? {
+                            status: 500,
+                            code: "ANALYSIS_FAILED",
+                            error: "数据查询暂未完成，请稍后重试。",
+                          }
+                        : {
+                            status: 502,
+                            code: "AI_PLANNING_FAILED",
+                            error: "AI 暂未完成回复，请稍后重试。",
+                          })
     );
   };
   try {
@@ -174,57 +189,123 @@ export async function POST(request: Request) {
     context = { ...analysisRecordContext(payload), metricId: null, plan: null };
     const input = chatInputSchema.parse(payload);
     assertBusinessAccess(user, input.datasetId, "ai");
-    const run = async (signal: AbortSignal, onStep?: (step: AnalysisStep) => void) => {
-      const response = await withBusinessAccess(user, input.datasetId, "ai", () => {
-        datasetVersion = isGradeDataset(input.datasetId)
-          ? getGradeSnapshot(input.datasetId).version
-          : undefined;
-        return converse(input, {
-          signal,
-          requestId,
-          onStep(step) {
-            const operation = operations[step.label];
-            if (operation)
-              executionSteps.set(step.id, {
-                operation,
-                status: step.status,
-                durationMs: step.durationMs,
-              });
-            stage = operation === "decision" ? "planning" : "execution";
-            onStep?.(step);
-          },
-          onExecution(plan) {
-            stage = "execution";
-            if (plan) context = analysisRecordContext(plan);
-          },
+    durableTurn = beginConversationTurn(user, input);
+    if (durableTurn?.claim.replayed) {
+      const replayed = replayConversationTurn(user, durableTurn);
+      return request.headers.get("accept")?.includes("text/event-stream")
+        ? createChatStream(
+            request.signal,
+            async () => replayed,
+            async () => ({ error: "无法恢复这轮结果。", code: "TURN_FINISHED", retryable: false }),
+          )
+        : noStoreJson(replayed);
+    }
+    // For durable sessions all model context comes from the server repository.
+    const trustedInput = durableTurn
+      ? { ...input, history: durableTurn.history, context: durableTurn.context }
+      : input;
+    const run = async (transportSignal: AbortSignal, onStep?: (step: AnalysisStep) => void) => {
+      const controller = new AbortController();
+      const abort = () => controller.abort();
+      transportSignal.addEventListener("abort", abort, { once: true });
+      if (transportSignal.aborted) abort();
+      const signal = controller.signal;
+      const unregister = durableTurn
+        ? registerTurnCancellation(
+            user.id,
+            durableTurn.claim.conversationId,
+            durableTurn.claim.turnId,
+            abort,
+          )
+        : () => {};
+      // Observe a durable stop handled by another server worker as well.
+      const checker = durableTurn
+        ? setInterval(() => {
+            try {
+              assertTurnActive(user.id, durableTurn!.claim);
+              const currentUser = getUserById(user.id);
+              if (!currentUser) {
+                abort();
+                return;
+              }
+              assertBusinessAccess(currentUser, input.datasetId, "ai");
+            } catch {
+              abort();
+            }
+          }, 1000)
+        : null;
+      checker?.unref();
+      try {
+        const computed = await withBusinessAccess(user, input.datasetId, "ai", () => {
+          datasetVersion = isGradeDataset(input.datasetId)
+            ? getGradeSnapshot(input.datasetId).version
+            : undefined;
+          const displayOnly = durableTurn
+            ? presentationFromHistory(user, durableTurn, input.question)
+            : null;
+          if (displayOnly) return Promise.resolve(displayOnly);
+          return converse(trustedInput, {
+            signal,
+            requestId,
+            onStep(step) {
+              const operation = operations[step.label];
+              if (operation)
+                executionSteps.set(step.id, {
+                  operation,
+                  status: step.status,
+                  durationMs: step.durationMs,
+                });
+              stage = operation === "decision" ? "planning" : "execution";
+              onStep?.(step);
+            },
+            onExecution(plan) {
+              stage = "execution";
+              if (plan) context = analysisRecordContext(plan);
+            },
+          });
         });
-      });
-      const artifact = response.artifact;
-      await audit(
-        response.failureCode ?? null,
-        response.failureCode ? "对话部分步骤未完成。" : null,
-        artifact?.kind === "analysis"
-          ? artifact.result.rows.length
-          : artifact?.kind === "distribution"
-            ? artifact.data.groups.length
-            : artifact?.kind === "studio"
-              ? artifact.table.rows.length
-              : artifact?.kind === "relations" || artifact?.kind === "panorama"
-                ? artifact.data.relations.length
-                : 0,
-        artifact?.kind === "analysis" ? artifact.result.period : "",
-        response.planning.model,
-        // Partial results still report the usage/cost already spent this request.
-        response.usage,
-        response.failureCode ? "partial" : "success",
-      );
-      return response;
+        const response = applyResponsePresentation(computed, input.question);
+        const artifact = response.artifact;
+        await audit(
+          response.failureCode ?? null,
+          response.failureCode ? "对话部分步骤未完成。" : null,
+          artifact?.kind === "analysis"
+            ? artifact.result.rows.length
+            : artifact?.kind === "distribution"
+              ? artifact.data.groups.length
+              : artifact?.kind === "studio"
+                ? artifact.table.rows.length
+                : artifact?.kind === "relations" || artifact?.kind === "panorama"
+                  ? artifact.data.relations.length
+                  : 0,
+          artifact?.kind === "analysis" ? artifact.result.period : "",
+          response.planning.model,
+          // Partial results still report the usage/cost already spent this request.
+          response.usage,
+          response.failureCode ? "partial" : "success",
+        );
+        return durableTurn ? persistConversationResponse(user, durableTurn, response) : response;
+      } finally {
+        if (checker) clearInterval(checker);
+        unregister();
+        transportSignal.removeEventListener("abort", abort);
+      }
     };
     // Transport negotiation is the only branch left: one execution entry for
     // every question, streamed when the client asks for it.
     if (request.headers.get("accept")?.includes("text/event-stream")) {
       return createChatStream(request.signal, run, async (error) => {
         const failure = classify(error);
+        try {
+          failConversationTurn(
+            user,
+            durableTurn,
+            failure.code,
+            error instanceof Error && (error.name === "AbortError" || failure.code === "CANCELLED"),
+          );
+        } catch {
+          /* Deleted/expired/stopped results remain terminal. */
+        }
         await audit(failure.code, "对话请求未完成。");
         return { ...failure, retryable: isRetryableErrorCode(failure.code) };
       });
@@ -232,6 +313,16 @@ export async function POST(request: Request) {
     return noStoreJson(await run(request.signal));
   } catch (error) {
     const failure = classify(error);
+    try {
+      failConversationTurn(
+        user,
+        durableTurn,
+        failure.code,
+        request.signal.aborted || failure.code === "CANCELLED",
+      );
+    } catch {
+      /* Do not revive a terminal session. */
+    }
     // Never persist conversational text, model replies, raw result rows or driver details.
     await audit(failure.code, "对话请求未完成。");
     return NextResponse.json(

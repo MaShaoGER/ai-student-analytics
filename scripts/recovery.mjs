@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Complete records snapshots; never overwrite a restore destination. */
+/** Records snapshots excluding expiring conversation bodies; never overwrite a restore destination. */
 import {
   chmodSync, copyFileSync, constants, existsSync, lstatSync, mkdirSync,
   readFileSync, readdirSync, realpathSync, unlinkSync, writeFileSync,
@@ -25,7 +25,8 @@ Docker restore creates a NEW labelled volume; existing/attached volumes are refu
 Fixture mode is only for offline test data, and restore requires a nonexistent path.
 The original 32-byte base64 APP_SETTINGS_KEY is required when AI settings contain
 encryptedApiKey. Supply a private key file or APP_SETTINGS_KEY; only its SHA-256
-fingerprint enters the manifest. Backups contain account/session state: keep private.
+fingerprint enters the manifest. Expiring AI conversation bodies are excluded.
+Backups still contain account/login-session state: keep private.
 Default helper: node:22-bookworm-slim, already present locally; never pulled.
 Failed outputs/volumes are retained for inspection. No original data is deleted.
 See docs/recovery.md for release rollback and an isolated drill.`;
@@ -76,10 +77,11 @@ function safePath(relative) {
   if (typeof relative !== "string" || !relative || relative.includes("\\") || relative.split("/").some((part) => !part || part === "." || part === ".." || /[\x00-\x1f\x7f]/.test(part)) || path.isAbsolute(relative)) fail("Unsafe manifest path.");
   return relative;
 }
-function inventory(root) {
+function inventory(root, { excludeConversations = false } = {}) {
   const entries = [];
   function visit(relative) {
     safePath(relative);
+    if (excludeConversations && relative === "system/conversations") return;
     const file = path.join(root, relative);
     const stat = lstatSync(file);
     if (stat.isSymbolicLink() || (!stat.isDirectory() && !stat.isFile())) fail("Records must contain only regular files and directories (no links/devices).");
@@ -141,14 +143,14 @@ function snapshot(source, output, metadata, args, outputExists = false) {
   }
   const key = keyFingerprint(args);
   validateEncryptedKey(source, args);
-  const before = inventory(source);
+  const before = inventory(source, { excludeConversations: true });
   if (!outputExists) secureDirectory(output);
   writeFileSync(path.join(output, ".incomplete"), "Snapshot in progress\n", { mode: 0o600, flag: "wx" });
   const records = path.join(output, "records");
   secureDirectory(records);
   copyEntries(source, records, before);
-  if (JSON.stringify(before) !== JSON.stringify(inventory(source)) || JSON.stringify(before) !== JSON.stringify(inventory(records))) fail("Records changed during backup; leave service quiescent and use a new output directory.");
-  const manifest = { schema, createdAt: new Date().toISOString(), ...metadata, settingsKeySha256: key, entries: before };
+  if (JSON.stringify(before) !== JSON.stringify(inventory(source, { excludeConversations: true })) || JSON.stringify(before) !== JSON.stringify(inventory(records))) fail("Records changed during backup; leave service quiescent and use a new output directory.");
+  const manifest = { schema, createdAt: new Date().toISOString(), ...metadata, excludedPaths: ["system/conversations"], settingsKeySha256: key, entries: before };
   const serialized = JSON.stringify(manifest, null, 2) + "\n";
   writeFileSync(path.join(output, "manifest.json"), serialized, { mode: 0o600, flag: "wx" });
   writeFileSync(path.join(output, "manifest.sha256"), digest(serialized) + "\n", { mode: 0o600, flag: "wx" });

@@ -156,3 +156,18 @@ test("rollback refuses a different records volume or runtime encryption key befo
     const f = fakeDocker(t, mutate); refuses(f.run(true)); assert.ok(!existsSync(f.override)); assert.ok(!f.commands().some((args) => args.includes("up")));
   }
 });
+
+test("backups omit expiring AI conversation bodies while retaining source history and accounts", (t) => {
+  const f = fixture(t);
+  mkdirSync(path.join(f.source, "system", "conversations"));
+  writeFileSync(path.join(f.source, "system", "conversations", "fixture.json"), "private conversation");
+  succeeds(f.save());
+  const manifest = JSON.parse(readFileSync(path.join(f.backup, "manifest.json"), "utf8"));
+  assert.deepEqual(manifest.excludedPaths, ["system/conversations"]);
+  assert.ok(!manifest.entries.some((entry) => entry.path.startsWith("system/conversations")));
+  assert.ok(!existsSync(path.join(f.backup, "records", "system", "conversations")));
+  assert.equal(readFileSync(path.join(f.source, "system", "conversations", "fixture.json"), "utf8"), "private conversation");
+  succeeds(f.restore());
+  assert.ok(existsSync(path.join(f.target, "system", "accounts.json")));
+  assert.ok(!existsSync(path.join(f.target, "system", "conversations")));
+});
