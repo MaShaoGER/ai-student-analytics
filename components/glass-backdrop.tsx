@@ -1,13 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { GlassPattern } from "@/lib/ui/glass-patterns";
 import { createGlassOptics } from "@/lib/ui/glass-optics";
 import { useMotionPreferences } from "./ui/motion-preferences";
 import { useTheme } from "./ui/theme-provider";
 import styles from "./glass-backdrop.module.css";
 
 /** V4 optical renderer behind the DOM. The CSS material survives GPU failures. */
-export function GlassBackdrop({ paused = false }: { paused?: boolean }) {
+export function GlassBackdrop({
+  paused = false,
+  pattern = "ribbons",
+}: {
+  paused?: boolean;
+  pattern?: GlassPattern;
+}) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const renderer = useRef<ReturnType<typeof createGlassOptics>>(null);
   const { enabled, reduced } = useMotionPreferences();
@@ -16,8 +23,13 @@ export function GlassBackdrop({ paused = false }: { paused?: boolean }) {
   const preferences = useRef({
     animated: enabled && !reduced && !paused,
     light: theme === "light",
+    pattern,
   });
-  preferences.current = { animated: enabled && !reduced && !paused, light: theme === "light" };
+  preferences.current = {
+    animated: enabled && !reduced && !paused,
+    light: theme === "light",
+    pattern,
+  };
   useEffect(() => {
     const element = canvas.current;
     const stage = element?.closest<HTMLElement>(".glass-workspace");
@@ -63,9 +75,9 @@ export function GlassBackdrop({ paused = false }: { paused?: boolean }) {
       ...preferences.current,
       light: document.documentElement.dataset.theme === "light",
     });
-  }, [enabled, reduced, paused, theme]);
+  }, [enabled, reduced, paused, theme, pattern]);
   return (
-    <div className={styles.backdrop} aria-hidden="true">
+    <div className={styles.backdrop} data-pattern={pattern} aria-hidden="true">
       <div className={styles.halo} />
       <div className={styles.arc} />
       <div className={styles.prism} />

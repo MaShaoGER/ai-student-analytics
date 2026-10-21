@@ -1,3 +1,5 @@
+import { glassPatternValue, type GlassPattern } from "./glass-patterns";
+
 /** Adapts this repository's V4 procedural optics to live DOM pane geometry.
  * Only the background is refracted; text and chart pixels never enter WebGL. */
 const vertexSource = `
@@ -14,6 +16,7 @@ const lightSource = `
     varying vec2 v_uv;
     uniform float u_time;
     uniform float u_lightTheme;
+    uniform float u_pattern;
 
     float band(float d, float width) {
       float v = d / width;
@@ -51,6 +54,52 @@ const lightSource = `
       color += vec3(0.23, 0.10, 0.36) * band(middle + 0.055, 0.12);
       color += vec3(0.12, 0.30, 0.37) * band(middle, 0.026);
       color += vec3(0.37, 0.26, 0.11) * band(middle - 0.033, 0.014);
+      // Four preview candidates share the same glass sampling pass below.
+      if (u_pattern > 0.5 && u_pattern < 1.5) {
+        vec2 q = p * vec2(1.0, 1.3);
+        float terrain = length(q - vec2(0.22, -0.08))
+          + 0.13 * sin(q.x * 5.0 + q.y * 3.0 + t * 0.06)
+          + 0.07 * cos(q.y * 7.0 - q.x * 2.0 - t * 0.04);
+        float strata = sin(terrain * 36.0 - t * 0.12);
+        float mineral = 0.5 + 0.5 * sin(terrain * 11.0 + 1.2);
+        color = mix(vec3(0.07, 0.10, 0.14), vec3(0.26, 0.16, 0.32), mineral);
+        color += vec3(0.27, 0.24, 0.37) * pow(0.5 + 0.5 * strata, 5.0);
+        color += vec3(0.55, 0.33, 0.16) * pow(max(0.0, sin(terrain * 36.0 + 0.42 - t * 0.12)), 18.0);
+        color += vec3(0.23, 0.42, 0.43) * pow(max(0.0, sin(terrain * 36.0 - 0.34 - t * 0.12)), 24.0);
+      } else if (u_pattern > 1.5 && u_pattern < 2.5) {
+        vec2 q = p * 4.6;
+        q += vec2(sin(q.y * 1.7 + t * 0.11), cos(q.x * 1.3 - t * 0.08)) * 0.42;
+        float wave = sin(q.x * 2.1 + q.y * 0.8 + t * 0.09)
+          + sin(q.y * 2.6 - q.x * 0.6 - t * 0.10)
+          + 0.6 * cos(q.x * 1.6 - q.y * 2.1 + t * 0.07);
+        float caustic = exp(-abs(wave) * 8.0);
+        float spread = exp(-abs(wave) * 1.6);
+        color = mix(vec3(0.035, 0.115, 0.15), vec3(0.07, 0.24, 0.24), uv.y);
+        color += vec3(0.12, 0.26, 0.25) * spread;
+        color += vec3(0.36, 0.53, 0.43) * caustic * (0.6 + 0.4 * uv.x);
+        color += vec3(0.04, 0.07, 0.13) * sin(q.x + q.y) * sin(q.y);
+      } else if (u_pattern > 2.5 && u_pattern < 3.5) {
+        float fold = p.x + 0.17 * sin(p.y * 2.8 + t * 0.08)
+          + 0.045 * sin(p.y * 7.0 - t * 0.05);
+        float curtain = 0.5 + 0.5 * sin(fold * 17.0 + t * 0.09);
+        float silk = pow(curtain, 4.0);
+        float fine = 0.5 + 0.5 * sin(fold * 78.0 + p.y * 1.8);
+        color = vec3(0.035, 0.085, 0.12);
+        color += mix(vec3(0.04, 0.30, 0.23), vec3(0.20, 0.13, 0.37), uv.x)
+          * silk * (0.65 + 0.35 * cos(p.y * 1.6));
+        color += vec3(0.19, 0.34, 0.30) * pow(curtain, 15.0) * (0.75 + fine * 0.25);
+        color += vec3(0.025, 0.05, 0.045) * curtain;
+      } else if (u_pattern > 3.5) {
+        float r1 = length((p - vec2(0.27, 0.02)) * vec2(1.0, 1.1));
+        float r2 = length((p - vec2(-0.43, 0.28)) * vec2(1.0, 1.2));
+        float ripple = 0.5 + 0.5 * cos(r1 * 66.0 - t * 0.15);
+        float echo = 0.5 + 0.5 * cos(r2 * 42.0 + t * 0.11);
+        color = vec3(0.065, 0.105, 0.15);
+        color += vec3(0.15, 0.23, 0.29) * pow(ripple, 8.0);
+        color += vec3(0.18, 0.13, 0.22) * pow(echo, 10.0);
+        color += vec3(0.26, 0.35, 0.33) * pow(ripple * echo, 6.0);
+        color += vec3(0.09, 0.07, 0.04) * exp(-r1 * 2.0);
+      }
       color = mix(color, vec3(0.72, 0.79, 0.77) + color * 0.30, u_lightTheme);
       gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
     }
@@ -168,7 +217,7 @@ const glassSource = `
     }
   `;
 
-type Playback = { animated: boolean; light: boolean };
+type Playback = { animated: boolean; light: boolean; pattern?: GlassPattern };
 type OpticalProgram = {
   handle: WebGLProgram;
   position: number;
@@ -324,6 +373,7 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
     const materialLocation = gl.getUniformLocation(glass.handle, "u_materials[0]");
     const resolutionLocation = gl.getUniformLocation(glass.handle, "u_resolution");
     const textureLocation = gl.getUniformLocation(glass.handle, "u_light");
+    const patternLocation = gl.getUniformLocation(light.handle, "u_pattern");
     const updateGeometry = () => {
       dirty = false;
       const bounds = stage.getBoundingClientRect();
@@ -426,6 +476,8 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
       gl.vertexAttribPointer(pass.position, 2, gl.FLOAT, false, 0, 0);
       gl.uniform1f(pass.time, phase);
       gl.uniform1f(pass.theme, options.light ? 1 : 0);
+      if (pass === light)
+        gl.uniform1f(patternLocation, glassPatternValue(options.pattern ?? "ribbons"));
     };
     draw = () => {
       if (disposed || gl.isContextLost()) return;

@@ -1,20 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GlassBackdrop } from "@/components/glass-backdrop";
 import { ThemeToggle } from "@/components/ui/theme-provider";
 import { useMotionPreferences } from "@/components/ui/motion-preferences";
+import { glassPatterns, type GlassPattern } from "@/lib/ui/glass-patterns";
 import { Icon } from "@/components/app-icons";
 import styles from "./material.module.css";
 
 /** Public visual specimen only: no account, dataset, or model calls. */
 export default function GlassMaterialPreview() {
   const [paused, setPaused] = useState(false);
+  const [pattern, setPattern] = useState<GlassPattern>("ribbons");
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("pattern");
+    if (glassPatterns.some((item) => item.id === requested)) setPattern(requested as GlassPattern);
+  }, []);
+  const selected = glassPatterns.find((item) => item.id === pattern);
+  const choose = (next: GlassPattern) => {
+    setPattern(next);
+    const url = new URL(window.location.href);
+    if (next === "ribbons") url.searchParams.delete("pattern");
+    else url.searchParams.set("pattern", next);
+    window.history.replaceState(null, "", url);
+  };
   const { enabled, reduced, setEnabled } = useMotionPreferences();
   const playing = enabled && !paused && !reduced;
   return (
     <div className={`glass-workspace ${styles.specimen}`} data-view="overview">
-      <GlassBackdrop paused={paused} />
+      <GlassBackdrop paused={paused} pattern={pattern} />
       <header className="workbench-header glass-topbar">
         <div className="glass-entry">
           <span className="glass-brand">
@@ -23,7 +37,9 @@ export default function GlassMaterialPreview() {
           </span>
           <div>
             <span className={styles.eyebrow}>OPTICAL GLASS / 02</span>
-            <p className={styles.context}>玻璃材质预览</p>
+            <p className={styles.context}>
+              {selected ? `${selected.code} · ${selected.name}` : "当前背景 · 流光"}
+            </p>
           </div>
         </div>
         <div className="glass-tools" data-glass-pane="0.08">
@@ -59,7 +75,29 @@ export default function GlassMaterialPreview() {
           <br />
           穿过界面。
         </h2>
-        <p>流光穿过面板，沿着厚边弯曲，分离成青蓝、紫色与琥珀的轮廓。</p>
+        <p>
+          {selected?.description ?? "流光穿过面板，沿着厚边弯曲，分离成青蓝、紫色与琥珀的轮廓。"}
+        </p>
+        <div className={styles.patternPicker} role="group" aria-label="背景图案">
+          <button
+            type="button"
+            aria-pressed={pattern === "ribbons"}
+            onClick={() => choose("ribbons")}
+          >
+            原版 · 流光
+          </button>
+          {glassPatterns.map((item) => (
+            <button
+              type="button"
+              key={item.id}
+              aria-pressed={pattern === item.id}
+              onClick={() => choose(item.id)}
+            >
+              {item.code} · {item.name}
+            </button>
+          ))}
+          <a href="/preview/glass-backgrounds">四种方案并排对比 ↗</a>
+        </div>
         <div className={styles.notes}>
           <span>
             01 <strong>透射</strong>

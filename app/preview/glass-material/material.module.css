@@ -194,3 +194,59 @@
     font-size: 11px;
   }
 }
+
+.patternPicker {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 24px;
+}
+.patternPicker button {
+  text-align: left;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.patternPicker button[aria-pressed="true"] {
+  color: var(--ink);
+  border-color: var(--line);
+  background: color-mix(in srgb, var(--sage) 16%, transparent);
+}
+.patternPicker button:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 2px;
+}
+.patternPicker a {
+  color: var(--ink);
+  font-size: 11px;
+  margin-top: 12px;
+  text-decoration: none;
+}
+@media (max-width: 760px) {
+  .sidebar:global(.glass-data-sidebar) {
+    display: flex;
+    padding: 20px;
+  }
+  .specimen:global(.glass-workspace) {
+    grid-template-rows: auto auto auto;
+  }
+  .surface:global(.workbench-main) {
+    grid-row: 3;
+  }
+  .sidebar h2,
+  .sidebar > p,
+  .notes,
+  .foot {
+    display: none;
+  }
+  .patternPicker {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 0;
+  }
+  .patternPicker a {
+    grid-column: 1/-1;
+  }
+}
