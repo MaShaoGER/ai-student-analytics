@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1600" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230c1618'/%3E%3Cpath d='M7 24V8h6v16M19 24V8h6v16M7 16h18M13 8l6 16' fill='none' stroke='%23d5eadd' stroke-width='1.4'/%3E%3C/svg%3E" />
+    <title>学析台 · 玻璃观测界面 / 静态设计预览</title>
+    <style>
+      :root {
+        --glass-void: #090e10;
+        --glass-ink: #e4eeec;
+        --glass-secondary: #9caeae;
+        --glass-muted: #728686;
+        --glass-hairline: rgba(203, 231, 229, .13);
+        --glass-signal: #eda477;
+        --glass-mint: #c5e7de;
+        --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        --sans: "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-width: 1600px; background: var(--glass-void); }
+      body { color: var(--glass-ink); font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+      h1, h2, h3, p { margin: 0; }
+      svg { display: block; }
+      .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+      .canvas { position: relative; width: 1600px; height: 1120px; overflow: hidden; isolation: isolate; background: radial-gradient(ellipse at 78% 9%, #243439 0, #142024 25%, transparent 55%), linear-gradient(125deg, #0c1214 2%, #0c1417 57%, #111d20); }
+      .optics { position: absolute; inset: 0; z-index: -2; overflow: hidden; pointer-events: none; }
+      .optics::before { content: ""; position: absolute; width: 820px; height: 1120px; right: -150px; top: -490px; border-radius: 50%; border: 1px solid #92c2c036; box-shadow: inset 10px 0 14px #a3d9d41a, -3px 0 6px #d6fff026, -28px 0 70px #afdace0d; transform: rotate(-37deg); }
+      .optics::after { content: ""; position: absolute; top: -280px; left: 430px; width: 900px; height: 1600px; transform: rotate(37deg); background: linear-gradient(90deg, transparent 15%, #d7ffff03 29%, #d7ffff07 33%, transparent 35%, transparent 71%, #e2fffc08 74%, transparent 75%); filter: blur(3px); }
+      .ambient-lines { position: absolute; right: -75px; top: 45px; opacity: .28; }
+      .grain { position: absolute; inset: 0; z-index: 10; pointer-events: none; opacity: .11; mix-blend-mode: soft-light; }
+      .rail { position: absolute; left: 0; top: 0; width: 80px; height: 1120px; border-right: 1px solid var(--glass-hairline); background: #07101266; display: flex; align-items: center; flex-direction: column; }
+      .brand-mark { width: 34px; height: 34px; margin-top: 34px; color: #e8f5ef; }
+      .rail-nav { display: flex; align-items: center; flex-direction: column; gap: 18px; margin-top: 73px; }
+      .rail-item { width: 44px; height: 44px; display: grid; place-items: center; color: #728686; border: 1px solid transparent; }
+      .rail-item svg { width: 19px; height: 19px; }
+      .rail-item.selected { position: relative; color: #e8f5ef; border-color: #c7e8e527; background: linear-gradient(130deg, #e4ffff12, #d7ffff03); box-shadow: inset 0 1px #f2ffff13; border-radius: 9px; }
+      .rail-item.selected::before { content: ""; position: absolute; width: 2px; height: 15px; left: -19px; background: #d4e9e2; box-shadow: 0 0 12px #d4e9e24a; }
+      .rail-bottom { position: absolute; bottom: 32px; display: flex; flex-direction: column; align-items: center; gap: 27px; }
+      .vertical-label { writing-mode: vertical-rl; font: 9px var(--mono); letter-spacing: 4px; color: #688080; margin-bottom: 24px; }
+      .profile { width: 29px; height: 29px; display: grid; place-items: center; font-size: 11px; border: 1px solid #c6e8e529; border-radius: 50%; color: #c4d6d2; }
+      .workspace { margin-left: 80px; padding: 27px 36px 0; }
+      .topbar { height: 54px; display: flex; align-items: flex-start; border-bottom: 1px solid var(--glass-hairline); }
+      .wordmark { display: flex; gap: 16px; align-items: center; padding-top: 5px; }
+      .wordmark strong { font-size: 20px; font-weight: 500; letter-spacing: 4px; }
+      .wordmark span { font: 9px var(--mono); color: var(--glass-muted); letter-spacing: 2px; padding-left: 15px; border-left: 1px solid #9ebfbd33; }
+      .nav { margin-left: 102px; display: flex; gap: 37px; height: 54px; color: #8ca09f; font-size: 12px; }
+      .nav span { position: relative; padding-top: 10px; }
+      .nav .active { color: #edf6ef; }
+      .nav .active::after { content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: #d9ede6; box-shadow: 0 -3px 12px #d9ede621; }
+      .top-right { margin-left: auto; display: flex; align-items: center; gap: 20px; padding-top: 10px; font-size: 11px; color: #a9bbba; }
+      .status-dot { display: inline-block; width: 5px; height: 5px; margin-right: 8px; border-radius: 50%; background: #b3d9c7; box-shadow: 0 0 9px #a2e1c345; vertical-align: 2px; }
+      .static-label { font: 9px var(--mono); color: #9aacaa; border: 1px solid #accac123; padding: 4px 8px; letter-spacing: 1px; }
+      .heading { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 28px; height: 99px; }
+      .eyebrow { display: flex; gap: 11px; color: #9fb7b5; font: 9px var(--mono); letter-spacing: 3px; align-items: center; }
+      .eyebrow i { height: 5px; width: 5px; border: 1px solid #a9c7c0; transform: rotate(45deg); }
+      h1 { font-size: 43px; font-weight: 300; letter-spacing: 4px; line-height: 1.35; margin-top: 11px; }
+      .heading-subtitle { margin-top: 5px; font-size: 11px; color: #8da3a2; letter-spacing: 1px; }
+      .context { display: flex; align-items: center; margin-bottom: 7px; gap: 12px; }
+      .context-block { display: flex; align-items: center; gap: 11px; padding: 9px 13px; border: 1px solid #d6f4eb20; background: linear-gradient(120deg, #dfffff08, #dfffff02); border-radius: 4px; font-size: 11px; }
+      .context-block svg { width: 14px; height: 14px; color: #95aaa8; }
+      .context-block small { color: #778f8e; margin-left: 15px; }
+      .demo-pill { font-size: 10px; color: #b7c9c2; letter-spacing: 1px; margin-left: 3px; }
+      .metrics { display: grid; grid-template-columns: 1.05fr 1fr 1fr 1fr; margin-top: 21px; height: 113px; padding: 12px 0; border-top: 1px solid var(--glass-hairline); border-bottom: 1px solid var(--glass-hairline); background: linear-gradient(100deg, #bce9db05, transparent 70%); }
+      .metric { position: relative; padding-left: 32px; border-left: 1px solid var(--glass-hairline); }
+      .metric:first-child { padding-left: 0; border-left: 0; }
+      .metric-label { font-size: 11px; letter-spacing: 1px; color: #9db2b0; }
+      .metric-index { font: 9px var(--mono); color: #587170; margin-right: 10px; }
+      .metric-value { margin-top: 5px; display: flex; align-items: baseline; gap: 9px; }
+      .metric-value strong { font-size: 43px; line-height: 1.25; font-weight: 300; letter-spacing: -.8px; font-variant-numeric: tabular-nums; color: #edf6ef; }
+      .metric-value .unit { font-size: 11px; color: #849d99; }
+      .metric-detail { font-size: 10px; color: #78918e; margin-top: 2px; }
+      .metric-detail em { font: normal 10px var(--mono); color: #b7d3c7; margin-right: 5px; }
+      .mini-signal { position: absolute; right: 27px; top: 38px; width: 82px; height: 31px; opacity: .7; }
+      .primary-grid { display: grid; grid-template-columns: 1fr 346px; gap: 20px; margin-top: 20px; height: 397px; }
+      .glass { position: relative; isolation: isolate; border: 1px solid #c9e9e026; border-top-color: #d8f2ed45; border-radius: 10px; background: linear-gradient(116deg, #bddbdc0d 0, #afc8c907 24%, #8faca905 55%, #d2ebe90d 100%), #0d1619a6; box-shadow: inset 0 1px 0 #e6fff505, inset 1px 0 0 #eafff604, 0 8px 30px #0000001f; overflow: hidden; }
+      .glass::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(125deg, transparent 31%, #e7fff802 33%, #e7fff807 40%, transparent 41%, transparent 76%, #d4ffff04 78%, transparent 79%); }
+      .panel-top { display: flex; align-items: center; justify-content: space-between; padding: 20px 23px 0; }
+      .panel-heading { display: flex; gap: 11px; align-items: center; }
+      .panel-heading .section-number { color: #718e8a; font: 10px var(--mono); }
+      h2 { font-size: 13px; font-weight: 400; letter-spacing: 1px; }
+      .panel-meta { color: #718d89; font: 9px var(--mono); letter-spacing: 1.5px; }
+      .chart-options { display: flex; gap: 16px; align-items: center; font-size: 10px; color: #849b98; }
+      .legend-dot { display: inline-block; vertical-align: 1px; width: 5px; height: 5px; background: #deeee8; border-radius: 50%; margin-right: 6px; box-shadow: 0 0 7px #defcf233; }
+      .legend-dash { display: inline-block; vertical-align: 3px; width: 14px; height: 0; border-top: 1px dashed #799793; margin-right: 6px; }
+      .chart-caption { display: flex; justify-content: space-between; padding: 10px 24px 0; font-size: 10px; color: #829995; }
+      .chart-caption .mono { font-size: 9px; color: #687f7c; }
+      .main-chart { width: calc(100% - 24px); height: 264px; margin: 1px 12px 0; overflow: visible; }
+      .plot-label { font: 9px var(--mono); fill: #7c9692; }
+      .plot-course { font: 10px var(--sans); fill: #9fb4af; }
+      .plot-value { font: 11px var(--mono); fill: #e2eee8; }
+      .chart-foot { display: flex; justify-content: space-between; align-items: center; margin: 7px 24px 0; padding-top: 12px; border-top: 1px solid #b8e0d315; font-size: 10px; color: #819b94; }
+      .chart-foot .highlight { color: #c1d9cd; }
+      .chart-foot .mono { font-size: 9px; letter-spacing: .5px; }
+      .ai-panel { background: linear-gradient(145deg, #d6eee912, #dae8e706 45%, #85a8a905), #101b1dc7; }
+      .ai-title { display: flex; align-items: center; gap: 9px; }
+      .ai-title svg { width: 16px; height: 16px; color: #cee5d9; }
+      .ai-state { display: flex; align-items: center; color: #abc5ba; font-size: 9px; }
+      .ai-state .status-dot { width: 4px; height: 4px; margin-right: 6px; }
+      .ai-body { padding: 23px 24px 0; }
+      .ai-eyebrow { font: 9px var(--mono); letter-spacing: 2px; color: #74928b; }
+      .ai-body h3 { font-size: 23px; font-weight: 300; letter-spacing: 1px; margin-top: 8px; line-height: 1.5; }
+      .observation { display: flex; gap: 12px; margin-top: 21px; }
+      .observation-index { flex: 0 0 19px; font: 9px var(--mono); color: #b5c8bd; padding-top: 2px; }
+      .observation-index::before { content: ""; display: block; width: 4px; height: 4px; background: #b5c8bd; margin-bottom: 8px; box-shadow: 0 0 9px #d2fce02a; }
+      .observation.warning .observation-index, .observation.warning strong { color: var(--glass-signal); }
+      .observation.warning .observation-index::before { background: var(--glass-signal); box-shadow: 0 0 9px #eda47730; }
+      .observation strong { font-size: 11px; font-weight: 400; color: #d7e7dc; }
+      .observation p { font-size: 10px; color: #92aaa0; margin-top: 5px; line-height: 1.85; }
+      .observation .mono { color: #c5d7cb; }
+      .ai-source { display: flex; align-items: center; gap: 7px; padding: 15px 0 0; margin-top: 22px; border-top: 1px solid #bed8c71c; font-size: 9px; color: #7c978b; }
+      .ai-source svg { width: 12px; height: 12px; }
+      .secondary-grid { display: grid; grid-template-columns: 1.03fr 1fr 1fr; gap: 20px; height: 244px; margin-top: 16px; }
+      .secondary-grid .panel-top { padding-top: 17px; }
+      .distribution-body { display: grid; grid-template-columns: 156px 1fr; gap: 12px; padding: 20px 23px 0; }
+      .distribution-chart { position: relative; width: 156px; height: 153px; }
+      .distribution-center { position: absolute; inset: 42px 0 auto; text-align: center; }
+      .distribution-center strong { font-size: 30px; font-weight: 300; letter-spacing: -.5px; line-height: 1.3; }
+      .distribution-center strong small { font-size: 12px; margin-left: 1px; }
+      .distribution-center p { color: #91aaa1; font-size: 9px; margin-top: 3px; }
+      .distribution-center .mono { font-size: 8px; letter-spacing: 2px; color: #68877d; margin-top: 8px; }
+      .distribution-legend { display: flex; flex-direction: column; gap: 10px; padding-top: 8px; }
+      .distribution-row { display: grid; grid-template-columns: 8px 1fr 32px 39px; gap: 7px; align-items: center; font-size: 10px; color: #96ada4; }
+      .distribution-row i { height: 4px; width: 4px; background: var(--key-color); }
+      .distribution-row .count { color: #c1d5ca; text-align: right; font-size: 10px; }
+      .distribution-row .ratio { color: #6f8b7f; text-align: right; font-size: 9px; }
+      .mini-note { font-size: 9px; color: #6f8980; padding: 12px 23px 0; }
+      .rhythm-chart { width: calc(100% - 39px); height: 150px; margin: 12px 18px 0 21px; }
+      .rhythm-foot { display: flex; justify-content: space-between; padding: 4px 23px 0; font-size: 9px; color: #7d978b; }
+      .rhythm-foot strong { font: normal 10px var(--mono); color: #bfd5c4; margin-right: 5px; }
+      .coverage { padding: 22px 23px 0; }
+      .coverage-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 17px; }
+      .coverage-name { font-size: 11px; color: #a7beb1; }
+      .coverage-name span { font: 9px var(--mono); color: #5d7e6e; margin-right: 10px; }
+      .coverage-value { font: 10px var(--mono); color: #c4d9c9; }
+      .data-ticks { display: flex; gap: 4px; align-items: flex-end; height: 16px; margin-top: 5px; }
+      .data-ticks i { display: block; height: 7px; width: 5px; background: #bddac254; }
+      .data-ticks i:nth-child(3n) { height: 11px; background: #cbe5ce7d; }
+      .data-ticks i:nth-child(5n) { height: 15px; background: #d0e6d2a6; }
+      .coverage-bottom { display: flex; justify-content: space-between; margin-top: 17px; padding-top: 12px; border-top: 1px solid #adcdb21a; font-size: 9px; color: #7f9a86; }
+      .coverage-bottom .mono { color: #c0d1bb; font-size: 9px; }
+      .composer { height: 47px; margin-top: 12px; border: 1px solid #c5e9d82a; border-top-color: #e0ffed3d; background: linear-gradient(112deg, #bed7c60c, #d6fbe005 55%, #d6fbe00c); border-radius: 7px; display: flex; align-items: center; padding: 0 18px; gap: 14px; box-shadow: inset 0 1px #d8ffe70a; }
+      .composer svg { width: 18px; height: 18px; color: #bcd5be; }
+      .composer p { color: #8eaa95; font-size: 11px; letter-spacing: .5px; }
+      .composer .suggestion { color: #9db39e; font-size: 10px; margin-left: auto; }
+      .composer .key { margin-left: 5px; padding: 3px 7px; font: 9px var(--mono); color: #8fa591; border: 1px solid #b4cdb022; border-radius: 3px; }
+      .composer .send { height: 25px; width: 25px; display: grid; place-items: center; margin-left: 1px; background: #d3e4ca; border-radius: 4px; }
+      .composer .send svg { width: 14px; height: 14px; color: #1c2b22; }
+      .footer { display: flex; justify-content: space-between; margin-top: 11px; font-size: 9px; color: #789383; }
+      .footer .mono { font-size: 8px; letter-spacing: 1.5px; color: #6c8877; }
+      .footer .divider { margin: 0 10px; color: #466254; }
+    </style>
+  </head>
+  <body>
+    <!-- Standalone, fixed-size design specimen. All numbers and insights below are synthetic. No live data or AI calls. -->
+    <main class="canvas" aria-label="学析台学习全景，玻璃材质静态设计预览，所有数据均为演示数据">
+      <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <defs>
+          <symbol id="logo" viewBox="0 0 32 32"><path d="M5 24V8h7v16M20 24V8h7v16M5 16h22M12 8l8 16" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M2 4h7M2 4v7M30 28h-7M30 28v-7" fill="none" stroke="currentColor" stroke-width="1"/></symbol>
+          <symbol id="grid" viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+          <symbol id="chart" viewBox="0 0 24 24"><path d="M4 3v17h17M8 15l4-6 4 3 5-7" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="12" cy="9" r="1.2" fill="currentColor"/></symbol>
+          <symbol id="spark" viewBox="0 0 24 24"><path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M19 2v4M17 4h4" stroke="currentColor" stroke-width="1"/></symbol>
+          <symbol id="database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M4 5v7c0 4 16 4 16 0V5M4 12v7c0 4 16 4 16 0v-7" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+          <symbol id="report" viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5zM14 3v5h5M8 12h8M8 16h6" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+          <symbol id="settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1z" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+          <symbol id="calendar" viewBox="0 0 24 24"><path d="M4 5h16v16H4zM8 2v6M16 2v6M4 10h16M8 14h3M14 14h3" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+          <symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+          <symbol id="verified" viewBox="0 0 24 24"><path d="M12 2l8 3v7c0 5-8 10-8 10S4 17 4 12V5zM8 12l3 3 5-6" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+          <filter id="soft-light"><feGaussianBlur stdDeviation="4"/></filter>
+          <filter id="data-glow" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="2.7"/></filter>
+          <linearGradient id="trace-fill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#d9fff0" stop-opacity=".09"/><stop offset="1" stop-color="#d9fff0" stop-opacity="0"/></linearGradient>
+          <linearGradient id="ring-stroke" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e2f1e5"/><stop offset=".6" stop-color="#bad3c1"/><stop offset="1" stop-color="#6f9a87"/></linearGradient>
+          <linearGradient id="rhythm-fill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#cde6ce" stop-opacity=".12"/><stop offset="1" stop-color="#cde6ce" stop-opacity="0"/></linearGradient>
+        </defs>
+      </svg>
+      <div class="optics" aria-hidden="true">
+        <svg class="ambient-lines" width="1050" height="1100" viewBox="0 0 1050 1100" fill="none">
+          <g transform="translate(470 150) rotate(-28)">
+            <ellipse rx="420" ry="125" stroke="#b5d6cd" stroke-opacity=".5" stroke-width=".6"/>
+            <ellipse rx="442" ry="137" stroke="#afcfc9" stroke-opacity=".15" stroke-dasharray="1 10" stroke-width="3"/>
+            <path d="M-420 0v550c0 69 188 125 420 125s420-56 420-125V0" stroke="#c6e2d9" stroke-opacity=".1"/>
+            <ellipse cy="550" rx="420" ry="125" stroke="#bbdcca" stroke-opacity=".28" stroke-width=".8"/>
+            <path d="M-420 0c0 69 188 125 420 125" stroke="#d0f9e4" stroke-opacity=".6" stroke-width="1.5"/>
+            <path d="M-420 0c0 69 188 125 420 125" stroke="#d0f9e4" stroke-opacity=".65" stroke-width="6" filter="url(#soft-light)"/>
+          </g>
+          <path d="M760 10L160 1000M820 10L220 1000" stroke="#a2cbb6" stroke-opacity=".1"/>
+        </svg>
+      </div>
+      <svg class="grain" width="1600" height="1120" aria-hidden="true"><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".8" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#grain)" opacity=".45"/></svg>
+
+      <aside class="rail" aria-label="静态侧栏示意">
+        <svg class="brand-mark" aria-hidden="true"><use href="#logo"/></svg>
+        <div class="rail-nav">
+          <span class="rail-item selected" aria-label="学习全景"><svg><use href="#grid"/></svg></span>
+          <span class="rail-item" aria-label="指标分析"><svg><use href="#chart"/></svg></span>
+          <span class="rail-item" aria-label="AI 对话"><svg><use href="#spark"/></svg></span>
+          <span class="rail-item" aria-label="数据"><svg><use href="#database"/></svg></span>
+          <span class="rail-item" aria-label="本次分析"><svg><use href="#report"/></svg></span>
+        </div>
+        <div class="rail-bottom">
+          <span class="vertical-label">OBSERVE · UNDERSTAND</span>
+          <span class="rail-item" aria-label="设置"><svg><use href="#settings"/></svg></span>
+          <span class="profile">林</span>
+        </div>
+      </aside>
+
+      <div class="workspace">
+        <header class="topbar">
+          <div class="wordmark"><strong>学析台</strong><span>LEARNING INTELLIGENCE</span></div>
+          <nav class="nav" aria-label="静态导航示意"><span class="active">学习全景</span><span>指标分析</span><span>AI 对话</span><span>数据</span><span>本次分析</span></nav>
+          <div class="top-right"><span><i class="status-dot"></i>模拟校园数据</span><span class="static-label">DESIGN PREVIEW / 01</span></div>
+        </header>
+
+        <section class="heading" aria-labelledby="page-title">
+          <div><p class="eyebrow"><i></i>ACADEMIC OBSERVATORY <span style="color:#536f6a">/ 2026</span></p><h1 id="page-title">看见学习的脉络。</h1><p class="heading-subtitle">从课程表现到学习节奏，让每个教学判断都有据可循。</p></div>
+          <div class="context"><div class="context-block"><svg aria-hidden="true"><use href="#calendar"/></svg>2025 — 2026 第一学期<small>⌄</small></div><div class="context-block"><svg aria-hidden="true"><use href="#database"/></svg>全校 · 全部课程<small>⌄</small></div><span class="demo-pill">演示数据</span></div>
+        </section>
+
+        <section class="metrics" aria-label="演示指标概览">
+          <div class="metric"><p class="metric-label"><span class="metric-index">01</span>纳入分析的学生</p><div class="metric-value"><strong>1,200</strong><span class="unit">人</span></div><p class="metric-detail">匿名聚合 · 当前学期</p><svg class="mini-signal" viewBox="0 0 82 31" fill="none" aria-hidden="true"><path d="M0 25H82M0 15H82M0 5H82" stroke="#8ab1a0" stroke-opacity=".14"/><path d="M2 23l9-1 10-8 10 3 10-7 10 3 10-7 10 2 9-6" stroke="#bfdccb" stroke-width="1"/><circle cx="80" cy="2" r="2" fill="#d5efdc"/></svg></div>
+          <div class="metric"><p class="metric-label"><span class="metric-index">02</span>覆盖课程</p><div class="metric-value"><strong>18</strong><span class="unit">门</span></div><p class="metric-detail">跨学科观察 · 同口径比较</p><svg class="mini-signal" viewBox="0 0 82 31" fill="none" aria-hidden="true"><g stroke="#abcdb9" stroke-width="2" stroke-dasharray="1 4"><path d="M3 29V19M10 29V9M17 29V15M24 29V3M31 29V10M38 29V6M45 29V14M52 29V1M59 29V8M66 29V5M73 29V12M80 29V2"/></g></svg></div>
+          <div class="metric"><p class="metric-label"><span class="metric-index">03</span>学期平均分</p><div class="metric-value"><strong>76.8</strong><span class="unit">分 / 100</span></div><p class="metric-detail"><em>↗ 2.4</em>较上学期 · 分</p><svg class="mini-signal" viewBox="0 0 82 31" fill="none" aria-hidden="true"><path d="M0 28H82" stroke="#8ab1a0" stroke-opacity=".2"/><path d="M1 26l11-6 11 3 11-8 11 3 11-9 11 3 13-9" stroke="#bfdccb" stroke-width="1"/><circle cx="80" cy="3" r="2" fill="#d5efdc"/></svg></div>
+          <div class="metric"><p class="metric-label"><span class="metric-index">04</span>学期均分达标率</p><div class="metric-value"><strong>89.4<span style="font-size:25px;margin-left:3px">%</span></strong></div><p class="metric-detail"><em>1,073 / 1,200</em>学期均分 ≥ 60 分</p><svg class="mini-signal" viewBox="0 0 82 31" fill="none" aria-hidden="true"><path d="M0 23H82" stroke="#8ab1a0" stroke-opacity=".2"/><g stroke="#c3ddc7" stroke-width="2"><path d="M2 18v10M8 18v10M14 18v10M20 18v10M26 18v10M32 18v10M38 18v10M44 18v10M50 18v10M56 18v10M62 18v10M68 18v10"/></g><path d="M74 18v10M80 18v10" stroke="#c3ddc7" stroke-opacity=".2" stroke-width="2"/></svg></div>
+        </section>
+
+        <div class="primary-grid">
+          <section class="glass" aria-labelledby="course-chart-title">
+            <div class="panel-top"><div class="panel-heading"><span class="section-number">A — 01</span><h2 id="course-chart-title">课程表现对比</h2></div><div class="chart-options"><span><i class="legend-dot"></i>本学期</span><span><i class="legend-dash"></i>上学期</span><span class="panel-meta" style="margin-left:14px">COURSE SIGNALS</span></div></div>
+            <div class="chart-caption"><span>课程平均分 · 选取 8 门课程展示</span><span class="mono">UNIT / SCORE · 0—100</span></div>
+            <svg class="main-chart" viewBox="0 0 1010 266" role="img" aria-label="八门演示课程的均分对比，程序设计本学期71.2分，上学期68.8分">
+              <defs><pattern id="plot-dots" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".55" fill="#b2dbca" opacity=".12"/></pattern></defs>
+              <rect x="49" y="24" width="925" height="192" fill="url(#plot-dots)"/>
+              <g stroke="#a9cfbf" stroke-opacity=".1" stroke-width=".7"><path d="M49 25H974M49 63H974M49 101H974M49 139H974M49 177H974M49 215H974"/><path d="M64 25V215M192 25V215M320 25V215M448 25V215M576 25V215M704 25V215M832 25V215M960 25V215" stroke-dasharray="1 7"/></g>
+              <g class="plot-label" text-anchor="end"><text x="32" y="29">100</text><text x="32" y="67">90</text><text x="32" y="105">80</text><text x="32" y="143">70</text><text x="32" y="181" fill="#b88d6c">60</text><text x="32" y="219">50</text></g>
+              <path d="M49 177H974" stroke="#d7a078" stroke-opacity=".28" stroke-dasharray="3 7" stroke-width=".8"/>
+              <text x="971" y="170" text-anchor="end" fill="#9d8269" font-size="8" font-family="var(--mono)">PASS LINE / 60</text>
+              <!-- Pale offset traces create the optical separation between the data and the glass. -->
+              <path d="M64 100.2L192 110.1L320 114.6L448 136.6L576 122.5L704 108.3L832 105.6L960 91.9" transform="translate(0 7)" fill="none" stroke="#b8ecd9" stroke-width="2" stroke-opacity=".1" filter="url(#data-glow)"/>
+              <path d="M64 107.8L192 117L320 121.3L448 142.6L576 128.5L704 114L832 111.2L960 97.5" fill="none" stroke="#829f96" stroke-width="1" stroke-dasharray="3 6" opacity=".62"/>
+              <path d="M64 91.9L192 113.2L320 102.5L448 134.4L576 120.8L704 100.2L832 110.9L960 85V215H64Z" fill="url(#trace-fill)"/>
+              <path d="M64 91.9L192 113.2L320 102.5L448 134.4L576 120.8L704 100.2L832 110.9L960 85" transform="translate(0 7)" fill="none" stroke="#d1fff1" stroke-width="4" opacity=".18" filter="url(#data-glow)"/>
+              <path d="M64 91.9L192 113.2L320 102.5L448 134.4L576 120.8L704 100.2L832 110.9L960 85" fill="none" stroke="#d5eade" stroke-width="1.4"/>
+              <path d="M448 47V215" stroke="#d6a17b" stroke-width=".8" stroke-dasharray="2 5" opacity=".5"/>
+              <g fill="#edf8ee" stroke="#d0eee0" stroke-width=".7"><circle cx="64" cy="91.9" r="2.7"/><circle cx="192" cy="113.2" r="2.7"/><circle cx="320" cy="102.5" r="2.7"/><circle cx="576" cy="120.8" r="2.7"/><circle cx="704" cy="100.2" r="2.7"/><circle cx="832" cy="110.9" r="2.7"/><circle cx="960" cy="85" r="2.7"/></g>
+              <g class="plot-value" text-anchor="middle"><text x="64" y="77">82.4</text><text x="192" y="98">76.8</text><text x="320" y="88">79.6</text><text x="576" y="106">74.8</text><text x="704" y="85">80.2</text><text x="832" y="96">77.4</text><text x="960" y="70">84.2</text></g>
+              <circle cx="448" cy="134.4" r="10" fill="#eda477" opacity=".1"/><circle cx="448" cy="134.4" r="5.8" fill="none" stroke="#eda477" stroke-opacity=".6" stroke-width=".8"/><circle cx="448" cy="134.4" r="2.5" fill="#ffc193"/>
+              <g transform="translate(387 21)"><rect width="122" height="45" rx="3" fill="#182523" stroke="#d8b08b" stroke-opacity=".4" stroke-width=".7"/><text x="12" y="17" fill="#d0c4aa" font-size="9" font-family="var(--sans)">程序设计</text><text x="12" y="34" fill="#efbd93" font-size="15" font-family="var(--mono)">71.2<tspan font-size="8" dx="7" fill="#8ca595">↗ 2.4</tspan></text><path d="M57 45l4 4 4-4" fill="#182523" stroke="#d8b08b" stroke-opacity=".4" stroke-width=".7"/></g>
+              <g class="plot-course" text-anchor="middle"><text x="64" y="242">高等数学</text><text x="192" y="242">计算机基础</text><text x="320" y="242">大学英语</text><text x="448" y="242" fill="#dab291">程序设计</text><text x="576" y="242">数据结构</text><text x="704" y="242">统计学</text><text x="832" y="242">数据库原理</text><text x="960" y="242">软件工程</text></g>
+              <g stroke="#b2d3c0" stroke-width=".7" opacity=".4"><path d="M49 210v5h5M974 210v5h-5M49 30v-5h5M974 30v-5h-5"/></g>
+              <g class="plot-label" font-size="7" opacity=".6"><text x="51" y="260">FIG. 01 — TERM COMPARISON</text><text x="974" y="260" text-anchor="end">AGGREGATE ONLY</text></g>
+            </svg>
+            <div class="chart-foot"><span><span class="highlight">程序设计</span> 低于整体均分 <span class="mono highlight">5.6</span> 分，可作为下一步观察入口。</span><span class="mono">8 / 18 COURSES&nbsp; · &nbsp;DEMO</span></div>
+          </section>
+
+          <aside class="glass ai-panel" aria-labelledby="ai-title">
+            <div class="panel-top"><div class="ai-title"><svg aria-hidden="true"><use href="#spark"/></svg><h2 id="ai-title">AI 观察</h2></div><span class="ai-state"><i class="status-dot"></i>示例结论</span></div>
+            <div class="ai-body"><p class="ai-eyebrow">A FEW SIGNALS TO FOLLOW</p><h3>整体向好，<br/>也看见细微的差异。</h3>
+              <div class="observation"><div class="observation-index">01</div><div><strong>学期表现稳步提升</strong><p>平均分 <span class="mono">76.8</span>，较上学期提高<br/><span class="mono">2.4</span> 分，可结合课程变化继续分析。</p></div></div>
+              <div class="observation warning"><div class="observation-index">02</div><div><strong>留意程序设计课程</strong><p>均分 <span class="mono">71.2</span>，低于整体 <span class="mono">5.6</span> 分。<br/>可继续查看分布，避免仅凭均值判断。</p></div></div>
+              <p class="ai-source"><svg aria-hidden="true"><use href="#verified"/></svg>设计示例 · 非实时 AI 分析</p>
+            </div>
+          </aside>
+        </div>
+
+        <div class="secondary-grid">
+          <section class="glass" aria-labelledby="distribution-title">
+            <div class="panel-top"><div class="panel-heading"><span class="section-number">B — 01</span><h2 id="distribution-title">学生综合成绩分布</h2></div><span class="panel-meta">DISTRIBUTION</span></div>
+            <div class="distribution-body">
+              <div class="distribution-chart"><svg width="156" height="153" viewBox="0 0 156 153" role="img" aria-label="演示学生学期均分达标率89.4%，1073人达标，127人未达标"><circle cx="76" cy="75" r="65" fill="none" stroke="#9fc6ab" stroke-opacity=".17" stroke-width="1" stroke-dasharray="1 5"/><circle cx="76" cy="75" r="55" fill="none" stroke="#c4ddca" stroke-opacity=".08" stroke-width="5"/><g transform="rotate(-90 76 75)" fill="none" stroke-width="4"><circle cx="76" cy="75" r="55" stroke="url(#ring-stroke)" stroke-dasharray="306 40" stroke-linecap="butt"/><circle cx="76" cy="75" r="55" stroke="#bd8968" stroke-dasharray="31 315" stroke-dashoffset="-311" stroke-opacity=".9"/></g><path d="M3 75h6M143 75h6M76 2v6M76 142v6" stroke="#c7e8cc" stroke-opacity=".4" stroke-width=".8"/><circle cx="76" cy="20" r="2" fill="#e5f5e7"/></svg><div class="distribution-center"><strong>89.4<small>%</small></strong><p>均分达标率</p><p class="mono">≥ 60 POINTS</p></div></div>
+              <div class="distribution-legend">
+                <div class="distribution-row" style="--key-color:#d3e7d7"><i></i><span>90 — 100 分</span><span class="count mono">236</span><span class="ratio mono">19.7%</span></div>
+                <div class="distribution-row" style="--key-color:#a5c8b0"><i></i><span>80 — 89 分</span><span class="count mono">382</span><span class="ratio mono">31.8%</span></div>
+                <div class="distribution-row" style="--key-color:#7fa68f"><i></i><span>70 — 79 分</span><span class="count mono">324</span><span class="ratio mono">27.0%</span></div>
+                <div class="distribution-row" style="--key-color:#587c6a"><i></i><span>60 — 69 分</span><span class="count mono">131</span><span class="ratio mono">10.9%</span></div>
+                <div class="distribution-row" style="--key-color:#ca9470"><i></i><span>低于 60 分</span><span class="count mono">127</span><span class="ratio mono">10.6%</span></div>
+              </div>
+            </div><p class="mini-note">按学生学期均分分组 · 共 1,200 人 · 区间标签取整数简写</p>
+          </section>
+
+          <section class="glass" aria-labelledby="rhythm-title">
+            <div class="panel-top"><div class="panel-heading"><span class="section-number">B — 02</span><h2 id="rhythm-title">学习节奏</h2></div><span class="panel-meta">WEEKLY ACTIVITY</span></div>
+            <svg class="rhythm-chart" viewBox="0 0 408 150" role="img" aria-label="十六周演示学习活动量，第十五周达峰值8240次">
+              <g stroke="#a6cbb0" stroke-opacity=".13" stroke-width=".6"><path d="M31 18H392M31 60H392M31 102H392"/></g><g font-size="8" fill="#718e79" font-family="var(--mono)" text-anchor="end"><text x="23" y="21">10k</text><text x="23" y="63">5k</text><text x="23" y="105">0</text></g>
+              <path d="M38 84L61 79L84 74L107 79L130 65L153 68L176 54L199 63L222 59L245 47L268 53L291 42L314 49L337 39L360 33L383 43V102H38Z" fill="url(#rhythm-fill)"/>
+              <g stroke="#b8d9bd" stroke-width="3" stroke-dasharray="1 4" opacity=".5"><path d="M38 102V84M61 102V79M84 102V74M107 102V79M130 102V65M153 102V68M176 102V54M199 102V63M222 102V59M245 102V47M268 102V53M291 102V42M314 102V49M337 102V39M360 102V33M383 102V43"/></g>
+              <path d="M38 84L61 79L84 74L107 79L130 65L153 68L176 54L199 63L222 59L245 47L268 53L291 42L314 49L337 39L360 33L383 43" fill="none" stroke="#c0ddc1" stroke-width="1.1"/>
+              <circle cx="360" cy="33" r="7" fill="#d5f2d2" opacity=".09"/><circle cx="360" cy="33" r="2.3" fill="#e3f6d9"/>
+              <g font-size="8" fill="#799782" font-family="var(--mono)" text-anchor="middle"><text x="38" y="123">W01</text><text x="107" y="123">W04</text><text x="199" y="123">W08</text><text x="291" y="123">W12</text><text x="383" y="123">W16</text></g>
+              <g fill="#c9dfc6" font-family="var(--mono)"><text x="355" y="15" text-anchor="end" font-size="10">8,240<tspan dx="5" font-size="7" fill="#7e9a7f">PEAK</tspan></text></g>
+            </svg><div class="rhythm-foot"><span><strong>16</strong>个教学周</span><span>活动次数 · 不代表出勤率</span></div>
+          </section>
+
+          <section class="glass" aria-labelledby="data-title">
+            <div class="panel-top"><div class="panel-heading"><span class="section-number">B — 03</span><h2 id="data-title">分析的依据</h2></div><span class="panel-meta">DATA CONTEXT</span></div>
+            <div class="coverage"><div class="coverage-row"><span class="coverage-name"><span>01</span>数据来源</span><span class="coverage-value">模拟校园数据</span></div><div class="coverage-row"><span class="coverage-name"><span>02</span>统计范围</span><span class="coverage-value">1,200 人 / 18 门课程</span></div><div class="coverage-row" style="margin-bottom:11px"><span class="coverage-name"><span>03</span>隐私边界</span><span class="coverage-value">聚合展示 / 无个人标识</span></div>
+              <div class="data-ticks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+              <div class="coverage-bottom"><span>每个结论，都能回到数据。</span><span class="mono">TRACEABLE BY DESIGN</span></div>
+            </div>
+          </section>
+        </div>
+
+        <div class="composer" aria-label="静态 AI 输入区域示意，无交互"><svg aria-hidden="true"><use href="#spark"/></svg><p>从一个问题开始，继续理解这些数据……</p><span class="suggestion">例如：程序设计成绩偏低，可能有哪些学习线索？</span><span class="key">↵</span><span class="send"><svg aria-hidden="true"><use href="#arrow"/></svg></span></div>
+        <footer class="footer"><span>仅展示聚合数据<span class="divider">/</span>当前页面为静态视觉预览，所有数值与结论均为演示内容。</span><span class="mono">学析台 &nbsp; / &nbsp; GLASS STUDY — 001 &nbsp; / &nbsp; 1600 × 1120</span></footer>
+      </div>
+    </main>
+  </body>
+</html>
