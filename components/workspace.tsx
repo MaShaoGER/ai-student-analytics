@@ -13,6 +13,7 @@ import { ThemeToggle, useTheme } from "@/components/ui/theme-provider";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { ScoreDistribution } from "@/components/score-distribution";
 import { ConversationWorkspace, type ConversationTurn } from "@/components/ai-conversation";
+import experienceStyles from "@/components/conversation-experience.module.css";
 import conversationStyles from "@/components/ai-conversation.module.css";
 import {
   artifactWithView,
@@ -22,6 +23,11 @@ import {
   type ChatIntent,
   type ChatResponse,
 } from "@/lib/ai/chat-types";
+import type {
+  ConversationDetail,
+  ConversationPage,
+  ConversationSummary,
+} from "@/lib/conversations/types";
 import { readChatStream } from "@/lib/ai/chat-stream";
 import { createPlan } from "@/lib/analysis/plan";
 import { METRICS } from "@/lib/analysis/metrics";
@@ -666,6 +672,24 @@ export function Workspace({ initialConversation = false }: { initialConversation
   const [question, setQuestion] = useState("");
   const [askResult, setAskResult] = useState<AnalysisResult | null>(null);
   const [chatMessages, setChatMessages] = useState<ConversationTurn[]>([]);
+  const [conversation, setConversation] = useState<ConversationSummary | null>(null);
+  const conversationRef = useRef<ConversationSummary | null>(null);
+  const [conversationHistory, setConversationHistory] = useState<ConversationSummary[]>([]);
+  const [historyCursor, setHistoryCursor] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const historyGeneration = useRef(0);
+  const historySelectionPending = useRef(false);
+  const [historySelecting, setHistorySelecting] = useState(false);
+  const resetConversationContext = useRef(false);
+  const pendingTurn = useRef<{
+    id: string;
+    conversationId: string;
+    question: string;
+    revision: number;
+    datasetId: DataSource;
+    resetContext: boolean;
+  } | null>(null);
   const [chatContext, setChatContext] = useState<ChatIntent | null>(null);
   const [expandedChartId, setExpandedChartId] = useState<string | null>(null);
   const [pendingQuestion, setPendingQuestion] = useState("");
@@ -728,6 +752,9 @@ export function Workspace({ initialConversation = false }: { initialConversation
     askPending.current?.abort();
     askPending.current = null;
     setLoginNotice(notice);
+    setConversationHistory([]);
+    setHistoryCursor(null);
+    setHistoryError(null);
     setUser(null);
     userScope.current = "";
     setProfiles([]);
@@ -742,6 +769,12 @@ export function Workspace({ initialConversation = false }: { initialConversation
     setAskResult(null);
     setSessionAnalyses([]);
     setSelectedReportKey("");
+    conversationRef.current = null;
+    setConversation(null);
+    pendingTurn.current = null;
+    historyGeneration.current++;
+    historySelectionPending.current = false;
+    setHistorySelecting(false);
     setChatMessages([]);
     setPendingQuestion("");
     setPendingSteps([]);
@@ -765,6 +798,9 @@ export function Workspace({ initialConversation = false }: { initialConversation
       generation.current++;
       askPending.current?.abort();
       askPending.current = null;
+      setConversationHistory([]);
+      setHistoryCursor(null);
+      setHistoryError(null);
       setProfiles([]);
       profilesLoaded.current = false;
       setProfilesLoading(true);
@@ -778,6 +814,12 @@ export function Workspace({ initialConversation = false }: { initialConversation
       setAskResult(null);
       setSessionAnalyses([]);
       setSelectedReportKey("");
+      conversationRef.current = null;
+      setConversation(null);
+      pendingTurn.current = null;
+      historyGeneration.current++;
+      historySelectionPending.current = false;
+      setHistorySelecting(false);
       setChatMessages([]);
       setPendingQuestion("");
       setPendingSteps([]);
@@ -983,6 +1025,153 @@ export function Workspace({ initialConversation = false }: { initialConversation
     },
     [expire],
   );
+  const historyDatasetKey = datasetAccessKey(profiles);
+  const refreshConversationHistory = useCallback(
+    async (cursor?: string) => {
+      const current = historyGeneration.current;
+      const scope = userScope.current;
+      if (!scope) return;
+      setHistoryLoading(true);
+      setHistoryError(null);
+      try {
+        const page = (await api(
+          `/api/conversations${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
+        )) as ConversationPage;
+        if (current !== historyGeneration.current || scope !== userScope.current) return;
+        setConversationHistory((previous) =>
+          cursor
+            ? [
+                ...previous.filter(
+                  (item) => !page.conversations.some((next) => next.id === item.id),
+                ),
+                ...page.conversations,
+              ]
+            : page.conversations,
+        );
+        setHistoryCursor(page.nextCursor);
+      } catch (error) {
+        if (current === historyGeneration.current && scope === userScope.current)
+          setHistoryError(requestMessage(error, "历史读取失败，请重试。"));
+      } finally {
+        if (current === historyGeneration.current) setHistoryLoading(false);
+      }
+    },
+    [api],
+  );
+  useEffect(() => {
+    setConversationHistory([]);
+    setHistoryCursor(null);
+    if (user && !passwordChangeRequired && capabilities.canUseAI) void refreshConversationHistory();
+  }, [
+    user?.id,
+    passwordChangeRequired,
+    capabilities.canUseAI,
+    historyDatasetKey,
+    refreshConversationHistory,
+  ]);
+
+  function applyConversationDetail(detail: ConversationDetail, restored = true) {
+    conversationRef.current = detail.conversation;
+    setConversation(detail.conversation);
+    setDatasetId(detail.conversation.datasetId);
+    setChatMessages(
+      detail.messages.map((message) => ({
+        id: message.id,
+        role: message.role,
+        content: message.content,
+        ...(message.response
+          ? {
+              response: message.response,
+              generatedAt: Date.parse(message.response.generatedAt),
+              restored,
+            }
+          : {}),
+        ...(message.response &&
+        ["failed", "cancelled", "interrupted"].includes(message.response.status)
+          ? { system: true }
+          : {}),
+      })),
+    );
+    const response = [...detail.messages].reverse().find((message) => message.response)?.response;
+    setChatContext(response?.context ?? null);
+    resetConversationContext.current = false;
+    setPendingSteps([]);
+    setPendingQuestion("");
+    setAskLoading(false);
+    setExpandedChartId(null);
+    setQuestion("");
+    setError(null);
+    setFailedAsk(null);
+  }
+  async function openConversation(id: string) {
+    askPending.current?.abort();
+    askPending.current = null;
+    generation.current++;
+    const current = ++historyGeneration.current;
+    const scope = userScope.current;
+    historySelectionPending.current = true;
+    setHistorySelecting(true);
+    setAskLoading(false);
+    setHistoryError(null);
+    try {
+      const detail = (await api(`/api/conversations/${id}`)) as ConversationDetail;
+      if (current !== historyGeneration.current || scope !== userScope.current) return;
+      pendingTurn.current = null;
+      applyConversationDetail(detail);
+    } catch (error) {
+      if (current === historyGeneration.current && scope === userScope.current)
+        setHistoryError(requestMessage(error, "对话已过期、已删除或当前无权访问。"));
+    } finally {
+      if (current === historyGeneration.current) {
+        historySelectionPending.current = false;
+        setHistorySelecting(false);
+      }
+    }
+  }
+  async function deleteConversation(id: string) {
+    const scope = userScope.current;
+    if (conversationRef.current?.id === id) newConversation();
+    try {
+      await api(`/api/conversations/${id}`, { method: "DELETE" });
+      if (scope === userScope.current) await refreshConversationHistory();
+    } catch (error) {
+      if (scope === userScope.current) setHistoryError(requestMessage(error, "删除失败，请重试。"));
+    }
+  }
+  function newConversation() {
+    // Repeated clicks on the same empty draft are display-only no-ops. In
+    // particular, don't invalidate or reload the already visible history list.
+    if (
+      !conversationRef.current &&
+      !historySelectionPending.current &&
+      !askPending.current &&
+      !chatMessages.length &&
+      !pendingTurn.current
+    )
+      return;
+    askPending.current?.abort();
+    askPending.current = null;
+    generation.current++;
+    historyGeneration.current++;
+    historySelectionPending.current = false;
+    setHistorySelecting(false);
+    conversationRef.current = null;
+    setConversation(null);
+    pendingTurn.current = null;
+    setChatMessages([]);
+    setPendingSteps([]);
+    setChatContext(null);
+    setExpandedChartId(null);
+    setAskResult(null);
+    setQuestion("");
+    setError(null);
+    setInputError(null);
+    setFailedAsk(null);
+    setAskLoading(false);
+    resetConversationContext.current = false;
+    setHistoryLoading(false);
+  }
+
   useEffect(() => {
     if (!user || passwordChangeRequired) {
       setProfilesLoading(false);
@@ -1013,6 +1202,12 @@ export function Workspace({ initialConversation = false }: { initialConversation
           setAskResult(null);
           setSessionAnalyses([]);
           setSelectedReportKey("");
+          conversationRef.current = null;
+          setConversation(null);
+          pendingTurn.current = null;
+          historyGeneration.current++;
+          historySelectionPending.current = false;
+          setHistorySelecting(false);
           setChatMessages([]);
           setPendingQuestion("");
           setPendingSteps([]);
@@ -1200,6 +1395,12 @@ export function Workspace({ initialConversation = false }: { initialConversation
     setOverviewLoading(true);
     setAnalysis(null);
     setAskResult(null);
+    conversationRef.current = null;
+    setConversation(null);
+    pendingTurn.current = null;
+    historyGeneration.current++;
+    historySelectionPending.current = false;
+    setHistorySelecting(false);
     setChatMessages([]);
     setPendingSteps([]);
     setChatContext(null);
@@ -1256,7 +1457,13 @@ export function Workspace({ initialConversation = false }: { initialConversation
     }
   }
   async function ask(nextQuestion = question, options: { fresh?: boolean } = {}) {
-    if (!aiAllowed || !eligibleDatasetId || passwordChangeRequired) return;
+    if (
+      !aiAllowed ||
+      !eligibleDatasetId ||
+      passwordChangeRequired ||
+      historySelectionPending.current
+    )
+      return;
     const currentDatasetId = eligibleDatasetId;
     const trimmed = nextQuestion.trim();
     if (trimmed.length < 2 || trimmed.length > 500) {
@@ -1266,9 +1473,22 @@ export function Workspace({ initialConversation = false }: { initialConversation
       return;
     }
     if ((!canRun && !aiReady) || askPending.current) return;
+    if (
+      !options.fresh &&
+      chatMessages.some((message) => message.response?.persistence === "pending")
+    ) {
+      setError("当前分析已完成但尚未保存，请先重试保存，或新建对话。");
+      return;
+    }
     // Entry points outside the transcript (home cards) start a fresh
     // conversation instead of inheriting an unrelated earlier scope.
     if (options.fresh) {
+      conversationRef.current = null;
+      setConversation(null);
+      pendingTurn.current = null;
+      historyGeneration.current++;
+      historySelectionPending.current = false;
+      setHistorySelecting(false);
       setChatMessages([]);
       setChatContext(null);
       setExpandedChartId(null);
@@ -1290,6 +1510,34 @@ export function Workspace({ initialConversation = false }: { initialConversation
       askPending.current === controller &&
       current === generation.current;
     try {
+      let selectedConversation = conversationRef.current;
+      if (!selectedConversation) {
+        const created = await api("/api/conversations", {
+          method: "POST",
+          body: JSON.stringify({ datasetId: currentDatasetId }),
+        });
+        if (!isCurrent()) return;
+        selectedConversation = created.conversation as ConversationSummary;
+        conversationRef.current = selectedConversation;
+        setConversation(selectedConversation);
+      }
+      if (selectedConversation.datasetId !== currentDatasetId)
+        throw new Error("当前对话的数据源已变化，请新建对话。");
+      const previousTurn = pendingTurn.current;
+      const turn =
+        previousTurn &&
+        previousTurn.conversationId === selectedConversation.id &&
+        previousTurn.question === trimmed
+          ? previousTurn
+          : {
+              id: crypto.randomUUID(),
+              conversationId: selectedConversation.id,
+              revision: selectedConversation.revision,
+              question: trimmed,
+              datasetId: currentDatasetId,
+              resetContext: resetConversationContext.current,
+            };
+      pendingTurn.current = turn;
       const payload = (await api(
         "/api/chat",
         {
@@ -1301,33 +1549,10 @@ export function Workspace({ initialConversation = false }: { initialConversation
           body: JSON.stringify({
             question: trimmed,
             datasetId: currentDatasetId,
-            // Assistant turns carry a compact summary of the results they produced
-            // so a follow-up keeps "相关结果与条件" without replaying full artifacts.
-            // User turns stay plain, and empty result lists are omitted entirely.
-            history: (options.fresh ? [] : chatMessages)
-              .filter((message) => !message.system)
-              .slice(-12)
-              .map((message) => {
-                const results =
-                  message.role === "assistant"
-                    ? (message.response?.resultRefs ?? []).slice(0, 4).map((ref) => ({
-                        resultId: ref.resultId,
-                        kind: ref.kind,
-                        label: ref.scopeLabel,
-                      }))
-                    : [];
-                return {
-                  role: message.role,
-                  // The request schema bounds history content; a long multi-result
-                  // answer must not make the next turn fail with 400.
-                  content:
-                    message.content.length > 2900
-                      ? `${message.content.slice(0, 2890)}…（已截断）`
-                      : message.content,
-                  ...(results.length ? { results } : {}),
-                };
-              }),
-            context: options.fresh ? null : chatContext,
+            conversationId: turn.conversationId,
+            turnId: turn.id,
+            expectedRevision: turn.revision,
+            resetContext: turn.resetContext,
           }),
           signal: controller.signal,
         },
@@ -1344,18 +1569,34 @@ export function Workspace({ initialConversation = false }: { initialConversation
       if (!isCurrent()) return;
       setPendingSteps([]);
       setChatContext(payload.context);
-      const turnId = crypto.randomUUID();
+      const turnId = payload.conversation?.turnId ?? turn.id;
+      if (payload.conversation) {
+        const updated = { ...selectedConversation, revision: payload.conversation.revision };
+        conversationRef.current = updated;
+        setConversation(updated);
+      }
+      pendingTurn.current = null;
+      resetConversationContext.current = false;
+      void refreshConversationHistory();
       setChatMessages((previous) =>
         [
           ...(options.fresh ? [] : previous),
           { id: `${turnId}-user`, role: "user" as const, content: trimmed },
-          { id: turnId, role: "assistant" as const, content: payload.answer, response: payload },
+          {
+            id: `${turnId}-assistant`,
+            role: "assistant" as const,
+            content: payload.answer,
+            response: payload,
+            generatedAt: payload.generatedAt ? Date.parse(payload.generatedAt) : Date.now(),
+          },
         ].slice(-40),
       );
       setQuestion((draft) => (draft === nextQuestion ? "" : draft));
       if (payload.artifact) {
         if (payload.presentation !== "text")
-          setExpandedChartId(payload.artifacts?.length ? `${turnId}:0` : turnId);
+          setExpandedChartId(
+            payload.artifacts?.length ? `${turnId}-assistant:0` : `${turnId}-assistant`,
+          );
         if (payload.artifact.kind === "analysis") {
           setAskResult(payload.artifact.result);
           rememberResult(payload.artifact.result);
@@ -1367,6 +1608,30 @@ export function Workspace({ initialConversation = false }: { initialConversation
       // Cancellation is silent: the stop button reports its own outcome.
       if (!message) return;
       setError(message);
+      const failedConversationId = pendingTurn.current?.conversationId;
+      // A transport failure keeps its identity for safe replay. A known terminal
+      // error permits an explicit new retry after refreshing the server revision.
+      if (
+        requestError instanceof ApiError &&
+        requestError.code &&
+        !["CONVERSATION_TURN_RUNNING", "TURN_IN_PROGRESS"].includes(requestError.code)
+      ) {
+        pendingTurn.current = null;
+      }
+      if (failedConversationId) {
+        try {
+          const detail = (await api(
+            `/api/conversations/${failedConversationId}`,
+          )) as ConversationDetail;
+          if (isCurrent() && conversationRef.current?.id === failedConversationId) {
+            conversationRef.current = detail.conversation;
+            setConversation(detail.conversation);
+          }
+        } catch {
+          /* Original error remains visible; no new model request. */
+        }
+      }
+      void refreshConversationHistory();
       setPendingSteps((previous) =>
         previous.map((step) => (step.status === "running" ? { ...step, status: "failed" } : step)),
       );
@@ -1385,6 +1650,61 @@ export function Workspace({ initialConversation = false }: { initialConversation
       }
     }
   }
+  async function retryConversationPersistence(id: string) {
+    const message = chatMessages.find((item) => item.id === id);
+    const metadata = message?.response?.conversation;
+    if (!metadata || message.response?.persistence !== "pending") return;
+    const current = generation.current;
+    try {
+      const response = (await api("/api/conversation-save", {
+        method: "POST",
+        body: JSON.stringify({ conversationId: metadata.id, turnId: metadata.turnId }),
+      })) as ChatResponse;
+      if (current !== generation.current || conversationRef.current?.id !== metadata.id) return;
+      setChatMessages((previous) =>
+        previous.map((item) => (item.id === id ? { ...item, response } : item)),
+      );
+      if (response.conversation && conversationRef.current) {
+        const updated = { ...conversationRef.current, revision: response.conversation.revision };
+        conversationRef.current = updated;
+        setConversation(updated);
+      }
+      setError(null);
+      void refreshConversationHistory();
+    } catch (error) {
+      if (current === generation.current)
+        setError(requestMessage(error, "历史保存失败，请稍后重试保存。"));
+    }
+  }
+  async function stopConversation() {
+    const selected = conversationRef.current;
+    const turnId =
+      pendingTurn.current?.id ??
+      (selected?.lastTurn?.status === "running" ? selected.lastTurn.id : null);
+    if (!askPending.current && !turnId) return;
+    const selectedId = selected?.id;
+    askPending.current?.abort();
+    askPending.current = null;
+    setAskLoading(false);
+    setPendingSteps([]);
+    if (!turnId || !selectedId) return;
+    try {
+      await api(`/api/conversations/${selectedId}/stop`, {
+        method: "POST",
+        body: JSON.stringify({ turnId }),
+      });
+      if (conversationRef.current?.id !== selectedId) return;
+      const detail = (await api(`/api/conversations/${selectedId}`)) as ConversationDetail;
+      if (conversationRef.current?.id === selectedId) {
+        applyConversationDetail(detail, false);
+        pendingTurn.current = null;
+        void refreshConversationHistory();
+      }
+    } catch (error) {
+      if (conversationRef.current?.id === selectedId)
+        setError(requestMessage(error, "停止状态尚未确认，请刷新历史。"));
+    }
+  }
   function changeChatView(id: string, chart: ChatDisplayView, artifactIndex = 0) {
     const selected = chatMessages.find((message) => message.id === id);
     const artifact = selected?.response?.artifacts?.[artifactIndex] ?? selected?.response?.artifact;
@@ -1397,6 +1717,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
               ...message,
               response: {
                 ...message.response,
+                presentation: chart === "table" ? "table" : "chart",
                 artifact: artifactIndex === 0 ? updated : message.response.artifact,
                 ...(message.response.artifacts
                   ? {
@@ -1620,7 +1941,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
   );
   return (
     <div
-      className="graphite-workspace workbench-shell"
+      className={`graphite-workspace workbench-shell ${experienceStyles.shell}`}
       data-view={view}
       data-conversation={(view === "analysis" && mode === "question") || undefined}
     >
@@ -1724,7 +2045,13 @@ export function Workspace({ initialConversation = false }: { initialConversation
         </div>
       </aside>
       <div className="workbench-main">
-        <main id="main-content" className="workbench-content" aria-labelledby="workspace-heading">
+        <main
+          id="main-content"
+          className="workbench-content"
+          aria-labelledby={
+            view === "analysis" && mode === "question" ? "conversation-heading" : "workspace-heading"
+          }
+        >
           {view !== "overview" && (
             <div
               className={`workbench-page-heading ${view === "analysis" && mode === "question" ? conversationStyles.workspaceHeading : ""}`}
@@ -1776,6 +2103,48 @@ export function Workspace({ initialConversation = false }: { initialConversation
             {view === "analysis" &&
               (mode === "question" ? (
                 <ConversationWorkspace
+                  historyActivity={
+                    conversation?.lastTurn?.status === "running" ? (
+                      <p className="notice" role="status">
+                        这个会话有一轮分析尚未结束，刷新历史可查看最新状态。
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={() => void openConversation(conversation.id)}
+                        >
+                          刷新状态
+                        </button>
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={() => void stopConversation()}
+                        >
+                          停止这轮分析
+                        </button>
+                      </p>
+                    ) : null
+                  }
+                  onRetrySave={(id) => void retryConversationPersistence(id)}
+                  conversationId={conversation?.id ?? null}
+                  sourceControl={sourcePicker}
+                  history={{
+                    entries: conversationHistory.map((entry) => ({
+                      ...entry,
+                      lastMessageAt: Date.parse(entry.updatedAt),
+                      expiresAt: Date.parse(entry.expiresAt),
+                    })),
+                    selectedId: conversation?.id ?? null,
+                    loading: historyLoading || historySelecting,
+                    error: historyError,
+                    hasMore: Boolean(historyCursor),
+                    onMore: () => {
+                      if (historyCursor) void refreshConversationHistory(historyCursor);
+                    },
+                    onRefresh: () => void refreshConversationHistory(),
+                    onSelect: (id) => void openConversation(id),
+                    onDelete: (id) => void deleteConversation(id),
+                    onNew: newConversation,
+                  }}
                   messages={chatMessages}
                   question={question}
                   loading={askLoading}
@@ -1799,43 +2168,12 @@ export function Workspace({ initialConversation = false }: { initialConversation
                   onReport={previewReport}
                   onConfigure={user.role === "admin" ? () => navigate("admin") : undefined}
                   notice={notice}
-                  onStop={() => {
-                    // Ignore a second stop click after the request already ended.
-                    if (!askPending.current) return;
-                    askPending.current.abort();
-                    askPending.current = null;
-                    setAskLoading(false);
-                    setPendingSteps([]);
-                    setChatMessages((previous) =>
-                      [
-                        ...previous,
-                        {
-                          id: `stopped-${crypto.randomUUID()}`,
-                          role: "assistant" as const,
-                          content: STOPPED_MESSAGE,
-                          steps: pendingSteps.map((step) =>
-                            step.status === "running"
-                              ? { ...step, status: "cancelled" as const }
-                              : step,
-                          ),
-                          system: true,
-                        },
-                      ].slice(-40),
-                    );
-                  }}
-                  onClearContext={() => setChatContext(null)}
-                  onClear={() => {
-                    setChatMessages([]);
-                    setPendingSteps([]);
+                  onStop={() => void stopConversation()}
+                  onClearContext={() => {
                     setChatContext(null);
-                    setExpandedChartId(null);
-                    setAskResult(null);
-                    setQuestion("");
-                    setError(null);
-                    setInputError(null);
-                    setFailedAsk(null);
-                    window.scrollTo({ top: 0, behavior: "instant" });
+                    resetConversationContext.current = true;
                   }}
+                  onClear={newConversation}
                 />
               ) : (
                 <section

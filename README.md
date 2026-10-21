@@ -103,3 +103,7 @@ docker compose up --build
 ## 第三方来源与许可
 
 AI 状态提示改编自 [Rare UI](https://rareui.com) 的 [Inline AI Status](https://www.rareui.com/components/aistatus) 源码，使用 Motion 驱动阶段图标和状态过渡；分析依据卡片交互参考其 Web Search，执行记录结构参考 shadcn/ui Task。Rare UI 采用 MIT + Commons Clause + Attribution，已保留原作者版权和[许可证全文](licenses/rare-ui-LICENSE.txt)。来源版本、改编范围和后续参赛材料要求见[第三方来源与许可说明](docs/third-party-notices.md)。本地启动后可访问 `/preview/ai-motion` 查看共用正式组件的动效演示。
+
+### 正式 AI 对话体验与账号历史
+
+「一句话分析」已接入账号隔离的服务端历史、最后消息更新后 10 天清理、可信图表／表格切换与可打断阅读跟随。使用方法见 [正式体验说明](docs/ai-conversation-experience.md)，持久化、停机／重启及清理方式见 [历史存储说明](docs/ai-conversation-storage.md)，验证边界见 [本地验收记录](docs/ai-conversation-experience-acceptance.md)。预览 `/preview/ai-experience` 继续使用明确标注的固定演示数据。

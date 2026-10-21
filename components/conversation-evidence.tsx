@@ -52,7 +52,7 @@ export function ExecutionSteps({
 }) {
   if (!live && !steps.length) return null;
   return (
-    <details className={styles.trace} open={live ? true : undefined} aria-label="分析执行过程">
+    <details className={styles.trace} aria-label="分析执行过程">
       <summary className={`${styles.summary} ${styles.traceSummary}`}>
         <AnalysisStatus steps={steps} live={live} completion={completion} />
         <Icon name="chevron" size={13} />

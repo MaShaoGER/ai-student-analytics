@@ -1,5 +1,12 @@
 # 第三方来源与许可说明
 
+## 对话刻度导航交互参考（2026-10-21）
+
+右侧轮次刻度参考 [VS Code Minimap](https://code.visualstudio.com/docs/editing/getting-started/userinterface#_minimap)
+的侧边概览与定位思路；按钮、轮次映射和滚动复用为本地实现，未复制其源码、图像或文档段落，没有引入 VS Code 运行时组件。
+位置语义查阅 [MDN aria-current](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-current)。
+动效复用项目已有令牌；这些参考不改变下述 RareUI 源码改编的许可和署名义务。
+
 ## Rare UI 源码改编与交互参考
 
 学析台的 AI 状态提示和分析依据卡片参考 [Rare UI](https://rareui.com) 的
