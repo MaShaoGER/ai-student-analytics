@@ -323,6 +323,8 @@ export function AnalysisResultView({
               {selected && (
                 <aside
                   className="result-focus"
+                  data-glass-pane="0.55"
+                  data-glass-texture="0.4"
                   aria-label="选中分组的统计详情"
                   data-enter="slide-right"
                   data-enter-group="rise"

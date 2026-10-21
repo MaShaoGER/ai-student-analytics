@@ -347,7 +347,7 @@ export function ConversationWorkspace({
         collapsed={historyCollapsed}
         onToggle={() => setHistoryCollapsed((value) => !value)}
       />
-      <div ref={root} className={styles.conversation}>
+      <div ref={root} className={styles.conversation} data-glass-pane="0.35">
         <div className={styles.readingArea}>
           <div
             ref={scroll.transcript}
@@ -499,7 +499,12 @@ export function ConversationWorkspace({
                       const expanded = expandedChartId === attachmentId;
                       const chartId = `conversation-chart-${attachmentId}`;
                       return (
-                        <div key={attachmentId} className={styles.chartAttachment}>
+                        <div
+                          key={attachmentId}
+                          className={styles.chartAttachment}
+                          data-glass-pane="0.6"
+                          data-glass-texture="0.72"
+                        >
                           <button
                             type="button"
                             className={styles.chartToggle}
@@ -635,6 +640,8 @@ export function ConversationWorkspace({
           {notice}
           <form
             className={styles.composer}
+            data-glass-pane="0.45"
+            data-glass-texture="0.5"
             aria-label="对话输入"
             aria-disabled={!aiAllowed}
             onSubmit={(event) => {

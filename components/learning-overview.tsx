@@ -207,6 +207,8 @@ export function LearningOverview({
             .map((card, index) => (
               <button
                 className={`overview-metric${metric === card.metric ? " is-selected" : ""}`}
+                data-glass-pane="0.55"
+                data-glass-texture="0.6"
                 type="button"
                 key={card.metric}
                 data-metric={card.metric}
@@ -283,6 +285,8 @@ export function LearningOverview({
         <div className="overview-primary">
           <section
             className="panel overview-chart-panel"
+            data-glass-pane="0.55"
+            data-glass-texture="0.7"
             aria-busy={loading}
             data-enter="panel"
             style={{ "--enter-delay": "380ms" } as CSSProperties}
@@ -392,6 +396,8 @@ export function LearningOverview({
           </section>
           <section
             className="panel overview-ranking"
+            data-glass-pane="0.55"
+            data-glass-texture="0.55"
             data-enter="rise"
             style={{ "--enter-delay": "480ms" } as CSSProperties}
           >
@@ -467,6 +473,8 @@ export function LearningOverview({
         <aside className="overview-secondary">
           <section
             className="overview-ask-card"
+            data-glass-pane="0.6"
+            data-glass-texture="0.55"
             data-enter="slide-right"
             style={{ "--enter-delay": "420ms" } as CSSProperties}
           >
@@ -544,6 +552,8 @@ export function LearningOverview({
           </section>
           <section
             className="panel overview-source-card"
+            data-glass-pane="0.6"
+            data-glass-texture="0.65"
             data-enter="slide-right"
             style={{ "--enter-delay": "540ms" } as CSSProperties}
           >

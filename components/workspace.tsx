@@ -1,7 +1,8 @@
 "use client";
 
-import { NavigationIndicator } from "@/components/ui/navigation-indicator";
-import { MotionToggle } from "@/components/ui/motion-preferences";
+import { GlassBackdrop } from "@/components/glass-backdrop";
+
+import { MotionToggle, useMotionPreferences } from "@/components/ui/motion-preferences";
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
@@ -632,6 +633,9 @@ function ReportCenter({
 
 export function Workspace({ initialConversation = false }: { initialConversation?: boolean } = {}) {
   const initialEntryApplied = useRef(false);
+  const [glassPaused, setGlassPaused] = useState(false);
+  const motionPreference = useMotionPreferences();
+  const lastDataView = useRef<View>("overview");
   const [user, setUser] = useState<SessionUser | null>(null);
   const [bootLoading, setBootLoading] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
@@ -746,6 +750,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
   }, []);
 
   const expire = useCallback((notice: string | null = null) => {
+    lastDataView.current = "overview";
     generation.current++;
     sessionSyncPending.current?.controller.abort();
     sessionSyncPending.current = null;
@@ -795,6 +800,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
 
   const clearScopedState = useCallback(
     (nextView: View = "overview", notice: string | null = null) => {
+      lastDataView.current = "overview";
       generation.current++;
       askPending.current?.abort();
       askPending.current = null;
@@ -1821,45 +1827,36 @@ export function Workspace({ initialConversation = false }: { initialConversation
   );
   const navigation = passwordChangeRequired ? (
     <nav className="workspace-nav" aria-label="主要功能">
-      <NavigationIndicator activeKey="account" />
       <button type="button" aria-current="page" onClick={() => navigate("account")}>
         <span>修改密码</span>
       </button>
     </nav>
   ) : (
     <nav className="workspace-nav" aria-label="主要功能">
-      <NavigationIndicator activeKey={`${view}-${mode}`} />
       {(
         [
           ["overview", "学习全景"],
           ["analysis", "指标分析"],
-          ...(capabilities.canUseAI ? ([["question", "一句话分析"]] as const) : []),
           ["data", "数据"],
           ["reports", "分析报告"],
         ] as const
       ).map(([key, label]) => {
         const active =
-          key === "question"
-            ? view === "analysis" && mode === "question"
-            : key === "analysis"
-              ? view === "analysis" && mode === "metrics"
-              : view === key;
+          key === "analysis" ? view === "analysis" && mode === "metrics" : view === key;
         return (
           <button
             type="button"
             key={key}
             aria-current={active ? "page" : undefined}
             onClick={() => {
-              if (key === "question" || key === "analysis") {
-                changeMode(key === "question" ? "question" : "metrics");
+              if (key === "analysis") {
+                changeMode("metrics");
                 navigate("analysis");
               } else navigate(key);
             }}
           >
             {key === "overview" && <Icon name="dashboard" size={16} />}
-            {key === "question" && <Icon name="sparkles" size={16} />}
             <span>{label}</span>
-            {key === "question" && <span className={conversationStyles.navBadge}>AI</span>}
             {key === "reports" && sessionAnalyses.length > 0 && (
               <small>{sessionAnalyses.length}</small>
             )}
@@ -1880,15 +1877,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
         data-enter="rise"
         style={{ "--enter-delay": "70ms" } as CSSProperties}
       >
-        {view === "overview" ? (
-          <>
-            学习，
-            <br />
-            有迹可循。
-          </>
-        ) : (
-          currentPage.title
-        )}
+        {view === "overview" ? <>学习数据总览</> : currentPage.title}
       </h1>
       <p data-enter="rise-sm" style={{ "--enter-delay": "180ms" } as CSSProperties}>
         {currentPage.description}
@@ -1941,82 +1930,150 @@ export function Workspace({ initialConversation = false }: { initialConversation
   );
   return (
     <div
-      className={`graphite-workspace workbench-shell ${experienceStyles.shell}`}
+      className={`graphite-workspace workbench-shell glass-workspace ${experienceStyles.shell}`}
       data-view={view}
       data-conversation={(view === "analysis" && mode === "question") || undefined}
     >
       <a className="skip-link" href="#main-content">
         跳到主要内容
       </a>
-      <aside
-        className="instrument-rail"
-        aria-label="工作台工具"
-        data-enter="slide-left"
-        style={{ "--enter-dur": "620ms" } as CSSProperties}
-      >
-        <div className="rail-content">
+      <GlassBackdrop paused={glassPaused} />
+      <header className="workbench-header glass-topbar">
+        <div className="glass-entry">
           <button
             type="button"
-            className="rail-brand"
-            aria-label="返回学习全景"
-            onClick={() => navigate("overview")}
+            className="glass-brand"
+            aria-label="返回数据总览"
+            onClick={() => {
+              changeMode("metrics");
+              navigate("overview");
+            }}
           >
-            <span className="instrument-mark" aria-hidden="true">
-              <i />
-              <i />
-              <i />
-              <i />
-            </span>
+            <Icon name="chart" size={25} />
+            <strong>学析台</strong>
           </button>
+          <div
+            className="glass-mode-switch"
+            data-glass-pane="0.08"
+            role="group"
+            aria-label="工作台模式"
+          >
+            {capabilities.canUseAI && !passwordChangeRequired && (
+              <button
+                type="button"
+                aria-pressed={view === "analysis" && mode === "question"}
+                onClick={() => {
+                  if (view === "analysis" && mode === "question") return;
+                  lastDataView.current = view;
+                  changeMode("question");
+                  navigate("analysis");
+                }}
+              >
+                <Icon name="sparkles" size={15} />
+                <span>AI 对话</span>
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={passwordChangeRequired}
+              aria-pressed={!(view === "analysis" && mode === "question")}
+              onClick={() => {
+                if (!(view === "analysis" && mode === "question")) return;
+                if (askPending.current) void stopConversation();
+                changeMode("metrics");
+                navigate(lastDataView.current);
+              }}
+            >
+              <Icon name="dashboard" size={15} />
+              <span>数据浏览</span>
+            </button>
+          </div>
+          <span className="glass-context">学习数据，循证而行</span>
+        </div>
+        <div className="glass-tools" data-glass-pane="0.08">
+          {datasetId === "demo" && <span className="glass-demo-tag">模拟演示数据</span>}
           <button
             type="button"
-            className="rail-menu icon-button"
+            className="icon-button glass-menu"
             aria-label={sidebarOpen ? "收起导航" : "打开导航"}
             aria-expanded={sidebarOpen}
             aria-controls="workspace-navigation"
             popoverTarget="workspace-navigation"
           >
-            <Icon name="menu" size={20} />
+            <Icon name="menu" size={18} />
           </button>
-          <span className="rail-wordmark" aria-hidden="true">
-            LEARNING INTELLIGENCE
-          </span>
-          <div className="rail-actions">
-            <ThemeToggle compact />
+          <button
+            type="button"
+            className="glass-optics-toggle"
+            disabled={motionPreference.reduced}
+            aria-pressed={!glassPaused && motionPreference.enabled && !motionPreference.reduced}
+            aria-label={
+              motionPreference.reduced
+                ? "光效已跟随系统减少动态"
+                : !glassPaused && motionPreference.enabled
+                  ? "暂停流光"
+                  : "播放流光"
+            }
+            onClick={() => {
+              if (!motionPreference.enabled) {
+                motionPreference.setEnabled(true);
+                setGlassPaused(false);
+              } else setGlassPaused((value) => !value);
+            }}
+          >
+            <span aria-hidden="true">
+              {!glassPaused && motionPreference.enabled && !motionPreference.reduced ? "Ⅱ" : "▷"}
+            </span>
+            <span>流光</span>
+          </button>
+          <ThemeToggle compact />
+          {user.role === "admin" && !passwordChangeRequired && (
             <button
               type="button"
               className="icon-button"
-              aria-label="打开设置"
-              title="设置"
-              onClick={() =>
-                navigate(passwordChangeRequired || user.role !== "admin" ? "account" : "admin")
-              }
+              aria-label="系统管理"
+              title="系统管理"
+              onClick={() => navigate("admin")}
             >
               <Icon name="settings" size={18} />
             </button>
-            <button
-              type="button"
-              className="icon-button"
-              aria-label="退出登录"
-              title="退出登录"
-              onClick={requestLogout}
-            >
-              <Icon name="logout" size={18} />
-            </button>
-          </div>
-          <span className="rail-hatch" aria-hidden="true" />
+          )}
+          <button
+            type="button"
+            className="glass-account"
+            aria-label="我的账号"
+            title={user.displayName || user.username}
+            onClick={() => navigate("account")}
+          >
+            <span className="glass-avatar">{Array.from(user.displayName || user.username)[0]}</span>
+            <span className="glass-user-name">{user.displayName || user.username}</span>
+          </button>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="退出登录"
+            title="退出登录"
+            onClick={requestLogout}
+          >
+            <Icon name="logout" size={17} />
+          </button>
         </div>
-      </aside>
-      <header
-        className="workbench-header"
-        data-enter="fade"
-        style={{ "--enter-delay": "60ms" } as CSSProperties}
-      >
-        <div className="desktop-navigation">{navigation}</div>
-        <span className="mobile-workspace-title">
-          学析台<small>{currentPage.title}</small>
-        </span>
       </header>
+      {!(view === "analysis" && mode === "question") && (
+        <aside className="glass-data-sidebar" data-glass-pane="0.45" aria-label="数据浏览导航">
+          <span className="glass-sidebar-label">
+            学习工作台 <small>WORKSPACE</small>
+          </span>
+          {navigation}
+          <div className="glass-sidebar-source">{sourcePicker}</div>
+          <div className="glass-sidebar-bottom">
+            <Icon name="shield" size={15} />
+            <span>
+              聚合分析 · 保护个人信息<small>从数据出发，回到教学。</small>
+            </span>
+          </div>
+        </aside>
+      )}
       <aside
         id="workspace-navigation"
         ref={sidebar}
@@ -2039,17 +2096,23 @@ export function Workspace({ initialConversation = false }: { initialConversation
           </button>
         </div>
         {navigation}
+        {!(view === "analysis" && mode === "question") && sourcePicker}
         <div className="drawer-footnote">
           <Icon name="shield" size={14} />
           <span>学析台 · 学习数据分析</span>
         </div>
       </aside>
-      <div className="workbench-main">
+      <div
+        className="workbench-main"
+        data-glass-pane={view === "analysis" && mode === "question" ? undefined : "0.35"}
+      >
         <main
           id="main-content"
           className="workbench-content"
           aria-labelledby={
-            view === "analysis" && mode === "question" ? "conversation-heading" : "workspace-heading"
+            view === "analysis" && mode === "question"
+              ? "conversation-heading"
+              : "workspace-heading"
           }
         >
           {view !== "overview" && (
@@ -2057,7 +2120,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
               className={`workbench-page-heading ${view === "analysis" && mode === "question" ? conversationStyles.workspaceHeading : ""}`}
             >
               {pageHeader}
-              {sourcePicker}
             </div>
           )}
           <div key={view} className="view-surface">
@@ -2066,7 +2128,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
               (capabilities.canUseAI ? (
                 <LearningOverview
                   heading={pageHeader}
-                  sourceControl={sourcePicker}
+                  sourceControl={null}
                   results={overview}
                   loading={profilesLoading || (overviewLoading && canRun)}
                   profile={selectedProfile}
@@ -2092,7 +2154,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
               ) : (
                 <ReadonlyOverview
                   heading={pageHeader}
-                  sourceControl={sourcePicker}
+                  sourceControl={null}
                   profile={selectedProfile}
                   profilesLoading={profilesLoading}
                   profilesError={profilesError}

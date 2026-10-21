@@ -1,0 +1,159 @@
+/* Login screen in the V4 optical glass material.
+   Scoped overrides only: .glass-auth reworks the .glass-workspace grid for the two
+   sign-in columns and paints one shared frost + emboss recipe on both panes.
+   Import after app/glass-workspace.css. Logic, copy and semantics stay in the component. */
+
+.glass-workspace.glass-auth {
+  --auth-corner: 22px;
+  --auth-emboss-hi: #ffffff1f;
+  --auth-emboss-lo: #22403a16;
+  grid-template-columns: minmax(0, 1.1fr) minmax(430px, 0.9fr);
+  grid-template-rows: minmax(min-content, 1fr);
+  align-content: stretch;
+  gap: clamp(16px, 2vw, 30px);
+  padding: clamp(20px, 2.4vw, 40px);
+  min-height: 100dvh;
+  border: 0;
+  overflow: visible;
+  color-scheme: light;
+}
+:root[data-theme="dark"] .glass-workspace.glass-auth {
+  --auth-emboss-hi: #dff5ee17;
+  --auth-emboss-lo: #04121a9c;
+  color-scheme: dark;
+}
+
+/* One material for both panes: frost, fixed-surface emboss lattice, thick polished edge. */
+.glass-auth .login-story,
+.glass-auth .login-form-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--glass-border);
+  border-top-color: var(--glass-rim);
+  border-radius: var(--auth-corner);
+  background:
+    repeating-linear-gradient(52deg, var(--auth-emboss-hi) 0 1px, transparent 1px 7.5px),
+    repeating-linear-gradient(-52deg, var(--auth-emboss-lo) 0 1px, transparent 1px 7.5px),
+    radial-gradient(115% 80% at 14% 6%, #f8fffc33, transparent 58%), var(--glass-fill);
+  box-shadow:
+    var(--glass-shadow),
+    0 26px 60px -28px #1b312966;
+  -webkit-backdrop-filter: blur(28px) saturate(135%);
+  backdrop-filter: blur(28px) saturate(135%);
+}
+/* Copy stays above the material; the chromatic rim ring from glass-workspace stays decorative. */
+.glass-auth [data-glass-pane] > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Story column */
+.glass-auth .login-story {
+  justify-content: center;
+  align-items: flex-start;
+  padding: clamp(26px, 3.2vw, 54px) clamp(24px, 3vw, 50px);
+}
+.glass-auth .login-brand {
+  margin-bottom: clamp(30px, 5vh, 60px);
+}
+.glass-auth .login-signals {
+  max-width: none;
+  margin-top: 34px;
+  padding: 18px 20px 14px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--auth-corner) - 8px);
+  background: color-mix(in srgb, var(--sage) 15%, transparent);
+  box-shadow: inset 0 1px 0 #ffffff4d;
+}
+
+/* Form column: the area stays bare so only the card carries the glass. */
+.glass-auth .login-form-area {
+  justify-content: center;
+  align-items: center;
+  padding: clamp(8px, 1.4vw, 20px) clamp(4px, 1vw, 16px);
+  background: transparent;
+  border: 0;
+}
+.glass-auth .login-form-card {
+  width: 100%;
+  max-width: 412px;
+  padding: clamp(24px, 2.4vw, 34px);
+}
+/* Stable text over a refracting surface: fields keep their own backing. */
+.glass-auth .login-form .form-field input {
+  background: color-mix(in srgb, var(--paper) 80%, transparent);
+  box-shadow: inset 0 1px 2px #22403a1a;
+}
+
+@media (max-width: 940px) {
+  .glass-workspace.glass-auth {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    align-content: start;
+    gap: 14px;
+    padding: 60px 14px 22px;
+  }
+  .glass-auth .login-story {
+    padding: 26px 20px 22px;
+  }
+  .glass-auth .login-brand {
+    margin-bottom: 26px;
+  }
+  .glass-auth .login-story-copy h1 {
+    font-size: 26px;
+    letter-spacing: -1px;
+  }
+  .glass-auth .login-signals {
+    margin-top: 24px;
+    padding: 14px 16px 10px;
+  }
+  .glass-auth .login-form-area {
+    padding: 4px 2px 0;
+  }
+  .glass-auth .login-access-label {
+    position: static;
+    align-self: center;
+  }
+  .glass-auth .login-form-card {
+    max-width: 100%;
+  }
+  .glass-auth .login-footer {
+    position: static;
+    margin-top: 6px;
+    justify-content: center;
+  }
+}
+
+/* 390 / 320 px: one scrolling column, no horizontal overflow, card keeps its padding. */
+@media (max-width: 400px) {
+  .glass-workspace.glass-auth {
+    padding: 56px 10px 16px;
+  }
+  .glass-auth .login-story,
+  .glass-auth .login-form-card {
+    padding: 22px 16px;
+  }
+  .glass-auth .login-story-copy h1 {
+    font-size: 23px;
+  }
+  .glass-auth .login-signal-labels {
+    font-size: 9px;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass-workspace.glass-auth .login-story,
+  .glass-workspace.glass-auth .login-form-card {
+    background: var(--paper);
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-workspace.glass-auth .login-story,
+  .glass-workspace.glass-auth .login-form-card {
+    background: color-mix(in srgb, var(--paper) 92%, var(--sage-soft));
+  }
+}

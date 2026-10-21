@@ -1204,3 +1204,37 @@
     transition: none;
   }
 }
+
+/* Accepted frosted workbench material. Data tables keep stable reading fills. */
+:global(.glass-workspace) .metricGrid {
+  border: 0;
+  background: transparent;
+  gap: 12px;
+}
+:global(.glass-workspace) .metricCard {
+  border: 1px solid var(--glass-border);
+  border-top-color: var(--glass-rim);
+  border-radius: 14px;
+  background: transparent;
+}
+:global(.glass-workspace) .metricCard strong {
+  font-family: inherit;
+  font-weight: 500;
+}
+:global(.glass-workspace) .metricCard small {
+  padding-right: 0;
+}
+:global(.glass-workspace) .costMetric {
+  border-radius: 12px;
+}
+:global(.glass-workspace) .intro h2 {
+  font-size: 24px;
+  font-weight: 500;
+}
+:global(.glass-workspace) .tablePanel {
+  border-radius: 12px;
+}
+:global(.glass-workspace) .dialog {
+  border-radius: 16px;
+  background: var(--surface-raised);
+}

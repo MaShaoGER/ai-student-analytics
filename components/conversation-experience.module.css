@@ -274,3 +274,93 @@
     cursor: pointer;
   }
 }
+
+/* V4: account history is a separate pane of smoked glass. */
+:global(.glass-workspace) .layout {
+  grid-template-columns: 224px minmax(0, 1fr);
+  gap: 20px;
+}
+:global(.glass-workspace) .layout[data-history-collapsed="true"] {
+  grid-template-columns: 52px minmax(0, 1fr);
+}
+:global(.glass-workspace) .historyRail {
+  border: 1px solid var(--glass-border);
+  border-top-color: var(--glass-rim);
+  border-radius: var(--glass-radius);
+  background: linear-gradient(145deg, #dcefeb08, transparent), var(--glass-fill);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  backdrop-filter: blur(16px) saturate(120%);
+}
+:global(.glass-workspace) .historyRail .history {
+  width: 224px;
+  background: transparent;
+  padding: 64px 14px 20px;
+}
+:global(.glass-workspace) .historyToggle {
+  top: 12px;
+  right: 6px;
+  border-radius: 9px;
+  background: transparent;
+}
+:global(.glass-workspace) .newChat {
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--sage) 7%, transparent);
+  margin-top: 12px;
+}
+:global(.glass-workspace) .historyEmpty {
+  border-radius: 10px;
+  border-style: solid;
+}
+:global(.glass-workspace) .historyRow {
+  border: 1px solid transparent;
+  border-radius: 9px;
+}
+:global(.glass-workspace) .historyRow[data-active="true"] {
+  border-color: var(--line);
+  background: color-mix(in srgb, var(--sage) 12%, transparent);
+}
+:global(.glass-workspace) .historyIndex {
+  font-weight: 400;
+}
+:global(.glass-workspace) .retention {
+  font-size: 10px;
+  line-height: 1.9;
+}
+:global(.glass-workspace) .deleteConfirm button {
+  border-radius: 7px;
+}
+:global(.glass-workspace) .historyFoot {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  gap: 8px;
+}
+@supports not (backdrop-filter: blur(1px)) {
+  :global(.glass-workspace) .historyRail {
+    background: var(--paper);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :global(.glass-workspace) .historyRail {
+    background: var(--paper);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+@media (max-width: 900px) {
+  :global(.glass-workspace) .layout,
+  :global(.glass-workspace) .layout[data-history-collapsed="true"] {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  :global(.glass-workspace) .mobileHistory {
+    border-radius: 9px;
+    right: 16px;
+    top: 12px;
+    background: var(--surface);
+  }
+  :global(.glass-workspace) .historyDrawer:popover-open {
+    background: var(--surface-raised);
+    border-radius: 0 16px 16px 0;
+  }
+}

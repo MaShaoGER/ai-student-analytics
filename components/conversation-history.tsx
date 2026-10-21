@@ -140,7 +140,7 @@ export function ConversationHistory(
   );
   return (
     <>
-      <div className={styles.historyRail}>
+      <div className={styles.historyRail} data-glass-pane="0.55">
         <button
           type="button"
           className={styles.historyToggle}

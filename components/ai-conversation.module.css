@@ -1184,3 +1184,193 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   transition: none;
   transform: none;
 }
+
+/* V4: a unified reading surface, with data embedded in the assistant reply.
+   14px reading text / 22px title, 4px rhythm, one frost layer per outer pane. */
+:global(.glass-workspace) .conversation {
+  border: 1px solid var(--glass-border);
+  border-top-color: var(--glass-rim);
+  border-radius: var(--glass-radius);
+  padding: 20px clamp(20px, 3vw, 48px) 16px;
+  background: linear-gradient(125deg, #dcefeb07, transparent 50%, #b9b3df07), var(--glass-fill);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  backdrop-filter: blur(16px) saturate(120%);
+}
+:global(.glass-workspace) .formalHeader {
+  border: 0;
+  padding: 0 0 16px;
+}
+:global(.glass-workspace) .formalHeader h1 {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0;
+  margin: 6px 0;
+}
+:global(.glass-workspace) .formalHeader > div > span {
+  font-weight: 400;
+  font-size: 9px;
+  letter-spacing: 1.2px;
+}
+:global(.glass-workspace) .formalHeader p {
+  font-size: 11px;
+}
+:global(.glass-workspace) .availability {
+  font-size: 11px;
+}
+:global(.glass-workspace) .transcript {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--sage) 30%, transparent) transparent;
+}
+:global(.glass-workspace) .empty {
+  padding: 28px 0;
+  border: 0;
+}
+:global(.glass-workspace) .empty h2 {
+  font-size: clamp(28px, 3vw, 38px);
+  font-weight: 500;
+  letter-spacing: -1px;
+}
+:global(.glass-workspace) .welcomeMark {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--sage) 10%, transparent);
+}
+:global(.glass-workspace) .welcomeSuggestions {
+  gap: 10px 12px;
+}
+:global(.glass-workspace) .welcomeSuggestions button {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  min-height: 48px;
+  padding: 12px;
+}
+:global(.glass-workspace) .message {
+  padding: 20px 0;
+}
+:global(.glass-workspace) .message[data-role="user"] {
+  width: fit-content;
+  max-width: 76%;
+  margin: 12px 0 16px auto;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px 12px 3px 12px;
+  background: color-mix(in srgb, var(--sage) 9%, transparent);
+}
+:global(.glass-workspace) .message[data-role="user"] .speaker {
+  justify-content: flex-end;
+}
+:global(.glass-workspace) .message[data-role="user"] .avatar {
+  display: none;
+}
+:global(.glass-workspace) .message[data-role="user"] .messageText {
+  margin-top: 4px;
+}
+:global(.glass-workspace) .speaker strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+:global(.glass-workspace) .avatar {
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--sage) 14%, transparent);
+  color: var(--ink);
+  border-color: var(--line);
+}
+:global(.glass-workspace) .messageText {
+  line-height: 1.9;
+}
+:global(.glass-workspace) .snapshotNote {
+  font-size: 10px;
+  line-height: 1.7;
+}
+:global(.glass-workspace) .chartAttachment {
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--surface-inset) 58%, transparent);
+  border-top-color: var(--glass-rim);
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 #ffffff0c;
+}
+:global(.glass-workspace) .chartToggle {
+  background: transparent;
+  padding: 12px 16px;
+}
+:global(.glass-workspace) .chartToggle > span {
+  font-size: 12px;
+}
+:global(.glass-workspace) .suggestions button {
+  border-radius: 7px;
+  font-size: 11px;
+  background: transparent;
+}
+:global(.glass-workspace) .scrollRuler {
+  border-left-color: var(--line);
+  flex-basis: 28px;
+}
+:global(.glass-workspace) .composer {
+  border: 1px solid var(--line);
+  border-top-color: var(--glass-rim);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--sage) 6%, var(--surface-inset));
+  box-shadow:
+    inset 0 1px 0 #ffffff14,
+    0 4px 12px #0715220c;
+  padding: 10px 16px;
+}
+:global(.glass-workspace) .composer textarea {
+  background: transparent;
+  font-size: 14px;
+}
+:global(.glass-workspace) .composerHeading > label {
+  font-size: 11px;
+}
+:global(.glass-workspace) .composerTools button {
+  font-size: 11px;
+}
+:global(.glass-workspace) .collapseToggle,
+:global(.glass-workspace) .send {
+  border-radius: 8px;
+}
+:global(.glass-workspace) .contextChip {
+  border-radius: 6px;
+}
+:global(.glass-workspace) .composerDock[data-collapsed="true"] .composer {
+  border-radius: 10px;
+}
+@supports not (backdrop-filter: blur(1px)) {
+  :global(.glass-workspace) .conversation {
+    background: var(--paper);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :global(.glass-workspace) .conversation {
+    background: var(--paper);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+@media (max-width: 900px) {
+  :global(.glass-workspace) .readingArea {
+    margin-top: 48px;
+  }
+}
+@media (max-width: 600px) {
+  :global(.glass-workspace) .conversation {
+    padding: 12px 14px;
+  }
+  :global(.glass-workspace) .formalHeader h1 {
+    font-size: 18px;
+  }
+  :global(.glass-workspace) .message[data-role="user"] {
+    max-width: 94%;
+    padding: 12px;
+  }
+  :global(.glass-workspace) .welcomeSuggestions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :global(.glass-workspace) .composer {
+    padding: 8px 10px;
+  }
+  :global(.glass-workspace) .composer textarea {
+    font-size: 16px;
+  }
+}

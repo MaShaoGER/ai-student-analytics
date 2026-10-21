@@ -204,3 +204,31 @@
     transition-duration: 0ms !important;
   }
 }
+
+:global(.glass-workspace) .wrapper {
+  border: 0;
+  background: transparent;
+}
+:global(.glass-workspace) .header {
+  background: transparent;
+  padding: 12px 16px;
+}
+:global(.glass-workspace) .heading h3 {
+  font-size: 13px;
+  font-weight: 500;
+}
+:global(.glass-workspace) .controls {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 3px;
+}
+:global(.glass-workspace) .controls button {
+  border-radius: 5px;
+}
+:global(.glass-workspace) .controls button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--sage) 16%, transparent);
+  border-color: transparent;
+}
+:global(.glass-workspace) .footer {
+  padding: 12px 16px;
+}

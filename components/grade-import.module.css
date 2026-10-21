@@ -809,3 +809,37 @@
     transition: none;
   }
 }
+
+:global(.glass-workspace) .importLedger {
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  overflow: visible;
+}
+:global(.glass-workspace) .importHeader {
+  border: 0;
+  padding: 0 0 20px;
+  background: transparent;
+}
+:global(.glass-workspace) .importHeader::after {
+  display: none;
+}
+:global(.glass-workspace) .ledgerGrid {
+  gap: 16px;
+}
+:global(.glass-workspace) .stepPanel {
+  border: 1px solid var(--glass-border);
+  border-top-color: var(--glass-rim);
+  border-radius: 14px;
+}
+:global(.glass-workspace) .stepPanel:nth-child(2n) {
+  border-right: 1px solid var(--glass-border);
+}
+:global(.glass-workspace) .dropZone {
+  border-radius: 10px;
+}
+:global(.glass-workspace) .publishedReceipt {
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}

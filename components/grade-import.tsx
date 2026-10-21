@@ -988,7 +988,12 @@ export function GradeImport({
       ) : null}
 
       <div className={styles.ledgerGrid}>
-        <section className={styles.stepPanel} aria-labelledby="grade-import-source-title">
+        <section
+          className={styles.stepPanel}
+          data-glass-pane="0.6"
+          data-glass-texture="0.55"
+          aria-labelledby="grade-import-source-title"
+        >
           <div className={styles.stepHeading}>
             <span>01</span>
             <div>
@@ -1076,7 +1081,12 @@ export function GradeImport({
           ) : null}
         </section>
 
-        <section className={styles.stepPanel} aria-labelledby="grade-import-selection-title">
+        <section
+          className={styles.stepPanel}
+          data-glass-pane="0.6"
+          data-glass-texture="0.55"
+          aria-labelledby="grade-import-selection-title"
+        >
           <div className={styles.stepHeading}>
             <span>02</span>
             <div>
@@ -1250,7 +1260,12 @@ export function GradeImport({
           )}
         </section>
 
-        <section className={styles.stepPanel} aria-labelledby="grade-import-validation-title">
+        <section
+          className={styles.stepPanel}
+          data-glass-pane="0.6"
+          data-glass-texture="0.55"
+          aria-labelledby="grade-import-validation-title"
+        >
           <div className={styles.stepHeading}>
             <span>03</span>
             <div>
@@ -1382,7 +1397,12 @@ export function GradeImport({
           )}
         </section>
 
-        <section className={styles.stepPanel} aria-labelledby="grade-import-publish-title">
+        <section
+          className={styles.stepPanel}
+          data-glass-pane="0.6"
+          data-glass-texture="0.55"
+          aria-labelledby="grade-import-publish-title"
+        >
           <div className={styles.stepHeading}>
             <span>04</span>
             <div>
