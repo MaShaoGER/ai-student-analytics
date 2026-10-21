@@ -21,47 +21,49 @@ export default function GlassBackgroundsPreview() {
         </div>
       </header>
       <div className={styles.grid}>
-        {glassPatterns.map((pattern) => (
-          <a
-            className={styles.option}
-            href={`/preview/glass-material?pattern=${pattern.id}`}
-            key={pattern.id}
-            aria-label={`放大预览 ${pattern.code} ${pattern.name}`}
-          >
-            <div className={`glass-workspace ${styles.stage}`}>
-              <GlassBackdrop pattern={pattern.id} paused />
-              <div className={styles.caption} aria-hidden="true">
-                <span>{pattern.code} / MATERIAL STUDY</span>
-                <span>↗</span>
-              </div>
-              <section
-                className={styles.pane}
-                data-glass-pane="0.6"
-                data-glass-texture="0.75"
-                aria-hidden="true"
-              >
-                <span className={styles.small}>学析台 · 磨砂玻璃</span>
-                <strong>让光，穿过界面。</strong>
-                <div className={styles.lines}>
-                  <i />
-                  <i />
-                  <i />
-                  <i />
-                  <i />
+        {glassPatterns
+          .filter((pattern) => pattern.id !== "smoke")
+          .map((pattern) => (
+            <a
+              className={styles.option}
+              href={`/preview/glass-material?pattern=${pattern.id}`}
+              key={pattern.id}
+              aria-label={`放大预览 ${pattern.code} ${pattern.name}`}
+            >
+              <div className={`glass-workspace ${styles.stage}`}>
+                <GlassBackdrop pattern={pattern.id} paused />
+                <div className={styles.caption} aria-hidden="true">
+                  <span>{pattern.code} / MATERIAL STUDY</span>
+                  <span>↗</span>
                 </div>
-                <span className={styles.small}>装饰图形 · 无统计含义</span>
-              </section>
-            </div>
-            <div className={styles.label}>
-              <div>
-                <span className={styles.code}>{pattern.code}</span>
-                <h2>{pattern.name}</h2>
+                <section
+                  className={styles.pane}
+                  data-glass-pane="0.6"
+                  data-glass-texture="0.75"
+                  aria-hidden="true"
+                >
+                  <span className={styles.small}>学析台 · 磨砂玻璃</span>
+                  <strong>让光，穿过界面。</strong>
+                  <div className={styles.lines}>
+                    <i />
+                    <i />
+                    <i />
+                    <i />
+                    <i />
+                  </div>
+                  <span className={styles.small}>装饰图形 · 无统计含义</span>
+                </section>
               </div>
-              <p>{pattern.description}</p>
-              <span className={styles.note}>{pattern.note}</span>
-            </div>
-          </a>
-        ))}
+              <div className={styles.label}>
+                <div>
+                  <span className={styles.code}>{pattern.code}</span>
+                  <h2>{pattern.name}</h2>
+                </div>
+                <p>{pattern.description}</p>
+                <span className={styles.note}>{pattern.note}</span>
+              </div>
+            </a>
+          ))}
       </div>
       <footer className={styles.footer}>
         仅供方案选择，正式工作台仍使用当前背景。无需登录，不调用 AI。

@@ -869,3 +869,42 @@
     padding: 16px;
   }
 }
+
+/* Selected smoke-silver background: neutral reading surfaces and silver rims. */
+.glass-workspace[data-glass-pattern="smoke"] {
+  --glass-fill: #e9edf16b;
+  --background: #d6d9dd;
+  --paper: #edf0f2;
+  --surface: #e6e9ed;
+  --surface-inset: #d9dfe4;
+  --surface-raised: #f5f6f8;
+  --glass-border: #53606e40;
+  --glass-rim: #ffffffc9;
+  --glass-shadow: inset 0 1px 1px #ffffffa6, inset 0 -1px 2px #8c9caa24, 0 8px 24px #0b111b1f;
+}
+:root[data-theme="dark"] .glass-workspace[data-glass-pattern="smoke"] {
+  --glass-fill: #1014196b;
+  --background: #090c10;
+  --paper: #171c22;
+  --surface: #1b2229;
+  --surface-inset: #10161d;
+  --surface-raised: #29323c;
+  --ink: #ecf0f3;
+  --muted: #b1bcc6;
+  --muted-on-sage: #b9c6c4;
+  --line: #d4dce32b;
+  --glass-border: #d4dce347;
+  --glass-rim: #eff3f77a;
+  --glass-shadow: inset 0 1px 1px #ffffff45, inset 0 -1px 2px #c8d3df1a, 0 8px 28px #02040747;
+}
+.glass-workspace[data-glass-pattern="smoke"] :is([data-glass-pane], .panel)::after {
+  background: linear-gradient(
+    135deg,
+    #e2e8f0aa,
+    transparent 26%,
+    #b5c2d54d 45%,
+    transparent 63%,
+    #d4c5b45e 88%,
+    #f0f4f8aa
+  );
+}

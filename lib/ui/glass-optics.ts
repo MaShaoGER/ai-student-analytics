@@ -23,6 +23,46 @@ const lightSource = `
       return exp(-v * v);
     }
 
+    // Studio reflections on curved sheets. Broad lights and black negative
+    // space are modeled separately; no artwork or remote texture is sampled.
+    vec3 silverReflection(vec3 normal, vec2 q, float t) {
+      vec3 view = vec3(0.0, 0.0, 1.0);
+      vec3 reflected = reflect(-view, normalize(normal));
+      float box = exp(-pow((reflected.y - 0.20) / 0.42, 2.0));
+      float strip = exp(-pow((reflected.y + 0.56) / 0.065, 2.0));
+      float side = exp(-pow((reflected.x - 0.55) / 0.26, 2.0));
+      float shade = 0.14 + 0.86 * smoothstep(-0.75, 0.55, reflected.x);
+      vec3 silver = vec3(0.018, 0.021, 0.025);
+      silver += vec3(0.49, 0.51, 0.54) * box * shade;
+      silver += vec3(0.80, 0.82, 0.84) * strip * (0.45 + 0.55 * side);
+      silver += vec3(0.14, 0.15, 0.17) * side;
+      float edge = pow(1.0 - max(0.0, normal.z), 4.0);
+      silver += edge * mix(vec3(0.045, 0.060, 0.090), vec3(0.085, 0.068, 0.042),
+                           0.5 + 0.5 * sin(q.x * 2.2 + t * 0.025));
+      return silver;
+    }
+
+    vec4 silverSheet(vec2 q, float layer, float t) {
+      float angle = layer == 0.0 ? -0.22 : (layer == 1.0 ? 0.40 : -0.48);
+      q = mat2(cos(angle), -sin(angle), sin(angle), cos(angle)) * q;
+      float offset = layer == 0.0 ? 0.10 : (layer == 1.0 ? -0.21 : 0.38);
+      float bend = 0.18 * sin(q.x * 3.0 + layer * 1.4 + t * 0.035)
+                 + 0.09 * sin(q.x * 5.1 - layer * 0.7);
+      float derivative = 0.54 * cos(q.x * 3.0 + layer * 1.4 + t * 0.035)
+                       + 0.459 * cos(q.x * 5.1 - layer * 0.7);
+      float width = (layer == 0.0 ? 0.155 : 0.085)
+                  * (0.62 + 0.38 * cos(q.x * 2.6 + layer));
+      float cross = (q.y - bend - offset) / width;
+      float coverage = 1.0 - smoothstep(0.97, 1.01, abs(cross));
+      float nz = sqrt(max(0.0001, 1.0 - cross * cross));
+      vec3 normal = normalize(vec3(-derivative * 0.7 + q.x * 0.17, cross * 0.85, nz));
+      vec3 silver = silverReflection(normal, q, t);
+      float lip = exp(-pow((abs(cross) - 0.94) / 0.025, 2.0));
+      silver += vec3(0.18, 0.19, 0.21) * lip * (0.45 + 0.55 * nz);
+      coverage *= 1.0 - smoothstep(0.64, 1.22, abs(q.x));
+      return vec4(silver, coverage);
+    }
+
     void main() {
       vec2 uv = vec2(v_uv.x, 1.0 - v_uv.y);
       float t = u_time * 1.8;
@@ -89,7 +129,7 @@ const lightSource = `
           * silk * (0.65 + 0.35 * cos(p.y * 1.6));
         color += vec3(0.19, 0.34, 0.30) * pow(curtain, 15.0) * (0.75 + fine * 0.25);
         color += vec3(0.025, 0.05, 0.045) * curtain;
-      } else if (u_pattern > 3.5) {
+      } else if (u_pattern > 3.5 && u_pattern < 4.5) {
         float r1 = length((p - vec2(0.27, 0.02)) * vec2(1.0, 1.1));
         float r2 = length((p - vec2(-0.43, 0.28)) * vec2(1.0, 1.2));
         float ripple = 0.5 + 0.5 * cos(r1 * 66.0 - t * 0.15);
@@ -100,7 +140,20 @@ const lightSource = `
         color += vec3(0.26, 0.35, 0.33) * pow(ripple * echo, 6.0);
         color += vec3(0.09, 0.07, 0.04) * exp(-r1 * 2.0);
       }
-      color = mix(color, vec3(0.72, 0.79, 0.77) + color * 0.30, u_lightTheme);
+      if (u_pattern > 4.5) {
+        vec2 q = (uv - 0.5) * vec2(1.65, 1.0);
+        q.y += 0.025 * sin(t * 0.025);
+        color = vec3(0.012, 0.015, 0.019);
+        color += vec3(0.009, 0.010, 0.012) * exp(-dot(q, q) * 2.0);
+        vec4 back = silverSheet(q, 2.0, t);
+        color = mix(color, back.rgb, back.a);
+        vec4 middleSheet = silverSheet(q, 1.0, t);
+        color = mix(color, middleSheet.rgb, middleSheet.a);
+        vec4 front = silverSheet(q, 0.0, t);
+        color = mix(color, front.rgb, front.a);
+      }
+      vec3 lightBase = u_pattern > 4.5 ? vec3(0.79, 0.80, 0.81) : vec3(0.72, 0.79, 0.77);
+      color = mix(color, lightBase + color * 0.30, u_lightTheme);
       gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
     }
   `;
@@ -112,6 +165,7 @@ const glassSource = `
     uniform vec2 u_resolution;
     uniform float u_time;
     uniform float u_lightTheme;
+    uniform float u_pattern;
     uniform vec4 u_rects[12];
     uniform vec4 u_materials[12];
 
@@ -140,6 +194,7 @@ const glassSource = `
         }
       }
 
+      float smoke = step(4.5, u_pattern);
       vec3 color = lightAt(p);
       if (distanceToGlass < 0.0) {
         vec2 local = p - pane.xy;
@@ -171,7 +226,7 @@ const glassSource = `
                           1.4 * cos(u_time * 0.27 + local.x * 0.008));
         vec2 bend = -normal * edge * edge * 32.0
                   + textureNormal + broadLens * textureStrength * 13.0 + drift;
-        float spectralWidth = 2.8 + edge * 10.0 + textureStrength * 1.6;
+        float spectralWidth = (2.8 + edge * 10.0 + textureStrength * 1.6) * mix(1.0, 0.35, smoke);
         vec2 spectralDirection = normalize(normal * edge + vec2(0.7, 0.4));
         vec2 center = pane.xy + pane.zw * 0.5;
         vec2 refracted = center + (p - center) * (1.0 - textureStrength * 0.055) + bend;
@@ -191,6 +246,8 @@ const glassSource = `
         }
 
         color = mix(color, mix(vec3(0.055, 0.095, 0.12), vec3(0.83, 0.88, 0.86), u_lightTheme), 0.12 + frost * 0.18);
+        vec3 neutralFrost = mix(vec3(0.08, 0.09, 0.10), vec3(0.85, 0.86, 0.87), u_lightTheme);
+        color = mix(color, neutralFrost, smoke * 0.12);
         float lightLevel = dot(color, vec3(0.21, 0.72, 0.07));
         // Facet shading is stationary and light-dependent, so the surface
         // reads as embossed glass instead of a moving noise overlay.
@@ -205,6 +262,7 @@ const glassSource = `
         float polished = exp(-abs(distanceToGlass + 1.7) * 1.4);
         float movingGlint = 0.5 + 0.5 * sin(local.x * 0.008 + local.y * 0.012 - u_time * 0.45);
         vec3 edgeColor = mix(vec3(0.49, 0.66, 1.0), vec3(1.0, 0.76, 0.59), movingGlint);
+        edgeColor = mix(edgeColor, vec3(0.70, 0.73, 0.77), smoke);
         color += polished * edgeColor * (0.30 + movingGlint * 0.38);
         color += edge * edge * vec3(0.027, 0.020, 0.045);
         color = mix(lightAt(p), color, material.w);
@@ -223,6 +281,7 @@ type OpticalProgram = {
   position: number;
   time: WebGLUniformLocation | null;
   theme: WebGLUniformLocation | null;
+  pattern: WebGLUniformLocation | null;
 };
 export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement) {
   const gl = canvas.getContext("webgl", {
@@ -337,6 +396,7 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
         position: gl.getAttribLocation(handle, "a_position"),
         time: gl.getUniformLocation(handle, "u_time"),
         theme: gl.getUniformLocation(handle, "u_lightTheme"),
+        pattern: gl.getUniformLocation(handle, "u_pattern"),
       };
     };
     const light = program(lightSource),
@@ -373,7 +433,6 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
     const materialLocation = gl.getUniformLocation(glass.handle, "u_materials[0]");
     const resolutionLocation = gl.getUniformLocation(glass.handle, "u_resolution");
     const textureLocation = gl.getUniformLocation(glass.handle, "u_light");
-    const patternLocation = gl.getUniformLocation(light.handle, "u_pattern");
     const updateGeometry = () => {
       dirty = false;
       const bounds = stage.getBoundingClientRect();
@@ -476,8 +535,7 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
       gl.vertexAttribPointer(pass.position, 2, gl.FLOAT, false, 0, 0);
       gl.uniform1f(pass.time, phase);
       gl.uniform1f(pass.theme, options.light ? 1 : 0);
-      if (pass === light)
-        gl.uniform1f(patternLocation, glassPatternValue(options.pattern ?? "ribbons"));
+      gl.uniform1f(pass.pattern, glassPatternValue(options.pattern ?? "smoke"));
     };
     draw = () => {
       if (disposed || gl.isContextLost()) return;

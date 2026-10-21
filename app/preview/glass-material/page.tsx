@@ -11,16 +11,17 @@ import styles from "./material.module.css";
 /** Public visual specimen only: no account, dataset, or model calls. */
 export default function GlassMaterialPreview() {
   const [paused, setPaused] = useState(false);
-  const [pattern, setPattern] = useState<GlassPattern>("ribbons");
+  const [pattern, setPattern] = useState<GlassPattern>("smoke");
   useEffect(() => {
     const requested = new URLSearchParams(window.location.search).get("pattern");
-    if (glassPatterns.some((item) => item.id === requested)) setPattern(requested as GlassPattern);
+    if (requested === "ribbons" || glassPatterns.some((item) => item.id === requested))
+      setPattern(requested as GlassPattern);
   }, []);
   const selected = glassPatterns.find((item) => item.id === pattern);
   const choose = (next: GlassPattern) => {
     setPattern(next);
     const url = new URL(window.location.href);
-    if (next === "ribbons") url.searchParams.delete("pattern");
+    if (next === "smoke") url.searchParams.delete("pattern");
     else url.searchParams.set("pattern", next);
     window.history.replaceState(null, "", url);
   };
@@ -96,7 +97,7 @@ export default function GlassMaterialPreview() {
               {item.code} · {item.name}
             </button>
           ))}
-          <a href="/preview/glass-backgrounds">四种方案并排对比 ↗</a>
+          <a href="/preview/glass-backgrounds">早期方案并排对比 ↗</a>
         </div>
         <div className={styles.notes}>
           <span>

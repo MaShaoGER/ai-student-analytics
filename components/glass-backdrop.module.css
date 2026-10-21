@@ -153,3 +153,31 @@
     background: var(--background);
   }
 }
+
+/* CSS fallback for the locally drawn smoke-silver direction. */
+.backdrop[data-pattern="smoke"] {
+  background: radial-gradient(ellipse at 66% 55%, #21252b33, transparent 65%), #07090c;
+}
+.backdrop[data-pattern="smoke"] .halo {
+  background: radial-gradient(ellipse at 65% 60%, #a8afb61a, transparent 50%);
+}
+.backdrop[data-pattern="smoke"] .arc {
+  border-color: #aab3be0d;
+  border-bottom-color: #e5e8ed80;
+  box-shadow:
+    0 6px 8px #d6dce53b,
+    inset 0 -18px 30px #9da5b13d;
+  opacity: 0.6;
+}
+.backdrop[data-pattern="smoke"] .prism {
+  border-left-color: #e1e7ef3d;
+  box-shadow: -12px 0 28px #c8cedd1a;
+}
+:global(html[data-theme="light"]) .backdrop[data-pattern="smoke"] {
+  background: #d6d9dd;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .backdrop[data-pattern="smoke"] {
+    background: var(--background);
+  }
+}

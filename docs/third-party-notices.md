@@ -1,5 +1,9 @@
 # 第三方来源与许可说明
 
+## 烟银玻璃视觉参考（2026-10-21）
+
+用户选择了 [Raycast Wallpapers 的 Glaze 1](https://www.raycast.com/wallpapers) 作为背景材质方向：黑色留白、银灰曲面与柔和反射。项目在 `lib/ui/glass-optics.ts` 中自行编写曲面与环境反射程序，沿用本地磨砂采样；没有复制 Raycast 的壁纸文件、预览图片或源码，也没有从远端加载其图像。这里是视觉参考与本地实现，不将参考作品列为本项目原创素材；不据此声称取得原壁纸的复用或分发许可。既有 Rare UI 的源码改编声明和义务继续适用。
+
 ## 对话刻度导航交互参考（2026-10-21）
 
 右侧轮次刻度参考 [VS Code Minimap](https://code.visualstudio.com/docs/editing/getting-started/userinterface#_minimap)

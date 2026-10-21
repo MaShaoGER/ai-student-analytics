@@ -10,7 +10,7 @@ import styles from "./glass-backdrop.module.css";
 /** V4 optical renderer behind the DOM. The CSS material survives GPU failures. */
 export function GlassBackdrop({
   paused = false,
-  pattern = "ribbons",
+  pattern = "smoke",
 }: {
   paused?: boolean;
   pattern?: GlassPattern;
@@ -71,6 +71,8 @@ export function GlassBackdrop({
     };
   }, [epoch]);
   useEffect(() => {
+    const stage = canvas.current?.closest<HTMLElement>(".glass-workspace");
+    if (stage) stage.dataset.glassPattern = pattern;
     renderer.current?.update({
       ...preferences.current,
       light: document.documentElement.dataset.theme === "light",

@@ -1,5 +1,13 @@
-/** Preview candidates only. The production default remains ribbons. */
+/** Locally rendered backgrounds; smoke is the user's selected direction. */
 export const glassPatterns = [
+  {
+    id: "smoke",
+    code: "03",
+    name: "烟银玻璃",
+    description: "黑色留白中舒展的银灰曲面，宽阔反射与少量边缘色散。",
+    note: "当前选定方向 · 烟银曲面",
+    value: 5,
+  },
   {
     id: "contours",
     code: "A",
