@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { GlassBackdrop } from "@/components/glass-backdrop";
+import { ProductBrand } from "@/components/product-brand";
 import { ThemeToggle } from "@/components/ui/theme-provider";
 import { useMotionPreferences } from "@/components/ui/motion-preferences";
 import { glassPatterns, type GlassPattern } from "@/lib/ui/glass-patterns";
@@ -33,8 +34,7 @@ export default function GlassMaterialPreview() {
       <header className="workbench-header glass-topbar">
         <div className="glass-entry">
           <span className="glass-brand">
-            <Icon name="chart" size={25} />
-            <strong>学析台</strong>
+            <ProductBrand />
           </span>
           <div>
             <span className={styles.eyebrow}>OPTICAL GLASS / 02</span>

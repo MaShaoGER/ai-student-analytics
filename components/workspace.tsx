@@ -1,6 +1,7 @@
 "use client";
 
 import { GlassBackdrop } from "@/components/glass-backdrop";
+import { ProductBrand } from "@/components/product-brand";
 
 import { MotionToggle, useMotionPreferences } from "@/components/ui/motion-preferences";
 
@@ -1949,8 +1950,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
               navigate("overview");
             }}
           >
-            <Icon name="chart" size={25} />
-            <strong>学析台</strong>
+            <ProductBrand />
           </button>
           <div
             className="glass-mode-switch"

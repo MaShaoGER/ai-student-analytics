@@ -372,3 +372,45 @@
     padding: 24px 0;
   }
 }
+
+/* Shared glass UI hierarchy; the chart's marks and scale remain untouched. */
+:global(.glass-workspace) .heading h2 {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+
+:global(.glass-workspace) .studio {
+  padding: 24px;
+}
+:global(.glass-workspace) .types button {
+  border-radius: 12px;
+  background: var(--ui-control-bg);
+  border-color: var(--ui-control-border);
+}
+:global(.glass-workspace) .types button[aria-pressed="true"] {
+  background: var(--ui-selected-bg);
+  border-color: var(--glass-rim);
+}
+:global(.glass-workspace) .types strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+:global(.glass-workspace) .editor textarea {
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-inset);
+}
+:global(.glass-workspace) .selection {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--ui-inset);
+}
+
+@media (max-width: 760px) {
+  :global(.glass-workspace) .studio {
+    padding: 20px 16px;
+  }
+  :global(.glass-workspace) .heading h2 {
+    font-size: 18px;
+  }
+}

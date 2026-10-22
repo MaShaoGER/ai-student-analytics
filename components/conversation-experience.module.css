@@ -364,3 +364,23 @@
     border-radius: 0 16px 16px 0;
   }
 }
+
+:global(.glass-workspace) .newChat,
+:global(.glass-workspace) .mobileHistory {
+  min-height: var(--ui-control-height);
+  border-radius: var(--ui-control-radius);
+  border: 1px solid var(--ui-control-border);
+  background: var(--ui-control-bg);
+  font-size: 12px;
+  font-weight: 500;
+}
+:global(.glass-workspace) .historyToggle {
+  border: 1px solid var(--ui-control-border);
+  background: var(--ui-control-bg);
+  border-radius: var(--ui-control-radius);
+}
+:global(.glass-workspace) .deleteConfirm {
+  background: var(--ui-surface);
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}

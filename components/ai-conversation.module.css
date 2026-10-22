@@ -1374,3 +1374,42 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
     font-size: 16px;
   }
 }
+
+/* The same control and inset recipe as data analysis and administration. */
+:global(.glass-workspace) .actions button,
+:global(.glass-workspace) .composerTools > button,
+:global(.glass-workspace) .suggestions button {
+  min-height: var(--ui-control-height);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  font-size: 12px;
+  font-weight: 500;
+}
+:global(.glass-workspace) .actions button[aria-pressed="true"] {
+  background: var(--ui-selected-bg);
+  color: var(--ui-selected-ink);
+}
+:global(.glass-workspace) .chartToggle {
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-inset);
+}
+:global(.glass-workspace) .chartAttachment {
+  border-radius: var(--ui-panel-radius);
+}
+:global(.glass-workspace) .contextChip {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--ui-inset);
+}
+:global(.glass-workspace) .welcomeSuggestions button {
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+}
+:global(.glass-workspace) .composer {
+  border-radius: var(--ui-panel-radius);
+}
+:global(.glass-workspace) .collapseToggle,
+:global(.glass-workspace) .send {
+  border-radius: var(--ui-control-radius);
+}
