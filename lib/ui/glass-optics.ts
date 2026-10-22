@@ -53,11 +53,12 @@ const lightSource = `
       float width = (layer == 0.0 ? 0.155 : 0.085)
                   * (0.62 + 0.38 * cos(q.x * 2.6 + layer));
       float cross = (q.y - bend - offset) / width;
-      float coverage = 1.0 - smoothstep(0.97, 1.01, abs(cross));
+      // Analytic edge falloff doubles as anti-aliasing once upscaled.
+      float coverage = 1.0 - smoothstep(0.93, 1.03, abs(cross));
       float nz = sqrt(max(0.0001, 1.0 - cross * cross));
       vec3 normal = normalize(vec3(-derivative * 0.7 + q.x * 0.17, cross * 0.85, nz));
       vec3 silver = silverReflection(normal, q, t);
-      float lip = exp(-pow((abs(cross) - 0.94) / 0.025, 2.0));
+      float lip = exp(-pow((abs(cross) - 0.94) / 0.04, 2.0));
       silver += vec3(0.18, 0.19, 0.21) * lip * (0.45 + 0.55 * nz);
       coverage *= 1.0 - smoothstep(0.64, 1.22, abs(q.x));
       return vec4(silver, coverage);
@@ -168,6 +169,8 @@ const glassSource = `
     uniform float u_pattern;
     uniform vec4 u_rects[12];
     uniform vec4 u_materials[12];
+    uniform vec4 u_reliefRects[12];
+    uniform vec4 u_reliefMaterials[12];
 
     float roundedRect(vec2 p, vec4 rect, float radius) {
       vec2 halfSize = rect.zw * 0.5;
@@ -208,11 +211,23 @@ const glassSource = `
             - roundedRect(p - vec2(0.0, 0.7), pane, radius)
         ) + vec2(0.0001));
 
-        // A pressed diagonal microlens lattice, inspired by the user's frosted
-        // reference. Facets warp only transmitted light, never DOM content.
+        // Selected controls emboss the existing outer surface, rather than
+        // adding another pane (which could escape a scrolling DOM clip).
         float textureStrength = clamp(material.z, 0.0, 1.0);
-        vec2 diagonal = vec2(local.x + local.y, local.x - local.y) * 0.707107;
-        vec2 cell = fract(diagonal / 7.5) - 0.5;
+        vec2 textureLocal = local;
+        for (int i = 0; i < 12; i++) {
+          if (u_reliefRects[i].z > 0.0) {
+            float d = roundedRect(p, u_reliefRects[i], u_reliefMaterials[i].x);
+            if (d < 0.0) {
+              textureStrength = u_reliefMaterials[i].y * smoothstep(0.0, 2.0, -d);
+              textureLocal = p - u_reliefRects[i].xy;
+            }
+          }
+        }
+        // Rounded, close-packed dimples: no drawn crossing lines. Each tiny
+        // lens bends and shades the moving light beneath the sharp DOM text.
+        vec2 diagonal = vec2(textureLocal.x + textureLocal.y, textureLocal.x - textureLocal.y) * 0.707107;
+        vec2 cell = fract(diagonal / 5.5) - 0.5;
         float microlens = exp(-dot(cell, cell) * 14.0);
         vec2 slope = -cell * microlens * 9.5;
         vec2 facetNormal = vec2(slope.x + slope.y, slope.x - slope.y) * 0.707107;
@@ -252,10 +267,10 @@ const glassSource = `
         // Facet shading is stationary and light-dependent, so the surface
         // reads as embossed glass instead of a moving noise overlay.
         float facetLight = dot(facetNormal, normalize(vec2(-0.65, -0.8)));
-        float emboss = facetLight * (0.024 + min(lightLevel, 0.65) * 0.11);
+        float emboss = facetLight * (0.045 + min(lightLevel, 0.65) * 0.16);
         float facetSpecular = pow(max(0.0, facetLight), 7.0);
         vec3 coating = mix(vec3(0.76, 0.72, 0.95), vec3(0.32, 0.42, 0.48), u_lightTheme);
-        color += textureStrength * coating * (emboss + facetSpecular * 0.025);
+        color += textureStrength * coating * (emboss + facetSpecular * 0.035);
         color += textureStrength * facetHeight * vec3(0.006, 0.004, 0.010);
         color += (flute * 0.5 + 0.5) * vec3(0.003, 0.003, 0.008);
 
@@ -342,7 +357,7 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
     if (!gl || disposed || !ready || document.hidden || !intersecting || gl.isContextLost()) return;
     const animated = canAnimate();
     if (animated || timestamp < settleUntil) frameId = requestAnimationFrame(tick);
-    // Decorative optics have a bounded 24fps / sub-megapixel budget.
+    // Decorative optics stay bounded at 24fps with a display-aware pixel budget.
     if (previous && timestamp - previous < 1000 / 24) return;
     if (previous && animated) phase += Math.min((timestamp - previous) / 1000, 0.15);
     previous = timestamp;
@@ -431,6 +446,10 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
       materials = new Float32Array(48);
     const rectLocation = gl.getUniformLocation(glass.handle, "u_rects[0]");
     const materialLocation = gl.getUniformLocation(glass.handle, "u_materials[0]");
+    const reliefRects = new Float32Array(48),
+      reliefMaterials = new Float32Array(48);
+    const reliefRectLocation = gl.getUniformLocation(glass.handle, "u_reliefRects[0]");
+    const reliefMaterialLocation = gl.getUniformLocation(glass.handle, "u_reliefMaterials[0]");
     const resolutionLocation = gl.getUniformLocation(glass.handle, "u_resolution");
     const textureLocation = gl.getUniformLocation(glass.handle, "u_light");
     const updateGeometry = () => {
@@ -438,14 +457,16 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
       const bounds = stage.getBoundingClientRect();
       width = Math.max(1, bounds.width);
       height = Math.max(1, bounds.height);
-      const scale = Math.min(1, 1100 / width, Math.sqrt(850000 / (width * height)));
+      // Display-aware budget: HiDPI-crisp ribbons without unbounded fill rate.
+      const deviceRatio = Math.min(window.devicePixelRatio || 1, 2);
+      const scale = Math.min(deviceRatio, 1800 / width, Math.sqrt(2_400_000 / (width * height)));
       const nextWidth = Math.round(width * scale),
         nextHeight = Math.round(height * scale);
       if (!textureAllocated || canvas.width !== nextWidth || canvas.height !== nextHeight) {
         canvas.width = nextWidth;
         canvas.height = nextHeight;
-        lightWidth = Math.max(1, Math.round(nextWidth * 0.65));
-        lightHeight = Math.max(1, Math.round(nextHeight * 0.65));
+        lightWidth = nextWidth;
+        lightHeight = nextHeight;
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.texImage2D(
           gl.TEXTURE_2D,
@@ -469,6 +490,10 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
       const paneOpacity = new Map<HTMLElement, number>();
       const panes = [...stage.querySelectorAll<HTMLElement>("[data-glass-pane], .panel")]
         .filter((element) => {
+          // Only outer surfaces refract the scene. A nested chart may scroll
+          // beyond its DOM clip; drawing its full rect here would leave a
+          // detached lens on the background above/below the reading area.
+          if (element.parentElement?.closest("[data-glass-pane], .panel")) return false;
           const rect = element.getBoundingClientRect();
           let opacity = 1;
           for (
@@ -522,9 +547,58 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
           observedPanes.add(element);
         }
       });
+      reliefRects.fill(0);
+      reliefMaterials.fill(0);
+      let reliefIndex = 0;
+      for (const element of stage.querySelectorAll<HTMLElement>("[data-glass-relief]")) {
+        if (reliefIndex === 12) break;
+        const rect = element.getBoundingClientRect();
+        let left = Math.max(rect.left, bounds.left),
+          top = Math.max(rect.top, bounds.top);
+        let right = Math.min(rect.right, bounds.right),
+          bottom = Math.min(rect.bottom, bounds.bottom);
+        let opacity = 1;
+        for (
+          let ancestor: HTMLElement | null = element;
+          ancestor && ancestor !== stage;
+          ancestor = ancestor.parentElement
+        ) {
+          const style = getComputedStyle(ancestor);
+          opacity *= Number(style.opacity);
+          if (style.visibility === "hidden") opacity = 0;
+          if (ancestor !== element) {
+            const clip = ancestor.getBoundingClientRect();
+            if (/(auto|scroll|hidden|clip)/.test(style.overflowX)) {
+              left = Math.max(left, clip.left);
+              right = Math.min(right, clip.right);
+            }
+            if (/(auto|scroll|hidden|clip)/.test(style.overflowY)) {
+              top = Math.max(top, clip.top);
+              bottom = Math.min(bottom, clip.bottom);
+            }
+          }
+        }
+        if (opacity < 0.01 || right <= left || bottom <= top) continue;
+        reliefRects.set(
+          [left - bounds.left, top - bounds.top, right - left, bottom - top],
+          reliefIndex * 4,
+        );
+        reliefMaterials.set(
+          [
+            parseFloat(getComputedStyle(element).borderTopLeftRadius) || 8,
+            Number(element.dataset.glassRelief) * opacity,
+            0,
+            0,
+          ],
+          reliefIndex * 4,
+        );
+        reliefIndex++;
+      }
       gl.useProgram(glass.handle);
       gl.uniform4fv(rectLocation, rects);
       gl.uniform4fv(materialLocation, materials);
+      gl.uniform4fv(reliefRectLocation, reliefRects);
+      gl.uniform4fv(reliefMaterialLocation, reliefMaterials);
       gl.uniform2f(resolutionLocation, width, height);
       gl.uniform1i(textureLocation, 0);
     };
@@ -577,6 +651,7 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
         "data-history-collapsed",
         "data-glass-pane",
         "data-glass-texture",
+        "data-glass-relief",
         "hidden",
         "open",
       ],

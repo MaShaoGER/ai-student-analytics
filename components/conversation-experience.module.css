@@ -275,22 +275,24 @@
   }
 }
 
-/* V4: account history is a separate pane of smoked glass. */
+/* V4: history and transcript share one continuous smoked-glass surface. */
 :global(.glass-workspace) .layout {
-  grid-template-columns: 224px minmax(0, 1fr);
-  gap: 20px;
+  grid-template-columns: 243px minmax(0, 1fr);
+  gap: 0;
+  border: 1px solid var(--glass-border);
+  border-top-color: color-mix(in srgb, var(--glass-rim) 55%, transparent);
+  border-radius: var(--glass-radius);
+  background: linear-gradient(125deg, #dcefeb08, transparent 48%, #b9b3df08), var(--glass-fill);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  backdrop-filter: blur(16px) saturate(120%);
 }
 :global(.glass-workspace) .layout[data-history-collapsed="true"] {
   grid-template-columns: 52px minmax(0, 1fr);
 }
 :global(.glass-workspace) .historyRail {
-  border: 1px solid var(--glass-border);
-  border-top-color: var(--glass-rim);
-  border-radius: var(--glass-radius);
-  background: linear-gradient(145deg, #dcefeb08, transparent), var(--glass-fill);
-  box-shadow: var(--glass-shadow);
-  -webkit-backdrop-filter: blur(16px) saturate(120%);
-  backdrop-filter: blur(16px) saturate(120%);
+  background: transparent;
+  border: 0;
 }
 :global(.glass-workspace) .historyRail .history {
   width: 224px;
@@ -299,13 +301,14 @@
 }
 :global(.glass-workspace) .historyToggle {
   top: 12px;
-  right: 6px;
+  left: 12px;
+  right: auto;
   border-radius: 9px;
   background: transparent;
 }
 :global(.glass-workspace) .newChat {
   border-radius: 9px;
-  background: color-mix(in srgb, var(--sage) 7%, transparent);
+  background: var(--glass-fill);
   margin-top: 12px;
 }
 :global(.glass-workspace) .historyEmpty {
@@ -318,7 +321,7 @@
 }
 :global(.glass-workspace) .historyRow[data-active="true"] {
   border-color: var(--line);
-  background: color-mix(in srgb, var(--sage) 12%, transparent);
+  background: var(--glass-relief), var(--glass-fill-dense);
 }
 :global(.glass-workspace) .historyIndex {
   font-weight: 400;
@@ -336,15 +339,15 @@
   gap: 8px;
 }
 @supports not (backdrop-filter: blur(1px)) {
-  :global(.glass-workspace) .historyRail {
+  :global(.glass-workspace) .layout {
     background: var(--paper);
   }
 }
 @media (prefers-reduced-transparency: reduce) {
-  :global(.glass-workspace) .historyRail {
+  :global(.glass-workspace) .layout {
     background: var(--paper);
-    backdrop-filter: none;
     -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 }
 @media (max-width: 900px) {

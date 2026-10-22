@@ -1962,6 +1962,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
               <button
                 type="button"
                 aria-pressed={view === "analysis" && mode === "question"}
+                data-glass-relief={view === "analysis" && mode === "question" ? "0.85" : undefined}
                 onClick={() => {
                   if (view === "analysis" && mode === "question") return;
                   lastDataView.current = view;
@@ -1977,6 +1978,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
               type="button"
               disabled={passwordChangeRequired}
               aria-pressed={!(view === "analysis" && mode === "question")}
+              data-glass-relief={!(view === "analysis" && mode === "question") ? "0.85" : undefined}
               onClick={() => {
                 if (!(view === "analysis" && mode === "question")) return;
                 if (askPending.current) void stopConversation();

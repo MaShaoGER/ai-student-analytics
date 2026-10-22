@@ -40,8 +40,8 @@
   box-shadow: inset 0 1px 0 #ffffff0a;
 }
 .glass-workspace .primary-button {
-  background: var(--accent);
-  color: var(--button-ink);
+  background: var(--glass-relief), var(--glass-fill-dense);
+  color: var(--ink);
   box-shadow: inset 0 1px 0 #ffffff26;
 }
 .glass-workspace .text-button {

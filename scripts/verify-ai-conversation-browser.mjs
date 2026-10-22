@@ -111,17 +111,18 @@ try {
   await until(
     () =>
       evaluate(
-        '!!Array.from(document.querySelectorAll("button")).find(x=>x.textContent.includes("一句话分析"))',
+        '!!Array.from(document.querySelectorAll("button")).find(x=>x.textContent.trim()==="AI 对话")',
       ),
     "workspace login failed",
   );
   await evaluate(
-    'Array.from(document.querySelectorAll("button")).find(x=>x.textContent.includes("一句话分析")).click()',
+    'Array.from(document.querySelectorAll("button")).find(x=>x.textContent.trim()==="AI 对话").click()',
   );
   await until(
     () => evaluate('!!document.querySelector("#analysis-question")'),
     "conversation did not open",
   );
+  assert.ok(await evaluate('!!document.querySelector("header #conversation-heading")'));
   const status = await evaluate('fetch("/api/ai/status").then(r=>r.json())');
   assert.equal(status.configured, false);
   assert.equal(status.enabled, false);
@@ -186,21 +187,50 @@ try {
     "保留这条草稿",
   );
   report.checks.push("输入向右收为40px正方形、按钮对齐、草稿及键盘焦点恢复");
-  const originalWidth = await evaluate(
-    'document.querySelector("[aria-label=分析对话]").clientWidth',
+  const originalLeft = await evaluate(
+    'document.querySelector("[aria-label=分析对话]").getBoundingClientRect().left',
+  );
+  const historyTogglePosition = await evaluate(
+    '(()=>{const r=document.querySelector("button[aria-controls=desktop-conversation-history]").getBoundingClientRect();return {left:r.left,top:r.top}})()',
   );
   await browser("click", 'button[aria-label="向左收起账号历史"]');
   assert.ok(await evaluate('document.querySelector("[aria-label=账号历史对话]").inert'));
   assert.ok(
-    (await evaluate('document.querySelector("[aria-label=分析对话]").clientWidth')) >
-      originalWidth + 150,
+    Math.abs(
+      (await evaluate(
+        'document.querySelector("[aria-label=分析对话]").getBoundingClientRect().left',
+      )) - originalLeft,
+    ) < 2,
+  );
+  assert.deepEqual(
+    await evaluate(
+      '(()=>{const r=document.querySelector("button[aria-controls=desktop-conversation-history]").getBoundingClientRect();return {left:r.left,top:r.top}})()',
+    ),
+    historyTogglePosition,
   );
   await browser("click", 'button[aria-label="展开账号历史"]');
   assert.equal(
     await evaluate('document.querySelector("#analysis-question").value'),
     "保留这条草稿",
   );
-  report.checks.push("账号历史向左折叠与恢复释放宽度且保留草稿");
+  report.checks.push("账号历史折叠与恢复时正文左侧对齐且保留草稿");
+  assert.ok(
+    await evaluate(`(()=>{
+    const rail=document.querySelector('#desktop-conversation-history').parentElement;
+    const transcript=document.querySelector('[aria-label=分析对话]');
+    const column=transcript.parentElement.parentElement;
+    const input=document.querySelector('form[aria-label=对话输入]');
+    const t=transcript.getBoundingClientRect(),f=input.getBoundingClientRect();
+    return getComputedStyle(rail).borderRightWidth==='0px'
+      && getComputedStyle(column).borderLeftWidth==='0px'
+      && getComputedStyle(column).backdropFilter==='none'
+      && getComputedStyle(document.querySelector('.workbench-main')).backdropFilter==='none'
+      && t.bottom>f.top+40
+      && parseFloat(getComputedStyle(transcript).paddingBottom)>f.height
+      && getComputedStyle(input.parentElement).backdropFilter.includes('blur');
+  })()`),
+  );
+  report.checks.push("单一玻璃面板无内部分隔、历史按钮位置固定、输入框悬浮且底部可完整阅读");
   const ask = async (question) => {
     await browser("fill", "#analysis-question", question);
     await until(
@@ -236,10 +266,10 @@ try {
   );
   assert.ok(
     await evaluate(
-      '(()=>{const t=document.querySelector("[aria-label=分析对话]"),h=document.querySelector("#conversation-heading");return t.contains(h)})()',
+      '!document.querySelector("header #conversation-heading") && !document.body.innerText.includes("连续对话已开启")',
     ),
   );
-  report.checks.push("标题属于滚动区、步骤默认折叠、附件后再显示依据与方式");
+  report.checks.push("开始对话后隐藏介绍头部、步骤默认折叠、附件后再显示依据与方式");
   // Native UI click: presentation changes keep the same result and issue no chat request.
   const chatCount = () =>
     evaluate(
@@ -327,16 +357,12 @@ try {
       '(()=>{const t=document.querySelector("[aria-label=分析对话]");return t.scrollHeight-t.scrollTop-t.clientHeight<10})()',
     ),
   );
-  assert.ok(
-    await evaluate(
-      '(()=>{const t=document.querySelector("[aria-label=分析对话]"),h=document.querySelector("#conversation-heading");return h.getBoundingClientRect().bottom<t.getBoundingClientRect().top})()',
-    ),
-  );
+  assert.ok(await evaluate('!document.querySelector("header #conversation-heading")'));
   await browser("click", 'nav[aria-label="对话刻度导航"] button[aria-label^="跳到第 1 轮"]');
   await delay(500);
   assert.ok(
     await evaluate(
-      '(()=>{const t=document.querySelector("[aria-label=分析对话]"),a=t.querySelector("article[data-role=user]");return Math.abs(a.getBoundingClientRect().top-t.getBoundingClientRect().top-16)<4})()',
+      '(()=>{const t=document.querySelector("[aria-label=分析对话]"),a=t.querySelector("article[data-role=user]");const gap=a.getBoundingClientRect().top-t.getBoundingClientRect().top;return gap>=-2&&gap<=20})()',
     ),
   );
   assert.equal(
@@ -360,13 +386,14 @@ try {
   await browser("click", 'nav[aria-label="对话刻度导航"] button[aria-label^="跳到第 1 轮"]');
   await delay(500);
   await browser("screenshot", join(output, "feedback-ruler.png"));
-  report.checks.push("标题滚出视口、回看不抢位置、刻度跳轮次及最新内容");
+  report.checks.push("对话中头部保持隐藏、回看不抢位置、刻度跳轮次及最新内容");
   await evaluate("window.fetch=window.__nativeFixtureFetch");
   const summaries = await evaluate('fetch("/api/conversations").then(r=>r.json())');
   const latest = summaries.conversations[0];
   await evaluate(
     'Array.from(document.querySelectorAll("button")).find(x=>x.textContent.trim()==="新建对话").click()',
   );
+  assert.ok(await evaluate('!!document.querySelector("header #conversation-heading")'));
   await evaluate(
     `Array.from(document.querySelectorAll('button[aria-current],button')).find(x=>x.textContent.includes(${JSON.stringify(latest.title)})&&x.textContent.includes('demo')).click()`,
   );

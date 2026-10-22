@@ -73,6 +73,7 @@ export function ConversationHistory(
             className={styles.historyRow}
             key={entry.id}
             data-active={entry.id === props.selectedId}
+            data-glass-relief={entry.id === props.selectedId ? "0.65" : undefined}
           >
             <button
               type="button"
@@ -140,7 +141,7 @@ export function ConversationHistory(
   );
   return (
     <>
-      <div className={styles.historyRail} data-glass-pane="0.55">
+      <div className={styles.historyRail}>
         <button
           type="button"
           className={styles.historyToggle}

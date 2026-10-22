@@ -96,8 +96,8 @@
   background: var(--surface-inset);
 }
 .avatar[data-role="assistant"] {
-  background: var(--sage);
-  border-color: var(--sage);
+  background: var(--glass-relief), var(--glass-fill-dense);
+  border-color: color-mix(in srgb, var(--glass-rim) 45%, transparent);
 }
 .pending {
   scroll-margin-top: calc(var(--chat-header-height, 64px) + 20px);
@@ -297,9 +297,9 @@
   cursor: pointer;
 }
 .clearConfirm > .clearConfirmAction {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--button-ink);
+  background: var(--glass-relief), var(--glass-fill-dense);
+  border-color: color-mix(in srgb, var(--glass-rim) 45%, transparent);
+  color: var(--ink);
 }
 /* Follow-up scope chip above the textarea. Clearing it only affects the next
    questions, which the chip itself and the live status line make explicit. */
@@ -376,8 +376,8 @@
   min-height: 36px;
   padding: 8px;
   border: 0;
-  background: var(--accent);
-  color: var(--button-ink);
+  background: var(--glass-relief), var(--glass-fill-dense);
+  color: var(--ink);
 }
 .send svg {
   transform: rotate(-90deg);
@@ -747,8 +747,8 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 }
 .navBadge {
   padding: 3px 5px;
-  background: var(--accent);
-  color: var(--button-ink);
+  background: var(--glass-relief), var(--glass-fill-dense);
+  color: var(--ink);
   font: 9px monospace;
 }
 .conversation {
@@ -1008,8 +1008,8 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 }
 .scrollRuler button[aria-current],
 .scrollRuler button[data-unread="true"] {
-  color: var(--accent-ink);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--ink);
+  background: var(--glass-fill);
 }
 .scrollRuler button[aria-current]::after {
   width: 13px;
@@ -1188,14 +1188,15 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 /* V4: a unified reading surface, with data embedded in the assistant reply.
    14px reading text / 22px title, 4px rhythm, one frost layer per outer pane. */
 :global(.glass-workspace) .conversation {
-  border: 1px solid var(--glass-border);
-  border-top-color: var(--glass-rim);
-  border-radius: var(--glass-radius);
-  padding: 20px clamp(20px, 3vw, 48px) 16px;
-  background: linear-gradient(125deg, #dcefeb07, transparent 50%, #b9b3df07), var(--glass-fill);
-  box-shadow: var(--glass-shadow);
-  -webkit-backdrop-filter: blur(16px) saturate(120%);
-  backdrop-filter: blur(16px) saturate(120%);
+  --conversation-inset: clamp(20px, 3vw, 48px);
+  --history-offset: 0px;
+  border: 0;
+  border-radius: 0;
+  padding: 20px var(--conversation-inset) 0;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 :global(.glass-workspace) .formalHeader {
   border: 0;
@@ -1221,6 +1222,8 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 :global(.glass-workspace) .transcript {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--sage) 30%, transparent) transparent;
+  padding-bottom: calc(var(--composer-clearance, 220px) + 32px);
+  scroll-padding-bottom: calc(var(--composer-clearance, 220px) + 32px);
 }
 :global(.glass-workspace) .empty {
   padding: 28px 0;
@@ -1234,7 +1237,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 :global(.glass-workspace) .welcomeMark {
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--sage) 10%, transparent);
+  background: var(--glass-fill);
 }
 :global(.glass-workspace) .welcomeSuggestions {
   gap: 10px 12px;
@@ -1255,7 +1258,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   padding: 14px 18px;
   border: 1px solid var(--line);
   border-radius: 12px 12px 3px 12px;
-  background: color-mix(in srgb, var(--sage) 9%, transparent);
+  background: var(--glass-fill);
 }
 :global(.glass-workspace) .message[data-role="user"] .speaker {
   justify-content: flex-end;
@@ -1272,7 +1275,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 }
 :global(.glass-workspace) .avatar {
   border-radius: 8px;
-  background: color-mix(in srgb, var(--sage) 14%, transparent);
+  background: var(--glass-relief), var(--glass-fill-dense);
   color: var(--ink);
   border-color: var(--line);
 }
@@ -1285,10 +1288,10 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 }
 :global(.glass-workspace) .chartAttachment {
   border-radius: 13px;
-  background: color-mix(in srgb, var(--surface-inset) 58%, transparent);
-  border-top-color: var(--glass-rim);
+  background: transparent;
+  border: 1px solid var(--line);
   overflow: hidden;
-  box-shadow: inset 0 1px 0 #ffffff0c;
+  box-shadow: none;
 }
 :global(.glass-workspace) .chartToggle {
   background: transparent;
@@ -1306,14 +1309,32 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   border-left-color: var(--line);
   flex-basis: 28px;
 }
+:global(.glass-workspace) .composerDock {
+  position: absolute;
+  z-index: 3;
+  left: calc(var(--history-offset) + var(--conversation-inset));
+  right: var(--conversation-inset);
+  bottom: 16px;
+  width: auto;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  pointer-events: none;
+}
+:global(.glass-workspace) .composerDock > * {
+  pointer-events: auto;
+}
+:global(.glass-workspace) .composerDock[data-collapsed="false"] {
+  border-radius: var(--ui-panel-radius, 14px);
+  -webkit-backdrop-filter: blur(16px) saturate(110%);
+  backdrop-filter: blur(16px) saturate(110%);
+}
 :global(.glass-workspace) .composer {
-  border: 1px solid var(--line);
-  border-top-color: var(--glass-rim);
+  border: 1px solid var(--glass-border);
+  border-top-color: color-mix(in srgb, var(--glass-rim) 55%, transparent);
   border-radius: 14px;
-  background: color-mix(in srgb, var(--sage) 6%, var(--surface-inset));
+  background: color-mix(in srgb, var(--paper) 70%, transparent);
   box-shadow:
-    inset 0 1px 0 #ffffff14,
-    0 4px 12px #0715220c;
+    inset 0 1px 0 #ffffff0c,
+    0 8px 24px #02040726;
   padding: 10px 16px;
 }
 :global(.glass-workspace) .composer textarea {
@@ -1335,27 +1356,40 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 }
 :global(.glass-workspace) .composerDock[data-collapsed="true"] .composer {
   border-radius: 10px;
+  -webkit-backdrop-filter: blur(16px) saturate(110%);
+  backdrop-filter: blur(16px) saturate(110%);
 }
 @supports not (backdrop-filter: blur(1px)) {
-  :global(.glass-workspace) .conversation {
+  :global(.glass-workspace) .composer {
     background: var(--paper);
   }
 }
 @media (prefers-reduced-transparency: reduce) {
-  :global(.glass-workspace) .conversation {
+  :global(.glass-workspace) .composerDock[data-collapsed="false"],
+  :global(.glass-workspace) .composer {
     background: var(--paper);
-    backdrop-filter: none;
     -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 }
+/* Collapsing account history must not shift the transcript column. */
+:global(.glass-workspace [data-history-collapsed="true"]) .conversation {
+  --history-offset: 191px;
+  padding-left: calc(var(--history-offset) + var(--conversation-inset));
+}
 @media (max-width: 900px) {
+  :global(.glass-workspace [data-history-collapsed="true"]) .conversation {
+    --history-offset: 0px;
+    padding-left: var(--conversation-inset);
+  }
   :global(.glass-workspace) .readingArea {
     margin-top: 48px;
   }
 }
 @media (max-width: 600px) {
   :global(.glass-workspace) .conversation {
-    padding: 12px 14px;
+    --conversation-inset: 14px;
+    padding: 12px var(--conversation-inset) 0;
   }
   :global(.glass-workspace) .formalHeader h1 {
     font-size: 18px;

@@ -233,6 +233,21 @@
   padding: 12px 16px;
 }
 
+/* An attachment is part of the message, not another full glass workspace. */
+:global(.glass-workspace) .body :global(.analysis-result) {
+  border: 0;
+}
+:global(.glass-workspace) .wrapper .body :global(.result-focus) {
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 12%, transparent);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:global(.glass-workspace) .body :global(.result-focus)::after {
+  display: none;
+}
+
 :global(.glass-workspace) .controls {
   gap: 4px;
 }

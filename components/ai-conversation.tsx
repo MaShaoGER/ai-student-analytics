@@ -309,6 +309,20 @@ export function ConversationWorkspace({
   const rounds = messages.filter((message) => message.role === "user").length;
 
   useLayoutEffect(() => {
+    const dock = composer.current;
+    const surface = root.current;
+    if (!dock || !surface) return;
+    // The dock floats over the transcript. Reserve scrollable tail space so
+    // the final answer can still be read entirely above it, at any input size.
+    const measure = () =>
+      surface.style.setProperty("--composer-clearance", `${dock.getBoundingClientRect().height}px`);
+    const observer = new ResizeObserver(measure);
+    observer.observe(dock);
+    measure();
+    return () => observer.disconnect();
+  }, []);
+
+  useLayoutEffect(() => {
     // A hidden textarea reports a scrollHeight of 0; remeasure after unfolding.
     if (composerCollapsed || !textarea.current) return;
     textarea.current.style.height = "auto";
@@ -322,8 +336,7 @@ export function ConversationWorkspace({
     const toggle = dock?.querySelector<HTMLButtonElement>('button[aria-label="收起输入区"]');
     if (!dock || !form || !toggle) return;
     const measure = () => {
-      // Keep the square at the same screen position as the expanded toggle,
-      // while allowing the reading region to reclaim the hidden input's height.
+      // Keep the square at the same screen position as the expanded toggle.
       const offset = form.getBoundingClientRect().bottom - toggle.getBoundingClientRect().bottom;
       dock.style.setProperty("--composer-fold-offset", `${offset}px`);
     };
@@ -341,23 +354,19 @@ export function ConversationWorkspace({
       : draftText;
 
   return (
-    <div className={experience.layout} data-history-collapsed={historyCollapsed}>
+    <div
+      className={experience.layout}
+      data-history-collapsed={historyCollapsed}
+      data-glass-pane="0.35"
+    >
       <ConversationHistory
         {...history}
         collapsed={historyCollapsed}
         onToggle={() => setHistoryCollapsed((value) => !value)}
       />
-      <div ref={root} className={styles.conversation} data-glass-pane="0.35">
-        <div className={styles.readingArea}>
-          <div
-            ref={scroll.transcript}
-            tabIndex={0}
-            onScroll={scroll.onScroll}
-            className={styles.transcript}
-            role="region"
-            aria-label="分析对话"
-            aria-live="off"
-          >
+      <div ref={root} className={styles.conversation}>
+        {messages.length === 0 && !loading ? (
+          <>
             <header className={styles.formalHeader}>
               <div>
                 <span>从问题出发 / ASK YOUR DATA</span>
@@ -378,6 +387,22 @@ export function ConversationWorkspace({
                   ? `连续对话已开启${model ? ` · ${model}` : ""}`
                   : "推荐问题可直接使用"}
             </p>
+          </>
+        ) : (
+          <h1 id="conversation-heading" className="sr-only">
+            分析对话
+          </h1>
+        )}
+        <div className={styles.readingArea}>
+          <div
+            ref={scroll.transcript}
+            tabIndex={0}
+            onScroll={scroll.onScroll}
+            className={styles.transcript}
+            role="region"
+            aria-label="分析对话"
+            aria-live="off"
+          >
             {!loading && historyActivity}
             {!messages.length && !loading && (
               <div
@@ -499,12 +524,7 @@ export function ConversationWorkspace({
                       const expanded = expandedChartId === attachmentId;
                       const chartId = `conversation-chart-${attachmentId}`;
                       return (
-                        <div
-                          key={attachmentId}
-                          className={styles.chartAttachment}
-                          data-glass-pane="0.6"
-                          data-glass-texture="0.72"
-                        >
+                        <div key={attachmentId} className={styles.chartAttachment}>
                           <button
                             type="button"
                             className={styles.chartToggle}
@@ -626,22 +646,20 @@ export function ConversationWorkspace({
           ) : null}
         </div>
         {!loading && pendingSteps.length > 0 ? <ExecutionSteps steps={pendingSteps} /> : null}
-        {aiAllowed && !aiReady && (
-          <p className={styles.note}>
-            推荐问题和已有结果的表格切换无需连接 AI。自由对话需要管理员开启并配置 AI。
-            {onConfigure && (
-              <button type="button" className="text-button" onClick={onConfigure}>
-                去设置
-              </button>
-            )}
-          </p>
-        )}
         <div ref={composer} className={styles.composerDock} data-collapsed={composerCollapsed}>
+          {aiAllowed && !aiReady && (
+            <p className={styles.note}>
+              推荐问题和已有结果的表格切换无需连接 AI。自由对话需要管理员开启并配置 AI。
+              {onConfigure && (
+                <button type="button" className="text-button" onClick={onConfigure}>
+                  去设置
+                </button>
+              )}
+            </p>
+          )}
           {notice}
           <form
             className={styles.composer}
-            data-glass-pane="0.45"
-            data-glass-texture="0.5"
             aria-label="对话输入"
             aria-disabled={!aiAllowed}
             onSubmit={(event) => {
