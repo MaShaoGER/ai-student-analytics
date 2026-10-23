@@ -22,11 +22,13 @@ export function GlassBackdrop({
   const [epoch, setEpoch] = useState(0);
   const preferences = useRef({
     animated: enabled && !reduced && !paused,
+    interactive: enabled && !reduced,
     light: theme === "light",
     pattern,
   });
   preferences.current = {
     animated: enabled && !reduced && !paused,
+    interactive: enabled && !reduced,
     light: theme === "light",
     pattern,
   };

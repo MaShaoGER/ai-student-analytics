@@ -257,8 +257,19 @@ html[data-motion="on"][data-input-modality="pointer"] :is(button, summary, a) {
 html[data-motion="on"][data-input-modality="pointer"] :is(button, summary):enabled:active {
   transform: scale(0.97);
 }
+/* Individual scale remains responsive after a filled entrance animation owns
+   transform. The optical press pulse follows the same motion preference. */
+html[data-motion="on"][data-input-modality="pointer"] .overview-metric {
+  scale: 1;
+  transition:
+    scale 160ms var(--ease-out),
+    background-color 200ms var(--ease-out),
+    color 200ms var(--ease-out),
+    border-color 200ms var(--ease-out);
+}
 html[data-motion="on"][data-input-modality="pointer"] .overview-metric:enabled:active {
-  transform: scale(0.995);
+  transform: none;
+  scale: 0.985;
 }
 html[data-motion="on"][data-input-modality="pointer"]
   :is(.text-button, .ask-card-button)

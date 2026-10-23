@@ -39,8 +39,8 @@
   --glass-refract-3: 19px;
   --glass-dot-3: 0.4;
 
-  /* Dot lattice geometry: 9px pitch at 45°, low strength on dark glass. */
-  --glass-dot-pitch: 9px;
+  /* Fine, stationary micro-lenses; their contrast comes from the backdrop. */
+  --glass-dot-pitch: 6.5px;
   --glass-dot-angle: 45deg;
   --glass-dot-vibrancy: 0.85;
 

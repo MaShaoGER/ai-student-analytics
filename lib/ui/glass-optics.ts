@@ -185,6 +185,8 @@ const glassSource = `
     uniform vec4 u_reliefMaterials[12];
     uniform float u_pixelScale;
     uniform float u_dotVibrancy;
+    uniform vec4 u_press;
+    uniform vec4 u_pressRect;
 
     float roundedRect(vec2 p, vec4 rect, float radius) {
       vec2 halfSize = rect.zw * 0.5;
@@ -248,9 +250,6 @@ const glassSource = `
         // bends the backdrop for real instead of only perturbing a normal.
         vec2 textureBend = vec2(0.0);
         vec2 facetNormal = vec2(0.0);
-        float facetHeight = 0.0;
-        float dotShade = 0.0;
-        float dotMask = 0.0;
         float dotChroma = 0.0;
         if (dotStrength > 0.001) {
           float ca = cos(surface.z);
@@ -262,30 +261,37 @@ const glassSource = `
           float pitch = max(surface.y * u_pixelScale, 2.5);
           vec2 cell = fract(rotated / pitch) - 0.5;
           float rr = length(cell);
-          float dome = smoothstep(0.40, 0.02, rr);
-          vec2 dirn = normalize(cell + vec2(1e-5));
-          vec2 dotBend = dirn * dome * dotStrength * pitch * 0.42;
-          dotShade = (dome - 0.30) * dotStrength * 0.20;
-          dotMask = smoothstep(0.30, 0.44, rr) * dotStrength;
+          float dome = 1.0 - smoothstep(0.08, 0.48, rr);
+          float lensSlope = 1.0 - smoothstep(0.25, 0.49, rr);
+          vec2 rotatedBend = cell * lensSlope * dotStrength * pitch * 3.0;
+          // Return the sampling offset from lattice space to screen space.
+          // Rotating the lattice must also rotate each lens's refraction.
+          vec2 dotBend = vec2(rotatedBend.x * ca + rotatedBend.y * sa,
+                             -rotatedBend.x * sa + rotatedBend.y * ca);
           // Sampling below happens in CSS pixels, so bring the device-pixel
           // bend (and therefore the chroma spread it drives) back into CSS.
           textureBend = dotBend / u_pixelScale;
-          dotChroma = length(textureBend) * 0.10;
-          // Facet normal and height derive from the same dome as the bend.
-          facetNormal = dirn * dome;
-          facetHeight = dome - 0.30;
+          dotChroma = length(textureBend) * 0.16;
+          facetNormal = normalize(textureBend + vec2(1e-5)) * dome;
         }
         vec2 drift = vec2(2.2 * sin(u_time * 0.31 + local.y * 0.009),
                           1.4 * cos(u_time * 0.27 + local.x * 0.008));
         // The shader samples in CSS pixels, and --glass-refract-current is
         // already expressed in CSS pixels, so the Snell bend adds unchanged.
-        vec2 bend = -normal * edge * edge * max(surface.w, 0.0)
-                  + textureBend + drift;
-        float spectralWidth = (2.8 + edge * 10.0 + dotStrength * 1.6 + dotChroma)
+        vec2 bend = -normal * edge * edge * max(surface.w, 0.0) + drift;
+        float pressMask = step(u_pressRect.x, p.x) * step(u_pressRect.y, p.y)
+          * step(p.x, u_pressRect.x + u_pressRect.z)
+          * step(p.y, u_pressRect.y + u_pressRect.w) * u_press.w;
+        vec2 fromPress = p - u_press.xy;
+        float pressDistance = length(fromPress);
+        float pressRadius = u_press.z * length(u_pressRect.zw) * 0.75;
+        float pressWave = exp(-pow((pressDistance - pressRadius) / 18.0, 2.0))
+                        * (1.0 - u_press.z) * pressMask;
+        bend += fromPress / max(pressDistance, 1.0) * pressWave * 5.0;
+        float spectralWidth = (2.8 + edge * 10.0)
                             * mix(1.0, 0.35, smoke);
         vec2 spectralDirection = normalize(normal * edge + vec2(0.7, 0.4));
-        vec2 center = pane.xy + pane.zw * 0.5;
-        vec2 refracted = center + (p - center) * (1.0 - dotStrength * 0.055) + bend;
+        vec2 refracted = p + bend;
 
         color = vec3(
           lightAt(refracted + spectralDirection * spectralWidth).r,
@@ -301,21 +307,26 @@ const glassSource = `
           color = mix(color, softened, frost);
         }
 
+        if (dotStrength > 0.001) {
+          // Keep the background-derived lens detail after the broad frost.
+          // A flat backdrop produces no printed white dots: only the change
+          // between the bent and unbent samples is added to the frosted pane.
+          vec2 lensPoint = refracted + textureBend;
+          vec2 chroma = facetNormal * dotChroma;
+          vec3 lensColor = vec3(lightAt(lensPoint + chroma).r,
+                               lightAt(lensPoint).g,
+                               lightAt(lensPoint - chroma).b);
+          color += (lensColor - lightAt(refracted)) * min(0.9, dotStrength * 1.8);
+        }
+
         color = mix(color, mix(vec3(0.055, 0.095, 0.12), vec3(0.83, 0.88, 0.86), u_lightTheme), 0.12 + frost * 0.18);
         vec3 neutralFrost = mix(vec3(0.08, 0.09, 0.10), vec3(0.85, 0.86, 0.87), u_lightTheme);
         color = mix(color, neutralFrost, smoke * 0.12);
-        float lightLevel = dot(color, vec3(0.21, 0.72, 0.07));
-        // Facet shading is stationary and light-dependent, so the surface
-        // reads as embossed glass instead of a moving noise overlay.
+        // Restrained signed relief, rather than a bright disc or dark grid.
+        // The lighter theme needs less surface contrast, not whiter dots.
         if (dotStrength > 0.001) {
           float facetLight = dot(facetNormal, normalize(vec2(-0.65, -0.8)));
-          float emboss = facetLight * (0.045 + min(lightLevel, 0.65) * 0.16);
-          float facetSpecular = pow(max(0.0, facetLight), 7.0);
-          vec3 coating = mix(vec3(0.76, 0.72, 0.95), vec3(0.32, 0.42, 0.48), u_lightTheme);
-          color += dotStrength * coating * (emboss + facetSpecular * 0.035);
-          color += dotStrength * facetHeight * vec3(0.006, 0.004, 0.010);
-          color += dotShade;
-          color *= 1.0 - dotMask * 0.16;
+          color *= 1.0 + facetLight * dotStrength * mix(0.018, 0.006, u_lightTheme);
           // Dense dots read heavier, so vivid panes compensate saturation.
           float vibrancy = 1.0 + (u_dotVibrancy - 0.5) * 0.4;
           float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
@@ -328,6 +339,8 @@ const glassSource = `
         edgeColor = mix(edgeColor, vec3(0.70, 0.73, 0.77), smoke);
         color += polished * edgeColor * (0.30 + movingGlint * 0.38);
         color += edge * edge * vec3(0.027, 0.020, 0.045);
+        color += pressWave * mix(vec3(0.025, 0.030, 0.032),
+                                vec3(0.008, 0.010, 0.010), u_lightTheme);
         color = mix(lightAt(p), color, material.w);
       }
 
@@ -338,7 +351,12 @@ const glassSource = `
     }
   `;
 
-type Playback = { animated: boolean; light: boolean; pattern?: GlassPattern };
+type Playback = {
+  animated: boolean;
+  interactive?: boolean;
+  light: boolean;
+  pattern?: GlassPattern;
+};
 type OpticalProgram = {
   handle: WebGLProgram;
   position: number;
@@ -368,6 +386,10 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
   let textureAllocated = false;
   let phase = 2.4;
   let settleUntil = performance.now() + 1000;
+  const pressDuration = 280;
+  let pressStarted = -Infinity;
+  const pressPoint = new Float32Array(2);
+  const pressRect = new Float32Array(4);
   let previous = 0;
   let width = 1,
     height = 1,
@@ -388,6 +410,7 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
     mutationObserver?.disconnect();
     intersectionObserver?.disconnect();
     stage.removeEventListener("scroll", geometryChanged, true);
+    stage.removeEventListener("pointerdown", press, true);
     window.removeEventListener("scroll", geometryChanged);
     window.removeEventListener("resize", geometryChanged);
     document.removeEventListener("visibilitychange", sync);
@@ -404,13 +427,18 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
   function tick(timestamp: number) {
     if (!gl || disposed || !ready || document.hidden || !intersecting || gl.isContextLost()) return;
     const animated = canAnimate();
-    if (animated || timestamp < settleUntil) frameId = requestAnimationFrame(tick);
+    const responding = timestamp - pressStarted < pressDuration;
+    const finishingPress = Number.isFinite(pressStarted) && !responding;
+    if (animated || responding || timestamp < settleUntil) frameId = requestAnimationFrame(tick);
     // Decorative optics stay bounded at 24fps with a display-aware pixel budget.
-    if (previous && timestamp - previous < 1000 / 24) return;
+    // Always clear the final press frame, even when a paused background would
+    // otherwise stop between two throttled frames and retain the ripple.
+    if (previous && timestamp - previous < 1000 / 24 && !finishingPress) return;
     if (previous && animated) phase += Math.min((timestamp - previous) / 1000, 0.15);
     previous = timestamp;
     if (timestamp < settleUntil) dirty = true;
     draw();
+    if (finishingPress) pressStarted = -Infinity;
   }
   function sync() {
     if (disposed || !ready) return;
@@ -423,6 +451,20 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
     settleUntil = performance.now() + 1000;
     // A paused material still follows scrolling and resized panes.
     if (!canAnimate()) sync();
+  }
+  function press(event: PointerEvent) {
+    if (!options.interactive || !event.isPrimary || event.button !== 0) return;
+    if (!(event.target instanceof Element)) return;
+    const card = event.target.closest<HTMLButtonElement>(".overview-metric");
+    if (!card || card.disabled || !stage.contains(card)) return;
+    // Measure only on the user's press, never on every frame. Playback time is
+    // independent of the backdrop, so a paused light still gives click feedback.
+    const bounds = stage.getBoundingClientRect();
+    const rect = card.getBoundingClientRect();
+    pressPoint.set([event.clientX - bounds.left, event.clientY - bounds.top]);
+    pressRect.set([rect.left - bounds.left, rect.top - bounds.top, rect.width, rect.height]);
+    pressStarted = performance.now();
+    sync();
   }
   try {
     const program = (source: string): OpticalProgram => {
@@ -504,6 +546,8 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
     const textureLocation = gl.getUniformLocation(glass.handle, "u_light");
     const pixelScaleLocation = gl.getUniformLocation(glass.handle, "u_pixelScale");
     const dotVibrancyLocation = gl.getUniformLocation(glass.handle, "u_dotVibrancy");
+    const pressLocation = gl.getUniformLocation(glass.handle, "u_press");
+    const pressRectLocation = gl.getUniformLocation(glass.handle, "u_pressRect");
     const updateGeometry = () => {
       dirty = false;
       const bounds = stage.getBoundingClientRect();
@@ -597,7 +641,7 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
         surfaces.set(
           [
             Math.min(1, Math.max(0, cssNumber(style, "--glass-dot-current", 0))),
-            cssNumber(style, "--glass-dot-pitch", 9),
+            cssNumber(style, "--glass-dot-pitch", 6.5),
             (cssNumber(style, "--glass-dot-angle", 45) * Math.PI) / 180,
             // Edge refraction is authored in CSS pixels; 32px matches the
             // pre-lattice baseline, and tier tokens override it per surface.
@@ -694,6 +738,15 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.viewport(0, 0, canvas.width, canvas.height);
         bind(glass);
+        const pressProgress = Math.min(1, (performance.now() - pressStarted) / pressDuration);
+        gl.uniform4f(
+          pressLocation,
+          pressPoint[0],
+          pressPoint[1],
+          pressProgress,
+          options.interactive && pressProgress < 1 ? 1 : 0,
+        );
+        gl.uniform4fv(pressRectLocation, pressRect);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -733,6 +786,7 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
     });
     intersectionObserver.observe(stage);
     stage.addEventListener("scroll", geometryChanged, { capture: true, passive: true });
+    stage.addEventListener("pointerdown", press, { capture: true, passive: true });
     window.addEventListener("scroll", geometryChanged, { passive: true });
     window.addEventListener("resize", geometryChanged, { passive: true });
     document.addEventListener("visibilitychange", sync);
@@ -745,6 +799,7 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
         // or the pattern, and those flip attributes outside this observer, so
         // force a geometry/computed-style re-read when either changes.
         if (next.light !== options.light || next.pattern !== options.pattern) dirty = true;
+        if (!next.interactive) pressStarted = -Infinity;
         options = next;
         sync();
       },
