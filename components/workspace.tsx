@@ -344,6 +344,60 @@ function sameSessionPresentation(left: SessionUser, right: SessionUser): boolean
   );
 }
 
+function PasswordField({
+  id,
+  label,
+  value,
+  onChange,
+  autoComplete,
+  minLength,
+  maxLength,
+  help,
+  clearError,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  autoComplete: string;
+  minLength?: number;
+  maxLength?: number;
+  help?: string;
+  clearError: () => void;
+}) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <label className="form-field" htmlFor={id}>
+      {label}
+      <span className="password-input-wrap">
+        <input
+          autoComplete={autoComplete}
+          id={id}
+          minLength={minLength}
+          maxLength={maxLength}
+          onChange={(event) => {
+            onChange(event.target.value);
+            clearError();
+          }}
+          required
+          type={visible ? "text" : "password"}
+          value={value}
+        />
+        <button
+          type="button"
+          className="account-password-toggle"
+          aria-label={visible ? "隐藏密码" : "显示密码"}
+          aria-pressed={visible}
+          onClick={() => setVisible((current) => !current)}
+        >
+          <Icon name={visible ? "eyeOff" : "eye"} size={16} />
+        </button>
+      </span>
+      {help && <span className="form-help">{help}</span>}
+    </label>
+  );
+}
+
 function AccountPanel({
   user,
   passwordChangeRequired,
@@ -417,7 +471,7 @@ function AccountPanel({
             ? "管理员"
             : user.role === "readonly"
               ? "只读用户"
-              : "教师／分析人员"}
+              : "分析用户"}
         </span>
         <div className="account-note">
           <Icon name="shield" size={19} />
@@ -444,42 +498,33 @@ function AccountPanel({
           <Icon name="lock" size={22} />
         </div>
         <form onSubmit={submit} className="password-form">
-          <label className="form-field" htmlFor="current-password">
-            当前密码
-            <input
-              autoComplete="current-password"
-              id="current-password"
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              required
-              type="password"
-              value={currentPassword}
-            />
-          </label>
-          <label className="form-field" htmlFor="new-password">
-            新密码
-            <input
-              autoComplete="new-password"
-              id="new-password"
-              minLength={12}
-              maxLength={128}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              type="password"
-              value={newPassword}
-            />
-            <span className="form-help">至少 12 个字符，建议混合字母、数字和符号。</span>
-          </label>
-          <label className="form-field" htmlFor="confirm-password">
-            再次输入新密码
-            <input
-              autoComplete="new-password"
-              id="confirm-password"
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              type="password"
-              value={confirmPassword}
-            />
-          </label>
+          <PasswordField
+            id="current-password"
+            label="当前密码"
+            value={currentPassword}
+            onChange={setCurrentPassword}
+            autoComplete="current-password"
+            clearError={() => setError("")}
+          />
+          <PasswordField
+            id="new-password"
+            label="新密码"
+            value={newPassword}
+            onChange={setNewPassword}
+            autoComplete="new-password"
+            minLength={12}
+            maxLength={128}
+            help="至少 12 个字符，建议混合字母、数字和符号。"
+            clearError={() => setError("")}
+          />
+          <PasswordField
+            id="confirm-password"
+            label="再次输入新密码"
+            value={confirmPassword}
+            onChange={setConfirmPassword}
+            autoComplete="new-password"
+            clearError={() => setError("")}
+          />
           {error && (
             <div className="notice notice-error" role="alert">
               {error}
@@ -642,6 +687,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
   const [setupRequired, setSetupRequired] = useState(false);
   const [bootError, setBootError] = useState("");
   const [view, setView] = useState<View>("overview");
+  const [adminInitialTab, setAdminInitialTab] = useState<"overview" | "ai" | undefined>(undefined);
   const [mode, setMode] = useState<AnalysisMode>("metrics");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebar = useRef<HTMLElement>(null);
@@ -889,7 +935,9 @@ export function Workspace({ initialConversation = false }: { initialConversation
         const nextUser = payload.user ?? null;
         setSetupRequired(Boolean(payload.setupRequired));
         if (!nextUser) {
-          expire("登录已过期，请重新登录。");
+          // A first visit also lands here with 200 + user:null; only a real
+          // 401 above means the previous session expired.
+          expire(null);
           return;
         }
         const nextScope = sessionScopeKey(nextUser);
@@ -1934,6 +1982,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
       className={`graphite-workspace workbench-shell glass-workspace ${experienceStyles.shell}`}
       data-view={view}
       data-conversation={(view === "analysis" && mode === "question") || undefined}
+      data-drawer-open={sidebarOpen || undefined}
     >
       <a className="skip-link" href="#main-content">
         跳到主要内容
@@ -2035,7 +2084,10 @@ export function Workspace({ initialConversation = false }: { initialConversation
               className="icon-button"
               aria-label="系统管理"
               title="系统管理"
-              onClick={() => navigate("admin")}
+              onClick={() => {
+                setAdminInitialTab(undefined);
+                navigate("admin");
+              }}
             >
               <Icon name="settings" size={18} />
             </button>
@@ -2082,6 +2134,22 @@ export function Workspace({ initialConversation = false }: { initialConversation
         className="workbench-drawer"
         popover="auto"
         onToggle={(event) => setSidebarOpen(event.newState === "open")}
+        onKeyDown={(event) => {
+          if (event.key !== "Tab") return;
+          const focusables = sidebar.current?.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          );
+          if (!focusables?.length) return;
+          const first = focusables[0];
+          const last = focusables[focusables.length - 1];
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        }}
         aria-label="工作台导航"
       >
         <div className="drawer-heading">
@@ -2230,7 +2298,14 @@ export function Workspace({ initialConversation = false }: { initialConversation
                   onExpandChart={setExpandedChartId}
                   onChartChange={changeChatView}
                   onReport={previewReport}
-                  onConfigure={user.role === "admin" ? () => navigate("admin") : undefined}
+                  onConfigure={
+                    user.role === "admin"
+                      ? () => {
+                          setAdminInitialTab("ai");
+                          navigate("admin");
+                        }
+                      : undefined
+                  }
                   notice={notice}
                   onStop={() => void stopConversation()}
                   onClearContext={() => {
@@ -2457,7 +2532,11 @@ export function Workspace({ initialConversation = false }: { initialConversation
               />
             )}
             {view === "admin" && user.role === "admin" && (
-              <AdminPanel user={user} onSessionExpired={() => expire("登录已过期，请重新登录。")} />
+              <AdminPanel
+                user={user}
+                initialTab={adminInitialTab}
+                onSessionExpired={() => expire("登录已过期，请重新登录。")}
+              />
             )}
             {view === "account" && (
               <>

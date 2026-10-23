@@ -11,6 +11,15 @@ export type HistoryEntry = {
   expiresAt: number;
   datasetId: string;
 };
+
+/** History stores the raw dataset id; show the same name as the source picker. */
+const DATASET_LABELS: Record<string, string> = {
+  demo: "模拟校园数据",
+  oulad: "OULAD 本地数据",
+};
+function datasetLabel(datasetId: string) {
+  return DATASET_LABELS[datasetId] ?? "数据集";
+}
 export type ConversationHistoryProps = {
   entries: HistoryEntry[];
   selectedId: string | null;
@@ -93,7 +102,7 @@ export function ConversationHistory(
                   hour: "2-digit",
                   minute: "2-digit",
                 })}{" "}
-                · {entry.datasetId}
+                · {datasetLabel(entry.datasetId)}
               </small>
             </button>
             {deleting === entry.id ? (
@@ -133,7 +142,7 @@ export function ConversationHistory(
       <div className={styles.historyFoot}>
         <span>聚合分析 · 数字可追溯</span>
         <a href="https://www.rareui.com/" target="_blank" rel="noreferrer">
-          RareUI 组件来源 ↗
+          Rare UI 组件来源 ↗
         </a>
         <a href="/preview/ai-experience">打开无 AI 调用的体验预览</a>
       </div>

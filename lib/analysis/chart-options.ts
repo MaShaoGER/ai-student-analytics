@@ -177,8 +177,14 @@ export function buildChartOption({
           itemStyle: { borderWidth: 3, gapWidth: 4, borderColor: colors.surface, borderRadius: 0 },
           label: {
             show: true,
-            color: colors.surface,
-            fontSize: compact ? 10 : 12,
+            // The treemap palette is pastel in both themes, so a fixed dark film
+            // with light type keeps every tile readable without leaning on theme
+            // colors (near-white text measured 1.6–2.2:1 on the light tiles).
+            color: "#f8fbf9",
+            backgroundColor: "rgba(18, 28, 24, 0.66)",
+            padding: [2, 4],
+            borderRadius: 3,
+            fontSize: compact ? 11 : 12,
             overflow: "truncate",
             formatter: (params) =>
               `${params.name}\n${number((Number(params.value) / total) * 100)}%`,
@@ -230,13 +236,14 @@ export function buildChartOption({
     return option;
   }
 
-  option.grid = {
+  const grid = {
     top: view === "scatter" ? 42 : 38,
     right: 20,
     bottom: view === "scatter" ? 42 : 20,
     left: 8,
     containLabel: true,
   };
+  option.grid = grid;
   const axisStyle = {
     axisLabel: { color: colors.muted, fontSize: 11 },
     axisLine: { lineStyle: { color: colors.grid } },
@@ -379,6 +386,14 @@ export function buildChartOption({
             : 0,
     },
   };
+  if (compact && rows.length > 8) {
+    // Tilted labels extend left of the first tick; extra side/bottom padding keeps
+    // the first and last course names inside the canvas instead of clipping them.
+    // 32° labels at 11px need ~34–40px of bottom room, not the 20px grid default.
+    grid.left = 34;
+    grid.right = 30;
+    grid.bottom = 40;
+  }
   const series: SeriesOption =
     view === "line"
       ? {

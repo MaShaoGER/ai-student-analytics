@@ -131,7 +131,6 @@ export default function GlassMaterialPreview() {
         <section
           className={styles.sample}
           data-glass-pane="0.7"
-          data-glass-texture="0.95"
           aria-label="磨砂压纹玻璃上的图形示意"
         >
           <div className={styles.sampleHeading}>
@@ -149,12 +148,12 @@ export default function GlassMaterialPreview() {
           <p className={styles.sampleCaption}>装饰图形 · 无统计含义</p>
         </section>
         <div className={styles.tiles}>
-          <section data-glass-pane="0.55" data-glass-texture="0.65">
+          <section data-glass-pane="0.55" data-glass-tier="3" data-glass-relief="1">
             <span>TRANSMISSION</span>
             <h2>细密的磨砂压纹。</h2>
             <p>菱形微透镜柔化光带，让表面有细密颗粒和压纹触感。</p>
           </section>
-          <section data-glass-pane="0.75" data-glass-texture="1">
+          <section data-glass-pane="0.75" data-glass-tier="3" data-glass-relief="1">
             <span>CHROMATIC EDGE</span>
             <h2>光，穿过纹理。</h2>
             <p>光带在纹理内局部放大、扭折与色散，文字和图形保持稳定。</p>

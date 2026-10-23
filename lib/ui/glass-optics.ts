@@ -1,5 +1,14 @@
 import { glassPatternValue, type GlassPattern } from "./glass-patterns";
 
+/** Tolerant numeric read of a CSS custom property. Tokens are inherited from
+ * `.glass-workspace` and overridden per pane by tier rules, so a pane's own
+ * computed style is the source of truth. Unset or unparsable values fall back
+ * instead of throwing while the stylesheet is still rolling out. */
+function cssNumber(style: CSSStyleDeclaration, property: string, fallback: number) {
+  const value = Number.parseFloat(style.getPropertyValue(property));
+  return Number.isFinite(value) ? value : fallback;
+}
+
 /** Adapts this repository's V4 procedural optics to live DOM pane geometry.
  * Only the background is refracted; text and chart pixels never enter WebGL. */
 const vertexSource = `
@@ -169,8 +178,13 @@ const glassSource = `
     uniform float u_pattern;
     uniform vec4 u_rects[12];
     uniform vec4 u_materials[12];
+    // Per pane: dot strength 0..1, pitch in CSS px, angle in radians, edge
+    // refraction displacement in CSS px. Filled from CSS custom properties.
+    uniform vec4 u_surface[12];
     uniform vec4 u_reliefRects[12];
     uniform vec4 u_reliefMaterials[12];
+    uniform float u_pixelScale;
+    uniform float u_dotVibrancy;
 
     float roundedRect(vec2 p, vec4 rect, float radius) {
       vec2 halfSize = rect.zw * 0.5;
@@ -188,12 +202,14 @@ const glassSource = `
       float distanceToGlass = 10000.0;
       vec4 pane = vec4(0.0);
       vec4 material = vec4(18.0, 0.0, 0.0, 1.0);
+      vec4 surface = vec4(0.0);
       for (int i = 0; i < 12; i++) {
         float distance = roundedRect(p, u_rects[i], u_materials[i].x);
         if (u_rects[i].z > 0.0 && distance < 0.0) {
           distanceToGlass = distance;
           pane = u_rects[i];
           material = u_materials[i];
+          surface = u_surface[i];
         }
       }
 
@@ -212,39 +228,64 @@ const glassSource = `
         ) + vec2(0.0001));
 
         // Selected controls emboss the existing outer surface, rather than
-        // adding another pane (which could escape a scrolling DOM clip).
-        float textureStrength = clamp(material.z, 0.0, 1.0);
-        vec2 textureLocal = local;
+        // adding another pane (which could escape a scrolling DOM clip). Their
+        // relief value raises the dot lattice locally, without a second pass.
+        float dotStrength = clamp(surface.x, 0.0, 1.0);
         for (int i = 0; i < 12; i++) {
           if (u_reliefRects[i].z > 0.0) {
             float d = roundedRect(p, u_reliefRects[i], u_reliefMaterials[i].x);
             if (d < 0.0) {
-              textureStrength = u_reliefMaterials[i].y * smoothstep(0.0, 2.0, -d);
-              textureLocal = p - u_reliefRects[i].xy;
+              float relief = u_reliefMaterials[i].y * smoothstep(0.0, 2.0, -d);
+              // Nested accents emboss the outer pane; their relief value is a
+              // fraction of the tier-3 cap, which is theme dependent.
+              float reliefCap = mix(0.40, 0.55, u_lightTheme);
+              dotStrength = min(relief * reliefCap, reliefCap);
             }
           }
         }
-        // Rounded, close-packed dimples: no drawn crossing lines. Each tiny
-        // lens bends and shades the moving light beneath the sharp DOM text.
-        vec2 diagonal = vec2(textureLocal.x + textureLocal.y, textureLocal.x - textureLocal.y) * 0.707107;
-        vec2 cell = fract(diagonal / 5.5) - 0.5;
-        float microlens = exp(-dot(cell, cell) * 14.0);
-        vec2 slope = -cell * microlens * 9.5;
-        vec2 facetNormal = vec2(slope.x + slope.y, slope.x - slope.y) * 0.707107;
-        float facetHeight = microlens - 0.25;
-        float flute = sin(local.x * 0.137 + sin(local.y * 0.014) * 0.6);
-        vec2 textureNormal = vec2(cos(local.x * 0.137) * 1.2, flute * 0.3);
-        textureNormal += facetNormal * textureStrength * 5.2;
-        vec2 broadLens = vec2(sin(local.y * 0.019 + local.x * 0.004),
-                              cos(local.x * 0.015 - local.y * 0.008));
+        // Point-lattice micro-lenses. Strength, pitch and angle arrive from CSS
+        // custom properties, so no grid geometry is hard-coded; the lattice
+        // bends the backdrop for real instead of only perturbing a normal.
+        vec2 textureBend = vec2(0.0);
+        vec2 facetNormal = vec2(0.0);
+        float facetHeight = 0.0;
+        float dotShade = 0.0;
+        float dotMask = 0.0;
+        float dotChroma = 0.0;
+        if (dotStrength > 0.001) {
+          float ca = cos(surface.z);
+          float sa = sin(surface.z);
+          // The lattice maths is carried out in canvas device pixels: u_pixelScale
+          // lifts CSS pitch/distance into that space before the fract() grid.
+          vec2 rotated = vec2(local.x * ca - local.y * sa, local.x * sa + local.y * ca)
+                       * u_pixelScale;
+          float pitch = max(surface.y * u_pixelScale, 2.5);
+          vec2 cell = fract(rotated / pitch) - 0.5;
+          float rr = length(cell);
+          float dome = smoothstep(0.40, 0.02, rr);
+          vec2 dirn = normalize(cell + vec2(1e-5));
+          vec2 dotBend = dirn * dome * dotStrength * pitch * 0.42;
+          dotShade = (dome - 0.30) * dotStrength * 0.20;
+          dotMask = smoothstep(0.30, 0.44, rr) * dotStrength;
+          // Sampling below happens in CSS pixels, so bring the device-pixel
+          // bend (and therefore the chroma spread it drives) back into CSS.
+          textureBend = dotBend / u_pixelScale;
+          dotChroma = length(textureBend) * 0.10;
+          // Facet normal and height derive from the same dome as the bend.
+          facetNormal = dirn * dome;
+          facetHeight = dome - 0.30;
+        }
         vec2 drift = vec2(2.2 * sin(u_time * 0.31 + local.y * 0.009),
                           1.4 * cos(u_time * 0.27 + local.x * 0.008));
-        vec2 bend = -normal * edge * edge * 32.0
-                  + textureNormal + broadLens * textureStrength * 13.0 + drift;
-        float spectralWidth = (2.8 + edge * 10.0 + textureStrength * 1.6) * mix(1.0, 0.35, smoke);
+        // The shader samples in CSS pixels, and --glass-refract-current is
+        // already expressed in CSS pixels, so the Snell bend adds unchanged.
+        vec2 bend = -normal * edge * edge * max(surface.w, 0.0)
+                  + textureBend + drift;
+        float spectralWidth = (2.8 + edge * 10.0 + dotStrength * 1.6 + dotChroma)
+                            * mix(1.0, 0.35, smoke);
         vec2 spectralDirection = normalize(normal * edge + vec2(0.7, 0.4));
         vec2 center = pane.xy + pane.zw * 0.5;
-        vec2 refracted = center + (p - center) * (1.0 - textureStrength * 0.055) + bend;
+        vec2 refracted = center + (p - center) * (1.0 - dotStrength * 0.055) + bend;
 
         color = vec3(
           lightAt(refracted + spectralDirection * spectralWidth).r,
@@ -266,13 +307,20 @@ const glassSource = `
         float lightLevel = dot(color, vec3(0.21, 0.72, 0.07));
         // Facet shading is stationary and light-dependent, so the surface
         // reads as embossed glass instead of a moving noise overlay.
-        float facetLight = dot(facetNormal, normalize(vec2(-0.65, -0.8)));
-        float emboss = facetLight * (0.045 + min(lightLevel, 0.65) * 0.16);
-        float facetSpecular = pow(max(0.0, facetLight), 7.0);
-        vec3 coating = mix(vec3(0.76, 0.72, 0.95), vec3(0.32, 0.42, 0.48), u_lightTheme);
-        color += textureStrength * coating * (emboss + facetSpecular * 0.035);
-        color += textureStrength * facetHeight * vec3(0.006, 0.004, 0.010);
-        color += (flute * 0.5 + 0.5) * vec3(0.003, 0.003, 0.008);
+        if (dotStrength > 0.001) {
+          float facetLight = dot(facetNormal, normalize(vec2(-0.65, -0.8)));
+          float emboss = facetLight * (0.045 + min(lightLevel, 0.65) * 0.16);
+          float facetSpecular = pow(max(0.0, facetLight), 7.0);
+          vec3 coating = mix(vec3(0.76, 0.72, 0.95), vec3(0.32, 0.42, 0.48), u_lightTheme);
+          color += dotStrength * coating * (emboss + facetSpecular * 0.035);
+          color += dotStrength * facetHeight * vec3(0.006, 0.004, 0.010);
+          color += dotShade;
+          color *= 1.0 - dotMask * 0.16;
+          // Dense dots read heavier, so vivid panes compensate saturation.
+          float vibrancy = 1.0 + (u_dotVibrancy - 0.5) * 0.4;
+          float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+          color = mix(vec3(luma), color, vibrancy);
+        }
 
         float polished = exp(-abs(distanceToGlass + 1.7) * 1.4);
         float movingGlint = 0.5 + 0.5 * sin(local.x * 0.008 + local.y * 0.012 - u_time * 0.45);
@@ -443,15 +491,19 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     const rects = new Float32Array(48),
-      materials = new Float32Array(48);
+      materials = new Float32Array(48),
+      surfaces = new Float32Array(48);
     const rectLocation = gl.getUniformLocation(glass.handle, "u_rects[0]");
     const materialLocation = gl.getUniformLocation(glass.handle, "u_materials[0]");
+    const surfaceLocation = gl.getUniformLocation(glass.handle, "u_surface[0]");
     const reliefRects = new Float32Array(48),
       reliefMaterials = new Float32Array(48);
     const reliefRectLocation = gl.getUniformLocation(glass.handle, "u_reliefRects[0]");
     const reliefMaterialLocation = gl.getUniformLocation(glass.handle, "u_reliefMaterials[0]");
     const resolutionLocation = gl.getUniformLocation(glass.handle, "u_resolution");
     const textureLocation = gl.getUniformLocation(glass.handle, "u_light");
+    const pixelScaleLocation = gl.getUniformLocation(glass.handle, "u_pixelScale");
+    const dotVibrancyLocation = gl.getUniformLocation(glass.handle, "u_dotVibrancy");
     const updateGeometry = () => {
       dirty = false;
       const bounds = stage.getBoundingClientRect();
@@ -487,6 +539,7 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
       }
       rects.fill(0);
       materials.fill(0);
+      surfaces.fill(0);
       const paneOpacity = new Map<HTMLElement, number>();
       const panes = [...stage.querySelectorAll<HTMLElement>("[data-glass-pane], .panel")]
         .filter((element) => {
@@ -525,20 +578,30 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
       }
       panes.forEach((element, index) => {
         const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
         rects.set(
           [rect.left - bounds.left, rect.top - bounds.top, rect.width, rect.height],
           index * 4,
         );
         materials.set(
           [
-            parseFloat(getComputedStyle(element).borderTopLeftRadius) || 18,
+            parseFloat(style.borderTopLeftRadius) || 18,
             element.hasAttribute("data-glass-pane") ? Number(element.dataset.glassPane) || 0 : 0.6,
-            element.hasAttribute("data-glass-texture")
-              ? Number(element.dataset.glassTexture) || 0
-              : element.hasAttribute("data-glass-pane")
-                ? 0
-                : 0.55,
+            // Texture strength now lives in u_surface, driven by CSS variables;
+            // untiered surfaces (including plain `.panel`) default to no dots.
+            0,
             paneOpacity.get(element) ?? 1,
+          ],
+          index * 4,
+        );
+        surfaces.set(
+          [
+            Math.min(1, Math.max(0, cssNumber(style, "--glass-dot-current", 0))),
+            cssNumber(style, "--glass-dot-pitch", 9),
+            (cssNumber(style, "--glass-dot-angle", 45) * Math.PI) / 180,
+            // Edge refraction is authored in CSS pixels; 32px matches the
+            // pre-lattice baseline, and tier tokens override it per surface.
+            Math.max(0, cssNumber(style, "--glass-refract-current", 32)),
           ],
           index * 4,
         );
@@ -597,9 +660,17 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
       gl.useProgram(glass.handle);
       gl.uniform4fv(rectLocation, rects);
       gl.uniform4fv(materialLocation, materials);
+      gl.uniform4fv(surfaceLocation, surfaces);
       gl.uniform4fv(reliefRectLocation, reliefRects);
       gl.uniform4fv(reliefMaterialLocation, reliefMaterials);
       gl.uniform2f(resolutionLocation, width, height);
+      // CSS pixels -> canvas device pixels; pitch and refraction travel in CSS.
+      gl.uniform1f(pixelScaleLocation, canvas.width / Math.max(width, 1));
+      // One global vibrancy read per geometry pass is enough; it is a token.
+      gl.uniform1f(
+        dotVibrancyLocation,
+        Math.min(1, Math.max(0, cssNumber(getComputedStyle(stage), "--glass-dot-vibrancy", 0.85))),
+      );
       gl.uniform1i(textureLocation, 0);
     };
     const bind = (pass: OpticalProgram) => {
@@ -650,7 +721,7 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
         "data-conversation",
         "data-history-collapsed",
         "data-glass-pane",
-        "data-glass-texture",
+        "data-glass-tier",
         "data-glass-relief",
         "hidden",
         "open",
@@ -670,6 +741,10 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
     updateGeometry();
     return {
       update(next: Playback) {
+        // Tier tokens can depend on the theme (light glass raises dot strength)
+        // or the pattern, and those flip attributes outside this observer, so
+        // force a geometry/computed-style re-read when either changes.
+        if (next.light !== options.light || next.pattern !== options.pattern) dirty = true;
         options = next;
         sync();
       },

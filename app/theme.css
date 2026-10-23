@@ -1584,6 +1584,7 @@ select {
    the story panel keeps the paper-surface --muted value. */
 .login-heading p,
 .login-heading .login-eyebrow,
+.login-field-label > span,
 .login-secure-note,
 .login-footer,
 .login-signal-labels,
@@ -1650,6 +1651,7 @@ html[data-motion="on"][data-input-modality="pointer"] button:enabled:active {
   .login-form .primary-button:hover:not(:disabled),
   .ask-card-button:hover {
     background: var(--accent);
+    color: var(--button-ink);
     opacity: 1;
   }
   .secondary-button:hover:not(:disabled),
@@ -2061,6 +2063,9 @@ html[data-motion="off"] button:active {
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
+    /* Fade the clipped edge so the hidden choices read as scrollable, not missing. */
+    mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
   }
   .overview-chart-toolbar .chart-view-options::-webkit-scrollbar {
     display: none;

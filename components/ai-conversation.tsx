@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { toolLabel } from "@/lib/ai/chart-capabilities";
 import {
+  isValidElement,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -50,6 +51,19 @@ const QUESTION_ERROR_ID = "analysis-question-error";
 const COMPOSER_FIELDS_ID = "analysis-composer-fields";
 /** Enough of the draft to recognise it in the folded button's tooltip. */
 const DRAFT_PREVIEW_LENGTH = 24;
+/** The server's "tool-call check" error speaks to administrators; say this instead. */
+const FREE_CHAT_OFF_HINT =
+  "自由对话还没开启：可先用推荐问题或切换表格；需要管理员在 AI 设置中开启。";
+/** Capability/configuration failures arrive as administrator-facing sentences. */
+const AI_CONFIG_NOTICE = /工具调用检测|AI 对话分析已停用|AI 设置/;
+
+/** Flatten a rendered notice to its text, so the dock can rephrase it. */
+function noticeText(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map((child) => noticeText(child)).join("");
+  if (isValidElement<{ children?: ReactNode }>(node)) return noticeText(node.props.children);
+  return "";
+}
 
 function Speaker({ role }: { role: ChatMessage["role"] }) {
   return (
@@ -307,6 +321,34 @@ export function ConversationWorkspace({
   }, []);
 
   const rounds = messages.filter((message) => message.role === "user").length;
+  const isEmpty = messages.length === 0 && !loading;
+  // Only the AI configuration notice is rephrased; save and transport failures
+  // keep their own wording and retry actions.
+  const rawNotice = noticeText(notice);
+  const configNotice = !aiReady && AI_CONFIG_NOTICE.test(rawNotice);
+  // The compact phone empty state can carry three questions, not four: the
+  // extra one (only offered once AI is configured) makes the CSS drop the
+  // description paragraph so every question stays above the dock.
+  const welcomeSuggestions = suggestedQuestionsFor(aiReady);
+
+  useLayoutEffect(() => {
+    // The empty state is the only view that must fit without scrolling, so a
+    // stale scroll offset from a previous conversation must never hide its hero
+    // and recommended questions.
+    if (!isEmpty) return;
+    scroll.transcript.current?.scrollTo({ top: 0 });
+  }, [conversationId, isEmpty, scroll.transcript]);
+
+  useEffect(() => {
+    if (!isEmpty) return;
+    // Shrinking a desktop window into the phone layout keeps the same transcript
+    // instance; reset it so the compact empty state starts at the top instead of
+    // at the bottom of the old scroll range.
+    const mobile = window.matchMedia("(max-width: 600px)");
+    const reset = () => scroll.transcript.current?.scrollTo({ top: 0 });
+    mobile.addEventListener("change", reset);
+    return () => mobile.removeEventListener("change", reset);
+  }, [isEmpty, scroll.transcript]);
 
   useLayoutEffect(() => {
     const dock = composer.current;
@@ -385,7 +427,7 @@ export function ConversationWorkspace({
                 ? "当前账号不能使用 AI 对话"
                 : aiReady
                   ? `连续对话已开启${model ? ` · ${model}` : ""}`
-                  : "推荐问题可直接使用"}
+                  : "推荐问题可直接使用 · 自由对话未开启"}
             </p>
           </>
         ) : (
@@ -407,6 +449,7 @@ export function ConversationWorkspace({
             {!messages.length && !loading && (
               <div
                 className={styles.empty}
+                data-suggestion-count={welcomeSuggestions.length}
                 data-enter="rise-sm"
                 style={{ "--enter-delay": "400ms" } as CSSProperties}
               >
@@ -420,7 +463,9 @@ export function ConversationWorkspace({
                 </h2>
                 <p>
                   {aiAllowed
-                    ? "问成绩、看趋势、找关联。用你习惯的方式提问，让 AI 帮你整理线索，给出有依据的回答。"
+                    ? aiReady
+                      ? "问成绩、看趋势、找关联。用你习惯的方式提问，让 AI 帮你整理线索，给出有依据的回答。"
+                      : "可以先用下面的推荐问题；自由对话需要管理员在 AI 设置中开启。"
                     : "只读账号可使用指标分析，不能使用 AI 对话。请返回指标分析查看确定性统计结果。"}
                 </p>
                 {aiAllowed && (
@@ -432,7 +477,7 @@ export function ConversationWorkspace({
                         <Icon name="arrowUpRight" size={12} />
                       </span>
                     </div>
-                    {suggestedQuestionsFor(aiReady).map((item) => (
+                    {welcomeSuggestions.map((item) => (
                       <button
                         type="button"
                         key={item.id}
@@ -494,15 +539,22 @@ export function ConversationWorkspace({
                     />
                   ) : null}
                   {message.generatedAt ? (
-                    <p className={styles.snapshotNote}>
-                      {message.restored ? "历史结果" : "生成于"} ·{" "}
-                      {new Date(message.generatedAt).toLocaleString("zh-CN")} · 结果契约 v
-                      {RESULT_CONTRACT_VERSION}
-                      {response?.resultRefs?.length
-                        ? ` · 数据声明版本 ${[...new Set(response.resultRefs.map((ref) => ref.datasetVersion))].join(" / ")} · 指标 ${[...new Set(response.resultRefs.map((ref) => ref.metricVersion))].join(" / ")}`
-                        : ""}
-                      {message.restored ? " · 数据可能已更新，继续提问会重新查询" : ""}
-                    </p>
+                    <div className={styles.snapshotNote}>
+                      <span>
+                        {message.restored ? "历史结果" : "生成于"} ·{" "}
+                        {new Date(message.generatedAt).toLocaleString("zh-CN")}
+                        {message.restored ? " · 数据可能已更新，继续提问会重新查询" : ""}
+                      </span>
+                      <details className={styles.technical}>
+                        <summary>技术详情</summary>
+                        <p>
+                          结果契约 v{RESULT_CONTRACT_VERSION}
+                          {response?.resultRefs?.length
+                            ? ` · 数据声明版本 ${[...new Set(response.resultRefs.map((ref) => ref.datasetVersion))].join(" / ")} · 指标 ${[...new Set(response.resultRefs.map((ref) => ref.metricVersion))].join(" / ")}`
+                            : ""}
+                        </p>
+                      </details>
+                    </div>
                   ) : null}
                   <p className={styles.messageText}>{message.content}</p>
                   {response?.warning ? <ResponseWarning warning={response.warning} /> : null}
@@ -647,9 +699,9 @@ export function ConversationWorkspace({
         </div>
         {!loading && pendingSteps.length > 0 ? <ExecutionSteps steps={pendingSteps} /> : null}
         <div ref={composer} className={styles.composerDock} data-collapsed={composerCollapsed}>
-          {aiAllowed && !aiReady && (
+          {aiAllowed && !aiReady && !composerCollapsed && (
             <p className={styles.note}>
-              推荐问题和已有结果的表格切换无需连接 AI。自由对话需要管理员开启并配置 AI。
+              推荐问题和表格切换无需连接 AI。自由对话需要管理员在 AI 设置中开启。
               {onConfigure && (
                 <button type="button" className="text-button" onClick={onConfigure}>
                   去设置
@@ -657,7 +709,16 @@ export function ConversationWorkspace({
               )}
             </p>
           )}
-          {notice}
+          {configNotice ? (
+            composerCollapsed ? null : (
+              <p className={styles.localNotice} role="alert">
+                {FREE_CHAT_OFF_HINT}
+                {rawNotice.includes("上次成功的结果仍可查看") ? "上次成功的结果仍可查看。" : ""}
+              </p>
+            )
+          ) : (
+            notice
+          )}
           <form
             className={styles.composer}
             aria-label="对话输入"
@@ -678,7 +739,11 @@ export function ConversationWorkspace({
               <div className={styles.composerHeading}>
                 <label htmlFor="analysis-question">
                   <Icon name="sparkles" size={14} />
-                  {messages.length ? "继续追问" : "把你的问题，交给 AI"}
+                  {!aiReady
+                    ? "自由对话未开启"
+                    : messages.length
+                      ? "继续追问"
+                      : "把你的问题，交给 AI"}
                 </label>
                 <div className={styles.composerTools}>
                   {clearConfirming && messages.length > 0 ? (
@@ -774,9 +839,11 @@ export function ConversationWorkspace({
                 value={question}
                 placeholder={
                   aiAllowed
-                    ? messages.length
-                      ? "只看上学期、换成表格，或继续追问…"
-                      : "你想了解哪些学习情况？"
+                    ? aiReady
+                      ? messages.length
+                        ? "只看上学期、换成表格，或继续追问…"
+                        : "你想了解哪些学习情况？"
+                      : "可先用推荐问题；自由对话需管理员在 AI 设置中开启"
                     : "只读账号不能使用 AI 对话"
                 }
                 disabled={!aiAllowed}
@@ -1007,6 +1074,7 @@ function ConversationResult({
       displayView={artifact.view}
       facts={facts}
       resultId={resultId}
+      totalFacts={response.facts.length}
       storedPolicy={response.presentationPolicies?.[artifactIndex]}
       onViewChange={onChartChange}
       render={(displayArtifact, change) => (

@@ -122,7 +122,18 @@
 
 @media (max-width: 380px) {
   .control .button {
-    padding-inline: 6px;
+    padding-inline: 3px;
+    font-size: 12px;
+    line-height: 1.25;
+    /* Four-character labels (“关联全景”) must not collapse to two characters;
+       let them wrap inside their own segment instead of truncating. */
+    white-space: normal;
+  }
+
+  .control .label {
+    overflow: visible;
+    text-overflow: clip;
+    word-break: break-word;
   }
 
   .icon {

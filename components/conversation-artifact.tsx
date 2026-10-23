@@ -23,6 +23,8 @@ type CommonProps = {
   capabilities?: PolicyContext["capabilities"];
   facts?: PolicyContext["facts"];
   resultId?: string | null;
+  /** Facts across the whole answer; `factIds` only counts the ones bound to this result. */
+  totalFacts?: number;
   /** Optional server snapshot; revalidated locally before it reaches the renderer. */
   storedPolicy?: StoredArtifactPresentationPolicy | null;
   /** Optional controlled display choice (local UI state; never a server write). */
@@ -131,6 +133,7 @@ export function ConversationArtifact({
   capabilities,
   facts,
   resultId,
+  totalFacts,
   storedPolicy,
   displayView,
   render,
@@ -156,7 +159,6 @@ export function ConversationArtifact({
     preferred && policy.allowedViews.includes(preferred) ? preferred : policy.effectiveView;
   const effectiveArtifact = withArtifactView(artifact, activeView);
   const reasonId = `${id}-reason`;
-  const factsId = `${id}-facts`;
   const allowed = policy.allowedViews.filter((view) => compatibleArtifactView(artifact, view));
   const requestedRejected =
     !preferred && policy.requestedView
@@ -185,6 +187,24 @@ export function ConversationArtifact({
   const slot =
     render?.(effectiveArtifact, change, { ...policy, effectiveView: activeView }) ?? children;
 
+  // Result and fact ids are internal bookkeeping: keep them in the tooltip so the
+  // card header stays readable, and say how a per-result count relates to the
+  // answer-wide "统计事实" count instead of leaving two unexplained numbers.
+  const identityTitle = [
+    policy.resultId ? `结果编号 ${policy.resultId}` : null,
+    policy.factIds.length ? `数字依据 ${policy.factIds.join(" · ")}` : null,
+    "图、表和结论共用同一计算结果",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const factSummary = policy.factIds.length
+    ? `本结果绑定 ${policy.factIds.length} 条统计事实${
+        totalFacts && totalFacts > policy.factIds.length
+          ? ` · 全部 ${totalFacts} 条见“分析依据”`
+          : ""
+      }`
+    : "未提供数字依据引用";
+
   return (
     <section
       className={styles.wrapper}
@@ -194,13 +214,10 @@ export function ConversationArtifact({
     >
       <header className={styles.header}>
         <div className={styles.heading}>
-          <span className={styles.kicker}>TRUSTED RESULT</span>
+          <span className={styles.kicker}>可信结果</span>
           <h3>{VIEW_LABEL[activeView]}</h3>
-          <span className={styles.identity} title="图、表和结论共用同一计算结果">
-            {policy.resultId ? `${policy.resultId} · ` : ""}
-            {policy.factIds.length
-              ? `${policy.factIds.length} 条数字依据已绑定`
-              : "未提供数字依据引用"}
+          <span className={styles.identity} title={identityTitle}>
+            {factSummary}
           </span>
         </div>
         <div className={styles.controls} role="group" aria-label="结果展示方式">
@@ -230,12 +247,6 @@ export function ConversationArtifact({
                 ? "课程按横向条形比较，长名称保持可读。"
                 : "学期按真实时间顺序连接；缺失值不补零。")}
           </p>
-          {policy.factIds.length ? (
-            <span className={styles.factIds} id={factsId}>
-              {policy.factIds.slice(0, 3).join(" · ")}
-              {policy.factIds.length > 3 ? ` · +${policy.factIds.length - 3}` : ""}
-            </span>
-          ) : null}
         </footer>
       )}
     </section>

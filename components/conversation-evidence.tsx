@@ -161,13 +161,26 @@ export function ConversationEvidence({
               {response.facts.map((fact, index) => {
                 const ref = response.factRefs?.find((item) => item.text === fact);
                 return (
-                  <li key={ref?.factId ?? index}>
+                  <li key={ref?.factId ?? index} title={ref ? `数字依据 ${ref.factId}` : undefined}>
                     {fact}
-                    {ref ? <small className={styles.factId}>{ref.factId}</small> : null}
                   </li>
                 );
               })}
             </ul>
+            {response.factRefs?.length ? (
+              // Internal fact ids stay copyable but folded away: the count above
+              // and the statements here are what a teacher needs to read.
+              <details style={{ marginTop: 12, color: "var(--muted)", fontSize: 11 }}>
+                <summary style={{ cursor: "pointer", minHeight: 24 }}>技术详情</summary>
+                <ul style={{ margin: "6px 0 0", paddingLeft: 20, lineHeight: 1.8 }}>
+                  {response.factRefs.map((ref, index) => (
+                    <li key={ref.factId}>
+                      {ref.factId} · 第 {index + 1} 条统计事实
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
           </section>
         ) : null}
         {citations.length ? (

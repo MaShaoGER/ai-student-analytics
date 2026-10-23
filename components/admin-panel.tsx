@@ -27,7 +27,7 @@ import { AnalysisControls } from "@/components/analysis-controls";
 import { BAILIAN_QWEN_FLASH, isBailianQwenFlash } from "@/lib/ai/bailian";
 import { ZHIPU_GLM_FLASH, isZhipuGLMFlash } from "@/lib/ai/zhipu";
 
-type AdminTab = "overview" | "users" | "datasets" | "logs" | "ai" | "account";
+export type AdminTab = "overview" | "users" | "datasets" | "logs" | "ai" | "account";
 type Feedback = { kind: "success" | "error"; message: string } | null;
 /** Inline custom properties carry entrance delays defined by app/motion.css. */
 type MotionStyle = CSSProperties & { [key: `--${string}`]: string };
@@ -103,11 +103,16 @@ function AnimatedCost({ value }: { value?: string }) {
 export function AdminPanel({
   user,
   onSessionExpired,
+  initialTab,
 }: {
   user: SessionUser;
   onSessionExpired: () => void;
+  /** Optional landing section, e.g. "ai" from the chat "去设置" shortcut. */
+  initialTab?: AdminTab;
 }) {
-  const [tab, setTab] = useState<AdminTab>(user.role === "admin" ? "overview" : "account");
+  const [tab, setTab] = useState<AdminTab>(
+    () => initialTab ?? (user.role === "admin" ? "overview" : "account"),
+  );
   const [config, setConfig] = useState<AIConfig | null>(null);
   const [draft, setDraft] = useState<ConfigDraft | null>(null);
   const [stats, setStats] = useState<AICostStats | null>(null);
@@ -125,6 +130,12 @@ export function AdminPanel({
   useEffect(() => {
     sessionExpired.current = onSessionExpired;
   }, [onSessionExpired]);
+
+  // Honour a changed landing section (e.g. a second "去设置" press) without
+  // overriding later in-page tab choices.
+  useEffect(() => {
+    if (initialTab) setTab(initialTab);
+  }, [initialTab]);
 
   // Layout setup runs before passive child fetches. This closes the Strict Mode
   // replay window where AdminManagement could observe the parent's cleanup flag.

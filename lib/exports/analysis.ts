@@ -103,13 +103,22 @@ export function analysisReportHtml(
   theme: "light" | "dark" = "light",
 ): string {
   const h = escapeHtml;
+  // The printed report follows the on-screen numerals: scores keep two decimals,
+  // participant counts stay whole with thousands, activity counts drop decimals.
+  const formatValue = (value: number, unit: string) =>
+    value.toLocaleString("zh-CN", {
+      minimumFractionDigits: unit === "分" ? 2 : 0,
+      maximumFractionDigits: unit === "次" ? 0 : 2,
+    });
+  const formatCount = (value: number) =>
+    value.toLocaleString("zh-CN", { maximumFractionDigits: 0 });
   const dimension = analysisDimensionLabel(result);
   const highest = result.rows.reduce<AnalysisResult["rows"][number] | null>(
     (best, row) => (!best || row.value > best.value ? row : best),
     null,
   );
   const insight = highest
-    ? `${highest.dimension} 的${result.metricLabel}最高，为 ${highest.value} ${result.unit}。`
+    ? `${highest.dimension} 的${result.metricLabel}最高，为 ${formatValue(highest.value, result.unit)} ${result.unit}。`
     : "本次分析没有可展示的分组。";
   const filtered = analysisSuppressionNote(result);
   const max = Math.max(...result.rows.map((row) => row.value), 1);
@@ -122,7 +131,7 @@ export function analysisReportHtml(
   const rows = result.rows
     .map((row) => {
       const width = Math.min(100, Math.max(0, (row.value / max) * 100));
-      return `<tr><th scope="row">${h(row.dimension)}</th><td>${h(row.value)}</td><td>${h(row.sampleSize)}</td><td><div class="bar" style="width:${Number.isFinite(width) ? width : 0}%"></div></td></tr>`;
+      return `<tr><th scope="row">${h(row.dimension)}</th><td>${formatValue(row.value, result.unit)}</td><td>${formatCount(row.sampleSize)}</td><td><div class="bar" style="width:${Number.isFinite(width) ? width : 0}%"></div></td></tr>`;
     })
     .join("");
   return `<!doctype html>

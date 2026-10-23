@@ -36,7 +36,14 @@ export type AnalysisPlanning = {
   model?: string | null;
 };
 
-const formatNumber = (value: number) => value.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
+// Scores always show two decimals (72.9 → 72.90); whole-event counts stay
+// integers with thousands; other metrics keep up to two decimals.
+const formatNumber = (value: number, unit: string) =>
+  value.toLocaleString("zh-CN", {
+    minimumFractionDigits: unit === "分" ? 2 : 0,
+    maximumFractionDigits: unit === "次" ? 0 : 2,
+  });
+const formatCount = (value: number) => value.toLocaleString("zh-CN", { maximumFractionDigits: 0 });
 
 // Entrance choreography follows the shared motion system: each region mounts with
 // its own delay, so data arriving later still enters in a controlled order.
@@ -91,8 +98,8 @@ function ResultTable({
                   {row.dimension}
                 </button>
               </td>
-              <td className="numeric">{formatNumber(row.value)}</td>
-              <td className="numeric">{formatNumber(row.sampleSize)} 人</td>
+              <td className="numeric">{formatNumber(row.value, result.unit)}</td>
+              <td className="numeric">{formatCount(row.sampleSize)} 人</td>
             </tr>
           ))}
         </tbody>
@@ -313,7 +320,7 @@ export function AnalysisResultView({
                     <p>
                       <strong>{highest.dimension}</strong> 的{result.metricLabel}最高，为{" "}
                       <strong>
-                        {formatNumber(highest.value)} {result.unit}
+                        {formatNumber(highest.value, result.unit)} {result.unit}
                       </strong>
                       。{search && <span>仅比较筛选后的分组。</span>}
                     </p>
@@ -324,7 +331,8 @@ export function AnalysisResultView({
                 <aside
                   className="result-focus"
                   data-glass-pane="0.55"
-                  data-glass-texture="0.4"
+                  data-glass-tier="3"
+                  data-glass-relief="1"
                   aria-label="选中分组的统计详情"
                   data-enter="slide-right"
                   data-enter-group="rise"
@@ -490,7 +498,7 @@ export function AnalysisResultView({
                 </div>
                 <div>
                   <dt>查询用时</dt>
-                  <dd>{formatNumber(result.durationMs)} ms</dd>
+                  <dd>{formatCount(result.durationMs)} ms</dd>
                 </div>
                 {planning && (
                   <div>

@@ -39,7 +39,7 @@ export default function GlassBackgroundsPreview() {
                 <section
                   className={styles.pane}
                   data-glass-pane="0.6"
-                  data-glass-texture="0.75"
+                  data-glass-tier="3"
                   aria-hidden="true"
                 >
                   <span className={styles.small}>学析台 · 磨砂玻璃</span>

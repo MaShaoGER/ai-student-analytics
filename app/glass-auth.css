@@ -92,7 +92,7 @@
     grid-template-rows: auto;
     align-content: start;
     gap: 14px;
-    padding: 60px 14px 22px;
+    padding: 60px 14px calc(22px + env(safe-area-inset-bottom, 0px));
   }
   .glass-auth .login-story {
     padding: 26px 20px 22px;
@@ -139,6 +139,56 @@
   }
   .glass-auth .login-signal-labels {
     font-size: 9px;
+  }
+}
+
+/* Phones: the story shrinks to brand + title so the CTA lands inside the first
+   screen (320×720 without a notice, 390×844 with one). Copy, not font size, is
+   what gets dropped; inputs keep their 52px touch height. */
+@media (max-width: 480px) {
+  .glass-workspace.glass-auth {
+    gap: 12px;
+    padding: 56px 12px calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+  .glass-auth .login-story {
+    padding: 15px 16px 16px;
+  }
+  .glass-auth .login-brand {
+    margin-bottom: 8px;
+  }
+  .glass-auth .login-story-copy .login-eyebrow,
+  .glass-auth .login-story-copy p,
+  .glass-auth .login-signals,
+  .glass-auth .login-story-features {
+    display: none;
+  }
+  .glass-auth .login-story-copy h1 {
+    margin-top: 0;
+    font-size: 21px;
+    line-height: 1.45;
+    letter-spacing: -0.4px;
+  }
+  .glass-auth .login-form-area {
+    padding: 6px 2px 0;
+  }
+  .glass-auth .login-form-card {
+    padding: 18px 16px;
+  }
+  .glass-auth .login-heading {
+    margin-bottom: 16px;
+  }
+  .glass-auth .login-heading h2 {
+    margin: 6px 0;
+    font-size: 24px;
+  }
+  .glass-auth .login-form {
+    gap: 15px;
+  }
+  .glass-auth .login-form-card > .notice {
+    margin-bottom: 12px;
+  }
+  .glass-auth .login-footer {
+    margin-top: 8px;
   }
 }
 

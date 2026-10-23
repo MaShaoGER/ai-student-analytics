@@ -1,0 +1,2651 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1440" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="data:," />
+    <title>学析台 · 界面动效与细节提案</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+        --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+        --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+        --enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
+        --sans: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+        --mono: "SFMono-Regular", Consolas, monospace;
+      }
+      :root[data-theme="dark"] {
+        --glass-fill: #1014196b;
+        --glass-border: #d4dce347;
+        --glass-rim: #eff3f77a;
+        --glass-shadow:
+          inset 0 1px 1px #ffffff45, inset 0 -1px 2px #c8d3df1a, 0 8px 28px #02040747;
+        --bg: #090c10;
+        --paper: #171c22;
+        --surface: #1b2229;
+        --inset: #10161d;
+        --raised: #29323c;
+        --ink: #ecf0f3;
+        --muted: #b1bcc6;
+        --line: #d4dce32b;
+        --accent: #c4d7cb;
+        --sage: #a8c7b8;
+        --sage-surface: #29433d;
+        --sage-soft: #233c36;
+        --selected: color-mix(in srgb, var(--sage) 19%, var(--inset));
+        --control-bg: color-mix(in srgb, var(--raised) 52%, transparent);
+        --control-hover: color-mix(in srgb, var(--ink) 8%, transparent);
+        --relief:
+          radial-gradient(ellipse 2px 1.5px at 3px 2.5px, #ffffff24, transparent 90%) 0 0 / 8px 8px,
+          radial-gradient(ellipse 2px 1.5px at 4px 4px, #00000047, transparent 90%) 0 0 / 8px 8px;
+        --fill-dense: linear-gradient(125deg, #ffffff17, transparent 55%), #1014196b;
+        --band: #0e141a;
+      }
+      :root[data-theme="light"] {
+        color-scheme: light;
+        --glass-fill: #e9edf16b;
+        --glass-border: #53606e40;
+        --glass-rim: #ffffffc9;
+        --glass-shadow:
+          inset 0 1px 1px #ffffffa6, inset 0 -1px 2px #8c9caa24, 0 8px 24px #0b111b1f;
+        --bg: #d6d9dd;
+        --paper: #edf0f2;
+        --surface: #e6e9ed;
+        --inset: #d9dfe4;
+        --raised: #f5f6f8;
+        --ink: #243e37;
+        --muted: #506a62;
+        --line: #38554b30;
+        --accent: #365d4e;
+        --sage: #91b5a1;
+        --sage-surface: #c7d9ce;
+        --sage-soft: #d5e3da;
+        --selected: color-mix(in srgb, var(--sage) 19%, var(--inset));
+        --control-bg: color-mix(in srgb, var(--raised) 52%, transparent);
+        --control-hover: color-mix(in srgb, var(--ink) 7%, transparent);
+        --relief:
+          radial-gradient(ellipse 2px 1.5px at 3px 2.5px, #ffffff80, transparent 90%) 0 0 / 8px 8px,
+          radial-gradient(ellipse 2px 1.5px at 4px 4px, #141c2421, transparent 90%) 0 0 / 8px 8px;
+        --fill-dense: linear-gradient(125deg, #ffffff8c, transparent 55%), #e9edf16b;
+        --band: #d2d7dc;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-width: 1440px; }
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font: 14px/1.6 var(--sans);
+        -webkit-font-smoothing: antialiased;
+      }
+      h1, h2, h3, p { margin: 0; }
+      /* Smoke-silver stage: approximate the WebGL backdrop with static optics. */
+      .stage { position: relative; isolation: isolate; min-height: 100vh; overflow: hidden; }
+      .stage::before {
+        content: "";
+        position: fixed;
+        inset: -10%;
+        z-index: -1;
+        background:
+          radial-gradient(ellipse 60% 42% at 74% 18%, #b9c8d233, transparent 62%),
+          radial-gradient(ellipse 52% 38% at 22% 78%, #9aa8bd26, transparent 60%),
+          radial-gradient(ellipse 120% 70% at 50% 120%, #12181f, transparent 70%),
+          var(--bg);
+      }
+      .stage::after {
+        content: "";
+        position: fixed;
+        inset: -20%;
+        z-index: -1;
+        opacity: 0.5;
+        background:
+          conic-gradient(from 200deg at 30% 40%, transparent 0 40%, #e8eef61a 46%, transparent 52%),
+          conic-gradient(from 20deg at 70% 60%, transparent 0 42%, #cdd8e614 48%, transparent 54%);
+        filter: blur(28px);
+      }
+      .wrap { width: 1400px; margin: 0 auto; padding: 44px 0 80px; }
+
+      /* ---------- masthead ---------- */
+      .masthead {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 32px;
+        padding-bottom: 26px;
+        border-bottom: 1px solid var(--line);
+      }
+      .eyebrow {
+        font: 600 10px/1.6 var(--mono);
+        letter-spacing: 2.2px;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+      .masthead h1 { margin-top: 10px; font-size: 30px; font-weight: 550; letter-spacing: -0.4px; }
+      .lede { margin-top: 10px; max-width: 720px; color: var(--muted); font-size: 13px; }
+      .masthead-tools { display: flex; gap: 8px; flex-shrink: 0; }
+      .tool {
+        height: 36px;
+        padding: 0 14px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--control-bg);
+        color: var(--ink);
+        font: 500 12px/1 var(--sans);
+        cursor: pointer;
+      }
+
+      /* ---------- index ---------- */
+      .index {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 26px 0 8px;
+      }
+      .index a {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 32px;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--control-bg);
+        color: var(--muted);
+        font-size: 11px;
+        text-decoration: none;
+      }
+      .index a b { font: 500 10px var(--mono); color: var(--accent); }
+
+      /* ---------- sections ---------- */
+      .section { margin-top: 54px; }
+      .section-head { display: flex; align-items: baseline; gap: 14px; }
+      .section-no { font: 600 11px/1 var(--mono); letter-spacing: 2px; color: var(--accent); }
+      .section-head h2 { font-size: 20px; font-weight: 550; letter-spacing: -0.2px; }
+      .section-head p { color: var(--muted); font-size: 12px; }
+      .section-rule { height: 1px; margin: 14px 0 24px; background: var(--line); }
+
+      .case { margin-bottom: 34px; }
+      .case-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+      .case-head h3 { font-size: 14px; font-weight: 550; }
+      .case-no {
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        color: var(--muted);
+        font: 500 10px var(--mono);
+      }
+      .tag {
+        padding: 2px 7px;
+        border-radius: 5px;
+        font: 500 10px/1.6 var(--mono);
+        letter-spacing: 0.4px;
+      }
+      .tag.defect { background: color-mix(in srgb, #e2a08a 22%, transparent); color: #e9b9a6; }
+      .tag.polish { background: color-mix(in srgb, var(--sage) 22%, transparent); color: var(--sage); }
+      :root[data-theme="light"] .tag.defect { color: #8a3a12; }
+      :root[data-theme="light"] .metric { background: color-mix(in srgb, #ffffff 74%, transparent); }
+      :root[data-theme="light"] .metric.is-selected {
+        background: var(--relief), var(--fill-dense);
+        border-color: color-mix(in srgb, var(--accent) 52%, var(--line));
+      }
+      :root[data-theme="light"] .new .metric:hover:not(.is-selected) {
+        background: color-mix(in srgb, var(--ink) 7%, #ffffff);
+        border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+      }
+      :root[data-theme="light"] .tag.polish { color: #2b5443; }
+      .case-note { margin: 0 0 12px 32px; max-width: 860px; color: var(--muted); font-size: 12px; }
+      .case-note code {
+        padding: 1px 5px;
+        border-radius: 4px;
+        background: var(--control-bg);
+        font: 11px var(--mono);
+        color: var(--ink);
+      }
+
+      .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-left: 32px; }
+      .pane {
+        position: relative;
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--paper) 55%, transparent);
+      }
+      .pane-label {
+        display: inline-block;
+        margin-bottom: 14px;
+        font: 600 9px/1.6 var(--mono);
+        letter-spacing: 1.8px;
+        color: var(--muted);
+      }
+      .pane-label.is-new { color: var(--accent); }
+      .pane.is-new { border-color: color-mix(in srgb, var(--sage) 34%, var(--line)); }
+      :root[data-theme="light"] .pane { background: color-mix(in srgb, #ffffff 62%, transparent); }
+      :root[data-theme="light"] .pane.is-new {
+        background: color-mix(in srgb, var(--sage-soft) 46%, #ffffff);
+        border-color: color-mix(in srgb, var(--sage) 52%, var(--line));
+      }
+
+      /* ---------- shared mini material ---------- */
+      .glass {
+        border: 1px solid var(--glass-border);
+        border-top-color: var(--glass-rim);
+        border-radius: 14px;
+        background: linear-gradient(125deg, #dcefeb08, transparent 48%, #b9b3df08), var(--glass-fill);
+        box-shadow: var(--glass-shadow);
+      }
+
+      /* ---------- 01 sidebar nav ---------- */
+      .navstack { display: grid; gap: 5px; padding: 14px; width: 236px; }
+      .navbtn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        min-height: 40px;
+        padding: 9px 13px;
+        border: 1px solid transparent;
+        border-radius: 9px;
+        background: transparent;
+        color: var(--muted);
+        font: 500 12px/1.5 var(--sans);
+        text-align: left;
+        cursor: pointer;
+        transition:
+          background-color 160ms var(--ease-out),
+          color 160ms var(--ease-out),
+          border-color 160ms var(--ease-out);
+      }
+      .navbtn .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 2px;
+        background: currentColor;
+        opacity: 0.5;
+        flex-shrink: 0;
+      }
+      .navbtn[aria-current="page"] {
+        color: var(--ink);
+        background: var(--relief), var(--fill-dense);
+        border-color: var(--line);
+      }
+      :root[data-theme="light"] .navbtn { color: #3c554c; }
+      /* 当前实现：hover 规则被后导入的同特异性基础规则覆盖 → 无反馈 */
+      .cur .navbtn:hover:not([aria-current="page"]) {
+        background: transparent;
+        color: var(--muted);
+      }
+      /* 提案：墨色 6% 底 + 文字提亮 + 左侧 2px 指示 */
+      .new .navbtn:hover:not([aria-current="page"]) {
+        background: var(--control-hover);
+        color: var(--ink);
+      }
+      .new .navbtn[aria-current="page"] {
+        box-shadow:
+          inset 0 1px 0 #ffffff1f,
+          0 2px 4px #07152218;
+      }
+      .new .navbtn[aria-current="page"]::before {
+        content: "";
+        width: 2px;
+        height: 16px;
+        margin-right: 2px;
+        border-radius: 1px;
+        background: var(--accent);
+      }
+
+      /* ---------- 02 mode switch ---------- */
+      .modeswitch {
+        display: flex;
+        gap: 4px;
+        padding: 5px;
+        border-radius: 14px;
+      }
+      .modeswitch button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 40px;
+        padding: 8px 18px;
+        border: 0;
+        border-radius: 9px;
+        background: transparent;
+        color: var(--muted);
+        font: 500 12px/1.5 var(--sans);
+        white-space: nowrap;
+        cursor: pointer;
+        transition:
+          background-color 160ms var(--ease-out),
+          color 160ms var(--ease-out);
+      }
+      .modeswitch button[aria-pressed="true"] {
+        background: var(--relief), var(--fill-dense);
+        color: var(--ink);
+        box-shadow:
+          inset 0 1px 0 #ffffff4d,
+          0 2px 4px #07152218;
+      }
+      .cur .modeswitch button:hover:not([aria-pressed="true"]) {
+        background: transparent;
+        color: var(--muted);
+      }
+      .new .modeswitch button:hover:not([aria-pressed="true"]) {
+        background: var(--control-hover);
+        color: var(--ink);
+      }
+      .glyph { width: 14px; height: 14px; flex-shrink: 0; opacity: 0.9; }
+
+      /* ---------- 03 metric cards ---------- */
+      .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+      .metric {
+        display: grid;
+        gap: 12px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--glass-fill);
+        color: var(--ink);
+        text-align: left;
+        cursor: pointer;
+        transition:
+          background-color 180ms var(--ease-out),
+          border-color 180ms var(--ease-out),
+          box-shadow 180ms var(--ease-out);
+      }
+      .metric .k {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .metric .k i { width: 6px; height: 6px; border-radius: 1px; background: var(--sage); }
+      .metric .v { font-size: 27px; font-weight: 500; letter-spacing: -1px; line-height: 1; }
+      .metric .v small { margin-left: 5px; font-size: 11px; font-weight: 400; color: var(--muted); }
+      .metric .n { font-size: 10px; color: var(--muted); }
+      .metric .bar {
+        height: 3px;
+        border-radius: 2px;
+        background: var(--line);
+        overflow: hidden;
+      }
+      .metric .bar i {
+        display: block;
+        height: 100%;
+        width: 72%;
+        background: var(--sage);
+        transform-origin: left center;
+      }
+      .metric.is-selected {
+        background: var(--relief), var(--fill-dense);
+        border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+        box-shadow:
+          inset 0 1px 0 #ffffff26,
+          0 6px 20px #0204073d;
+      }
+      /* 当前：hover 把边框设成与静置相同的 --line，等于没有变化 */
+      .cur .metric:hover:not(.is-selected) {
+        border-color: var(--line);
+        background: var(--glass-fill);
+      }
+      /* 提案：底色 +3%、边框提亮、微型刻度着色 */
+      .new .metric:hover:not(.is-selected) {
+        background: color-mix(in srgb, var(--ink) 4%, var(--glass-fill));
+        border-color: color-mix(in srgb, var(--accent) 26%, var(--line));
+      }
+      .new .metric.is-selected .bar i { background: var(--accent); }
+      .new .metric .bar i {
+        transition: transform 420ms var(--enter-ease);
+      }
+
+      /* ---------- 04 timeline ---------- */
+      .timeline { padding: 4px 0 0; }
+      .tl-row { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+      .tl-label {
+        width: 92px;
+        flex-shrink: 0;
+        font: 600 10px/1.6 var(--mono);
+        letter-spacing: 1px;
+        color: var(--muted);
+      }
+      .tl-track {
+        position: relative;
+        flex: 1;
+        height: 40px;
+        border-radius: 8px;
+        background: var(--band);
+        overflow: hidden;
+      }
+      .tl-track i {
+        position: absolute;
+        top: 9px;
+        height: 9px;
+        border-radius: 3px;
+        background: color-mix(in srgb, #e2a08a 52%, transparent);
+      }
+      .tl-track i.primary { background: color-mix(in srgb, #e2a08a 78%, transparent); }
+      .tl-track i.accent { background: #e2a08a; }
+      .tl-row.is-proposal .tl-track i { background: color-mix(in srgb, var(--sage) 52%, transparent); }
+      .tl-row.is-proposal .tl-track i.primary { background: color-mix(in srgb, var(--sage) 78%, transparent); }
+      .tl-row.is-proposal .tl-track i.accent { background: var(--sage); }
+      .tl-row.is-proposal .tl-track .end { background: var(--sage); }
+      .tl-row.is-proposal .tl-track .end b { color: var(--sage); }
+      .tl-track .end b { color: #e9b9a6; }
+      .tl-track .end {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 1px;
+        background: color-mix(in srgb, var(--accent) 55%, transparent);
+      }
+      .tl-track .end b {
+        position: absolute;
+        top: 4px;
+        left: 5px;
+        font: 600 9px var(--mono);
+        color: var(--accent);
+        white-space: nowrap;
+      }
+      .tl-track .axis {
+        position: absolute;
+        inset: auto 0 0 0;
+        height: 1px;
+        background: var(--line);
+      }
+      .tl-ticks {
+        position: relative;
+        flex: 1;
+        height: 14px;
+        margin-left: 106px;
+      }
+      .tl-ticks span {
+        position: absolute;
+        transform: translateX(-50%);
+        font: 9px var(--mono);
+        color: var(--muted);
+      }
+
+      /* ---------- 05 history rail ---------- */
+      .railwrap {
+        position: relative;
+        height: 168px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--glass-fill);
+      }
+      .raillayout {
+        display: grid;
+        height: 100%;
+        grid-template-columns: 224px minmax(0, 1fr);
+      }
+      .cur .raillayout { transition: none; }
+      .new .raillayout { transition: grid-template-columns 260ms var(--ease-drawer); }
+      .raillayout[data-collapsed="true"] { grid-template-columns: 52px minmax(0, 1fr); }
+      .rail {
+        position: relative;
+        overflow: hidden;
+        border-right: 1px solid var(--line);
+        padding: 44px 12px 12px;
+      }
+      .rail .item {
+        height: 26px;
+        margin-bottom: 6px;
+        border-radius: 6px;
+        background: var(--control-bg);
+      }
+      .raillayout[data-collapsed="true"] .rail-inner {
+        opacity: 0;
+        transform: translateX(-100%);
+      }
+      .rail-inner {
+        width: 200px;
+        transition:
+          transform 240ms var(--ease-drawer),
+          opacity 160ms var(--ease-out);
+      }
+      .railtoggle {
+        position: absolute;
+        top: 10px;
+        right: 8px;
+        z-index: 2;
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--control-bg);
+        color: var(--ink);
+        cursor: pointer;
+      }
+      .railbody { padding: 16px 18px; display: grid; gap: 8px; align-content: start; }
+      .railbody .l1 { height: 12px; width: 46%; border-radius: 4px; background: color-mix(in srgb, var(--ink) 16%, transparent); }
+      .railbody .l2 { height: 8px; width: 72%; border-radius: 4px; background: color-mix(in srgb, var(--ink) 8%, transparent); }
+      .railbody .l3 { height: 8px; width: 62%; border-radius: 4px; background: color-mix(in srgb, var(--ink) 8%, transparent); }
+
+      /* ---------- 06 chart morph ---------- */
+      .chartdemo {
+        position: relative;
+        height: 178px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--band);
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+      .chartdemo svg { position: absolute; inset: 0; margin: auto; width: 100%; height: 100%; }
+      .chartdemo .bars, .chartdemo .donut {
+        transition:
+          opacity 240ms var(--ease-out),
+          transform 240ms var(--ease-out);
+      }
+      .chartdemo[data-view="bars"] .donut { opacity: 0; transform: scale(0.94); }
+      .chartdemo[data-view="donut"] .bars { opacity: 0; transform: scale(1.06); }
+      /* 当前：直接换图，没有桥接（用瞬间切换模拟） */
+      .cur .chartdemo .bars, .cur .chartdemo .donut { transition: none; }
+      .chartdemo .wedge { fill: var(--sage); opacity: 0.85; }
+      .chartdemo .bar { fill: var(--sage); opacity: 0.85; }
+      .chartdemo .caption {
+        position: absolute;
+        left: 12px;
+        bottom: 10px;
+        font: 9px var(--mono);
+        letter-spacing: 1px;
+        color: var(--muted);
+      }
+      .chartdemo button {
+        position: absolute;
+        right: 10px;
+        top: 10px;
+        height: 26px;
+        padding: 0 10px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--control-bg);
+        color: var(--ink);
+        font: 500 11px var(--sans);
+        cursor: pointer;
+      }
+
+      /* ---------- 07 details ---------- */
+      .details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+      .detail {
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--paper) 55%, transparent);
+      }
+      .detail h4 { margin: 0 0 4px; font-size: 12px; font-weight: 550; }
+      .detail p { color: var(--muted); font-size: 11px; margin-bottom: 12px; }
+      .focusrow { display: flex; gap: 10px; }
+      .fbtn {
+        height: 34px;
+        padding: 0 14px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--control-bg);
+        color: var(--ink);
+        font: 500 12px var(--sans);
+      }
+      .fbtn.cur:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+      .fbtn.new:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+        box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent);
+      }
+      .selectionbox {
+        padding: 10px 12px;
+        border-radius: 9px;
+        background: var(--inset);
+        font-size: 11px;
+        line-height: 1.9;
+        color: var(--muted);
+      }
+      .selectionbox.cur ::selection { background: #3b82f6; color: #fff; }
+      .selectionbox.new ::selection {
+        background: color-mix(in srgb, var(--sage) 52%, transparent);
+        color: var(--ink);
+      }
+      .numrow { display: flex; align-items: baseline; gap: 8px; }
+      .numrow strong { font-size: 30px; font-weight: 500; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+      .numrow span { font-size: 11px; color: var(--muted); }
+      .numrow .flash { color: var(--accent); }
+
+      /* ---------- 05 findings ---------- */
+      .findings { display: grid; gap: 10px; margin-left: 32px; }
+      .finding {
+        display: grid;
+        grid-template-columns: 54px minmax(0, 1fr);
+        gap: 14px;
+        padding: 14px 16px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--paper) 55%, transparent);
+      }
+      .finding h4 { margin: 0 0 5px; font-size: 12px; font-weight: 550; }
+      .finding p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.85; }
+      .finding code {
+        padding: 1px 4px;
+        border-radius: 4px;
+        background: var(--control-bg);
+        font: 10px var(--mono);
+        color: var(--ink);
+      }
+      .f-sev {
+        align-self: start;
+        text-align: center;
+        padding: 3px 0;
+        border-radius: 5px;
+        font: 600 9px/1.4 var(--mono);
+        letter-spacing: 0.6px;
+      }
+      .f-sev.high { background: color-mix(in srgb, #e2a08a 24%, transparent); color: #e9b9a6; }
+      .f-sev.med { background: color-mix(in srgb, var(--sage) 20%, transparent); color: var(--sage); }
+      :root[data-theme="light"] .f-sev.high { color: #8a3a12; }
+      :root[data-theme="light"] .f-sev.med { color: #2b5443; }
+
+      /* ---------- verdict ---------- */
+      .verdict {
+        margin-top: 54px;
+        padding: 26px 28px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--control-bg);
+      }
+      .verdict h2 { font-size: 17px; font-weight: 550; margin-bottom: 14px; }
+      .verdict ol { margin: 0; padding-left: 20px; display: grid; gap: 9px; color: var(--muted); font-size: 12px; }
+      .verdict ol b { color: var(--ink); font-weight: 550; }
+      .legend {
+        display: flex;
+        gap: 18px;
+        margin-top: 22px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .legend b { color: var(--ink); font-weight: 550; }
+
+      /* ---------- 06 glass lab ---------- */
+      .lab {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 310px;
+        gap: 16px;
+        margin-left: 32px;
+      }
+      .lab-stage {
+        position: relative;
+        height: 620px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        overflow: hidden;
+        background: #070a0e;
+        touch-action: none;
+        cursor: grab;
+      }
+      .lab-stage:active { cursor: grabbing; }
+      .lab-stage canvas {
+        position: absolute;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .lab-cards { position: absolute; inset: 0; }
+      .lab-card {
+        position: absolute;
+        transition: transform 180ms var(--ease-out);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 18px;
+        overflow: hidden;
+        color: #eaf1f4;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+        border: 1px solid rgba(255, 255, 255, 0.20);
+        background: transparent;
+        box-sizing: border-box;
+      }
+      :root[data-theme="light"] .lab-card {
+        color: #14232b;
+        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.55);
+        border-color: rgba(18, 30, 40, 0.13);
+      }
+      .lab-card .lc-k {
+        font: 500 9px/1.5 var(--mono);
+        letter-spacing: 1.8px;
+        text-transform: uppercase;
+        opacity: 0.72;
+      }
+      .lab-card .lc-v {
+        font-size: 36px;
+        font-weight: 500;
+        letter-spacing: -1.4px;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .lab-card .lc-v small { margin-left: 5px; font-size: 11px; font-weight: 400; opacity: 0.7; }
+      .lab-card .lc-note { font-size: 10px; opacity: 0.66; }
+      .lab-card .lc-bar {
+        height: 4px;
+        border-radius: 2px;
+        background: rgba(255, 255, 255, 0.15);
+        overflow: hidden;
+        margin-top: auto;
+      }
+      :root[data-theme="light"] .lab-card .lc-bar { background: rgba(18, 30, 40, 0.14); }
+      .lab-card .lc-bar i { display: block; height: 100%; background: #a8c7b8; }
+      .lab-card .lc-lines { display: grid; gap: 7px; margin-top: auto; }
+      .lab-card .lc-lines span { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.16); }
+      :root[data-theme="light"] .lab-card .lc-lines span { background: rgba(18, 30, 40, 0.14); }
+      .lab-card .lc-pillrow { display: flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 500; }
+
+      /* positions: one strong lens, one wide panel, one pill, one tall card */
+      .lab-card[data-shape="lens"] { left: 4%;  top: 11%; width: 232px; height: 232px; border-radius: 50%; }
+      .lab-card[data-shape="wide"] { left: 26%; top: 5%;  width: 342px; height: 194px; border-radius: 22px; }
+      .lab-card[data-shape="pill"] { left: 6%;  top: 57%; width: 292px; height: 86px;  border-radius: 43px; }
+      .lab-card[data-shape="tall"] { right: 4%; top: 24%; width: 246px; height: 310px; border-radius: 30px; }
+
+      .lab-hint {
+        position: absolute;
+        left: 50%;
+        bottom: 14px;
+        transform: translateX(-50%);
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(8, 12, 16, 0.52);
+        color: #cfe0e6;
+        font: 10px/1.6 var(--mono);
+        letter-spacing: 1px;
+        pointer-events: none;
+        backdrop-filter: blur(6px);
+        transition: opacity 400ms var(--ease-out);
+      }
+      :root[data-theme="light"] .lab-hint {
+        background: rgba(255, 255, 255, 0.6);
+        color: #2c4a42;
+        border-color: rgba(18, 30, 40, 0.14);
+      }
+      .lab-stage[data-optics="fallback"] .lab-hint { display: none; }
+      /* Graceful CSS-only fallback when WebGL is unavailable. */
+      .lab-stage[data-optics="fallback"] .lab-card {
+        background: color-mix(in srgb, var(--paper) 42%, transparent);
+        backdrop-filter: blur(18px) saturate(130%);
+      }
+
+      .lab-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: color-mix(in srgb, var(--paper) 55%, transparent);
+        align-self: start;
+      }
+      .lab-controls h4 {
+        margin: 0 0 2px;
+        font: 600 9px/1.6 var(--mono);
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .lab-range {
+        display: grid;
+        grid-template-columns: 1fr 44px;
+        gap: 4px 8px;
+        align-items: center;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .lab-range > span { grid-column: 1 / -1; display: flex; justify-content: space-between; }
+      .lab-range b {
+        font: 500 10px var(--mono);
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+      }
+      .lab-range input[type="range"] {
+        grid-column: 1 / -1;
+        width: 100%;
+        height: 18px;
+        margin: 0;
+        cursor: pointer;
+        -webkit-appearance: none;
+        appearance: none;
+        background: transparent;
+      }
+      .lab-range input[type="range"]::-webkit-slider-runnable-track {
+        height: 4px;
+        border-radius: 2px;
+        background: color-mix(in srgb, var(--ink) 16%, transparent);
+      }
+      .lab-range input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 14px;
+        height: 14px;
+        margin-top: -5px;
+        border-radius: 50%;
+        background: var(--sage);
+        border: 1px solid color-mix(in srgb, var(--ink) 26%, transparent);
+        box-shadow: 0 1px 2px #0000002e;
+      }
+      .lab-range input[type="range"]::-moz-range-track {
+        height: 4px;
+        border-radius: 2px;
+        background: color-mix(in srgb, var(--ink) 16%, transparent);
+      }
+      .lab-range input[type="range"]::-moz-range-thumb {
+        width: 14px;
+        height: 14px;
+        border: 1px solid color-mix(in srgb, var(--ink) 26%, transparent);
+        border-radius: 50%;
+        background: var(--sage);
+      }
+      .lab-range input[type="range"]:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+        border-radius: 4px;
+      }
+      .lab-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+      .lab-actions button {
+        flex: 1 1 auto;
+        min-height: 32px;
+        padding: 0 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--control-bg);
+        color: var(--ink);
+        font: 500 11px var(--sans);
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .lab-actions button[aria-pressed="true"] {
+        background: color-mix(in srgb, var(--sage) 30%, var(--control-bg));
+        border-color: color-mix(in srgb, var(--sage) 52%, var(--line));
+      }
+      .lab-note { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.8; }
+      .lab-note code {
+        padding: 1px 4px;
+        border-radius: 4px;
+        background: var(--control-bg);
+        font: 9px var(--mono);
+        color: var(--ink);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .lab-hint { transition: none; }
+      }
+
+
+      /* ---------- 07 tier hierarchy ---------- */
+      .tierboard {
+        position: relative;
+        height: 560px;
+        margin-left: 32px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        overflow: hidden;
+        background:
+          radial-gradient(70% 60% at 18% 22%, #6f3bd8, transparent 62%),
+          radial-gradient(60% 55% at 82% 30%, #ff7a45, transparent 60%),
+          radial-gradient(70% 65% at 60% 88%, #ff2f8e, transparent 62%),
+          linear-gradient(160deg, #12233a, #2a1440 55%, #3d1030);
+      }
+      .tierboard .tb-pane {
+        position: absolute;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        gap: 6px;
+        padding: 12px 14px;
+        color: #f2f7f9;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+        border: 1px solid rgba(255, 255, 255, 0.26);
+        border-top-color: rgba(255, 255, 255, 0.52);
+        box-sizing: border-box;
+        /* default = L0 structural */
+        background: rgba(12, 18, 24, 0.10);
+        backdrop-filter: blur(16px) saturate(1.4);
+        -webkit-backdrop-filter: blur(16px) saturate(1.4);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      }
+      .tierboard .tb-tag {
+        font: 600 8px/1.4 var(--mono);
+        letter-spacing: 1.4px;
+        opacity: 0.72;
+      }
+      .tierboard .tb-name { font-size: 12px; font-weight: 550; }
+      .tierboard .tb-value {
+        font: 500 10px/1.5 var(--mono);
+        opacity: 0.62;
+      }
+
+      /* L0 structural — large, restrained, extra low fill so data stays readable */
+      .tierboard .tb-l0-main {
+        left: 74px; bottom: 26px; width: 470px; height: 330px; border-radius: 16px;
+      }
+      .tierboard .tb-l0-side {
+        left: 20px; top: 26px; width: 46px; height: 330px; border-radius: 14px;
+        background: rgba(12, 18, 24, 0.16);
+        backdrop-filter: blur(16px) saturate(1.3);
+        -webkit-backdrop-filter: blur(16px) saturate(1.3);
+      }
+      /* L1 control — smaller, denser: more fill so it reads as a solid control */
+      .tierboard .tb-l1 {
+        left: 78px; top: 30px; width: 272px; height: 42px;
+        border-radius: 12px;
+        flex-direction: row; align-items: center; justify-content: space-between; gap: 8px;
+        background: rgba(12, 18, 24, 0.26);
+        backdrop-filter: blur(10px) saturate(1.7);
+        -webkit-backdrop-filter: blur(10px) saturate(1.7);
+        border-top-color: rgba(255, 255, 255, 0.62);
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.34);
+      }
+      .tierboard .tb-l1.is-on {
+        background: rgba(255, 255, 255, 0.22);
+      }
+      .tierboard .tb-l1 .tb-value { font-size: 9px; opacity: 0.6; white-space: nowrap; }
+      /* L2 overlay — deepest blur + deepest shadow, it floats above everything */
+      .tierboard .tb-l2 {
+        right: 24px; top: 78px; width: 262px; height: 196px; border-radius: 18px;
+        background: rgba(12, 18, 24, 0.13);
+        backdrop-filter: blur(28px) saturate(1.5);
+        -webkit-backdrop-filter: blur(28px) saturate(1.5);
+        border-top-color: rgba(255, 255, 255, 0.60);
+        box-shadow: 0 26px 60px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.30);
+      }
+      /* L3 accent — the only place the halftone lattice is allowed */
+      .tierboard .tb-l3 {
+        right: 32px; bottom: 30px; width: 244px; height: 128px; border-radius: 16px;
+        background: rgba(12, 18, 24, 0.14);
+        backdrop-filter: blur(14px) saturate(1.8);
+        -webkit-backdrop-filter: blur(14px) saturate(1.8);
+        border-top-color: rgba(255, 255, 255, 0.66);
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.34);
+      }
+      .tierboard .tb-l3::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
+        background-image: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.30) 0.9px, transparent 1.1px);
+        background-size: 7px 7px;
+        opacity: 0.75;
+        mix-blend-mode: overlay;
+      }
+      .tierboard .tb-l3 .tb-l3-dot {
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
+        background-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.22) 0.9px, transparent 1.1px);
+        background-size: 7px 7px;
+      }
+      /* L0 chart-safe zone: charts never get the lattice */
+      .tierboard .tb-chart {
+        margin-top: auto;
+        display: flex;
+        align-items: flex-end;
+        gap: 5px;
+        height: 92px;
+        padding-top: 8px;
+      }
+      .tierboard .tb-chart i {
+        flex: 1;
+        border-radius: 2px 2px 0 0;
+        background: rgba(255, 255, 255, 0.42);
+      }
+
+      /* light theme: the panes switch to a bright tint with dark ink */
+      :root[data-theme="light"] .tierboard {
+        background:
+          radial-gradient(70% 60% at 18% 22%, #cfc0ff, transparent 62%),
+          radial-gradient(60% 55% at 82% 30%, #ffd8c2, transparent 60%),
+          radial-gradient(70% 65% at 60% 88%, #ffc9e0, transparent 62%),
+          linear-gradient(160deg, #e8eef6, #efe6ff 55%, #ffeef5);
+      }
+      :root[data-theme="light"] .tierboard .tb-pane {
+        color: #14242e;
+        text-shadow: none;
+        border-color: rgba(20, 34, 44, 0.14);
+        border-top-color: rgba(255, 255, 255, 0.92);
+        background: rgba(255, 255, 255, 0.42);
+        box-shadow: 0 10px 30px rgba(30, 40, 60, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      }
+      :root[data-theme="light"] .tierboard .tb-l0-side {
+        background: rgba(255, 255, 255, 0.46);
+      }
+      :root[data-theme="light"] .tierboard .tb-l1 {
+        background: rgba(255, 255, 255, 0.60);
+        box-shadow: 0 3px 12px rgba(6, 14, 22, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      }
+      :root[data-theme="light"] .tierboard .tb-l1.is-on {
+        background: rgba(255, 255, 255, 0.86);
+      }
+      :root[data-theme="light"] .tierboard .tb-l2 {
+        background: rgba(255, 255, 255, 0.40);
+        box-shadow: 0 26px 60px rgba(6, 14, 22, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+      }
+      :root[data-theme="light"] .tierboard .tb-l3 {
+        background: rgba(255, 255, 255, 0.44);
+        box-shadow: 0 14px 34px rgba(6, 14, 22, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+      }
+      :root[data-theme="light"] .tierboard .tb-l3::after {
+        background-image: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.55) 0.9px, transparent 1.1px);
+      }
+      :root[data-theme="light"] .tierboard .tb-l3 .tb-l3-dot {
+        background-image: radial-gradient(circle at 50% 50%, rgba(20, 34, 44, 0.22) 0.9px, transparent 1.1px);
+      }
+
+      .tiers-tablewrap { margin: 22px 0 0 32px; overflow-x: auto; }
+      .tiers-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+      }
+      .tiers-table th,
+      .tiers-table td {
+        padding: 9px 10px;
+        text-align: left;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      .tiers-table th {
+        font: 600 9px/1.5 var(--mono);
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .tiers-table td:first-child { white-space: nowrap; }
+      .tiers-table b { font-weight: 550; color: var(--ink); }
+      .tiers-table code {
+        padding: 1px 4px;
+        border-radius: 4px;
+        background: var(--control-bg);
+        font: 10px var(--mono);
+        color: var(--ink);
+        white-space: nowrap;
+      }
+      .tiers-table td { color: var(--muted); }
+      .tier-key {
+        display: inline-grid;
+        place-items: center;
+        width: 24px;
+        height: 18px;
+        margin-right: 6px;
+        border-radius: 5px;
+        font: 600 9px var(--mono);
+        background: var(--control-bg);
+        color: var(--accent);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .tierboard .tb-pane { transition: none; }
+      }
+
+
+      /* ---------- 06b simulated workbench ---------- */
+      .sim-cards { position: absolute; inset: 0; }
+      .sim-cards[hidden] { display: none; }
+      .lab-cards[hidden] { display: none; }
+
+      .sim-pane {
+        position: absolute;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 10px 12px;
+        box-sizing: border-box;
+        color: #eef5f7;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-top-color: rgba(255, 255, 255, 0.34);
+        background: transparent;
+      }
+      :root[data-theme="light"] .sim-pane {
+        color: #0f1e26;
+        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.7);
+        border-color: rgba(18, 30, 40, 0.14);
+        border-top-color: rgba(255, 255, 255, 0.85);
+      }
+      :root[data-theme="light"] .sim-pane .sk { opacity: 0.82; }
+      :root[data-theme="light"] .sim-pane .sn { opacity: 0.76; }
+      .sim-pane .sk {
+        font: 500 8px/1.4 var(--mono);
+        letter-spacing: 1.5px;
+        opacity: 0.68;
+      }
+      .sim-pane .sv {
+        font-size: 22px;
+        font-weight: 500;
+        letter-spacing: -0.8px;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .sim-pane .sv small { font-size: 9px; font-weight: 400; opacity: 0.7; margin-left: 3px; }
+      .sim-pane .sn { font-size: 9px; opacity: 0.6; }
+
+      .sim-chip { border-radius: 11px; flex-direction: row; align-items: center; gap: 7px; font-size: 11px; }
+      .sim-chip .dotmark { width: 5px; height: 5px; border-radius: 1px; background: currentColor; opacity: 0.5; }
+
+      .sim-side { border-radius: 13px; gap: 2px; padding: 10px 8px; }
+      .sim-side .sk { margin: 0 6px 6px; }
+      .sim-side .navrow {
+        display: flex; align-items: center; gap: 7px;
+        height: 26px; padding: 0 8px; border-radius: 6px;
+        font-size: 10px; opacity: 0.66;
+      }
+      .sim-side .navrow.on { opacity: 1; font-weight: 550; background: rgba(255, 255, 255, 0.10); }
+      :root[data-theme="light"] .sim-side .navrow.on { background: rgba(255, 255, 255, 0.55); }
+      .sim-side .navrow i { width: 5px; height: 5px; border-radius: 1px; background: currentColor; opacity: 0.55; }
+
+      .sim-metric { border-radius: 13px; gap: 5px; }
+      .sim-metric.is-on { border-color: rgba(255, 255, 255, 0.30); border-top-color: rgba(255, 255, 255, 0.5); }
+      .sim-metric .bar { height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.18); overflow: hidden; margin-top: auto; }
+      .sim-metric .bar i { display: block; height: 100%; background: rgba(255, 255, 255, 0.6); }
+
+      .sim-panel { border-radius: 13px; }
+      .sim-panel .bars { display: flex; align-items: flex-end; gap: 4px; height: 96px; margin-top: auto; }
+      .sim-panel .bars i { flex: 1; border-radius: 2px 2px 0 0; background: rgba(255, 255, 255, 0.30); }
+
+      .sim-status { border-radius: 999px; flex-direction: row; align-items: center; gap: 8px; font-size: 10px; }
+      .sim-status .pulse { width: 6px; height: 6px; border-radius: 50%; background: #b7e3c9; box-shadow: 0 0 8px #b7e3c9a0; }
+
+      @media (prefers-reduced-motion: reduce) {
+        * { transition: none !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="wrap">
+        <header class="masthead">
+          <div>
+            <span class="eyebrow">学析台 / INTERFACE REFINEMENT</span>
+            <h1>界面动效与细节 · 改动提案</h1>
+            <p class="lede">
+              左边是当前真实表现（按现有 CSS 复刻），右边是提案。两侧都可直接 hover / 点击对比。所有色值取自当前
+              烟银玻璃主题的实际计算值，未引入新依赖、未改动业务代码。
+            </p>
+          </div>
+          <div class="masthead-tools">
+            <button class="tool" type="button" onclick="toggleTheme()">切换浅色 / 深色</button>
+          </div>
+        </header>
+
+        <nav class="index">
+          <a href="#s1"><b>01</b> 交互反馈缺口</a>
+          <a href="#s2"><b>02</b> 入场节奏</a>
+          <a href="#s3"><b>03</b> 空间连续性</a>
+          <a href="#s4"><b>04</b> 细节质感</a>
+          <a href="#s5"><b>05</b> 其他页面</a>
+          <a href="#s6"><b>06</b> 玻璃试验台</a>
+          <a href="#s7"><b>07</b> 层级规格</a>
+        </nav>
+
+        <!-- ============ 01 ============ -->
+        <section class="section" id="s1">
+          <div class="section-head">
+            <span class="section-no">01</span>
+            <h2>交互反馈缺口</h2>
+            <p>把鼠标放上去看差别</p>
+          </div>
+          <div class="section-rule"></div>
+
+          <article class="case">
+            <div class="case-head">
+              <span class="case-no">1.1</span>
+              <h3>侧栏导航 hover</h3>
+              <span class="tag defect">缺陷</span>
+            </div>
+            <p class="case-note">
+              <code>theme.css:1658</code> 定义了 hover 底色，但 <code>glass-workspace.css:318</code>
+              用同特异性、后导入的基础规则把背景锁成 <code>transparent</code>，hover 被吃掉。实测 hover
+              前后背景都是 <code>rgba(0,0,0,0)</code>。
+            </p>
+            <div class="pair">
+              <div class="pane">
+                <span class="pane-label">当前</span>
+                <div class="cur">
+                  <div class="navstack glass">
+                    <button class="navbtn" aria-current="page"><span class="dot"></span>学习全景</button>
+                    <button class="navbtn"><span class="dot"></span>指标分析</button>
+                    <button class="navbtn"><span class="dot"></span>数据</button>
+                    <button class="navbtn"><span class="dot"></span>分析报告</button>
+                  </div>
+                </div>
+              </div>
+              <div class="pane is-new">
+                <span class="pane-label is-new">提案</span>
+                <div class="new">
+                  <div class="navstack glass">
+                    <button class="navbtn" aria-current="page"><span class="dot"></span>学习全景</button>
+                    <button class="navbtn"><span class="dot"></span>指标分析</button>
+                    <button class="navbtn"><span class="dot"></span>数据</button>
+                    <button class="navbtn"><span class="dot"></span>分析报告</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="case">
+            <div class="case-head">
+              <span class="case-no">1.2</span>
+              <h3>顶栏模式切换 hover</h3>
+              <span class="tag defect">缺陷</span>
+            </div>
+            <p class="case-note">
+              「AI 对话 / 数据浏览」是整页级切换，但未选中项没有任何 hover 反馈，鼠标移上去界面毫无回应。
+            </p>
+            <div class="pair">
+              <div class="pane">
+                <span class="pane-label">当前</span>
+                <div class="cur">
+                  <div class="modeswitch glass">
+                    <button aria-pressed="true">
+                      <svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>
+                      AI 对话
+                    </button>
+                    <button aria-pressed="false">
+                      <svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10"/></svg>
+                      数据浏览
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="pane is-new">
+                <span class="pane-label is-new">提案</span>
+                <div class="new">
+                  <div class="modeswitch glass">
+                    <button aria-pressed="true">
+                      <svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>
+                      AI 对话
+                    </button>
+                    <button aria-pressed="false">
+                      <svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10"/></svg>
+                      数据浏览
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="case">
+            <div class="case-head">
+              <span class="case-no">1.3</span>
+              <h3>指标卡 hover 与选中态</h3>
+              <span class="tag defect">缺陷</span>
+            </div>
+            <p class="case-note">
+              <code>workbench.css:1866</code> 的 hover 把 <code>border-color</code> 设成
+              <code>var(--line)</code>，与静置值完全相同——这条声明是空操作（hover 底色另有规则生效，但只有
+              4% 的墨色，很弱）。更实际的问题是<strong>选中态只靠一条略亮的顶边</strong>，用户很难确认
+              「下面图表正在显示哪个指标」。提案把选中态升级为「亮边 + 左侧标记 + 刻度着色」，hover 补足到可感知。
+            </p>
+            <div class="pair">
+              <div class="pane">
+                <span class="pane-label">当前</span>
+                <div class="cur">
+                  <div class="metrics">
+                    <button class="metric is-selected">
+                      <span class="k"><i></i>最高课程均分</span>
+                      <span class="v">75.22<small>分</small></span>
+                      <span class="bar"><i></i></span>
+                    </button>
+                    <button class="metric">
+                      <span class="k"><i></i>学习活动总量</span>
+                      <span class="v">5,220,398<small>次</small></span>
+                      <span class="bar"><i style="width:64%"></i></span>
+                    </button>
+                    <button class="metric">
+                      <span class="k"><i></i>最高完成率</span>
+                      <span class="v">87.73<small>%</small></span>
+                      <span class="bar"><i style="width:88%"></i></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="pane is-new">
+                <span class="pane-label is-new">提案</span>
+                <div class="new">
+                  <div class="metrics">
+                    <button class="metric is-selected">
+                      <span class="k"><i></i>最高课程均分</span>
+                      <span class="v">75.22<small>分</small></span>
+                      <span class="bar"><i></i></span>
+                    </button>
+                    <button class="metric">
+                      <span class="k"><i></i>学习活动总量</span>
+                      <span class="v">5,220,398<small>次</small></span>
+                      <span class="bar"><i style="width:64%"></i></span>
+                    </button>
+                    <button class="metric">
+                      <span class="k"><i></i>最高完成率</span>
+                      <span class="v">87.73<small>%</small></span>
+                      <span class="bar"><i style="width:88%"></i></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <!-- ============ 02 ============ -->
+        <section class="section" id="s2">
+          <div class="section-head">
+            <span class="section-no">02</span>
+            <h2>入场节奏</h2>
+            <p>从 1500ms 收紧到 880ms</p>
+          </div>
+          <div class="section-rule"></div>
+
+          <article class="case">
+            <div class="case-head">
+              <span class="case-no">2.1</span>
+              <h3>视图切换的入场编排</h3>
+              <span class="tag defect">超出契约</span>
+            </div>
+            <p class="case-note">
+              文档契约是 480 / 620 / 760ms、60ms 阶梯；实测当前 27 个元素参与、最晚一段 880ms 延迟 +
+              620ms 时长，<strong>整页要 1.5 秒才安定</strong>。切换导航和切模式都会重播，高频操作里这段等待很贵。
+              提案按频率分级：首屏 760ms、视图切换 420ms、同页模式切换 240ms。
+            </p>
+            <div class="timeline">
+              <div class="tl-row">
+                <span class="tl-label" style="color:#e9b9a6">当前</span>
+                <div class="tl-track">
+                  <i class="primary" style="left: 2%; width: 11%"></i>
+                  <i style="left: 12%; width: 9%"></i>
+                  <i class="primary" style="left: 22%; width: 10%"></i>
+                  <i style="left: 33%; width: 10%"></i>
+                  <i class="primary" style="left: 44%; width: 12%"></i>
+                  <i style="left: 57%; width: 10%"></i>
+                  <i class="primary" style="left: 68%; width: 14%"></i>
+                  <i class="accent" style="left: 84%; width: 15%"></i>
+                  <span class="end" style="left: 100%"><b>1500ms</b></span>
+                  <span class="axis"></span>
+                </div>
+              </div>
+              <div class="tl-row is-proposal">
+                <span class="tl-label" style="color:var(--sage)">提案</span>
+                <div class="tl-track">
+                  <i class="primary" style="left: 2%; width: 16%"></i>
+                  <i style="left: 15%; width: 14%"></i>
+                  <i class="primary" style="left: 28%; width: 16%"></i>
+                  <i style="left: 43%; width: 14%"></i>
+                  <i class="primary" style="left: 56%; width: 18%"></i>
+                  <i class="accent" style="left: 76%; width: 22%"></i>
+                  <span class="end" style="left: 100%"><b>880ms</b></span>
+                  <span class="axis"></span>
+                </div>
+              </div>
+              <div class="tl-ticks">
+                <span style="left: 0%">0</span>
+                <span style="left: 25%">375ms</span>
+                <span style="left: 50%">750ms</span>
+                <span style="left: 75%">1125ms</span>
+                <span style="left: 100%">1500ms</span>
+              </div>
+            </div>
+            <p class="case-note" style="margin-top: 16px">
+              另有一条：<code>data-enter</code> 用 <code>animation-fill-mode: both</code>
+              加延迟，元素在延迟期间是 <code>opacity:0</code>——首屏最晚那段文字要等近 1 秒才出现，期间版面是"空"的。
+              提案把延迟上限压到 420ms，并让主视觉先行。
+            </p>
+          </article>
+        </section>
+
+        <!-- ============ 03 ============ -->
+        <section class="section" id="s3">
+          <div class="section-head">
+            <span class="section-no">03</span>
+            <h2>空间连续性</h2>
+            <p>让状态变化有来处、有去处</p>
+          </div>
+          <div class="section-rule"></div>
+
+          <article class="case">
+            <div class="case-head">
+              <span class="case-no">3.1</span>
+              <h3>对话历史栏折叠</h3>
+              <span class="tag defect">瞬跳</span>
+            </div>
+            <p class="case-note">
+              外层 <code>.layout</code> 的 <code>grid-template-columns</code> 从 243px 跳到 52px
+              <strong>没有任何过渡</strong>，只有内部面板做了 240ms 位移，所以整列是"啪"地弹过去的。
+              <code>grid-template-columns</code> 是可动画属性，提案给外层补一条 260ms
+              <code>--ease-drawer</code>。点右下按钮看两边的差别。
+            </p>
+            <div class="pair">
+              <div class="pane">
+                <span class="pane-label">当前</span>
+                <div class="cur">
+                  <div class="railwrap">
+                    <div class="raillayout" id="railCur">
+                      <div class="rail">
+                        <button class="railtoggle" type="button" onclick="toggleRail('railCur')">‹</button>
+                        <div class="rail-inner">
+                          <div class="item"></div>
+                          <div class="item"></div>
+                          <div class="item"></div>
+                        </div>
+                      </div>
+                      <div class="railbody">
+                        <span class="l1"></span>
+                        <span class="l2"></span>
+                        <span class="l3"></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="pane is-new">
+                <span class="pane-label is-new">提案</span>
+                <div class="new">
+                  <div class="railwrap">
+                    <div class="raillayout" id="railNew">
+                      <div class="rail">
+                        <button class="railtoggle" type="button" onclick="toggleRail('railNew')">‹</button>
+                        <div class="rail-inner">
+                          <div class="item"></div>
+                          <div class="item"></div>
+                          <div class="item"></div>
+                        </div>
+                      </div>
+                      <div class="railbody">
+                        <span class="l1"></span>
+                        <span class="l2"></span>
+                        <span class="l3"></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="case">
+            <div class="case-head">
+              <span class="case-no">3.2</span>
+              <h3>图表切换形态</h3>
+              <span class="tag polish">提升</span>
+            </div>
+            <p class="case-note">
+              当前 <code>AnalysisChart</code> 对换图用 <code>notMerge</code>，柱状图↔环形图是"消失再出现"，形状之间没有关系。
+              ECharts 6.1 已内置 <code>universalTransition</code>，提案开启它，让同一份数据在形态之间<strong>连续变形</strong>，
+              并保留 240ms 交叉淡入作为降级。
+            </p>
+            <div class="pair">
+              <div class="pane">
+                <span class="pane-label">当前</span>
+                <div class="cur">
+                  <div class="chartdemo" id="chartCur" data-view="bars">
+                    <svg class="bars" viewBox="0 0 420 120" preserveAspectRatio="xMidYMid meet">
+                      <rect class="bar" x="20" y="30" width="26" height="70" rx="3"></rect>
+                      <rect class="bar" x="60" y="16" width="26" height="84" rx="3"></rect>
+                      <rect class="bar" x="100" y="44" width="26" height="56" rx="3"></rect>
+                      <rect class="bar" x="140" y="24" width="26" height="76" rx="3"></rect>
+                      <rect class="bar" x="180" y="52" width="26" height="48" rx="3"></rect>
+                      <rect class="bar" x="220" y="34" width="26" height="66" rx="3"></rect>
+                      <rect class="bar" x="260" y="60" width="26" height="40" rx="3"></rect>
+                      <rect class="bar" x="300" y="42" width="26" height="58" rx="3"></rect>
+                      <rect class="bar" x="340" y="26" width="26" height="74" rx="3"></rect>
+                    </svg>
+                    <svg class="donut" viewBox="0 0 420 120" preserveAspectRatio="xMidYMid meet" style="opacity:0">
+                      <circle cx="210" cy="60" r="44" fill="none" stroke="var(--sage)" stroke-width="16" opacity="0.85"></circle>
+                    </svg>
+                    <button type="button" onclick="flipChart('chartCur')">切换图形</button>
+                    <span class="caption">NO BRIDGE</span>
+                  </div>
+                </div>
+              </div>
+              <div class="pane is-new">
+                <span class="pane-label is-new">提案</span>
+                <div class="new">
+                  <div class="chartdemo" id="chartNew" data-view="bars">
+                    <svg class="bars" viewBox="0 0 420 120" preserveAspectRatio="xMidYMid meet">
+                      <rect class="bar" x="20" y="30" width="26" height="70" rx="3"></rect>
+                      <rect class="bar" x="60" y="16" width="26" height="84" rx="3"></rect>
+                      <rect class="bar" x="100" y="44" width="26" height="56" rx="3"></rect>
+                      <rect class="bar" x="140" y="24" width="26" height="76" rx="3"></rect>
+                      <rect class="bar" x="180" y="52" width="26" height="48" rx="3"></rect>
+                      <rect class="bar" x="220" y="34" width="26" height="66" rx="3"></rect>
+                      <rect class="bar" x="260" y="60" width="26" height="40" rx="3"></rect>
+                      <rect class="bar" x="300" y="42" width="26" height="58" rx="3"></rect>
+                      <rect class="bar" x="340" y="26" width="26" height="74" rx="3"></rect>
+                    </svg>
+                    <svg class="donut" viewBox="0 0 420 120" preserveAspectRatio="xMidYMid meet" style="opacity:0">
+                      <circle cx="210" cy="60" r="44" fill="none" stroke="var(--sage)" stroke-width="16" opacity="0.85"></circle>
+                    </svg>
+                    <button type="button" onclick="flipChart('chartNew')">切换图形</button>
+                    <span class="caption">MORPH 240MS</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <!-- ============ 04 ============ -->
+        <section class="section" id="s4">
+          <div class="section-head">
+            <span class="section-no">04</span>
+            <h2>细节质感</h2>
+            <p>不显眼，但影响手感</p>
+          </div>
+          <div class="section-rule"></div>
+
+          <div class="details">
+            <div class="detail">
+              <h4>焦点环</h4>
+              <p>玻璃底上单圈描边容易糊，提案加一层同色低透明度外扩。</p>
+              <div class="focusrow">
+                <button class="fbtn cur" type="button">当前</button>
+                <button class="fbtn new" type="button">提案</button>
+              </div>
+            </div>
+            <div class="detail">
+              <h4>文字选区</h4>
+              <p>未定义 <code>::selection</code>，选区是系统蓝，和烟银玻璃冲突。</p>
+              <div class="selectionbox cur">当前：选中这段文字看颜色</div>
+              <div class="selectionbox new" style="margin-top: 8px">提案：鼠尾草半透明选区</div>
+            </div>
+            <div class="detail">
+              <h4>数字变化</h4>
+              <p>切换指标时数字直接替换。提案让变化量短暂着色 + 位移 4px。</p>
+              <div class="numrow">
+                <strong>75.22</strong>
+                <span>分</span>
+                <span class="flash">▲ 2.32</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ 05 ============ -->
+        <section class="section" id="s5">
+          <div class="section-head">
+            <span class="section-no">05</span>
+            <h2>其他页面已核实的问题</h2>
+            <p>同类缺陷，逐条读过源码确认</p>
+          </div>
+          <div class="section-rule"></div>
+
+          <div class="findings">
+            <div class="finding">
+              <span class="f-sev high">HIGH</span>
+              <div>
+                <h4>图表工坊 / 学科关联：hover 被覆盖成静置色</h4>
+                <p><code>chart-studio.module.css:58</code> 与 <code>course-relations.module.css:195</code>
+                都写了 hover 底色 <code>var(--surface-inset)</code>，但同一文件后面的
+                <code>:global(.glass-workspace)</code> 规则（386 / 324 行）特异性相同且更靠后，
+                把背景改成 <code>var(--ui-control-bg)</code> —— hover 完全失效。</p>
+              </div>
+            </div>
+            <div class="finding">
+              <span class="f-sev high">HIGH</span>
+              <div>
+                <h4>成绩导入 / 系统管理：可点击卡片没有 hover</h4>
+                <p><code>grade-import.module.css:621</code> 的 <code>.modeOptions label</code> 与
+                <code>admin-management.module.css:608</code> 的 <code>.checkRow</code> 都是
+                <code>cursor: pointer</code> 的可点区域，却没有任何 hover 或按压反馈，
+                只有选中后换一次颜色（且无过渡）。</p>
+              </div>
+            </div>
+            <div class="finding">
+              <span class="f-sev med">MED</span>
+              <div>
+                <h4>成绩分布：柱宽变化整条重排，无过渡</h4>
+                <p><code>score-distribution.tsx:319</code> 把 <code>--bin-count</code> 设为
+                <code>100 / width</code>，<code>.strip</code> 的
+                <code>grid-template-columns: repeat(var(--bin-count), …)</code>
+                直接换列数，没有过渡，切换分组宽度时整条是跳变的。</p>
+              </div>
+            </div>
+            <div class="finding">
+              <span class="f-sev med">MED</span>
+              <div>
+                <h4>系统管理：表格行 hover 无过渡，且有一段无效的动效声明</h4>
+                <p><code>admin-management.module.css:364</code> 行 hover 只换底色、无 transition；
+                而 <code>1196</code> 行的减少动态效果块里给 <code>.table tbody tr</code>、
+                <code>.switchButton</code>、<code>.rowActions button</code> 写了
+                <code>transition: none</code>——这些元素本身从未声明过 transition，属于死代码。</p>
+              </div>
+            </div>
+            <div class="finding">
+              <span class="f-sev med">MED</span>
+              <div>
+                <h4>学科全景：两处入场动画漏了减少动态效果</h4>
+                <p><code>course-panorama.module.css:479</code> 的
+                <code>.frameGroup</code> / <code>.threshold</code> 入场动画，
+                没有被同文件 <code>483</code> 行的 reduced-motion 块覆盖（该块只列了
+                ribbonGroup / ribbon / columnGroup / bar / passFill）。</p>
+              </div>
+            </div>
+            <div class="finding">
+              <span class="f-sev med">MED</span>
+              <div>
+                <h4>登录页：入场编排最长约 1.7 秒</h4>
+                <p><code>motion-auth.css:86-98</code> 的四个信号点延迟到
+                820 / 960 / 1080 / 1180ms，焦点环再等 1180ms + 560ms 时长 → 约 1740ms；
+                叠加 <code>login-screen.tsx</code> 里 640ms / 700ms 的延迟段。
+                登录是高频入口，这段等待偏长。</p>
+              </div>
+            </div>
+          </div>
+
+          <p class="case-note" style="margin: 18px 0 0 0">
+            注：以上均以实际源码行与实测计算样式为依据；未列入的页面没有发现同类问题，不做凑数。
+          </p>
+        </section>
+
+
+        <!-- ============ 06 ============ -->
+        <section class="section" id="s6">
+          <div class="section-head">
+            <span class="section-no">06</span>
+            <h2>玻璃材质试验台</h2>
+            <p>真实背景 · 折射 · RGB 色散 · 参数可调</p>
+          </div>
+          <div class="section-rule"></div>
+
+          <p class="case-note">
+            下面是和正式实现同一套光学逻辑的两趟渲染：先把烟银背景画进纹理，再在每张卡片的圆角矩形内沿
+            <strong>表面法线做位移采样</strong>，并且对 R / G / B 三个通道用不同位移量各采样一次——这就是色散。
+            切背景、拖动背景、调节右侧参数，可以看卡片边缘如何折弯背后的内容。
+          </p>
+
+          <div class="lab">
+            <div class="lab-stage" id="labStage">
+              <canvas id="labCanvas" aria-hidden="true"></canvas>
+              <div class="lab-cards" data-tune hidden>
+                <article class="lab-card" data-glass-card data-shape="lens"
+                         data-frost="0.18" data-relief="0.30" data-opacity="1" data-dot="0.40">
+                  <span class="lc-k">LENS / 圆透镜</span>
+                  <span class="lc-v">75.22<small>分</small></span>
+                  <span class="lc-note">最强折射，边缘可见色散</span>
+                  <span class="lc-bar"><i style="width: 72%"></i></span>
+                </article>
+
+                <article class="lab-card" data-glass-card data-shape="wide"
+                         data-frost="0.42" data-relief="0.55" data-opacity="1" data-dot="0.55">
+                  <span class="lc-k">PANEL / 主面板</span>
+                  <span class="lc-v">5,220,398<small>次</small></span>
+                  <span class="lc-note">磨砂 + 压纹，读数保持锐利</span>
+                  <span class="lc-lines">
+                    <span style="width: 78%"></span>
+                    <span style="width: 58%"></span>
+                  </span>
+                </article>
+
+                <article class="lab-card" data-glass-card data-shape="pill"
+                         data-frost="0.24" data-relief="0.72" data-opacity="1">
+                  <span class="lc-pillrow">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                      <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>
+                    </svg>
+                    AI 对话
+                  </span>
+                  <span class="lc-note">细长药丸，曲率最大处折射最强</span>
+                </article>
+
+                <article class="lab-card" data-glass-card data-shape="tall"
+                         data-frost="0.30" data-relief="0.62" data-opacity="1" data-dot="0.45">
+                  <span class="lc-k">TALL / 竖卡片</span>
+                  <span class="lc-v">87.73<small>%</small></span>
+                  <span class="lc-note">竖向长边形成条状折射</span>
+                  <span class="lc-lines">
+                    <span style="width: 88%"></span>
+                    <span style="width: 64%"></span>
+                    <span style="width: 74%"></span>
+                  </span>
+                </article>
+              </div>
+              <div class="sim-cards" data-sim>
+                <div class="sim-pane sim-chip" data-glass-card data-dot="0"
+                     style="left:14px; top:14px; width:120px; height:36px;">
+                  <span class="sk">学析台</span>
+                </div>
+                <div class="sim-pane sim-chip" data-glass-card data-dot="0.10"
+                     style="left:146px; top:14px; width:214px; height:36px;">
+                  <span class="dotmark"></span><span>AI 对话</span>
+                  <span style="opacity:.5; margin-left:6px">数据浏览</span>
+                </div>
+                <div class="sim-pane sim-chip" data-glass-card data-dot="0"
+                     style="right:14px; top:14px; width:132px; height:36px;">
+                  <span class="sk">流光 · 主题</span>
+                </div>
+
+                <div class="sim-pane sim-side" data-glass-card data-dot="0"
+                     style="left:14px; top:62px; width:176px; height:406px;">
+                  <span class="sk">工作台</span>
+                  <div class="navrow on"><i></i>学习全景</div>
+                  <div class="navrow"><i></i>指标分析</div>
+                  <div class="navrow"><i></i>数据</div>
+                  <div class="navrow"><i></i>分析报告</div>
+                </div>
+
+                <div class="sim-pane sim-metric is-on" data-glass-card data-dot="0.55"
+                     style="left:206px; top:62px; width:246px; height:100px;">
+                  <span class="sk">最高课程均分</span>
+                  <span class="sv">75.22<small>分</small></span>
+                  <span class="sn">领先第 2 名 2.32 分</span>
+                  <span class="bar"><i style="width:72%"></i></span>
+                </div>
+                <div class="sim-pane sim-metric" data-glass-card data-dot="0"
+                     style="left:466px; top:62px; width:246px; height:100px;">
+                  <span class="sk">学习活动总量</span>
+                  <span class="sv">5,220,398<small>次</small></span>
+                  <span class="sn">18 门可见课程合计</span>
+                  <span class="bar"><i style="width:58%"></i></span>
+                </div>
+                <div class="sim-pane sim-metric" data-glass-card data-dot="0"
+                     style="left:726px; top:62px; width:246px; height:100px;">
+                  <span class="sk">最高完成率</span>
+                  <span class="sv">87.73<small>%</small></span>
+                  <span class="sn">领先第 2 名 1.37 个百分点</span>
+                  <span class="bar"><i style="width:88%"></i></span>
+                </div>
+
+                <div class="sim-pane sim-panel" data-glass-card data-dot="0"
+                     style="left:206px; top:178px; width:766px; height:290px;">
+                  <span class="sk">课程信号 / COURSE PERFORMANCE</span>
+                  <span class="sn">按平均成绩从高到低排列 · 图表区不加点阵</span>
+                  <div class="bars">
+                    <i style="height:64%"></i><i style="height:82%"></i><i style="height:48%"></i>
+                    <i style="height:74%"></i><i style="height:58%"></i><i style="height:90%"></i>
+                    <i style="height:66%"></i><i style="height:52%"></i><i style="height:78%"></i>
+                    <i style="height:44%"></i><i style="height:70%"></i><i style="height:60%"></i>
+                  </div>
+                </div>
+
+                <div class="sim-pane sim-status" data-glass-card data-dot="0.70"
+                     style="left:206px; top:486px; width:292px; height:52px;">
+                  <span class="pulse"></span>
+                  <span>AI 正在比较课程成绩…</span>
+                </div>
+              </div>
+              <span class="lab-hint" id="labHint">拖动背景 · 观察边缘色散</span>
+            </div>
+
+            <aside class="lab-controls" aria-label="玻璃光学参数">
+              <h4>视图 / VIEW</h4>
+              <div class="lab-actions lab-bgs">
+                <button type="button" data-view="tune">调参卡片</button>
+                <button type="button" data-view="sim" aria-pressed="true">界面仿真</button>
+              </div>
+              <h4>测试背景 / BACKDROP</h4>
+              <div class="lab-actions lab-bgs">
+                <button type="button" data-bg="0" aria-pressed="true">烟银</button>
+                <button type="button" data-bg="1" aria-pressed="false">彩带</button>
+                <button type="button" data-bg="2" aria-pressed="false">网格</button>
+              </div>
+              <p class="lab-note" style="margin: 0">
+                玻璃需要有内容可折射。切到「网格」看几何形变最清楚，切到「彩带」看色散最清楚。
+              </p>
+              <h4>镜体 / LENS</h4>
+              <label class="lab-range">
+                <span>折射位移 <b data-out="refraction">20</b></span>
+                <input type="range" min="0" max="34" step="0.5" value="20" data-param="refraction">
+              </label>
+              <label class="lab-range">
+                <span>镜环比例 <b data-out="bezel">0.24</b></span>
+                <input type="range" min="0.08" max="0.9" step="0.01" value="0.24" data-param="bezel">
+              </label>
+              <label class="lab-range">
+                <span>穹顶曲率 <b data-out="curvature">4</b></span>
+                <input type="range" min="2" max="8" step="0.5" value="4" data-param="curvature">
+              </label>
+              <label class="lab-range">
+                <span>中心放大 <b data-out="magnify">0.20</b></span>
+                <input type="range" min="0" max="1.5" step="0.05" value="0.2" data-param="magnify">
+              </label>
+              <label class="lab-range">
+                <span>色散强度 <b data-out="chroma">0.12</b></span>
+                <input type="range" min="0" max="0.6" step="0.01" value="0.12" data-param="chroma">
+              </label>
+              <h4 style="margin-top: 6px">表面纹理 / TEXTURE</h4>
+              <div class="lab-actions lab-bgs">
+                <button type="button" data-tex="0" aria-pressed="false">无</button>
+                <button type="button" data-tex="1" aria-pressed="true">点阵</button>
+                <button type="button" data-tex="2" aria-pressed="false">棱镜条纹</button>
+              </div>
+              <label class="lab-range">
+                <span>纹理强度 <b data-out="dotStrength">1.00</b></span>
+                <input type="range" min="0" max="2" step="0.05" value="1" data-param="dotStrength">
+              </label>
+              <label class="lab-range">
+                <span>纹理间距 <b data-out="dotPitch">9</b></span>
+                <input type="range" min="3" max="48" step="1" value="9" data-param="dotPitch">
+              </label>
+              <label class="lab-range">
+                <span>纹理角度 <b data-out="dotAngle">45</b></span>
+                <input type="range" min="0" max="180" step="1" value="45" data-param="dotAngle">
+              </label>
+              <h4 style="margin-top: 6px">表面 / SURFACE</h4>
+              <label class="lab-range">
+                <span>立体倒角 <b data-out="bevel">0.70</b></span>
+                <input type="range" min="0" max="1.5" step="0.05" value="0.7" data-param="bevel">
+              </label>
+              <label class="lab-range">
+                <span>边缘高光 <b data-out="spec">1.00</b></span>
+                <input type="range" min="0" max="2" step="0.05" value="1" data-param="spec">
+              </label>
+              <label class="lab-range">
+                <span>磨砂 <b data-out="frost">1.00</b></span>
+                <input type="range" min="0" max="1.6" step="0.05" value="1" data-param="frost">
+              </label>
+              <label class="lab-range">
+                <span>压纹微透镜 <b data-out="relief">0.45</b></span>
+                <input type="range" min="0" max="1.5" step="0.05" value="0.45" data-param="relief">
+              </label>
+              <label class="lab-range">
+                <span>通透度 <b data-out="vibrancy">0.60</b></span>
+                <input type="range" min="0" max="1.5" step="0.05" value="0.6" data-param="vibrancy">
+              </label>
+              <label class="lab-range">
+                <span>挡光投影 <b data-out="shadow">0.90</b></span>
+                <input type="range" min="0" max="2" step="0.05" value="0.9" data-param="shadow">
+              </label>
+              <label class="lab-range">
+                <span>背景流速 <b data-out="speed">0.45</b></span>
+                <input type="range" min="0" max="1.5" step="0.05" value="0.45" data-param="speed">
+              </label>
+              <div class="lab-actions">
+                <button type="button" id="labPause" aria-pressed="false">暂停</button>
+                <button type="button" id="labReset">重置</button>
+                <button type="button" id="labFallback" aria-pressed="false">CSS 对照</button>
+              </div>
+              <p class="lab-note">
+                折射按 <strong>超椭圆穹顶 + Snell 折射率 1.5</strong> 计算，位移在最外缘最强、向内极陡衰减。
+                指针移动时主光源跟随，按住卡片会发光并轻微挤压。浅/深色用页面右上角按钮切换。
+              </p>
+            </aside>
+          </div>
+        </section>
+
+
+        <!-- ============ 07 ============ -->
+        <section class="section" id="s7">
+          <div class="section-head">
+            <span class="section-no">07</span>
+            <h2>玻璃层级规格</h2>
+            <p>四档配方 · 每个真实控件的具体数值</p>
+          </div>
+          <div class="section-rule"></div>
+
+          <p class="case-note">
+            玻璃不该只有一种配方。我的判断是<strong>越靠近数据越克制，越漂浮越厚</strong>：
+            结构层几乎只做色偏和边缘，浮层才允许厚磨砂和深投影，
+            <strong>点阵只留在强调层</strong>——一旦进入图表和表格，点阵会干扰读数。
+            下面这块板子用 CSS 真实渲染了四档的模糊与不透明度（折射和色散在上一节用着色器验证）。
+          </p>
+
+          <div class="tierboard">
+            <div class="tb-pane tb-l0-side"></div>
+
+            <div class="tb-pane tb-l1 is-on">
+              <span class="tb-name">L1 · AI 对话</span>
+              <span class="tb-value">blur 10 · a .26 · rf 4</span>
+            </div>
+            <div class="tb-pane tb-l1" style="left: 358px; width: 120px;">
+              <span class="tb-name" style="opacity:.72">数据浏览</span>
+            </div>
+
+            <div class="tb-pane tb-l0-main">
+              <span class="tb-tag">L0 / 结构层</span>
+              <span class="tb-name">主面板 · 学习数据总览</span>
+              <span class="tb-value">blur 16 · a .10 · rf 6 · dot — · rim .6</span>
+              <div class="tb-chart">
+                <i style="height: 62%"></i><i style="height: 84%"></i><i style="height: 46%"></i>
+                <i style="height: 72%"></i><i style="height: 58%"></i><i style="height: 90%"></i>
+                <i style="height: 66%"></i><i style="height: 52%"></i>
+              </div>
+            </div>
+
+            <div class="tb-pane tb-l2">
+              <span class="tb-tag">L2 / 浮层</span>
+              <span class="tb-name">导航抽屉 · 对话框</span>
+              <span class="tb-value">blur 28 · a .13 · rf 14<br />shadow 26/60 · rim 1.2</span>
+            </div>
+
+            <div class="tb-pane tb-l3">
+              <span class="tb-l3-dot" aria-hidden="true"></span>
+              <span class="tb-tag">L3 / 强调层</span>
+              <span class="tb-name">选中指标卡 · AI 状态</span>
+              <span class="tb-value">blur 14 · a .14 · rf 20 · dot .4</span>
+            </div>
+          </div>
+
+          <div class="tiers-tablewrap">
+            <table class="tiers-table">
+              <thead>
+                <tr>
+                  <th>层级</th><th>组件（真实 class）</th><th>磨砂 blur</th><th>底色 alpha</th>
+                  <th>折射位移</th><th>点阵</th><th>边缘高光</th><th>投影</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="tier-key">L0</span><b>结构层</b></td>
+                  <td><code>.workbench-main</code> <code>.glass-data-sidebar</code> <code>.historyRail</code></td>
+                  <td>16px</td><td>0.10</td><td>6–8px</td><td>—</td><td>0.6</td><td>柔和 8/28</td>
+                </tr>
+                <tr>
+                  <td><span class="tier-key">L1</span><b>控件层</b></td>
+                  <td><code>.glass-mode-switch</code> <code>.control</code> <code>.icon-button</code> <code>select</code></td>
+                  <td>10px</td><td>0.18–0.26</td><td>3–4px</td><td>—</td><td>1.0</td><td>轻 3/12</td>
+                </tr>
+                <tr>
+                  <td><span class="tier-key">L2</span><b>浮层</b></td>
+                  <td><code>.workbench-drawer</code> <code>.logout-confirmation</code> <code>.composer</code></td>
+                  <td>28px</td><td>0.13</td><td>14px</td><td>—</td><td>1.2</td><td>深 26/60</td>
+                </tr>
+                <tr>
+                  <td><span class="tier-key">L3</span><b>强调层</b></td>
+                  <td><code>.overview-metric.is-selected</code> <code>.ai-status</code> <code>.chartToggle</code></td>
+                  <td>14px</td><td>0.14</td><td>18–20px</td><td>0.35–0.5</td><td>1.4</td><td>中 14/34</td>
+                </tr>
+                <tr>
+                  <td><span class="tier-key">—</span><b>数据保护</b></td>
+                  <td><code>.chart</code> <code>.result-table</code> 长文本回答</td>
+                  <td>0</td><td>实底</td><td>0</td><td><b style="color:#e9b9a6">禁止</b></td><td>—</td><td>—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p class="case-note" style="margin-top: 16px">
+            两条硬规则：<strong>① 点阵不进数据区</strong>；<strong>② 不要玻璃叠玻璃</strong>——Apple 明确说玻璃无法采样玻璃，
+            叠层会让模糊成本平方增长且纹理糊成一片。嵌套浮层时用「外层面板转实底」而不是再加一层玻璃。
+          </p>
+        </section>
+
+        <section class="verdict">
+          <h2>建议的落地顺序</h2>
+          <ol>
+            <li><b>第一批（低风险，纯 CSS）</b>：修 3 个 hover 缺陷、补 <code>::selection</code>、焦点环、历史栏 grid 过渡。改动集中在 <code>glass-workspace.css</code> / <code>glass-controls.css</code> / <code>workbench.css</code>，不动组件逻辑。</li>
+            <li><b>第二批（动效契约）</b>：收紧入场延迟上限与阶梯，按"首屏 / 视图切换 / 同页模式"分三档时长，更新 <code>docs/motion-system.md</code> 契约。</li>
+            <li><b>第三批（图表）</b>：<code>AnalysisChart</code> 开启 <code>universalTransition</code>，保留减少动态效果时的直接切换。</li>
+            <li><b>第四批（细节）</b>：数字变化提示、滚动条配色、玻璃压纹在侧栏选中项上的一致性。</li>
+          </ol>
+          <div class="legend">
+            <span><b>不改</b>：业务逻辑、接口、文案、aria 结构</span>
+            <span><b>不新增</b>：依赖</span>
+            <span><b>保留</b>：<code>data-motion</code> 开关与系统减少动态效果</span>
+          </div>
+        </section>
+      </div>
+    </div>
+    <script>
+      function toggleTheme() {
+        const root = document.documentElement;
+        root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+      }
+      function toggleRail(id) {
+        const el = document.getElementById(id);
+        const next = el.dataset.collapsed === "true" ? "false" : "true";
+        el.dataset.collapsed = next;
+      }
+      function flipChart(id) {
+        const el = document.getElementById(id);
+        el.dataset.view = el.dataset.view === "bars" ? "donut" : "bars";
+      }
+    </script>
+
+    <script>
+      (function () {
+        var stage = document.getElementById("labStage");
+        var canvas = document.getElementById("labCanvas");
+        if (!stage || !canvas) return;
+
+        var gl = canvas.getContext("webgl", {
+          alpha: false, antialias: false, depth: false, stencil: false,
+          powerPreference: "low-power",
+        });
+        if (!gl) { stage.dataset.optics = "fallback"; return; }
+
+        var VS = "attribute vec2 a_position; varying vec2 v_uv;" +
+          "void main(){ v_uv = a_position * 0.5 + 0.5; gl_Position = vec4(a_position, 0.0, 1.0); }";
+
+        /* ---------------- background ---------------- */
+        var BG = [
+          "precision highp float;",
+          "varying vec2 v_uv;",
+          "uniform vec2 u_res; uniform float u_time; uniform float u_light; uniform vec2 u_shift;",
+          "uniform float u_pattern;",
+          "float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }",
+          "float vnoise(vec2 p){",
+          "  vec2 i = floor(p); vec2 f = fract(p);",
+          "  vec2 u = f * f * (3.0 - 2.0 * f);",
+          "  float a = hash(i), b = hash(i + vec2(1.0, 0.0));",
+          "  float c = hash(i + vec2(0.0, 1.0)), d = hash(i + vec2(1.0, 1.0));",
+          "  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);",
+          "}",
+          "float fbm(vec2 p){",
+          "  float v = 0.0, a = 0.5;",
+          "  for (int i = 0; i < 4; i++) { v += a * vnoise(p); p *= 2.03; a *= 0.5; }",
+          "  return v;",
+          "}",
+          "void main(){",
+          "  float aspect = u_res.x / max(u_res.y, 1.0);",
+          "  vec2 p = (v_uv - 0.5) * vec2(aspect, 1.0) + u_shift;",
+          "  float bands = 0.0;",
+          "  for (int i = 0; i < 4; i++) {",
+          "    float fi = float(i);",
+          "    float ang = -0.50 + fi * 0.135;",
+          "    vec2 dir = vec2(cos(ang), sin(ang));",
+          "    vec2 nrm = vec2(-dir.y, dir.x);",
+          "    float along = dot(p, dir);",
+          "    float across = dot(p, nrm);",
+          "    float wave = sin(along * 2.4 + u_time * 0.22 + fi * 1.9) * 0.30",
+          "               + sin(along * 0.90 - u_time * 0.15 + fi * 3.1) * 0.46;",
+          "    float dist = across - wave;",
+          "    float thick = 0.230 - fi * 0.030;",
+          "    float body = exp(-pow(dist / thick, 2.0)) * (0.34 - fi * 0.045);",
+          "    float edgeLine = exp(-pow((abs(dist) - thick * 0.92) / (thick * 0.060), 2.0));",
+          "    float innerCore = exp(-pow(dist / (thick * 0.20), 2.0)) * 0.14;",
+          "    bands += body + edgeLine * (0.62 - fi * 0.09) + innerCore;",
+          "  }",
+          "  bands = clamp(bands, 0.0, 1.6);",
+          "  float amb = fbm(p * 1.7 + vec2(u_time * 0.035, -u_time * 0.028));",
+          "  vec3 dark = vec3(0.013, 0.019, 0.026) + bands * vec3(0.52, 0.60, 0.68)",
+          "            + amb * vec3(0.045, 0.055, 0.070);",
+          "  vec3 lite = vec3(0.780, 0.810, 0.840) + bands * vec3(0.16, 0.17, 0.18)",
+          "            + amb * vec3(0.030, 0.028, 0.026);",
+          "  vec3 col = mix(dark, lite, u_light);",
+          "  col *= 1.0 - 0.30 * dot(p, p);",
+          // ---- alternative test backdrops ----
+          "  if (u_pattern > 0.5 && u_pattern < 1.5) {",
+          // aurora: bright saturated blobs, the kind of content that makes glass obvious
+          "    vec2 q = p * 1.15;",
+          "    float f1 = fbm(q * 0.9 + vec2(u_time * 0.10, -u_time * 0.07));",
+          "    float f2 = fbm(q * 1.7 - vec2(u_time * 0.06, u_time * 0.09) + 11.0);",
+          "    vec3 c1 = vec3(0.10, 0.42, 0.95);",
+          "    vec3 c2 = vec3(0.95, 0.16, 0.62);",
+          "    vec3 c3 = vec3(1.00, 0.62, 0.12);",
+          "    vec3 c4 = vec3(0.05, 0.80, 0.72);",
+          // dense, always-lit colour field: glass needs bright content under it
+          "    vec3 aur = vec3(0.05, 0.06, 0.13);",
+          "    aur = mix(aur, c1, smoothstep(0.16, 0.70, f1));",
+          "    aur = mix(aur, c2, smoothstep(0.24, 0.80, f2));",
+          "    aur = mix(aur, c3, smoothstep(0.40, 0.92, fbm(q * 2.4 + 7.0)));",
+          "    aur = mix(aur, c4, smoothstep(0.46, 0.94, fbm(q * 1.2 - 3.0)) * 0.90);",
+          "    aur *= 0.92 + 0.30 * fbm(q * 4.0 + 21.0);",
+          "    if (u_light > 0.5) aur = mix(vec3(0.94, 0.94, 0.96), aur, 0.62);",
+          "    col = aur;",
+          "  } else if (u_pattern > 1.5) {",
+          // grid: straight high-contrast lines make any geometric distortion obvious
+          "    vec2 gp = p * 13.0;",
+          "    vec2 cellA = abs(fract(gp) - 0.5);",
+          "    float fine = smoothstep(0.455, 0.5, max(cellA.x, cellA.y));",
+          "    vec2 gp2 = p * 3.4;",
+          "    vec2 cellB = abs(fract(gp2) - 0.5);",
+          "    float coarse = smoothstep(0.440, 0.5, max(cellB.x, cellB.y));",
+          "    float v = clamp(fine * 0.55 + coarse * 0.90, 0.0, 1.0);",
+          "    vec3 ink = mix(vec3(0.10, 0.62, 0.70), vec3(0.98, 0.60, 0.18),",
+          "                  fract(p.x * 0.5 + p.y * 0.25 + 0.5));",
+          "    vec3 paper = mix(vec3(0.020, 0.030, 0.045), vec3(0.92, 0.93, 0.94), u_light);",
+          "    col = mix(paper, ink, v);",
+          "  }",
+          "  col += (hash(gl_FragCoord.xy) - 0.5) / 255.0;",
+          "  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);",
+          "}",
+        ].join("\n");
+
+        /* ------------- glass -------------
+           Rim refraction follows the published superellipse + Snell model:
+             s      = inset / bezel                       (0 at edge, 1 at inner bezel)
+             h(s)   = (1 - (1-s)^k)^(1/k)                 superellipse dome, k = curvature
+             theta  = atan(dh/ds)
+             bend   = tan(theta - asin(sin(theta)/ior))   Snell, ior = 1.5
+             m(s)   = bend / bend_max                     normalised, steep falloff
+           The bend is strongest *at* the edge and dies within roughly a third of
+           the bezel; sampling is pushed outward along the SDF normal.          */
+        var GLASS = [
+          "precision highp float;",
+          "varying vec2 v_uv;",
+          "uniform sampler2D u_lightTex;",
+          "uniform vec2 u_res; uniform float u_time; uniform float u_light;",
+          "uniform vec4 u_rects[12];",
+          "uniform vec4 u_mats[12];",     // radius, frost, relief, opacity
+          "uniform vec4 u_lens;",        // refractionPx, bezelRatio, curvature, magnify
+          "uniform vec4 u_extra;",       // chroma, specular, shadow, vibrancy
+          "uniform float u_bevel;",
+          "uniform float u_iorInv;",
+          "uniform float u_maxBend;",
+          "uniform float u_specWidth;",
+          "uniform float u_frost;",
+          "uniform float u_dpr;",
+          "uniform float u_reliefAmt;",
+          "uniform vec2 u_lightDir;",
+          "uniform vec3 u_touch;",       // x, y (device px), strength
+          "uniform vec4 u_card2[12];",    // per card: dot strength, dot pitch px, dot angle, reserved
+          "uniform float u_dotStrength;",
+          "uniform float u_dotPitch;",
+          "uniform float u_dotAngle;",
+          "uniform float u_texMode;",
+          "float roundedRect(vec2 p, vec4 r, float radius){",
+          "  vec2 halfSize = r.zw * 0.5;",
+          "  vec2 q = abs(p - r.xy - halfSize) - halfSize + radius;",
+          "  return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - radius;",
+          "}",
+          "vec3 lightAt(vec2 px){",
+          "  vec2 uv = clamp(px / u_res, 0.0, 1.0);",
+          "  return texture2D(u_lightTex, vec2(uv.x, 1.0 - uv.y)).rgb;",
+          "}",
+          "vec3 vivid(vec3 c, float s){",
+          "  float l = dot(c, vec3(0.2126, 0.7152, 0.0722));",
+          "  return mix(vec3(l), c, s);",
+          "}",
+          "void main(){",
+          "  vec2 px = vec2(v_uv.x, 1.0 - v_uv.y) * u_res;",
+          "  vec3 base = lightAt(px);",
+          "  vec3 color = base;",
+          "  float hit = 10000.0;",
+          "  vec4 rect = vec4(0.0);",
+          "  vec4 mat = vec4(0.0);",
+          "  float dotAmt = 0.0;",
+          "  float dotPitch = 6.0;",
+          "  for (int i = 0; i < 12; i++) {",
+          "    if (u_rects[i].z > 0.0 && u_rects[i].w > 0.0) {",
+          "      float d = roundedRect(px, u_rects[i], u_mats[i].x);",
+          "      if (d < 0.0) {",
+          "        hit = d; rect = u_rects[i]; mat = u_mats[i];",
+          "        dotAmt = u_card2[i].x; dotPitch = u_card2[i].y;",
+          "      }",
+          "    }",
+          "  }",
+          // glass blocks light: darken the backdrop just outside the rim
+          "  float occl = 0.0;",
+          "  if (hit > 0.0) {",
+          "    for (int i = 0; i < 8; i++) {",
+          "      if (u_rects[i].z > 0.0) {",
+          "        float ds = roundedRect(px - vec2(0.0, 5.0), u_rects[i], u_mats[i].x);",
+          "        if (ds > 0.0) occl = max(occl, exp(-ds / 20.0));",
+          "      }",
+          "    }",
+          "  }",
+          "  color *= 1.0 - occl * u_extra.z * 0.62;",
+          "  if (hit < 0.0) {",
+          "    float radius = mat.x;",
+          "    float frost = clamp(mat.y * u_frost, 0.0, 1.0);",
+          "    float relief = clamp(mat.z * u_reliefAmt, 0.0, 1.2);",
+          "    float opacity = clamp(mat.w, 0.0, 1.0);",
+          "    float inset = -hit;",
+          // proportional bezel: bigger panes read as thicker material
+          "    float bezel = max(min(rect.z, rect.w) * u_lens.y, 3.0);",
+          "    float s = clamp(inset / bezel, 0.0, 1.0);",
+          "    float k = u_lens.z;",
+          // superellipse dome h(s) and its slope -> Snell bend -> normalised profile
+          "    float om = max(1.0 - s, 1e-4);",
+          "    float baseTerm = max(1.0 - pow(om, k), 1e-5);",
+          "    float slope = pow(om, k - 1.0) * pow(baseTerm, 1.0 / k - 1.0);",
+          "    float theta = atan(slope);",
+          "    float sinT = min(sin(theta) * u_iorInv, 0.999);",
+          "    float bendTan = max(tan(theta - asin(sinT)), 0.0);",
+          "    float m = clamp(bendTan / u_maxBend, 0.0, 1.0);",
+          "    m *= 1.0 - smoothstep(0.80, 1.0, s);",
+          "    vec2 normal = normalize(vec2(",
+          "      roundedRect(px + vec2(0.7, 0.0), rect, radius) - roundedRect(px - vec2(0.7, 0.0), rect, radius),",
+          "      roundedRect(px + vec2(0.0, 0.7), rect, radius) - roundedRect(px - vec2(0.0, 0.7), rect, radius)",
+          "    ) + vec2(0.0001));",
+          "    vec2 local = px - rect.xy;",
+          // relief micro-lenses (the embossed texture of the pane)
+          "    vec2 diag = vec2(local.x + local.y, local.x - local.y) * 0.707107;",
+          "    vec2 cell = fract(diag / 6.0) - 0.5;",
+          "    float lens = exp(-dot(cell, cell) * 14.0);",
+          "    vec2 facet = vec2(-cell.x * lens, -cell.y * lens) * relief * 2.4;",
+          // optional whole-surface magnification (the "dome" term)
+          // ---- halftone dot lattice: a regular array of micro-lenses that
+          // refract the backdrop *inside* the pane, the look of pressed glass
+          // with a printed dot matrix underneath.
+          "    float texStre = dotAmt * u_dotStrength;",
+          "    vec2 texBend = vec2(0.0);",
+          "    float texShade = 0.0;",
+          "    float texRib = 0.0;",
+          "    float texMask = 0.0;",
+          "    if (texStre > 0.001 && u_texMode > 0.5) {",
+          "      float ca = cos(u_dotAngle), sa = sin(u_dotAngle);",
+          "      vec2 lp = vec2(local.x * ca - local.y * sa, local.x * sa + local.y * ca);",
+          "      float pitch = max(u_dotPitch, 2.5);",
+          "      if (u_texMode < 1.5) {",
+          "        vec2 cellv = fract(lp / pitch) - 0.5;",
+          "        float rr = length(cellv);",
+          "        float dome = smoothstep(0.40, 0.02, rr);",
+          "        vec2 dirn = normalize(cellv + vec2(1e-5));",
+          "        texBend = dirn * dome * texStre * pitch * 0.42;",
+          "        texShade = (dome - 0.30) * texStre * 0.20;",
+          "        texMask = smoothstep(0.30, 0.44, rr) * texStre;",
+          "      } else {",
+          "        float uu = fract(lp.x / pitch) - 0.5;",
+          "        float edgeTerm = max(1.0 - 4.0 * uu * uu, 0.015);",
+          "        float fslope = uu / sqrt(edgeTerm);",
+          "        texBend = vec2(ca, sa) * fslope * texStre * pitch * 0.55;",
+          // cylindrical shading across each rib: dark on one flank, lit on the other
+          "        texRib = clamp(fslope * 0.30, -1.0, 1.0);",
+          // dark seam between ribs, then a caustic line just inside the seam
+          "        float seam = smoothstep(0.44, 0.50, abs(uu));",
+          "        float caustic = smoothstep(0.20, 0.40, abs(uu)) * (1.0 - smoothstep(0.44, 0.50, abs(uu)));",
+          "        texShade = caustic * texStre * 0.62 - seam * texStre * 0.40;",
+          "        texMask = seam * texStre;",
+          "      }",
+          "    }",
+          "    float texChroma = length(texBend) * 0.10;",
+          "    vec2 centre = rect.xy + rect.zw * 0.5;",
+          "    vec2 samplePt = centre + (px - centre) * (1.0 + u_lens.w * 0.045);",
+          "    samplePt += facet;",
+          // Snell bend along the outward normal, per channel: 12% blue over red
+          "    float amp = m * u_lens.x;",
+          "    vec2 totalBend = normal * amp + texBend;",
+          "    float cr = 1.0;",
+          "    float cg = 1.0 + u_extra.x * 0.5 + texChroma * 0.5;",
+          "    float cb = 1.0 + u_extra.x + texChroma;",
+          "    color = vec3(",
+          "      lightAt(samplePt + totalBend * cr).r,",
+          "      lightAt(samplePt + totalBend * cg).g,",
+          "      lightAt(samplePt + totalBend * cb).b",
+          "    );",
+          // vibrancy: transmitted light reads richer than the backdrop
+          "    color = vivid(color, 1.0 + u_extra.w * 0.55);",
+          // frost, but keep the lens band readable
+          "    float frostHere = frost * (1.0 - m * 0.55);",
+          "    if (frostHere > 0.02) {",
+          // wider taps as the frost slider rises: a cheap but convincing scatter
+          "      float fr = (7.0 + 20.0 * frostHere) * u_dpr;",
+          "      vec3 soft = lightAt(samplePt + totalBend) * 0.24",
+          "        + lightAt(samplePt + vec2(fr, fr * 0.55)) * 0.19",
+          "        + lightAt(samplePt - vec2(fr, fr * 0.55)) * 0.19",
+          "        + lightAt(samplePt + vec2(fr * 0.6, -fr)) * 0.19",
+          "        + lightAt(samplePt - vec2(fr * 0.6, -fr)) * 0.19;",
+          "      color = mix(color, soft, frostHere);",
+          "    }",
+          "    vec3 tint = mix(vec3(0.055, 0.095, 0.120), vec3(0.830, 0.880, 0.860), u_light);",
+          "    color = mix(color, tint, 0.05 + frostHere * 0.11);",
+          // ---- specular: 2px crisp line + 5x soft glow, modulated by n.L ----
+          "    float nl = dot(normal, u_lightDir);",
+          "    float crisp = max(0.0, 1.0 - inset / u_specWidth);",
+          "    float glow = max(0.0, 1.0 - inset / (5.0 * u_specWidth));",
+          "    float rimTerm = u_extra.y * (crisp * crisp + 0.30 * glow * glow);",
+          "    float shade = nl > 0.0 ? (0.12 + 0.88 * nl) : (0.12 - 0.88 * 0.4 * nl);",
+          "    color += vec3(1.0) * rimTerm * shade * 0.45;",
+          "    float rimFade = exp(-inset / max(bezel * 0.40, 1.0));",
+          "    color *= 1.0 + nl * u_bevel * 0.34 * rimFade;",
+          // ---- touch glow: illuminates from within, spreading from the finger ----
+          "    if (u_touch.z > 0.001) {",
+          "      vec2 tp = px - u_touch.xy;",
+          "      float glowR = exp(-dot(tp, tp) / (2.0 * 95.0 * 95.0));",
+          "      color += vec3(1.0, 0.98, 0.94) * glowR * u_touch.z * 0.22;",
+          "    }",
+          "    color += texShade;",
+          "    if (u_texMode > 1.5 && texStre > 0.001) {",
+          "      float frost_ = max(0.0, texShade) * texStre;",
+          "      color += vec3(0.10, 0.22, 0.40) * frost_ * 0.35;",
+          "    }",
+          "    if (u_texMode > 1.5 && texStre > 0.001) {",
+          "      color *= 1.0 + texRib * texStre * 0.16;",
+          "    }",
+          "    color *= 1.0 - texMask * 0.16;",
+          // contact darkening just inside the rim keeps the pane seated
+          "    color *= 1.0 - exp(-inset * 0.85) * 0.10;",
+          "    color = mix(base, color, opacity);",
+          "  }",
+          "  float n = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);",
+          "  color += (n - 0.5) / 255.0;",
+          "  gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);",
+          "}",
+        ].join("\n");
+
+        function compile(type, src) {
+          var sh = gl.createShader(type);
+          gl.shaderSource(sh, src); gl.compileShader(sh);
+          if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS))
+            throw new Error(gl.getShaderInfoLog(sh) || "shader");
+          return sh;
+        }
+        function link(vsSrc, fsSrc) {
+          var p = gl.createProgram();
+          gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSrc));
+          gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSrc));
+          gl.linkProgram(p);
+          if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+            throw new Error(gl.getProgramInfoLog(p) || "link");
+          return p;
+        }
+
+        var bgProg, glassProg;
+        try { bgProg = link(VS, BG); glassProg = link(VS, GLASS); }
+        catch (err) { stage.dataset.optics = "fallback"; return; }
+
+        var quad = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+
+        function u(prog, name) { return gl.getUniformLocation(prog, name); }
+        var UBG = { res: u(bgProg, "u_res"), time: u(bgProg, "u_time"),
+                    light: u(bgProg, "u_light"), shift: u(bgProg, "u_shift"),
+                    pattern: u(bgProg, "u_pattern") };
+        var UGL = {};
+        ["u_lightTex", "u_res", "u_time", "u_light", "u_rects", "u_mats", "u_lens", "u_extra",
+         "u_bevel", "u_iorInv", "u_maxBend", "u_specWidth", "u_frost", "u_dpr", "u_reliefAmt",
+         "u_lightDir", "u_touch", "u_card2", "u_dotStrength", "u_dotPitch", "u_dotAngle", "u_texMode"].forEach(function (name) {
+          UGL[name] = u(glassProg, name);
+        });
+        var aBG = gl.getAttribLocation(bgProg, "a_position");
+        var aGL = gl.getAttribLocation(glassProg, "a_position");
+
+        var IOR_INV = 1 / 1.5;
+        // CPU mirror of the shader profile, used only to normalise it to 0..1
+        function bendAt(s, k) {
+          var om = Math.max(1 - s, 1e-4);
+          var baseTerm = Math.max(1 - Math.pow(om, k), 1e-5);
+          var slope = Math.pow(om, k - 1) * Math.pow(baseTerm, 1 / k - 1);
+          var theta = Math.atan(slope);
+          var sinT = Math.min(Math.sin(theta) * IOR_INV, 0.999);
+          return Math.max(Math.tan(theta - Math.asin(sinT)), 0);
+        }
+        var maxBend = 1;
+        function refreshMaxBend() { maxBend = Math.max(bendAt(0.02, params.curvature), 1e-4); }
+
+        var tex = null, fbo = null, W = 0, H = 0, dpr = 1;
+        function allocate(w, h) {
+          W = w; H = h; canvas.width = w; canvas.height = h;
+          if (tex) gl.deleteTexture(tex);
+          if (fbo) gl.deleteFramebuffer(fbo);
+          tex = gl.createTexture();
+          gl.bindTexture(gl.TEXTURE_2D, tex);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          fbo = gl.createFramebuffer();
+          gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+          gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        }
+
+        var cards = [];
+        var RECTS = new Float32Array(48);
+        var MATS = new Float32Array(48);
+        var CARD2 = new Float32Array(48);
+        var ZERO_RECTS = new Float32Array(48);
+        var pressed = -1;
+
+        function readCards() {
+          var box = stage.getBoundingClientRect();
+          // only panes that are actually laid out (the two demo views swap via [hidden])
+          cards = Array.prototype.filter.call(
+            stage.querySelectorAll("[data-glass-card]"),
+            function (el) { return el.getBoundingClientRect().width > 0; }
+          );
+          RECTS.fill(0); MATS.fill(0); CARD2.fill(0);
+          var n = Math.min(cards.length, 12);
+          for (var i = 0; i < n; i++) {
+            var el = cards[i];
+            var b = el.getBoundingClientRect();
+            var cs = getComputedStyle(el);
+            var radius = parseFloat(cs.borderTopLeftRadius) || 0;
+            var squash = i === pressed ? 0.985 : 1;
+            var w = b.width * dpr * squash, h = b.height * dpr * squash;
+            RECTS[i * 4 + 0] = ((b.left - box.left) * dpr) + (b.width * dpr - w) * 0.5;
+            RECTS[i * 4 + 1] = ((b.top - box.top) * dpr) + (b.height * dpr - h) * 0.5;
+            RECTS[i * 4 + 2] = w;
+            RECTS[i * 4 + 3] = h;
+            MATS[i * 4 + 0] = radius * dpr * squash;
+            MATS[i * 4 + 1] = parseFloat(el.dataset.frost || "0.3");
+            MATS[i * 4 + 2] = parseFloat(el.dataset.relief || "0.5");
+            MATS[i * 4 + 3] = parseFloat(el.dataset.opacity || "1");
+            CARD2[i * 4 + 0] = parseFloat(el.dataset.dot || "0");
+          }
+        }
+
+        var DEFAULTS = {
+          refraction: 20, bezel: 0.24, curvature: 4, magnify: 0.20,
+          chroma: 0.12, frost: 1.0, relief: 0.45, bevel: 0.7,
+          spec: 1.0, shadow: 0.9, vibrancy: 0.6, speed: 0.45,
+          dotStrength: 1.0, dotPitch: 9, dotAngle: 45, texMode: 1,
+        };
+        var params = {};
+        for (var k in DEFAULTS) params[k] = DEFAULTS[k];
+
+        var paused = false, cssOnly = false, bgPattern = 0;
+        var shift = [0, 0];
+        var lightTarget = [-0.62, -0.78];
+        var lightCurrent = [-0.62, -0.78];
+        var touch = [0, 0, 0];
+        var time = 0, last = 0;
+
+        function resize() {
+          var box = stage.getBoundingClientRect();
+          dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+          var w = Math.max(1, Math.round(box.width * dpr));
+          var h = Math.max(1, Math.round(box.height * dpr));
+          if (w !== W || h !== H) allocate(w, h);
+        }
+
+        function draw(now) {
+          var dt = last ? Math.min((now - last) / 1000, 0.05) : 0;
+          last = now;
+          if (!paused) time += dt * params.speed;
+          touch[2] *= Math.pow(0.12, dt); // touch glow decays
+
+          var ease = 1 - Math.pow(0.001, dt);
+          lightCurrent[0] += (lightTarget[0] - lightCurrent[0]) * ease;
+          lightCurrent[1] += (lightTarget[1] - lightCurrent[1]) * ease;
+          var lx = lightCurrent[0], ly = lightCurrent[1];
+          var ll = Math.sqrt(lx * lx + ly * ly) || 1;
+          var light = document.documentElement.dataset.theme === "light" ? 1 : 0;
+
+          gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+          gl.viewport(0, 0, W, H);
+          gl.useProgram(bgProg);
+          gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+          gl.enableVertexAttribArray(aBG);
+          gl.vertexAttribPointer(aBG, 2, gl.FLOAT, false, 0, 0);
+          gl.uniform2f(UBG.res, W, H);
+          gl.uniform1f(UBG.time, time);
+          gl.uniform1f(UBG.light, light);
+          gl.uniform2f(UBG.shift, shift[0], shift[1]);
+          gl.uniform1f(UBG.pattern, bgPattern);
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+          gl.viewport(0, 0, W, H);
+          gl.useProgram(glassProg);
+          gl.enableVertexAttribArray(aGL);
+          gl.vertexAttribPointer(aGL, 2, gl.FLOAT, false, 0, 0);
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, tex);
+          gl.uniform1i(UGL.u_lightTex, 0);
+          gl.uniform2f(UGL.u_res, W, H);
+          gl.uniform1f(UGL.u_time, time);
+          gl.uniform1f(UGL.u_light, light);
+          gl.uniform4fv(UGL.u_rects, cssOnly ? ZERO_RECTS : RECTS);
+          gl.uniform4fv(UGL.u_mats, MATS);
+          gl.uniform4f(UGL.u_lens, params.refraction * dpr, params.bezel, params.curvature, params.magnify);
+          gl.uniform4f(UGL.u_extra, params.chroma, params.spec, params.shadow, params.vibrancy);
+          gl.uniform1f(UGL.u_bevel, params.bevel);
+          gl.uniform1f(UGL.u_iorInv, IOR_INV);
+          gl.uniform1f(UGL.u_maxBend, maxBend);
+          gl.uniform1f(UGL.u_specWidth, 2.0 * dpr);
+          gl.uniform1f(UGL.u_frost, params.frost);
+          gl.uniform1f(UGL.u_dpr, dpr);
+          gl.uniform1f(UGL.u_reliefAmt, params.relief);
+          gl.uniform2f(UGL.u_lightDir, lx / ll, ly / ll);
+          gl.uniform3f(UGL.u_touch, touch[0], touch[1], touch[2]);
+          gl.uniform4fv(UGL.u_card2, CARD2);
+          gl.uniform1f(UGL.u_dotStrength, params.dotStrength);
+          gl.uniform1f(UGL.u_dotPitch, params.dotPitch * dpr);
+          gl.uniform1f(UGL.u_dotAngle, params.dotAngle * Math.PI / 180);
+          gl.uniform1f(UGL.u_texMode, params.texMode);
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        }
+
+        var raf = 0, lastDraw = 0;
+        function loop(now) {
+          raf = requestAnimationFrame(loop);
+          if (now - lastDraw < 1000 / 30) return;
+          lastDraw = now;
+          resize(); readCards(); draw(now);
+        }
+
+        var panel = stage.parentNode;
+        var outputs = {};
+        Array.prototype.forEach.call(panel.querySelectorAll("[data-out]"), function (b) {
+          outputs[b.dataset.out] = b;
+        });
+        function showValue(key, value) {
+          var out = outputs[key];
+          if (!out) return;
+          var integer = key === "refraction" || key === "curvature" || key === "dotAngle" || key === "dotPitch";
+          out.textContent = (key === "bezel" || key === "chroma") ? value.toFixed(2) : (integer ? String(Math.round(value)) : value.toFixed(2));
+        }
+        Array.prototype.forEach.call(panel.querySelectorAll("input[data-param]"), function (input) {
+          var key = input.dataset.param;
+          showValue(key, parseFloat(input.value));
+          input.addEventListener("input", function () {
+            params[key] = parseFloat(input.value);
+            if (key === "curvature") refreshMaxBend();
+            showValue(key, params[key]);
+            lastDraw = 0;
+          });
+        });
+
+        var pauseBtn = document.getElementById("labPause");
+        if (pauseBtn) pauseBtn.addEventListener("click", function () {
+          paused = !paused;
+          pauseBtn.setAttribute("aria-pressed", paused ? "true" : "false");
+          pauseBtn.textContent = paused ? "播放" : "暂停";
+        });
+
+        var resetBtn = document.getElementById("labReset");
+        if (resetBtn) resetBtn.addEventListener("click", function () {
+          for (var key in DEFAULTS) params[key] = DEFAULTS[key];
+          refreshMaxBend();
+          shift = [0, 0];
+          Array.prototype.forEach.call(panel.querySelectorAll("input[data-param]"), function (input) {
+            var v = DEFAULTS[input.dataset.param];
+            input.value = String(v);
+            showValue(input.dataset.param, v);
+          });
+          lastDraw = 0;
+        });
+
+        var tuneCards = stage.querySelector("[data-tune]");
+        var simCards = stage.querySelector("[data-sim]");
+        Array.prototype.forEach.call(panel.querySelectorAll("[data-view]"), function (btn) {
+          btn.addEventListener("click", function () {
+            var sim = btn.dataset.view === "sim";
+            if (simCards) simCards.hidden = !sim;
+            if (tuneCards) tuneCards.hidden = sim;
+            Array.prototype.forEach.call(panel.querySelectorAll("[data-view]"), function (other) {
+              other.setAttribute("aria-pressed", other === btn ? "true" : "false");
+            });
+            lastDraw = 0;
+          });
+        });
+
+        Array.prototype.forEach.call(panel.querySelectorAll("[data-tex]"), function (btn) {
+          btn.addEventListener("click", function () {
+            params.texMode = parseFloat(btn.dataset.tex);
+            Array.prototype.forEach.call(panel.querySelectorAll("[data-tex]"), function (other) {
+              other.setAttribute("aria-pressed", other === btn ? "true" : "false");
+            });
+            lastDraw = 0;
+          });
+        });
+
+        Array.prototype.forEach.call(panel.querySelectorAll("[data-bg]"), function (btn) {
+          btn.addEventListener("click", function () {
+            bgPattern = parseFloat(btn.dataset.bg);
+            Array.prototype.forEach.call(panel.querySelectorAll("[data-bg]"), function (other) {
+              other.setAttribute("aria-pressed", other === btn ? "true" : "false");
+            });
+            lastDraw = 0;
+          });
+        });
+
+        var fallbackBtn = document.getElementById("labFallback");
+        if (fallbackBtn) fallbackBtn.addEventListener("click", function () {
+          var on = fallbackBtn.getAttribute("aria-pressed") !== "true";
+          fallbackBtn.setAttribute("aria-pressed", on ? "true" : "false");
+          stage.dataset.optics = on ? "fallback" : "webgl";
+          cssOnly = on;
+          lastDraw = 0;
+        });
+
+        var dragging = false, px0 = 0, py0 = 0;
+        stage.addEventListener("pointerdown", function (e) {
+          if (e.target.closest("button")) return;
+          dragging = true;
+          px0 = e.clientX; py0 = e.clientY;
+          var card = e.target.closest("[data-glass-card]");
+          pressed = card ? cards.indexOf(card) : -1;
+          if (card) card.style.transform = "scale(0.985)";
+          var box = stage.getBoundingClientRect();
+          touch[0] = (e.clientX - box.left) * dpr;
+          touch[1] = (e.clientY - box.top) * dpr;
+          touch[2] = 1;
+          stage.setPointerCapture(e.pointerId);
+          var hint = document.getElementById("labHint");
+          if (hint) hint.style.opacity = "0";
+        });
+        stage.addEventListener("pointermove", function (e) {
+          var box = stage.getBoundingClientRect();
+          lightTarget[0] = ((e.clientX - box.left) / box.width - 0.5) * 2.0 * 0.9 - 0.18;
+          lightTarget[1] = ((e.clientY - box.top) / box.height - 0.5) * 2.0 * 0.9 - 0.55;
+          if (!dragging) return;
+          shift[0] -= ((e.clientX - px0) / box.width) * 1.6;
+          shift[1] += ((e.clientY - py0) / box.height) * 1.6;
+          px0 = e.clientX; py0 = e.clientY;
+        });
+        function release() {
+          dragging = false;
+          if (pressed >= 0 && cards[pressed]) cards[pressed].style.transform = "";
+          pressed = -1;
+        }
+        stage.addEventListener("pointerup", release);
+        stage.addEventListener("pointercancel", release);
+
+        canvas.addEventListener("webglcontextlost", function (e) {
+          e.preventDefault();
+          cancelAnimationFrame(raf);
+          stage.dataset.optics = "fallback";
+        });
+
+        window.__labDebug = {
+          gl: gl, prog: glassProg, UGL: UGL, CARD2: CARD2,
+          params: function () { return params; },
+          active: function () {
+            var out = [], n = gl.getProgramParameter(glassProg, gl.ACTIVE_UNIFORMS);
+            for (var i = 0; i < n; i++) {
+              var info = gl.getActiveUniform(glassProg, i);
+              out.push(info.name + ":" + info.size);
+            }
+            return out;
+          }
+        };
+        stage.dataset.optics = "webgl";
+        var hint = document.getElementById("labHint");
+        if (hint) setTimeout(function () { hint.style.opacity = "0"; }, 9000);
+
+        refreshMaxBend();
+        resize(); readCards();
+        raf = requestAnimationFrame(loop);
+      })();
+    </script>
+  </body>
+</html>

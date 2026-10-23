@@ -921,6 +921,13 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   padding: 12px 0 8px;
   border-bottom: 1px solid var(--line);
 }
+/* The floating history trigger owns the top-right corner below 900px; keep the
+   source picker clear of it instead of letting the button cover its arrow. */
+@media (max-width: 900px) {
+  .formalHeader {
+    padding-right: 104px;
+  }
+}
 .formalHeader > div {
   min-width: 0;
 }
@@ -1102,9 +1109,34 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   min-height: 40px;
 }
 .snapshotNote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
   margin: 8px 0;
   font-size: 10px;
   color: var(--muted);
+}
+/* Contract/version identifiers are for verification, not for reading first:
+   folded by default, still one click away. */
+.technical {
+  font-size: inherit;
+  color: inherit;
+}
+.technical > summary {
+  min-height: 24px;
+  padding-block: 2px;
+  cursor: pointer;
+  font-size: 10px;
+  color: var(--muted);
+}
+.technical > summary:hover {
+  color: var(--ink);
+}
+.technical p {
+  margin: 4px 0 0;
+  font-size: 10px;
+  line-height: 1.7;
 }
 .chartAttachment {
   background: var(--paper);
@@ -1167,8 +1199,18 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   .composer {
     padding: 8px 10px;
   }
+  /* Phones keep the label as the textarea's accessible name even though the
+     compact card has no room to show it: hide it visually, not from AT. */
   .composerHeading > label {
-    display: none;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
   .composerHeading {
     justify-content: flex-end;
@@ -1323,9 +1365,82 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   pointer-events: auto;
 }
 :global(.glass-workspace) .composerDock[data-collapsed="false"] {
+  /* The dock floats over the transcript, so hint line, notices and input share
+     one near-opaque backing: at 70% paper the table behind ghosted through the
+     text box, and the bare hint line collided with course names and table rows.
+     Blur stays for the glass feel, but the text no longer sits on the content. */
+  border: 1px solid var(--glass-border);
   border-radius: var(--ui-panel-radius, 14px);
+  background: color-mix(in srgb, var(--paper) 95%, transparent);
+  box-shadow: 0 8px 24px #02040726;
   -webkit-backdrop-filter: blur(16px) saturate(110%);
   backdrop-filter: blur(16px) saturate(110%);
+  padding: 10px 16px max(10px, env(safe-area-inset-bottom, 0px));
+  /* The panel is opaque, so it must also swallow clicks: without this the
+     transcript underneath (now invisible) could still be clicked through the
+     padding ring. */
+  pointer-events: auto;
+}
+:global(.glass-workspace) .composerDock[data-collapsed="false"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 18px;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--paper) 90%, transparent),
+    transparent
+  );
+}
+:global(.glass-workspace) .composerDock[data-collapsed="false"]:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--glass-border));
+}
+/* The panel owns the surface; the form stays a bare layout container. */
+:global(.glass-workspace) .composerDock[data-collapsed="false"] .composer {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+:global(.glass-workspace) .composerDock[data-collapsed="false"] .composer textarea {
+  background: transparent;
+}
+:global(.glass-workspace) .composerDock > :global(.notice) {
+  border-radius: calc(var(--ui-panel-radius, 14px) - 4px);
+}
+:global(.glass-workspace) .composerDock .note {
+  margin: 0 0 8px;
+  padding: 0 2px 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+/* "去设置" is a link inside a sentence: inline, no extra line height. */
+.composerDock .note :global(.text-button) {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  margin: 0 0 0 2px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: inherit;
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.composerDock .note :global(.text-button):hover {
+  color: var(--accent);
+}
+.localNotice {
+  margin: 0 0 8px;
+  color: var(--warning);
+  font-size: 12px;
+  line-height: 1.6;
 }
 :global(.glass-workspace) .composer {
   border: 1px solid var(--glass-border);
@@ -1354,12 +1469,21 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 :global(.glass-workspace) .contextChip {
   border-radius: 6px;
 }
+:global(.glass-workspace) .composerDock[data-collapsed="true"] {
+  /* The expanded panel's padding vanishes when folded; re-add the same bottom
+     inset so the square keeps the expanded toggle's screen position. */
+  padding: 0 16px max(10px, env(safe-area-inset-bottom, 0px));
+}
 :global(.glass-workspace) .composerDock[data-collapsed="true"] .composer {
+  margin-right: 1px;
   border-radius: 10px;
   -webkit-backdrop-filter: blur(16px) saturate(110%);
   backdrop-filter: blur(16px) saturate(110%);
 }
 @supports not (backdrop-filter: blur(1px)) {
+  :global(.glass-workspace) .composerDock[data-collapsed="false"] {
+    background: var(--paper);
+  }
   :global(.glass-workspace) .composer {
     background: var(--paper);
   }
@@ -1446,4 +1570,128 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 :global(.glass-workspace) .collapseToggle,
 :global(.glass-workspace) .send {
   border-radius: var(--ui-control-radius);
+}
+
+/* ---- Phones: the empty state has to fit above the floating input -----------
+   At 390×844 and 320×720 the hero, the explanation and all three recommended
+   questions must be visible (and tappable) without scrolling or being covered
+   by the dock. Each block below trims vertical rhythm rather than hiding the
+   questions; the decorative eyebrow and the privacy footnote go entirely. */
+@media (max-width: 600px) {
+  :global(.glass-workspace) .formalHeader > div > span {
+    display: none;
+  }
+  :global(.glass-workspace) .availability {
+    margin-bottom: 8px;
+  }
+  :global(.glass-workspace) .readingArea {
+    margin-top: 0;
+  }
+  :global(.glass-workspace) .empty {
+    padding: 4px 0 12px;
+  }
+  :global(.glass-workspace) .welcomeMark {
+    width: 32px;
+    height: 32px;
+  }
+  :global(.glass-workspace) .welcomeEyebrow {
+    display: none;
+  }
+  :global(.glass-workspace) .empty h2 {
+    font-size: 28px;
+    line-height: 1.22;
+    letter-spacing: -0.5px;
+    margin: 10px 0 8px;
+  }
+  :global(.glass-workspace) .empty > p {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    margin-top: 8px;
+    line-height: 1.65;
+  }
+  :global(.glass-workspace) .empty .privacy {
+    display: none;
+  }
+  :global(.glass-workspace) .welcomeSuggestions {
+    margin-top: 10px;
+    gap: 4px;
+  }
+  :global(.glass-workspace) .welcomeSuggestions button {
+    min-height: 44px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  :global(.glass-workspace) .suggestionHeading {
+    margin-bottom: 6px;
+  }
+  :global(.glass-workspace) .composerDock[data-collapsed="false"] {
+    padding: 8px 10px max(8px, env(safe-area-inset-bottom, 0px));
+  }
+  :global(.glass-workspace) .composerDock[data-collapsed="false"]::before {
+    height: 12px;
+  }
+  :global(.glass-workspace) .composerDock[data-collapsed="true"] {
+    padding: 0 10px max(8px, env(safe-area-inset-bottom, 0px));
+  }
+  :global(.glass-workspace) .composerDock[data-collapsed="true"] .composer {
+    margin-right: 1px;
+  }
+  /* Three questions fit above the dock on a phone; once the model is on the
+     fourth question earns the space the description paragraph used. */
+  :global(.glass-workspace) .empty[data-suggestion-count="4"] > p {
+    display: none;
+  }
+  /* The same guidance is in the empty-state copy, label and placeholder; the
+     line would only eat the space the questions need on a phone. */
+  :global(.glass-workspace) .composerDock .note {
+    display: none;
+  }
+}
+
+/* 320-wide screens have ~50px less reading height: drop the decorative mark and
+   the suggestion caption so all three questions still clear the input card. */
+@media (max-width: 380px) {
+  /* The compact hero already says what the page does; keep the h1 for screen
+     readers only so the recommended questions clear the dock. */
+  :global(.glass-workspace) .formalHeader h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  :global(.glass-workspace) .welcomeMark {
+    display: none;
+  }
+  :global(.glass-workspace) .suggestionHeading {
+    display: none;
+  }
+  /* The availability line above already explains the model state; at 320 the
+     description would push the last question under the dock. */
+  :global(.glass-workspace) .empty > p {
+    display: none;
+  }
+  :global(.glass-workspace) .welcomeSuggestions {
+    margin-top: 6px;
+  }
+  :global(.glass-workspace) .empty {
+    padding-bottom: 6px;
+  }
+  :global(.glass-workspace) .availability {
+    min-height: 24px;
+  }
+}
+
+/* Keep the source picker clear of the floating history trigger on narrow
+   layouts (later media blocks reset the header padding, so win here). */
+@media (max-width: 900px) {
+  .conversation .formalHeader {
+    padding-right: 104px;
+  }
 }
