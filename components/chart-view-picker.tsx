@@ -17,6 +17,7 @@ export function ChartViewPicker({
   includeTable = true,
   scatterDescription,
   allowedViews,
+  compact = false,
 }: {
   value: ChartViewType;
   onChange: (value: ChartViewType) => void;
@@ -26,11 +27,13 @@ export function ChartViewPicker({
   scatterDescription?: string;
   /** Optional semantic whitelist. Omit to keep the existing full picker. */
   allowedViews?: readonly ChartViewType[];
+  /** Compact toolbars keep the normal-view help available to screen readers. */
+  compact?: boolean;
 }) {
   const effective = resolveChartView(value, unit, rows);
   const fallbackReason = chartUnavailableReason(value, unit, rows);
   return (
-    <div className="chart-view-picker">
+    <div className="chart-view-picker" data-density={compact ? "compact" : undefined}>
       <div className="chart-view-options" role="group" aria-label="结果展示方式">
         {CHART_VIEWS.filter(
           (view) =>
@@ -68,7 +71,10 @@ export function ChartViewPicker({
           当前结果没有可切换的图形形式。
         </p>
       ) : null}
-      <p className="chart-view-description" role="status">
+      <p
+        className={`chart-view-description${compact && !fallbackReason && effective !== "scatter" ? " sr-only" : ""}`}
+        role="status"
+      >
         {fallbackReason
           ? `${fallbackReason} 当前使用柱状图。`
           : effective === "scatter" && scatterDescription

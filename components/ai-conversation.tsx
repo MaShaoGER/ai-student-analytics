@@ -396,11 +396,7 @@ export function ConversationWorkspace({
       : draftText;
 
   return (
-    <div
-      className={experience.layout}
-      data-history-collapsed={historyCollapsed}
-      data-glass-pane="0.35"
-    >
+    <div className={experience.layout} data-history-collapsed={historyCollapsed}>
       <ConversationHistory
         {...history}
         collapsed={historyCollapsed}
@@ -469,7 +465,7 @@ export function ConversationWorkspace({
                     : "只读账号可使用指标分析，不能使用 AI 对话。请返回指标分析查看确定性统计结果。"}
                 </p>
                 {aiAllowed && (
-                  <div className={styles.welcomeSuggestions} aria-label="推荐问题">
+                  <div className={styles.welcomeSuggestions} role="group" aria-label="推荐问题">
                     <div className={styles.suggestionHeading}>
                       <span>没想好怎么问？从一条线索开始</span>
                       <span>
@@ -611,6 +607,7 @@ export function ConversationWorkspace({
                   {aiAllowed && index === messages.length - 1 && response?.suggestions.length ? (
                     <div
                       className={styles.suggestions}
+                      role="group"
                       aria-label="继续探索"
                       data-enter="fade"
                       style={{ "--enter-delay": "240ms" } as CSSProperties}
@@ -965,7 +962,7 @@ function DistributionResult({
           </p>
         </div>
         {showViewPicker ? (
-          <div className={styles.actions} aria-label="成绩分布展示方式">
+          <div className={styles.actions} role="group" aria-label="成绩分布展示方式">
             <button
               type="button"
               className="secondary-button"

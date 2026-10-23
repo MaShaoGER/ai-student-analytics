@@ -1,0 +1,338 @@
+/* Sign-in uses the same product tokens. A quiet illustration supports the form. */
+.login-screen {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(400px, 0.9fr);
+  min-height: 100dvh;
+  background: var(--paper);
+  color: var(--ink);
+}
+.login-appearance {
+  position: absolute;
+  z-index: 2;
+  right: 32px;
+  top: 28px;
+}
+.login-story {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 48px clamp(32px, 6vw, 96px);
+  background: var(--sidebar);
+  border-right: 1px solid var(--line);
+  overflow: hidden;
+}
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.login-story-copy {
+  margin-top: clamp(64px, 12vh, 140px);
+}
+.login-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: 500;
+}
+.login-eyebrow i {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 50%;
+}
+.login-story h1 {
+  margin-top: 24px;
+  font-size: clamp(30px, 3.25vw, 48px);
+  font-weight: 550;
+  letter-spacing: -0.045em;
+  line-height: 1.45;
+}
+.login-story h1 em {
+  color: var(--accent-ink);
+  font-style: normal;
+}
+.login-story-copy > p {
+  margin-top: 20px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 2;
+}
+.login-signals {
+  margin-top: 48px;
+  max-width: 560px;
+  color: var(--accent);
+}
+.login-signals-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 10px;
+}
+.login-signals-heading > span:last-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.login-signal-map {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 20px;
+}
+.signal-path {
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.signal-path-muted {
+  opacity: 0.2;
+}
+.signal-path-secondary {
+  opacity: 0.4;
+}
+.signal-point {
+  fill: currentColor;
+  stroke: var(--sidebar);
+  stroke-width: 3;
+}
+.login-signal-labels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.login-story-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-top: auto;
+  padding-top: 56px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.login-story-features > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.login-story-features svg {
+  color: var(--accent);
+}
+.login-form-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 96px 40px 48px;
+  min-width: 0;
+}
+.login-access-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: min(100%, 352px);
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 32px;
+}
+.login-form-card {
+  width: min(100%, 352px);
+}
+.login-heading > .login-eyebrow {
+  display: none;
+}
+.login-heading h2 {
+  font-size: 28px;
+  letter-spacing: -0.04em;
+  line-height: 1.4;
+  font-weight: 600;
+}
+.login-heading p {
+  margin: 10px 0 32px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.login-form {
+  display: grid;
+  gap: 20px;
+}
+.login-form input:not([type="checkbox"]) {
+  min-height: 44px;
+  background: var(--paper);
+  padding: 11px 12px;
+}
+.login-field-label {
+  display: flex;
+  justify-content: space-between;
+}
+.login-field-label > span {
+  color: var(--subtle);
+  font-size: 11px;
+  font-weight: 400;
+}
+.login-password-field {
+  position: relative;
+  display: flex;
+}
+.login-password-field input {
+  padding-right: 44px !important;
+}
+.login-password-toggle {
+  display: grid;
+  place-items: center;
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  bottom: 2px;
+  width: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+}
+.login-form-options {
+  display: flex;
+  justify-content: space-between;
+}
+.login-form-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.login-form .primary-button {
+  justify-content: space-between;
+  min-height: 44px;
+  width: 100%;
+}
+.login-form .spinner {
+  width: 18px;
+  height: 18px;
+  border-top-color: var(--button-ink);
+}
+.login-secure-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.8;
+  margin-top: 24px;
+}
+.login-secure-note > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.login-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(100%, 352px);
+  margin-top: 64px;
+  font-size: 10px;
+  color: var(--subtle);
+}
+.login-footer > span:last-child {
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+@media (max-width: 1100px) {
+  .login-story {
+    padding-inline: 36px;
+  }
+  .login-story-features {
+    gap: 16px;
+  }
+}
+@media (max-width: 760px) {
+  .login-screen {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .login-story {
+    padding: 28px 24px 24px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .login-appearance {
+    top: 28px;
+    right: 20px;
+  }
+  .login-story-copy {
+    margin-top: 32px;
+  }
+  .login-story h1 {
+    margin-top: 12px;
+    font-size: 28px;
+  }
+  .login-story h1 br {
+    display: none;
+  }
+  .login-story-copy > p,
+  .login-signals,
+  .login-story-features,
+  .login-story-copy > .login-eyebrow {
+    display: none;
+  }
+  .login-form-area {
+    padding: 32px 24px;
+  }
+  .login-access-label {
+    margin-bottom: 16px;
+  }
+  .login-heading h2 {
+    font-size: 24px;
+  }
+  .login-heading p {
+    margin-bottom: 24px;
+  }
+  .login-footer {
+    margin-top: 32px;
+  }
+  .login-form input:not([type="checkbox"]) {
+    font-size: 16px;
+  }
+}
+@media (max-width: 380px) {
+  .login-story {
+    padding: 24px 20px 20px;
+  }
+  .login-story h1 {
+    font-size: 24px;
+  }
+  .login-story .product-brand-wordmark small {
+    display: none;
+  }
+  .login-appearance {
+    right: 16px;
+    top: 24px;
+  }
+  .login-appearance .theme-toggle button {
+    padding-inline: 6px;
+  }
+  .login-form-area {
+    padding: 24px 20px;
+  }
+  .login-access-label {
+    display: none;
+  }
+  .login-heading p {
+    margin-bottom: 20px;
+  }
+  .login-form {
+    gap: 16px;
+  }
+  .login-secure-note {
+    margin-top: 20px;
+  }
+}

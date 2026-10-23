@@ -232,9 +232,6 @@ export function LearningOverview({
             .map((card, index) => (
               <button
                 className={`overview-metric${metric === card.metric ? " is-selected" : ""}`}
-                data-glass-pane="0.55"
-                data-glass-tier="3"
-                data-glass-relief={metric === card.metric ? "1" : undefined}
                 type="button"
                 key={card.metric}
                 data-metric={card.metric}
@@ -254,7 +251,9 @@ export function LearningOverview({
                 <span className="overview-metric-label">
                   <Icon name={card.icon} size={16} />
                   {card.label}
-                  <span className="metric-index">0{index + 1}</span>
+                  <span className="metric-index">
+                    <Icon name="arrowUpRight" size={14} />
+                  </span>
                 </span>
                 <span className="overview-metric-body">
                   <MetricNumber
@@ -299,9 +298,7 @@ export function LearningOverview({
         data-enter="wipe"
         style={{ "--enter-delay": "340ms" } as CSSProperties}
       >
-        <span>
-          <small>A—01</small>课程表现，一眼看清
-        </span>
+        <span>课程表现</span>
         <button className="text-button" type="button" onClick={() => onExplore(metric)}>
           进入详细分析
           <Icon name="arrowUpRight" size={15} />
@@ -311,15 +308,13 @@ export function LearningOverview({
         <div className="overview-primary">
           <section
             className="panel overview-chart-panel"
-            data-glass-pane="0.55"
             aria-busy={loading}
             data-enter="panel"
             style={{ "--enter-delay": "380ms" } as CSSProperties}
           >
             <div className="overview-panel-heading">
               <div>
-                <span className="section-kicker">COURSE PERFORMANCE</span>
-                <h2>课程信号</h2>
+                <h2>课程表现对比</h2>
               </div>
               <div className="overview-panel-actions">
                 <span className="overview-chart-legend">
@@ -337,7 +332,7 @@ export function LearningOverview({
               </div>
             </div>
             <div className="overview-chart-toolbar" ref={chartToolbar}>
-              <div className="overview-metric-tabs" aria-label="概览图表指标">
+              <div className="overview-metric-tabs" role="group" aria-label="概览图表指标">
                 {availableMetrics.map((value) => (
                   <button
                     key={value}
@@ -354,6 +349,7 @@ export function LearningOverview({
                 ))}
               </div>
               <ChartViewPicker
+                compact
                 value={chartView}
                 onChange={(value) => setChartViews((current) => ({ ...current, [metric]: value }))}
                 rows={result?.rows ?? []}
@@ -421,7 +417,6 @@ export function LearningOverview({
           </section>
           <section
             className="panel overview-ranking"
-            data-glass-pane="0.55"
             data-enter="rise"
             style={{ "--enter-delay": "480ms" } as CSSProperties}
           >
@@ -497,9 +492,6 @@ export function LearningOverview({
         <aside className="overview-secondary">
           <section
             className="overview-ask-card"
-            data-glass-pane="0.6"
-            data-glass-tier="3"
-            data-glass-relief="0.5"
             data-enter="slide-right"
             style={{ "--enter-delay": "420ms" } as CSSProperties}
           >
@@ -509,22 +501,16 @@ export function LearningOverview({
               </span>
               <span>AI 分析助手</span>
             </div>
-            <h2>
-              好的分析，
-              <br />
-              从一个问题开始。
-            </h2>
-            <p>
-              用日常语言提问，
-              <br />
-              把好奇心变成有依据的结论。
-            </p>
+            <h2>用一句话，探索数据。</h2>
+            <p>从课程表现到学习趋势，让每个问题都有依据。</p>
             <div
               className="overview-terminal"
               data-enter="rise-sm"
               style={{ "--enter-delay": "620ms" } as CSSProperties}
             >
-              <div className="terminal-label">Q / 01 — QUESTION INPUT</div>
+              <label className="terminal-label" htmlFor="overview-question">
+                你想了解什么？
+              </label>
               <form
                 onSubmit={(event) => {
                   event.preventDefault();
@@ -532,6 +518,7 @@ export function LearningOverview({
                 }}
               >
                 <input
+                  id="overview-question"
                   aria-label="输入分析问题"
                   placeholder="你想了解什么？"
                   value={question}
@@ -577,7 +564,6 @@ export function LearningOverview({
           </section>
           <section
             className="panel overview-source-card"
-            data-glass-pane="0.6"
             data-enter="slide-right"
             style={{ "--enter-delay": "540ms" } as CSSProperties}
           >

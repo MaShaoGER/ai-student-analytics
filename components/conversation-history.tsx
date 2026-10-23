@@ -43,7 +43,7 @@ export function ConversationHistory(
   const content = (
     <>
       <div className={styles.historyHeading}>
-        <span>账号对话 / HISTORY</span>
+        <span>历史对话</span>
         <button type="button" aria-label="刷新历史" onClick={props.onRefresh}>
           <Icon name="refresh" size={15} />
         </button>
@@ -82,7 +82,6 @@ export function ConversationHistory(
             className={styles.historyRow}
             key={entry.id}
             data-active={entry.id === props.selectedId}
-            data-glass-relief={entry.id === props.selectedId ? "0.65" : undefined}
           >
             <button
               type="button"
@@ -144,7 +143,6 @@ export function ConversationHistory(
         <a href="https://www.rareui.com/" target="_blank" rel="noreferrer">
           Rare UI 组件来源 ↗
         </a>
-        <a href="/preview/ai-experience">打开无 AI 调用的体验预览</a>
       </div>
     </>
   );

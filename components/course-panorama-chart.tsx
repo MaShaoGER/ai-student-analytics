@@ -84,7 +84,13 @@ export function CoursePanoramaChart({
 
   return (
     <figure className={styles.figure} data-enter="fade">
-      <div ref={viewport} className={styles.chartViewport} aria-label="可横向滚动的学科全景图">
+      <div
+        ref={viewport}
+        className={styles.chartViewport}
+        role="region"
+        tabIndex={0}
+        aria-label="可横向滚动的学科全景图"
+      >
         <svg
           className={`${styles.chart}${entering ? ` ${styles.entering}` : ""}`}
           width={width}

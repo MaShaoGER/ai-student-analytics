@@ -5,7 +5,6 @@ import type { SessionUser } from "@/lib/client-types";
 import { ProductBrand } from "@/components/product-brand";
 import { Icon } from "@/components/app-icons";
 import { ThemeToggle } from "@/components/ui/theme-provider";
-import { GlassBackdrop } from "@/components/glass-backdrop";
 
 const REMEMBERED_USERNAME = "student-analytics.remembered-username";
 
@@ -97,12 +96,11 @@ export function LoginScreen({
   }
 
   return (
-    <main className="login-screen glass-workspace glass-auth">
-      <GlassBackdrop />
+    <main className="login-screen">
       <div className="login-appearance" data-enter="fade">
         <ThemeToggle />
       </div>
-      <section className="login-story" data-glass-pane="0.5" aria-labelledby="login-product-title">
+      <section className="login-story" aria-labelledby="login-product-title">
         <div
           className="login-brand"
           data-enter="rise-sm"
@@ -225,8 +223,6 @@ export function LoginScreen({
         </div>
         <div
           className="login-form-card"
-          data-glass-pane="0.5"
-          data-glass-tier="3"
           data-enter="slide-right"
           style={{ "--enter-delay": "160ms" } as MotionStyle}
         >
@@ -276,6 +272,8 @@ export function LoginScreen({
                 name="username"
                 type="text"
                 autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
                 placeholder="请输入账号"
                 value={username}
                 onChange={(event) => {

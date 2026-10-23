@@ -1,44 +1,12 @@
 "use client";
 
-import { useLayoutEffect, useState } from "react";
-import { useMotionPreferences } from "@/components/ui/motion-preferences";
-
-export const COUNT_UP_MS = 900;
-
-/** Page-load data motion follows the local motion switch and OS setting only. */
-export const countUpAllowed = () =>
-  document.documentElement.dataset.motion === "on" &&
-  !matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-/**
- * Counts from zero to a freshly mounted value with a strong ease-out. Used for
- * real metrics only; re-mount (page return, data source change) replays it.
- */
-export function useCountUp(value: number | undefined, duration = COUNT_UP_MS) {
-  const { enabled, reduced } = useMotionPreferences();
-  const [display, setDisplay] = useState<number | undefined>(value);
-  useLayoutEffect(() => {
-    if (value === undefined) {
-      setDisplay(undefined);
-      return;
-    }
-    if (!enabled || reduced || !countUpAllowed()) {
-      setDisplay(value);
-      return;
-    }
-    setDisplay(0);
-    let frame = 0;
-    const started = performance.now();
-    const tick = (now: number) => {
-      const progress = Math.min(1, (now - started) / duration);
-      setDisplay(value * (1 - Math.pow(1 - progress, 5)));
-      if (progress < 1) frame = requestAnimationFrame(tick);
-      else setDisplay(value);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [value, enabled, reduced, duration]);
-  return display;
+// Statistics are shown at their exact value as soon as they arrive. Keeping the
+// historical exports lets analytical views share formatting without replaying
+// a count from zero on navigation or account changes.
+export const COUNT_UP_MS = 0;
+export const countUpAllowed = () => false;
+export function useCountUp(value: number | undefined, _duration = COUNT_UP_MS) {
+  return value;
 }
 
 const format = (value: number, decimals: number, fixedDecimals = false) =>

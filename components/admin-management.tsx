@@ -817,12 +817,7 @@ function OverviewMetric({
   loading: boolean;
 }) {
   return (
-    <article
-      className={styles.metricCard}
-      data-glass-pane="0.6"
-      data-glass-tier="3"
-      data-glass-relief="1"
-    >
+    <article className={styles.metricCard}>
       <span>{label}</span>
       <strong>
         <AnimatedNumber value={value} loading={loading} fallback="—" />
@@ -916,12 +911,7 @@ function OverviewWorkspace({ request }: { request: AdminRequest }) {
               detail="AI 用量，不等同于业务请求"
               loading={loading}
             />
-            <article
-              className={`${styles.metricCard} ${styles.costMetric}`}
-              data-glass-pane="0.6"
-              data-glass-tier="3"
-              data-glass-relief="1"
-            >
+            <article className={`${styles.metricCard} ${styles.costMetric}`}>
               <span>估算费用</span>
               <strong>{formatCost(data.ai.costUsd)}</strong>
               <small>根据记录单价估算，不是供应商账单</small>

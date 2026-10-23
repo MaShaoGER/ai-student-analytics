@@ -241,6 +241,7 @@ export function AnalysisResultView({
           ) : null}
           <div
             className="result-filter"
+            role="group"
             aria-label="筛选与排序"
             data-enter="fade"
             style={enterAt(160)}

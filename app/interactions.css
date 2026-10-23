@@ -1,0 +1,38 @@
+/* Motion is tied to an action: short feedback, no delayed data reveal. */
+[data-grow] {
+  transform: scaleX(var(--fill, 1));
+  transform-origin: left;
+}
+.motion-skeleton,
+[data-skeleton] {
+  background: var(--surface-inset);
+}
+html[data-motion="on"][data-input-modality="pointer"] :is(button, a) {
+  transition:
+    background-color 120ms var(--ease-out),
+    border-color 120ms var(--ease-out),
+    color 120ms var(--ease-out);
+}
+html[data-motion="on"][data-input-modality="pointer"]
+  :is(.primary-button, .secondary-button, .icon-button):active:not(:disabled) {
+  scale: 0.98;
+}
+@keyframes skeleton-breathe {
+  50% {
+    opacity: 0.45;
+  }
+}
+html[data-motion="on"] :is(.motion-skeleton, [data-skeleton]) {
+  animation: skeleton-breathe 1.5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+  .motion-skeleton,
+  [data-skeleton] {
+    animation: none !important;
+  }
+}
