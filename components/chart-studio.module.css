@@ -1,19 +1,8 @@
-.studio {
-  min-width: 0;
-  padding: 32px;
-}
 .heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-}
-.heading h2 {
-  margin: 8px 0;
-  font-size: 26px;
-  font-weight: 600;
-  letter-spacing: -0.7px;
-  text-wrap: balance;
 }
 .heading p,
 .hint {
@@ -42,29 +31,8 @@
   gap: 12px;
   margin: 28px 0;
 }
-.types button {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 20px;
-  background: transparent;
-  border: 1px solid var(--line);
-  border-radius: var(--corner-radius);
-  color: var(--ink);
-  text-align: left;
-  min-width: 0;
-}
 .types button:hover {
   background: var(--surface-inset);
-}
-.types button[aria-pressed="true"] {
-  background: var(--surface-inset);
-  border-color: var(--ink);
-}
-.types strong {
-  font-size: 15px;
-  font-weight: 600;
 }
 .typeNumber {
   font-variant-numeric: tabular-nums;
@@ -132,24 +100,6 @@
 .editorHeading span {
   font-size: 11px;
   color: var(--muted);
-}
-.editor textarea {
-  display: block;
-  width: 100%;
-  resize: vertical;
-  min-height: 440px;
-  max-height: 900px;
-  background: var(--surface-inset);
-  color: var(--ink);
-  border: 1px solid var(--line);
-  border-radius: var(--corner-radius);
-  padding: 16px;
-  font:
-    13px/1.8 ui-monospace,
-    "SFMono-Regular",
-    Consolas,
-    monospace;
-  tab-size: 2;
 }
 .editor p {
   font-size: 12px;
@@ -223,15 +173,6 @@
   text-align: center;
   pointer-events: none;
 }
-.selection {
-  display: grid;
-  grid-template-columns: minmax(160px, 240px) minmax(0, 1fr);
-  gap: 24px;
-  padding: 20px;
-  background: var(--surface-inset);
-  border-radius: var(--corner-radius);
-  margin-top: 16px;
-}
 .selection select {
   width: 100%;
 }
@@ -299,6 +240,70 @@
   font-size: 12px;
   line-height: 1.8;
   max-width: 380px;
+}
+
+/* Shared glass UI hierarchy; the chart's marks and scale remain untouched. */
+.heading h2 {
+  margin: 8px 0;
+  text-wrap: balance;
+  letter-spacing: -0.3px;
+  font-size: 20px;
+  font-weight: 550;
+}
+
+.studio {
+  min-width: 0;
+  padding: 24px;
+}
+.types button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  text-align: left;
+  min-width: 0;
+  border-radius: 12px;
+  background: var(--ui-control-bg);
+  border-color: var(--ui-control-border);
+}
+.types button[aria-pressed="true"] {
+  background: var(--ui-selected-bg);
+  border-color: var(--line-strong);
+}
+.types strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.editor textarea {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  min-height: 440px;
+  max-height: 900px;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  padding: 16px;
+  font:
+    13px/1.8 ui-monospace,
+    "SFMono-Regular",
+    Consolas,
+    monospace;
+  tab-size: 2;
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-inset);
+}
+.selection {
+  display: grid;
+  grid-template-columns: minmax(160px, 240px) minmax(0, 1fr);
+  gap: 24px;
+  padding: 20px;
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--ui-inset);
 }
 @media (max-width: 1100px) {
   .types {
@@ -373,44 +378,11 @@
   }
 }
 
-/* Shared glass UI hierarchy; the chart's marks and scale remain untouched. */
-:global(.glass-workspace) .heading h2 {
-  font-size: 20px;
-  font-weight: 500;
-  letter-spacing: -0.3px;
-}
-
-:global(.glass-workspace) .studio {
-  padding: 24px;
-}
-:global(.glass-workspace) .types button {
-  border-radius: 12px;
-  background: var(--ui-control-bg);
-  border-color: var(--ui-control-border);
-}
-:global(.glass-workspace) .types button[aria-pressed="true"] {
-  background: var(--ui-selected-bg);
-  border-color: var(--glass-rim);
-}
-:global(.glass-workspace) .types strong {
-  font-size: 14px;
-  font-weight: 500;
-}
-:global(.glass-workspace) .editor textarea {
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-inset);
-}
-:global(.glass-workspace) .selection {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--ui-inset);
-}
-
 @media (max-width: 760px) {
-  :global(.glass-workspace) .studio {
+  .studio {
     padding: 20px 16px;
   }
-  :global(.glass-workspace) .heading h2 {
+  .heading h2 {
     font-size: 18px;
   }
 }

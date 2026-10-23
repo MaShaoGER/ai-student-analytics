@@ -1,25 +1,8 @@
-.panel {
-  --density-1: color-mix(in srgb, var(--score) 14%, var(--paper));
-  --density-2: color-mix(in srgb, var(--score) 28%, var(--paper));
-  --density-3: color-mix(in srgb, var(--score) 43%, var(--paper));
-  --density-4: color-mix(in srgb, var(--score) 60%, var(--paper));
-  --density-5: color-mix(in srgb, var(--score) 78%, var(--paper));
-  --density-6: var(--score);
-  min-width: 0;
-  padding: 32px;
-}
 .heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-}
-.heading h2 {
-  margin: 8px 0;
-  font-size: 24px;
-  font-weight: 600;
-  letter-spacing: -0.6px;
-  text-wrap: balance;
 }
 .heading p,
 .note,
@@ -76,12 +59,6 @@
 .legend > span:last-child {
   margin-left: 4px;
 }
-.legend i {
-  display: block;
-  width: 16px;
-  height: 12px;
-  border-radius: var(--corner-radius);
-}
 .panel [data-level="0"] {
   --cell-color: var(--surface-inset);
 }
@@ -104,6 +81,10 @@
   --cell-color: var(--density-6);
 }
 .legend i {
+  display: block;
+  width: 16px;
+  height: 12px;
+  border-radius: var(--corner-radius);
   background: var(--cell-color);
 }
 .scrollHint {
@@ -241,20 +222,6 @@
 .cell:focus-visible > span {
   box-shadow: none;
 }
-.detail {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 20px;
-  min-height: 64px;
-  padding: 16px 20px;
-  margin-top: 16px;
-  border-radius: var(--corner-radius);
-  background: var(--surface-inset);
-  font-size: 12px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
 .detail strong {
   color: var(--ink);
   font-weight: 600;
@@ -283,6 +250,43 @@
 .empty h3 {
   color: var(--ink);
   font-size: 16px;
+}
+
+/* Shared glass UI hierarchy; the chart's marks and scale remain untouched. */
+.heading h2 {
+  margin: 8px 0;
+  text-wrap: balance;
+  font-size: 20px;
+  font-weight: 550;
+  letter-spacing: -0.025em;
+}
+.panel {
+  --density-1: color-mix(in srgb, var(--score) 14%, var(--paper));
+  --density-2: color-mix(in srgb, var(--score) 28%, var(--paper));
+  --density-3: color-mix(in srgb, var(--score) 43%, var(--paper));
+  --density-4: color-mix(in srgb, var(--score) 60%, var(--paper));
+  --density-5: color-mix(in srgb, var(--score) 78%, var(--paper));
+  --density-6: var(--score);
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--panel-radius);
+  background: var(--paper);
+}
+.detail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  min-height: 64px;
+  padding: 16px 20px;
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--ui-inset);
 }
 @media (max-width: 760px) {
   .scrollHint {
@@ -336,26 +340,11 @@
   }
 }
 
-/* Shared glass UI hierarchy; the chart's marks and scale remain untouched. */
-:global(.glass-workspace) .heading h2 {
-  font-size: 20px;
-  font-weight: 500;
-  letter-spacing: -0.3px;
-}
-:global(.glass-workspace) .panel {
-  padding: 24px;
-}
-:global(.glass-workspace) .detail {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--ui-inset);
-}
-
 @media (max-width: 760px) {
-  :global(.glass-workspace) .panel {
+  .panel {
     padding: 20px 16px;
   }
-  :global(.glass-workspace) .heading h2 {
+  .heading h2 {
     font-size: 18px;
   }
 }

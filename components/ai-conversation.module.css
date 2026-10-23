@@ -1,7 +1,3 @@
-.conversation {
-  min-width: 0;
-  padding: 24px 28px 0;
-}
 .executionSteps,
 .citations {
   margin-top: 16px;
@@ -46,18 +42,6 @@
   color: var(--ink);
   text-underline-offset: 3px;
 }
-.availability {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 20px;
-  color: var(--muted);
-  font-size: 12px;
-}
-.transcript {
-  min-width: 0;
-  min-height: 120px;
-}
 .empty,
 .message {
   padding: 24px 0;
@@ -72,32 +56,14 @@
   line-height: 1.8;
   margin: 12px 0 0;
 }
-.empty > p {
-  color: var(--muted);
-}
 .speaker {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.speaker strong {
-  font-size: 13px;
-  color: var(--ink);
-  font-weight: 600;
-}
-.avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border: 1px solid var(--line);
-  color: var(--ink);
-  background: var(--surface-inset);
-}
 .avatar[data-role="assistant"] {
-  background: var(--glass-relief), var(--glass-fill-dense);
-  border-color: color-mix(in srgb, var(--glass-rim) 45%, transparent);
+  background: var(--selection);
+  border-color: color-mix(in srgb, var(--line-strong) 45%, transparent);
 }
 .pending {
   scroll-margin-top: calc(var(--chat-header-height, 64px) + 20px);
@@ -109,55 +75,13 @@
   margin: 12px 0 0;
   color: var(--muted);
 }
-.chartAttachment {
-  margin-top: 20px;
-  min-width: 0;
-  border: 1px solid var(--line);
-}
-.chartToggle {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 52px;
-  padding: 12px 16px;
-  background: var(--surface-inset);
-  color: var(--ink);
-  border: 0;
-  text-align: left;
-}
-.chartToggle > span {
-  flex: 1;
-  min-width: 0;
-  font-size: 13px;
-  overflow-wrap: anywhere;
-}
 .chartToggle small {
   font-size: 11px;
   color: var(--muted);
   white-space: nowrap;
 }
-.chartToggle > svg:last-child {
-  flex: 0 0 auto;
-}
 .chartToggle[aria-expanded="true"] > svg:last-child {
   transform: rotate(90deg);
-}
-.composerDock {
-  position: fixed;
-  z-index: 80;
-  left: calc(var(--rail-start) + var(--rail-width) + 28px);
-  right: calc(var(--rail-start) + 28px);
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px) + var(--chat-keyboard-inset, 0px));
-}
-.composerDock > :global(.notice) {
-  margin: 0 0 8px;
-}
-.composer {
-  padding: 12px 16px;
-  background: var(--instrument-bg);
-  color: var(--instrument-ink);
-  border: 1px solid var(--line);
 }
 .composerHeading {
   position: relative;
@@ -167,61 +91,12 @@
   justify-content: space-between;
   gap: 8px 12px;
 }
-.composerHeading > label {
-  font-size: 12px;
-  color: var(--instrument-muted);
-}
-.composerTools {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 16px;
-  min-width: 0;
-  max-width: 100%;
-}
-.composerTools > button {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 28px;
-  padding: 0;
-  font: inherit;
-  font-size: 11px;
-  color: var(--instrument-ink);
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-}
 /* ---- Collapsible input (roadmap step 3) ---------------------------------
    Folding only hides controls; the draft stays in the parent's `question`
    state. The collapsed bar keeps one compact, focusable row so folding is
    always reversible, and the toggle keeps a 32px target plus focus ring. */
 .composerFields {
   min-width: 0;
-}
-.composerCollapsed {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  min-width: 0;
-}
-.composer .collapseToggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  gap: 6px;
-  min-height: 32px;
-  padding: 4px 10px;
-  font: inherit;
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--instrument-ink);
-  background: transparent;
-  border: 1px solid var(--instrument-line);
-  cursor: pointer;
 }
 .composer .collapseToggle > svg {
   flex: 0 0 auto;
@@ -251,24 +126,6 @@
 .collapsedDraft {
   color: var(--instrument-ink);
 }
-.composer textarea {
-  display: block;
-  width: 100%;
-  min-height: 52px;
-  max-height: 144px;
-  margin: 8px 0;
-  padding: 4px 0;
-  resize: none;
-  overflow-y: auto;
-  border: 0;
-  border-radius: 0;
-  outline: none;
-  background: transparent;
-  color: var(--instrument-ink);
-  font: inherit;
-  font-size: 14px;
-  line-height: 1.6;
-}
 .composer textarea::placeholder {
   color: var(--instrument-muted);
 }
@@ -297,8 +154,8 @@
   cursor: pointer;
 }
 .clearConfirm > .clearConfirmAction {
-  background: var(--glass-relief), var(--glass-fill-dense);
-  border-color: color-mix(in srgb, var(--glass-rim) 45%, transparent);
+  background: var(--selection);
+  border-color: color-mix(in srgb, var(--line-strong) 45%, transparent);
   color: var(--ink);
 }
 /* Follow-up scope chip above the textarea. Clearing it only affects the next
@@ -309,20 +166,6 @@
   align-items: center;
   gap: 8px;
   margin: 8px 0 0;
-}
-.contextChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  max-width: 100%;
-  min-height: 26px;
-  padding: 2px 4px 2px 8px;
-  background: var(--instrument-inset);
-  border: 1px solid var(--instrument-line);
-  color: var(--instrument-ink);
-  font-size: 11px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
 }
 .contextChip > span {
   min-width: 0;
@@ -376,7 +219,7 @@
   min-height: 36px;
   padding: 8px;
   border: 0;
-  background: var(--glass-relief), var(--glass-fill-dense);
+  background: var(--selection);
   color: var(--ink);
 }
 .send svg {
@@ -522,10 +365,6 @@
   flex-wrap: wrap;
   gap: 8px;
 }
-.actions button[aria-pressed="true"] {
-  background: var(--ink);
-  color: var(--paper);
-}
 .search {
   display: grid;
   gap: 8px;
@@ -609,6 +448,7 @@
    这里只补对话页独有的部分，全部只动画 transform / opacity。
    .conversation 是 fixed 输入区的祖先，永远不加 transform / animation。 */
 .chartToggle > svg:last-child {
+  flex: 0 0 auto;
   transition: transform 200ms var(--ease-out);
 }
 .attachmentBody {
@@ -651,6 +491,697 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   font-size: 12px;
   line-height: 1.7;
 }
+
+/* Phones: the folded bar stacks its hint under the expand button, so a long
+   draft preview or a disabled-control label never pushes the row sideways. */
+/* Reduced motion: the chevron swap is instant; folding itself is a plain
+   show/hide with no entrance or layout animation. */
+
+/* Desktop conversation lives inside the existing workbench shell. */
+.workspaceHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 0;
+}
+.workspaceHeading :global(.page-introduction) h1 {
+  font-size: 19px;
+  letter-spacing: -0.5px;
+  margin: 6px 0;
+}
+.workspaceHeading :global(.page-introduction) p {
+  display: none;
+}
+.workspaceHeading :global(.page-eyebrow) {
+  font-size: 9px;
+}
+.navBadge {
+  padding: 3px 5px;
+  background: var(--selection);
+  color: var(--ink);
+  font: 9px monospace;
+}
+.welcomeEyebrow {
+  vertical-align: middle;
+  margin-left: 14px;
+  font: 10px monospace;
+  letter-spacing: 1.2px;
+  color: var(--accent-ink);
+  display: none;
+}
+.empty h2 em {
+  font-style: normal;
+  color: var(--accent-ink);
+}
+.empty > p {
+  color: var(--muted);
+  max-width: 56ch;
+  font-size: 13px;
+  line-height: 1.9;
+}
+.suggestionHeading {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 10px;
+  margin-bottom: 12px;
+}
+.suggestionHeading > span:last-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.welcomeSuggestions button > svg:first-child {
+  color: var(--accent-ink);
+  flex-shrink: 0;
+}
+.welcomeSuggestions button > svg:last-child {
+  margin-left: auto;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.welcomeSuggestions button:hover:not(:disabled) {
+  color: var(--accent-ink);
+  background: var(--surface-inset);
+}
+.welcomeSuggestions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.welcomeSuggestions button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.empty .privacy {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 24px;
+  font-size: 10px;
+}
+.composerHeading > label svg {
+  color: var(--accent);
+}
+.composerCollapsed {
+  display: flex;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+}
+.composerCollapsed > .collapsedHint {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.composerCollapsed > .collapseToggle {
+  margin-left: auto;
+}
+
+.conversationFooter {
+  display: none;
+}
+
+/* Approved experience layout: bounded reading region and always visible input. */
+/* The floating history trigger owns the top-right corner below 900px; keep the
+   source picker clear of it instead of letting the button cover its arrow. */
+.formalHeader > div {
+  min-width: 0;
+}
+.formalHeader :global(.workbench-source) {
+  max-width: 240px;
+  margin: 0;
+  padding: 4px;
+}
+.readingArea {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+}
+.readingArea > .transcript {
+  height: 100%;
+  padding-right: 12px;
+}
+.roundTicks {
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-width: thin;
+}
+.scrollRuler button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: 10px/1.5 monospace;
+  cursor: pointer;
+}
+.scrollRuler button::after {
+  content: "";
+  width: 8px;
+  height: 1px;
+  background: currentColor;
+}
+.scrollRuler button[aria-current],
+.scrollRuler button[data-unread="true"] {
+  color: var(--ink);
+  background: var(--paper);
+}
+.scrollRuler button[aria-current]::after {
+  width: 13px;
+  height: 2px;
+}
+.scrollRuler button > svg {
+  rotate: 90deg;
+}
+.validationNote {
+  margin: 12px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.validationNote summary {
+  cursor: pointer;
+  min-height: 36px;
+  padding-block: 7px;
+}
+.composerDock[data-collapsed="true"] .composerCollapsed {
+  width: 40px;
+  height: 40px;
+}
+.composerTools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  max-width: 100%;
+  gap: 12px;
+}
+.composerTools > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  font: inherit;
+  font-size: 11px;
+  color: var(--instrument-ink);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  min-height: 40px;
+}
+.composer .collapseToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  gap: 6px;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--instrument-ink);
+  background: transparent;
+  border: 1px solid var(--instrument-line);
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  min-height: 40px;
+}
+/* Contract/version identifiers are for verification, not for reading first:
+   folded by default, still one click away. */
+.technical {
+  font-size: inherit;
+  color: inherit;
+}
+.technical > summary {
+  min-height: 24px;
+  padding-block: 2px;
+  cursor: pointer;
+  font-size: 10px;
+  color: var(--muted);
+}
+.technical > summary:hover {
+  color: var(--ink);
+}
+.technical p {
+  margin: 4px 0 0;
+  font-size: 10px;
+  line-height: 1.7;
+}
+:global(html[data-motion="off"]) .attachmentBody {
+  transition: none;
+  transform: none;
+}
+.conversation {
+  min-width: 0;
+  padding-top: 4px;
+  width: 100%;
+  overflow: hidden;
+  --history-offset: 0px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  --conversation-inset: clamp(24px, 3vw, 48px);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  padding: 20px var(--conversation-inset) 0;
+  background: var(--paper);
+}
+.formalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--line);
+  border: 0;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.formalHeader h1 {
+  line-height: 1.3;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0;
+  margin: 6px 0;
+}
+.formalHeader > div > span {
+  color: var(--muted);
+  font: 700 9px/1.5 monospace;
+  font-weight: 400;
+  font-size: 9px;
+  letter-spacing: 1.2px;
+}
+.formalHeader p {
+  color: var(--muted);
+  margin: 4px 0;
+  font-size: 11px;
+}
+.availability {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  flex: 0 0 auto;
+  min-height: 32px;
+  margin: 0;
+  font-size: 11px;
+}
+.transcript {
+  min-width: 0;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  overflow-anchor: none;
+  scrollbar-gutter: stable;
+  padding: 0 8px 24px 0;
+  scroll-behavior: auto;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--sage) 30%, transparent) transparent;
+  padding-bottom: calc(var(--composer-clearance, 220px) + 32px);
+  scroll-padding-bottom: calc(var(--composer-clearance, 220px) + 32px);
+}
+.empty {
+  border: 0;
+  max-width: 760px;
+  margin: clamp(16px, 5vh, 56px) auto 0;
+  padding: 24px 0;
+}
+.empty h2 {
+  font-size: clamp(26px, 2.7vw, 34px);
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: -0.04em;
+  margin: 20px 0 12px;
+}
+.welcomeMark {
+  display: inline-grid;
+  vertical-align: middle;
+  place-items: center;
+  margin-bottom: 0;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--selection);
+  color: var(--accent);
+}
+.welcomeSuggestions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 32px;
+  gap: 10px;
+  margin-top: 28px;
+  max-width: none;
+}
+.message {
+  border-bottom: 0;
+  scroll-margin-top: 16px;
+  margin-bottom: 0;
+  padding: 20px 0;
+}
+.message[data-role="user"] {
+  margin-block: 12px;
+  border-left: 2px solid var(--accent);
+  width: fit-content;
+  max-width: 76%;
+  margin: 12px 0 16px auto;
+  padding: 14px 18px;
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  border-radius: 14px 14px 4px 14px;
+}
+.message[data-role="user"] .speaker {
+  justify-content: flex-end;
+}
+.message[data-role="user"] .avatar {
+  display: none;
+}
+.message[data-role="user"] .messageText {
+  margin-top: 4px;
+}
+.speaker strong {
+  color: var(--ink);
+  font-weight: 550;
+  font-size: 12px;
+}
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--selection);
+  color: var(--ink);
+  border-color: var(--line);
+}
+.messageText {
+  font-size: 14px;
+  max-width: 90ch;
+  line-height: 1.9;
+}
+.snapshotNote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.7;
+}
+.chartToggle > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.suggestions button {
+  border-radius: 7px;
+  font-size: 11px;
+  background: transparent;
+}
+.scrollRuler {
+  display: flex;
+  flex-direction: column;
+  align-self: center;
+  flex: 0 0 36px;
+  max-height: 80%;
+  border-left: 1px solid var(--line);
+  border-left-color: var(--line);
+  flex-basis: 28px;
+}
+.composerDock {
+  margin-inline: auto;
+  flex: 0 0 auto;
+  max-width: none;
+  margin: 0;
+  position: absolute;
+  z-index: 3;
+  left: calc(var(--history-offset) + var(--conversation-inset));
+  right: var(--conversation-inset);
+  bottom: 16px;
+  width: auto;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  pointer-events: none;
+}
+.composerDock > * {
+  pointer-events: auto;
+}
+.composerDock[data-collapsed="false"] {
+  /* The dock floats over the transcript, so hint line, notices and input share
+     one near-opaque backing: at 70% paper the table behind ghosted through the
+     text box, and the bare hint line collided with course names and table rows.
+     Blur stays for the glass feel, but the text no longer sits on the content. */
+  padding: 10px 16px max(10px, env(safe-area-inset-bottom, 0px));
+  /* The panel is opaque, so it must also swallow clicks: without this the
+     transcript underneath (now invisible) could still be clicked through the
+     padding ring. */
+  pointer-events: auto;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-floating);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.composerDock[data-collapsed="false"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 18px;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--paper) 90%, transparent),
+    transparent
+  );
+  display: none;
+}
+.composerDock[data-collapsed="false"]:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+}
+/* The panel owns the surface; the form stays a bare layout container. */
+.composerDock[data-collapsed="false"] .composer {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+.composerDock[data-collapsed="false"] .composer textarea {
+  background: transparent;
+}
+.composerDock > :global(.notice) {
+  margin: 0 0 8px;
+  border-radius: calc(var(--ui-panel-radius, 14px) - 4px);
+}
+.composerDock .note {
+  margin: 0 0 8px;
+  padding: 0 2px 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  line-height: 1.6;
+  font-size: 11px;
+}
+/* "去设置" is a link inside a sentence: inline, no extra line height. */
+.composerDock .note :global(.text-button) {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  margin: 0 0 0 2px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: inherit;
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.composerDock .note :global(.text-button):hover {
+  color: var(--accent);
+}
+.localNotice {
+  margin: 0 0 8px;
+  color: var(--warning);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.composer textarea {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+  padding: 4px 0;
+  resize: none;
+  overflow-y: auto;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  color: var(--instrument-ink);
+  font: inherit;
+  line-height: 1.6;
+  min-height: 40px;
+  max-height: 104px;
+  background: transparent;
+  font-size: 14px;
+}
+.composerHeading > label {
+  color: var(--instrument-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.composerTools button {
+  font-size: 11px;
+}
+.composerDock[data-collapsed="true"] {
+  /* The expanded panel's padding vanishes when folded; re-add the same bottom
+     inset so the square keeps the expanded toggle's screen position. */
+  padding: 0 16px max(10px, env(safe-area-inset-bottom, 0px));
+}
+.composerDock[data-collapsed="true"] .composer {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  margin-left: auto;
+  border: 0;
+  transform: translateY(calc(-1 * var(--composer-fold-offset, 0px)));
+  margin-right: 1px;
+  border-radius: 10px;
+  -webkit-backdrop-filter: blur(16px) saturate(110%);
+  backdrop-filter: blur(16px) saturate(110%);
+}
+/* Collapsing account history must not shift the transcript column. */
+:global([data-history-collapsed="true"]) .conversation {
+  --history-offset: 191px;
+  padding-left: calc(var(--history-offset) + var(--conversation-inset));
+}
+
+/* The same control and inset recipe as data analysis and administration. */
+.actions button,
+.composerTools > button,
+.suggestions button {
+  min-height: var(--ui-control-height);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  font-size: 12px;
+  font-weight: 500;
+}
+.actions button[aria-pressed="true"] {
+  background: var(--ui-selected-bg);
+  color: var(--ui-selected-ink);
+}
+.chartToggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  color: var(--ink);
+  border: 0;
+  text-align: left;
+  padding: 12px 16px;
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-inset);
+}
+.chartAttachment {
+  margin-top: 20px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  box-shadow: none;
+  border-radius: var(--panel-radius);
+  background: var(--paper);
+}
+.contextChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 26px;
+  padding: 2px 4px 2px 8px;
+  color: var(--instrument-ink);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--ui-inset);
+}
+.welcomeSuggestions button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 10px;
+  min-height: 60px;
+  font-size: 12px;
+  padding: 14px;
+  text-align: left;
+}
+.composer {
+  color: var(--instrument-ink);
+  border-top: 2px solid var(--accent);
+  border-top-color: color-mix(in srgb, var(--line-strong) 55%, transparent);
+  padding: 10px 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+.collapseToggle,
+.send {
+  border-radius: var(--ui-control-radius);
+}
+
+/* ---- Phones: the empty state has to fit above the floating input -----------
+   At 390×844 and 320×720 the hero, the explanation and all three recommended
+   questions must be visible (and tappable) without scrolling or being covered
+   by the dock. Each block below trims vertical rhythm rather than hiding the
+   questions; the decorative eyebrow and the privacy footnote go entirely. */
+
+/* 320-wide screens have ~50px less reading height: drop the decorative mark and
+   the suggestion caption so all three questions still clear the input card. */
+
+/* Keep the source picker clear of the floating history trigger on narrow
+   layouts (later media blocks reset the header padding, so win here). */
 @media (max-width: 600px) {
   .distribution,
   .facts {
@@ -698,9 +1229,6 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
     font-size: 16px;
   }
 }
-
-/* Phones: the folded bar stacks its hint under the expand button, so a long
-   draft preview or a disabled-control label never pushes the row sideways. */
 @media (max-width: 390px) {
   .composerHeading {
     gap: 6px 8px;
@@ -719,340 +1247,15 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
     padding-inline: 8px;
   }
 }
-/* Reduced motion: the chevron swap is instant; folding itself is a plain
-   show/hide with no entrance or layout animation. */
 @media (prefers-reduced-motion: reduce) {
   .composer .collapseToggle > svg {
     transition: none;
   }
 }
-
-/* Desktop conversation lives inside the existing workbench shell. */
-.workspaceHeading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 0;
-}
-.workspaceHeading :global(.page-introduction) h1 {
-  font-size: 19px;
-  letter-spacing: -0.5px;
-  margin: 6px 0;
-}
-.workspaceHeading :global(.page-introduction) p {
-  display: none;
-}
-.workspaceHeading :global(.page-eyebrow) {
-  font-size: 9px;
-}
-.navBadge {
-  padding: 3px 5px;
-  background: var(--glass-relief), var(--glass-fill-dense);
-  color: var(--ink);
-  font: 9px monospace;
-}
-.conversation {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding-top: 4px;
-}
-.availability {
-  font-size: 10px;
-}
-.empty {
-  padding: 8px 0 32px;
-  border: 0;
-}
-.welcomeMark {
-  width: 42px;
-  height: 42px;
-  display: inline-grid;
-  vertical-align: middle;
-  place-items: center;
-  background: var(--instrument-bg);
-  color: var(--accent);
-  margin-bottom: 0;
-}
-.welcomeEyebrow {
-  display: inline-block;
-  vertical-align: middle;
-  margin-left: 14px;
-  font: 10px monospace;
-  letter-spacing: 1.2px;
-  color: var(--accent-ink);
-}
-.empty h2 {
-  font-size: 40px;
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: -1.5px;
-  margin: 18px 0;
-}
-.empty h2 em {
-  font-style: normal;
-  color: var(--accent-ink);
-}
-.empty > p {
-  max-width: 56ch;
-  font-size: 13px;
-  line-height: 1.9;
-}
-.welcomeSuggestions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 32px;
-  margin-top: 20px;
-  max-width: 760px;
-}
-.suggestionHeading {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  color: var(--muted);
-  font-size: 10px;
-  margin-bottom: 12px;
-}
-.suggestionHeading > span:last-child {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.welcomeSuggestions button {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 36px;
-  padding: 10px 8px;
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  font-size: 12px;
-  text-align: left;
-  cursor: pointer;
-}
-.welcomeSuggestions button > svg:first-child {
-  color: var(--accent-ink);
-  flex-shrink: 0;
-}
-.welcomeSuggestions button > svg:last-child {
-  margin-left: auto;
-  color: var(--muted);
-  flex-shrink: 0;
-}
-.welcomeSuggestions button:hover:not(:disabled) {
-  color: var(--accent-ink);
-  background: var(--surface-inset);
-}
-.welcomeSuggestions button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-.welcomeSuggestions button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
-.empty .privacy {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: 24px;
-  font-size: 10px;
-}
-.composerDock {
-  max-width: 944px;
-  margin-inline: auto;
-}
-.composer {
-  border-top: 3px solid var(--accent);
-  box-shadow: 5px 5px 0 color-mix(in srgb, var(--ink) 15%, transparent);
-}
-.composerHeading > label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.composerHeading > label svg {
-  color: var(--accent);
-}
-.composerCollapsed {
-  justify-content: space-between;
-  flex-wrap: nowrap;
-}
-.composerCollapsed > .collapsedHint {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.composerCollapsed > .collapseToggle {
-  margin-left: auto;
-}
-.message {
-  border-bottom: 0;
-  margin-bottom: 12px;
-}
-
-.conversationFooter {
-  display: none;
-}
-
-/* Approved experience layout: bounded reading region and always visible input. */
-.conversation {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  max-width: none;
-  overflow: hidden;
-  padding: 0 clamp(16px, 3vw, 36px);
-}
-.formalHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex: 0 0 auto;
-  padding: 12px 0 8px;
-  border-bottom: 1px solid var(--line);
-}
-/* The floating history trigger owns the top-right corner below 900px; keep the
-   source picker clear of it instead of letting the button cover its arrow. */
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .formalHeader {
     padding-right: 104px;
   }
-}
-.formalHeader > div {
-  min-width: 0;
-}
-.formalHeader > div > span {
-  color: var(--muted);
-  font: 700 9px/1.5 monospace;
-  letter-spacing: 0.08em;
-}
-.formalHeader h1 {
-  font-size: 21px;
-  line-height: 1.3;
-  margin: 4px 0;
-  font-weight: 600;
-  letter-spacing: -0.6px;
-}
-.formalHeader p {
-  font-size: 12px;
-  color: var(--muted);
-  margin: 4px 0;
-}
-.formalHeader :global(.workbench-source) {
-  max-width: 240px;
-  margin: 0;
-  padding: 4px;
-}
-.availability {
-  flex: 0 0 auto;
-  min-height: 32px;
-  margin: 0;
-}
-.transcript {
-  flex: 1 1 0;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
-  overflow-anchor: none;
-  scrollbar-gutter: stable;
-  padding: 0 8px 24px 0;
-  scroll-behavior: auto;
-}
-.readingArea {
-  position: relative;
-  display: flex;
-  flex: 1 1 0;
-  min-height: 0;
-  min-width: 0;
-}
-.readingArea > .transcript {
-  height: 100%;
-  padding-right: 12px;
-}
-.scrollRuler {
-  display: flex;
-  flex-direction: column;
-  align-self: center;
-  flex: 0 0 36px;
-  max-height: 80%;
-  border-left: 1px solid var(--line);
-}
-.roundTicks {
-  overflow-y: auto;
-  min-height: 0;
-  scrollbar-width: thin;
-}
-.scrollRuler button {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 3px;
-  width: 100%;
-  min-height: 36px;
-  padding: 0 2px;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font: 10px/1.5 monospace;
-  cursor: pointer;
-}
-.scrollRuler button::after {
-  content: "";
-  width: 8px;
-  height: 1px;
-  background: currentColor;
-}
-.scrollRuler button[aria-current],
-.scrollRuler button[data-unread="true"] {
-  color: var(--ink);
-  background: var(--glass-fill);
-}
-.scrollRuler button[aria-current]::after {
-  width: 13px;
-  height: 2px;
-}
-.scrollRuler button > svg {
-  rotate: 90deg;
-}
-.validationNote {
-  margin: 12px 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.8;
-}
-.validationNote summary {
-  cursor: pointer;
-  min-height: 36px;
-  padding-block: 7px;
-}
-.composer .collapseToggle {
-  width: 40px;
-  height: 40px;
-  padding: 0;
-}
-.composerDock[data-collapsed="true"] .composer {
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  margin-left: auto;
-  margin-right: 17px;
-  border: 0;
-  transform: translateY(calc(-1 * var(--composer-fold-offset, 0px)));
-}
-.composerDock[data-collapsed="true"] .composerCollapsed {
-  width: 40px;
-  height: 40px;
 }
 @media (max-width: 600px) {
   .composerDock[data-collapsed="true"] .composer {
@@ -1066,82 +1269,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
     gap: 2px;
   }
 }
-.message {
-  scroll-margin-top: 16px;
-  padding: 20px 0;
-  margin-bottom: 0;
-}
-.message[data-role="user"] {
-  padding: 16px;
-  margin-block: 12px;
-  background: var(--surface-inset);
-  border-left: 2px solid var(--accent);
-}
-.messageText {
-  font-size: 14px;
-  line-height: 1.9;
-  max-width: 90ch;
-}
-.composerDock {
-  position: static;
-  flex: 0 0 auto;
-  width: 100%;
-  max-width: none;
-  margin: 0;
-  padding-bottom: max(12px, env(safe-area-inset-bottom));
-}
-.composer {
-  box-shadow: none;
-  border-top: 2px solid var(--accent);
-  padding: 10px 16px;
-}
-.composer textarea {
-  min-height: 40px;
-  max-height: 104px;
-}
-.composerTools {
-  gap: 12px;
-}
-.composerTools > button {
-  min-height: 40px;
-}
-.composer .collapseToggle {
-  min-height: 40px;
-}
-.snapshotNote {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 10px;
-  margin: 8px 0;
-  font-size: 10px;
-  color: var(--muted);
-}
-/* Contract/version identifiers are for verification, not for reading first:
-   folded by default, still one click away. */
-.technical {
-  font-size: inherit;
-  color: inherit;
-}
-.technical > summary {
-  min-height: 24px;
-  padding-block: 2px;
-  cursor: pointer;
-  font-size: 10px;
-  color: var(--muted);
-}
-.technical > summary:hover {
-  color: var(--ink);
-}
-.technical p {
-  margin: 4px 0 0;
-  font-size: 10px;
-  line-height: 1.7;
-}
-.chartAttachment {
-  background: var(--paper);
-}
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .readingArea {
     margin-top: 52px;
   }
@@ -1222,388 +1350,80 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
     transform: none;
   }
 }
-:global(html[data-motion="off"]) .attachmentBody {
-  transition: none;
-  transform: none;
-}
-
-/* V4: a unified reading surface, with data embedded in the assistant reply.
-   14px reading text / 22px title, 4px rhythm, one frost layer per outer pane. */
-:global(.glass-workspace) .conversation {
-  --conversation-inset: clamp(20px, 3vw, 48px);
-  --history-offset: 0px;
-  border: 0;
-  border-radius: 0;
-  padding: 20px var(--conversation-inset) 0;
-  background: transparent;
-  box-shadow: none;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
-:global(.glass-workspace) .formalHeader {
-  border: 0;
-  padding: 0 0 16px;
-}
-:global(.glass-workspace) .formalHeader h1 {
-  font-size: 22px;
-  font-weight: 500;
-  letter-spacing: 0;
-  margin: 6px 0;
-}
-:global(.glass-workspace) .formalHeader > div > span {
-  font-weight: 400;
-  font-size: 9px;
-  letter-spacing: 1.2px;
-}
-:global(.glass-workspace) .formalHeader p {
-  font-size: 11px;
-}
-:global(.glass-workspace) .availability {
-  font-size: 11px;
-}
-:global(.glass-workspace) .transcript {
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--sage) 30%, transparent) transparent;
-  padding-bottom: calc(var(--composer-clearance, 220px) + 32px);
-  scroll-padding-bottom: calc(var(--composer-clearance, 220px) + 32px);
-}
-:global(.glass-workspace) .empty {
-  padding: 28px 0;
-  border: 0;
-}
-:global(.glass-workspace) .empty h2 {
-  font-size: clamp(28px, 3vw, 38px);
-  font-weight: 500;
-  letter-spacing: -1px;
-}
-:global(.glass-workspace) .welcomeMark {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--glass-fill);
-}
-:global(.glass-workspace) .welcomeSuggestions {
-  gap: 10px 12px;
-}
-:global(.glass-workspace) .welcomeSuggestions button {
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  min-height: 48px;
-  padding: 12px;
-}
-:global(.glass-workspace) .message {
-  padding: 20px 0;
-}
-:global(.glass-workspace) .message[data-role="user"] {
-  width: fit-content;
-  max-width: 76%;
-  margin: 12px 0 16px auto;
-  padding: 14px 18px;
-  border: 1px solid var(--line);
-  border-radius: 12px 12px 3px 12px;
-  background: var(--glass-fill);
-}
-:global(.glass-workspace) .message[data-role="user"] .speaker {
-  justify-content: flex-end;
-}
-:global(.glass-workspace) .message[data-role="user"] .avatar {
-  display: none;
-}
-:global(.glass-workspace) .message[data-role="user"] .messageText {
-  margin-top: 4px;
-}
-:global(.glass-workspace) .speaker strong {
-  font-size: 12px;
-  font-weight: 500;
-}
-:global(.glass-workspace) .avatar {
-  border-radius: 8px;
-  background: var(--glass-relief), var(--glass-fill-dense);
-  color: var(--ink);
-  border-color: var(--line);
-}
-:global(.glass-workspace) .messageText {
-  line-height: 1.9;
-}
-:global(.glass-workspace) .snapshotNote {
-  font-size: 10px;
-  line-height: 1.7;
-}
-:global(.glass-workspace) .chartAttachment {
-  border-radius: 13px;
-  background: transparent;
-  border: 1px solid var(--line);
-  overflow: hidden;
-  box-shadow: none;
-}
-:global(.glass-workspace) .chartToggle {
-  background: transparent;
-  padding: 12px 16px;
-}
-:global(.glass-workspace) .chartToggle > span {
-  font-size: 12px;
-}
-:global(.glass-workspace) .suggestions button {
-  border-radius: 7px;
-  font-size: 11px;
-  background: transparent;
-}
-:global(.glass-workspace) .scrollRuler {
-  border-left-color: var(--line);
-  flex-basis: 28px;
-}
-:global(.glass-workspace) .composerDock {
-  position: absolute;
-  z-index: 3;
-  left: calc(var(--history-offset) + var(--conversation-inset));
-  right: var(--conversation-inset);
-  bottom: 16px;
-  width: auto;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  pointer-events: none;
-}
-:global(.glass-workspace) .composerDock > * {
-  pointer-events: auto;
-}
-:global(.glass-workspace) .composerDock[data-collapsed="false"] {
-  /* The dock floats over the transcript, so hint line, notices and input share
-     one near-opaque backing: at 70% paper the table behind ghosted through the
-     text box, and the bare hint line collided with course names and table rows.
-     Blur stays for the glass feel, but the text no longer sits on the content. */
-  border: 1px solid var(--glass-border);
-  border-radius: var(--ui-panel-radius, 14px);
-  background: color-mix(in srgb, var(--paper) 95%, transparent);
-  box-shadow: 0 8px 24px #02040726;
-  -webkit-backdrop-filter: blur(16px) saturate(110%);
-  backdrop-filter: blur(16px) saturate(110%);
-  padding: 10px 16px max(10px, env(safe-area-inset-bottom, 0px));
-  /* The panel is opaque, so it must also swallow clicks: without this the
-     transcript underneath (now invisible) could still be clicked through the
-     padding ring. */
-  pointer-events: auto;
-}
-:global(.glass-workspace) .composerDock[data-collapsed="false"]::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 100%;
-  height: 18px;
-  pointer-events: none;
-  background: linear-gradient(
-    to top,
-    color-mix(in srgb, var(--paper) 90%, transparent),
-    transparent
-  );
-}
-:global(.glass-workspace) .composerDock[data-collapsed="false"]:focus-within {
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--glass-border));
-}
-/* The panel owns the surface; the form stays a bare layout container. */
-:global(.glass-workspace) .composerDock[data-collapsed="false"] .composer {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  padding: 0;
-}
-:global(.glass-workspace) .composerDock[data-collapsed="false"] .composer textarea {
-  background: transparent;
-}
-:global(.glass-workspace) .composerDock > :global(.notice) {
-  border-radius: calc(var(--ui-panel-radius, 14px) - 4px);
-}
-:global(.glass-workspace) .composerDock .note {
-  margin: 0 0 8px;
-  padding: 0 2px 8px;
-  border-bottom: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
-/* "去设置" is a link inside a sentence: inline, no extra line height. */
-.composerDock .note :global(.text-button) {
-  display: inline;
-  min-height: 0;
-  padding: 0;
-  margin: 0 0 0 2px;
-  font-size: 12px;
-  font-weight: 400;
-  line-height: inherit;
-  color: var(--accent-ink);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.composerDock .note :global(.text-button):hover {
-  color: var(--accent);
-}
-.localNotice {
-  margin: 0 0 8px;
-  color: var(--warning);
-  font-size: 12px;
-  line-height: 1.6;
-}
-:global(.glass-workspace) .composer {
-  border: 1px solid var(--glass-border);
-  border-top-color: color-mix(in srgb, var(--glass-rim) 55%, transparent);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--paper) 70%, transparent);
-  box-shadow:
-    inset 0 1px 0 #ffffff0c,
-    0 8px 24px #02040726;
-  padding: 10px 16px;
-}
-:global(.glass-workspace) .composer textarea {
-  background: transparent;
-  font-size: 14px;
-}
-:global(.glass-workspace) .composerHeading > label {
-  font-size: 11px;
-}
-:global(.glass-workspace) .composerTools button {
-  font-size: 11px;
-}
-:global(.glass-workspace) .collapseToggle,
-:global(.glass-workspace) .send {
-  border-radius: 8px;
-}
-:global(.glass-workspace) .contextChip {
-  border-radius: 6px;
-}
-:global(.glass-workspace) .composerDock[data-collapsed="true"] {
-  /* The expanded panel's padding vanishes when folded; re-add the same bottom
-     inset so the square keeps the expanded toggle's screen position. */
-  padding: 0 16px max(10px, env(safe-area-inset-bottom, 0px));
-}
-:global(.glass-workspace) .composerDock[data-collapsed="true"] .composer {
-  margin-right: 1px;
-  border-radius: 10px;
-  -webkit-backdrop-filter: blur(16px) saturate(110%);
-  backdrop-filter: blur(16px) saturate(110%);
-}
 @supports not (backdrop-filter: blur(1px)) {
-  :global(.glass-workspace) .composerDock[data-collapsed="false"] {
+  .composerDock[data-collapsed="false"] {
     background: var(--paper);
   }
-  :global(.glass-workspace) .composer {
+  .composer {
     background: var(--paper);
   }
 }
 @media (prefers-reduced-transparency: reduce) {
-  :global(.glass-workspace) .composerDock[data-collapsed="false"],
-  :global(.glass-workspace) .composer {
+  .composerDock[data-collapsed="false"],
+  .composer {
     background: var(--paper);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
 }
-/* Collapsing account history must not shift the transcript column. */
-:global(.glass-workspace [data-history-collapsed="true"]) .conversation {
-  --history-offset: 191px;
-  padding-left: calc(var(--history-offset) + var(--conversation-inset));
-}
-@media (max-width: 900px) {
-  :global(.glass-workspace [data-history-collapsed="true"]) .conversation {
+@media (max-width: 1100px) {
+  :global([data-history-collapsed="true"]) .conversation {
     --history-offset: 0px;
     padding-left: var(--conversation-inset);
   }
-  :global(.glass-workspace) .readingArea {
+  .readingArea {
     margin-top: 48px;
   }
 }
 @media (max-width: 600px) {
-  :global(.glass-workspace) .conversation {
+  .conversation {
     --conversation-inset: 14px;
     padding: 12px var(--conversation-inset) 0;
   }
-  :global(.glass-workspace) .formalHeader h1 {
+  .formalHeader h1 {
     font-size: 18px;
   }
-  :global(.glass-workspace) .message[data-role="user"] {
+  .message[data-role="user"] {
     max-width: 94%;
     padding: 12px;
   }
-  :global(.glass-workspace) .welcomeSuggestions {
+  .welcomeSuggestions {
     grid-template-columns: minmax(0, 1fr);
   }
-  :global(.glass-workspace) .composer {
+  .composer {
     padding: 8px 10px;
   }
-  :global(.glass-workspace) .composer textarea {
+  .composer textarea {
     font-size: 16px;
   }
 }
-
-/* The same control and inset recipe as data analysis and administration. */
-:global(.glass-workspace) .actions button,
-:global(.glass-workspace) .composerTools > button,
-:global(.glass-workspace) .suggestions button {
-  min-height: var(--ui-control-height);
-  border: 1px solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
-  font-size: 12px;
-  font-weight: 500;
-}
-:global(.glass-workspace) .actions button[aria-pressed="true"] {
-  background: var(--ui-selected-bg);
-  color: var(--ui-selected-ink);
-}
-:global(.glass-workspace) .chartToggle {
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-inset);
-}
-:global(.glass-workspace) .chartAttachment {
-  border-radius: var(--ui-panel-radius);
-}
-:global(.glass-workspace) .contextChip {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--ui-inset);
-}
-:global(.glass-workspace) .welcomeSuggestions button {
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-control-bg);
-}
-:global(.glass-workspace) .composer {
-  border-radius: var(--ui-panel-radius);
-}
-:global(.glass-workspace) .collapseToggle,
-:global(.glass-workspace) .send {
-  border-radius: var(--ui-control-radius);
-}
-
-/* ---- Phones: the empty state has to fit above the floating input -----------
-   At 390×844 and 320×720 the hero, the explanation and all three recommended
-   questions must be visible (and tappable) without scrolling or being covered
-   by the dock. Each block below trims vertical rhythm rather than hiding the
-   questions; the decorative eyebrow and the privacy footnote go entirely. */
 @media (max-width: 600px) {
-  :global(.glass-workspace) .formalHeader > div > span {
+  .formalHeader > div > span {
     display: none;
   }
-  :global(.glass-workspace) .availability {
+  .availability {
     margin-bottom: 8px;
   }
-  :global(.glass-workspace) .readingArea {
+  .readingArea {
     margin-top: 0;
   }
-  :global(.glass-workspace) .empty {
+  .empty {
     padding: 4px 0 12px;
   }
-  :global(.glass-workspace) .welcomeMark {
+  .welcomeMark {
     width: 32px;
     height: 32px;
   }
-  :global(.glass-workspace) .welcomeEyebrow {
+  .welcomeEyebrow {
     display: none;
   }
-  :global(.glass-workspace) .empty h2 {
+  .empty h2 {
     font-size: 28px;
     line-height: 1.22;
     letter-spacing: -0.5px;
     margin: 10px 0 8px;
   }
-  :global(.glass-workspace) .empty > p {
+  .empty > p {
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -1611,51 +1431,48 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
     margin-top: 8px;
     line-height: 1.65;
   }
-  :global(.glass-workspace) .empty .privacy {
+  .empty .privacy {
     display: none;
   }
-  :global(.glass-workspace) .welcomeSuggestions {
+  .welcomeSuggestions {
     margin-top: 10px;
     gap: 4px;
   }
-  :global(.glass-workspace) .welcomeSuggestions button {
+  .welcomeSuggestions button {
     min-height: 44px;
     padding: 8px 10px;
     font-size: 12px;
   }
-  :global(.glass-workspace) .suggestionHeading {
+  .suggestionHeading {
     margin-bottom: 6px;
   }
-  :global(.glass-workspace) .composerDock[data-collapsed="false"] {
+  .composerDock[data-collapsed="false"] {
     padding: 8px 10px max(8px, env(safe-area-inset-bottom, 0px));
   }
-  :global(.glass-workspace) .composerDock[data-collapsed="false"]::before {
+  .composerDock[data-collapsed="false"]::before {
     height: 12px;
   }
-  :global(.glass-workspace) .composerDock[data-collapsed="true"] {
+  .composerDock[data-collapsed="true"] {
     padding: 0 10px max(8px, env(safe-area-inset-bottom, 0px));
   }
-  :global(.glass-workspace) .composerDock[data-collapsed="true"] .composer {
+  .composerDock[data-collapsed="true"] .composer {
     margin-right: 1px;
   }
   /* Three questions fit above the dock on a phone; once the model is on the
      fourth question earns the space the description paragraph used. */
-  :global(.glass-workspace) .empty[data-suggestion-count="4"] > p {
+  .empty[data-suggestion-count="4"] > p {
     display: none;
   }
   /* The same guidance is in the empty-state copy, label and placeholder; the
      line would only eat the space the questions need on a phone. */
-  :global(.glass-workspace) .composerDock .note {
+  .composerDock .note {
     display: none;
   }
 }
-
-/* 320-wide screens have ~50px less reading height: drop the decorative mark and
-   the suggestion caption so all three questions still clear the input card. */
 @media (max-width: 380px) {
   /* The compact hero already says what the page does; keep the h1 for screen
      readers only so the recommended questions clear the dock. */
-  :global(.glass-workspace) .formalHeader h1 {
+  .formalHeader h1 {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -1666,31 +1483,28 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
     white-space: nowrap;
     border: 0;
   }
-  :global(.glass-workspace) .welcomeMark {
+  .welcomeMark {
     display: none;
   }
-  :global(.glass-workspace) .suggestionHeading {
+  .suggestionHeading {
     display: none;
   }
   /* The availability line above already explains the model state; at 320 the
      description would push the last question under the dock. */
-  :global(.glass-workspace) .empty > p {
+  .empty > p {
     display: none;
   }
-  :global(.glass-workspace) .welcomeSuggestions {
+  .welcomeSuggestions {
     margin-top: 6px;
   }
-  :global(.glass-workspace) .empty {
+  .empty {
     padding-bottom: 6px;
   }
-  :global(.glass-workspace) .availability {
+  .availability {
     min-height: 24px;
   }
 }
-
-/* Keep the source picker clear of the floating history trigger on narrow
-   layouts (later media blocks reset the header padding, so win here). */
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .conversation .formalHeader {
     padding-right: 104px;
   }

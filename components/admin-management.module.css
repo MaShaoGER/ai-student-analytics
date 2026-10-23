@@ -13,29 +13,12 @@
   align-items: center;
 }
 
-.intro h2 {
-  margin: 3px 0 6px;
-  color: var(--ink);
-  font-size: clamp(22px, 2.3vw, 32px);
-  line-height: 1.15;
-  letter-spacing: -0.035em;
-}
-
 .intro p {
   max-width: 68ch;
   margin: 0;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.55;
-}
-
-.eyebrow {
-  color: var(--accent-ink);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
 }
 
 .windowControl {
@@ -48,13 +31,6 @@
 .dashboard {
   display: grid;
   gap: 16px;
-}
-
-.metricGrid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border: 1px solid var(--line);
-  background: var(--sage-soft);
 }
 
 .metricCard {
@@ -73,20 +49,6 @@
   border-right: 0;
 }
 
-.metricCard::after {
-  position: absolute;
-  right: 12px;
-  bottom: 10px;
-  width: 30px;
-  height: 6px;
-  background: repeating-linear-gradient(
-    -45deg,
-    transparent 0 4px,
-    color-mix(in srgb, var(--ink) 34%, transparent) 4px 6px
-  );
-  content: "";
-}
-
 .metricCard > span {
   color: var(--muted-on-sage);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
@@ -94,22 +56,6 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.metricCard strong {
-  color: var(--ink);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: clamp(27px, 3vw, 40px);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.metricCard small {
-  max-width: 27ch;
-  padding-right: 28px;
-  color: var(--muted-on-sage);
-  font-size: 11px;
-  line-height: 1.4;
 }
 
 .costMetric {
@@ -264,34 +210,6 @@
   background: var(--surface-inset);
 }
 
-.searchField {
-  display: flex;
-  min-height: 40px;
-  align-items: center;
-  gap: 8px;
-  padding: 0 11px;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--muted);
-}
-
-.searchField:focus-within {
-  border-color: var(--accent);
-  outline: 2px solid color-mix(in srgb, var(--accent) 38%, transparent);
-  outline-offset: 1px;
-}
-
-.searchField input {
-  width: 100%;
-  min-width: 0;
-  min-height: 38px;
-  padding: 0;
-  border: 0 !important;
-  outline: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
 .compactField {
   display: grid;
   min-width: 0;
@@ -300,26 +218,6 @@
   font-size: 10px;
   font-weight: 650;
   letter-spacing: 0.035em;
-}
-
-.compactField select,
-.logFilters input,
-.logFilters select,
-.pagination select {
-  width: 100%;
-  min-height: 40px;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--paper);
-  color: var(--ink);
-  font: inherit;
-  font-size: 12px;
-}
-
-.tablePanel {
-  min-width: 0;
-  overflow: hidden;
 }
 
 .tableScroll {
@@ -334,27 +232,6 @@
   border-collapse: collapse;
   color: var(--ink);
   font-size: 12px;
-}
-
-.table th {
-  position: sticky;
-  z-index: 1;
-  top: 0;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface-raised);
-  color: var(--muted);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-align: left;
-  text-transform: uppercase;
-}
-
-.table td {
-  padding: 12px;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
-  vertical-align: top;
 }
 
 .table tbody tr:last-child td {
@@ -490,14 +367,6 @@
 .paginationControls select {
   min-height: 36px;
   padding: 6px 8px;
-}
-
-.paginationControls button {
-  width: 38px;
-  min-width: 38px;
-  height: 36px;
-  min-height: 36px;
-  padding: 8px;
 }
 
 .pageIndicator {
@@ -682,53 +551,12 @@
   background: var(--surface-inset);
 }
 
-.dialog {
-  width: min(560px, calc(100vw - 32px));
-  max-height: min(82svh, 760px);
-  margin: auto;
-  padding: 0;
-  overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--paper);
-  color: var(--ink);
-  box-shadow: 16px 16px 0 color-mix(in srgb, var(--ink) 22%, transparent);
-}
-
 .dialogWide {
   width: min(720px, calc(100vw - 32px));
 }
 
-.dialog::backdrop {
-  background: color-mix(in srgb, var(--ink) 58%, transparent);
-  backdrop-filter: blur(2px);
-}
-
-.dialogHeader {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 18px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface-raised);
-}
-
 .dialogHeader > div {
   min-width: 0;
-}
-
-.dialogHeader h2 {
-  margin: 1px 0 5px;
-  color: var(--ink);
-  font-size: 18px;
-  line-height: 1.3;
-}
-
-.dialogHeader p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.55;
 }
 
 .dialogIcon {
@@ -756,7 +584,7 @@
   min-height: 40px;
   padding: 9px 14px;
   border: 1px solid var(--danger);
-  border-radius: 0;
+  border-radius: var(--corner-radius);
   background: var(--danger);
   color: var(--paper);
   font-weight: 700;
@@ -767,20 +595,6 @@
   align-items: center;
   gap: 10px;
   padding: 18px;
-}
-
-.passwordReveal code {
-  min-width: 0;
-  flex: 1;
-  padding: 12px;
-  overflow-x: auto;
-  border: 1px solid var(--line);
-  background: var(--surface-inset);
-  color: var(--ink);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 14px;
-  white-space: nowrap;
-  user-select: all;
 }
 
 .datasetGrid {
@@ -797,10 +611,6 @@
   overflow: hidden;
   border: 1px solid var(--line);
   background: var(--paper);
-}
-
-.datasetCard[data-enabled="false"] {
-  background: color-mix(in srgb, var(--paper) 84%, var(--surface-inset));
 }
 
 .datasetHeader {
@@ -891,30 +701,10 @@
   background: var(--surface-inset);
 }
 
-.switchButton {
-  display: inline-flex;
-  min-width: 92px;
-  min-height: 40px;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 7px 11px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--paper);
-  color: var(--ink);
-  font-size: 11px;
-  font-weight: 650;
-}
-
 .switchButton span {
   width: 8px;
   height: 8px;
   background: var(--muted);
-}
-
-.switchButton[data-checked="true"] {
-  border-color: color-mix(in srgb, var(--success) 65%, var(--line));
 }
 
 .switchButton[data-checked="true"] span {
@@ -989,6 +779,319 @@
 .coverageStrip > strong {
   margin-right: 4px;
   color: var(--ink);
+}
+
+.eyebrow {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  text-transform: uppercase;
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+}
+
+.intro h2 {
+  margin: 3px 0 6px;
+  color: var(--ink);
+  line-height: 1.15;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 0;
+  background: transparent;
+  gap: 12px;
+}
+
+.metricCard,
+.datasetCard {
+  border: 1px solid var(--line);
+  border-top-color: var(--line-strong);
+  border-radius: var(--ui-panel-radius, 16px);
+  background: transparent;
+}
+
+.metricCard::after {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  width: 30px;
+  height: 6px;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0 4px,
+    color-mix(in srgb, var(--ink) 34%, transparent) 4px 6px
+  );
+  content: "";
+  display: none;
+}
+
+.metricCard strong {
+  color: var(--ink);
+  font-size: clamp(27px, 3vw, 40px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  font-family: inherit;
+  font-weight: 500;
+}
+
+.metricCard small {
+  max-width: 27ch;
+  color: var(--muted-on-sage);
+  font-size: 11px;
+  line-height: 1.4;
+  padding-right: 0;
+}
+
+.datasetCard[data-enabled="false"] {
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+}
+
+.toolbar,
+.pagination,
+.formActions,
+.datasetFooter,
+.coverageStrip,
+.requestBreakdown,
+.limitations,
+.rangeNote,
+.emptyState,
+.loadingState {
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+}
+
+.datasetChoices,
+.requestBreakdown,
+.limitations,
+.emptyState,
+.loadingState,
+.tablePanel {
+  border-color: var(--ui-control-border, var(--line));
+}
+
+.tablePanel {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--ui-panel-radius, 16px);
+}
+
+.datasetChoices,
+.requestBreakdown,
+.limitations,
+.emptyState,
+.loadingState {
+  border-radius: 12px;
+}
+
+.dangerButton,
+.switchButton {
+  min-height: var(--ui-control-height, 36px);
+  padding: 7px 14px;
+  border-radius: var(--ui-control-radius, 10px);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.switchButton {
+  display: inline-flex;
+  min-width: 92px;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--corner-radius);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 650;
+  border-color: var(--ui-control-border, var(--line));
+  background: var(--ui-control-bg, color-mix(in srgb, var(--surface-raised) 52%, transparent));
+}
+
+.switchButton[data-checked="true"] {
+  border-color: color-mix(in srgb, var(--success) 65%, var(--line));
+}
+
+.searchField {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 11px;
+  color: var(--muted);
+  min-height: var(--ui-control-height, 36px);
+  border: 1px solid var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+  box-shadow: inset 0 1px 2px #0000000a;
+}
+
+.searchField input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  min-height: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.searchField:focus-within {
+  outline: 2px solid color-mix(in srgb, var(--accent) 38%, transparent);
+  outline-offset: 1px;
+  border-color: var(--ui-focus, var(--accent-ink));
+}
+
+.compactField label,
+.logFilters label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.compactField select,
+.logFilters input,
+.logFilters select,
+.pagination select {
+  width: 100%;
+  font: inherit;
+  min-height: var(--ui-control-height, 36px);
+  padding: 7px 10px;
+  border: 1px solid var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 400;
+  box-shadow: inset 0 1px 2px #0000000a;
+}
+
+.paginationControls button {
+  padding: 8px;
+  width: var(--ui-control-height, 36px);
+  min-width: var(--ui-control-height, 36px);
+  height: var(--ui-control-height, 36px);
+  min-height: var(--ui-control-height, 36px);
+  border-radius: var(--ui-control-radius, 10px);
+}
+
+.table th {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  padding: 11px 14px;
+  border-bottom-color: var(--ui-control-border, var(--line));
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.table td {
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  vertical-align: top;
+  padding: 11px 14px;
+}
+
+.grantList > span,
+.capabilities span {
+  padding: 4px 8px;
+  border-color: var(--ui-control-border, var(--line));
+  border-radius: 7px;
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.avatar,
+.emptyIcon,
+.dialogIcon,
+.datasetIcon {
+  border: 1px solid var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-selected-bg, color-mix(in srgb, var(--sage) 19%, var(--surface-inset)));
+}
+
+.dialogIcon.dangerIcon {
+  border-color: color-mix(in srgb, var(--danger) 58%, var(--line));
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
+.passwordReveal code {
+  min-width: 0;
+  flex: 1;
+  padding: 12px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 14px;
+  white-space: nowrap;
+  user-select: all;
+  border-color: var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+}
+
+.dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(82svh, 760px);
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--ui-panel-radius, 16px);
+  background: var(--surface-raised);
+  box-shadow:
+    inset 0 1px 0 #ffffff19,
+    0 20px 70px #00000040;
+}
+
+.dialog::backdrop {
+  background: #05090f80;
+  backdrop-filter: blur(6px);
+}
+
+.dialogHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+}
+
+.dialogHeader h2 {
+  margin: 1px 0 5px;
+  color: var(--ink);
+  line-height: 1.3;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+.dialogHeader p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
 }
 
 @media (max-width: 980px) {
@@ -1242,247 +1345,18 @@
   }
 }
 
-/* Accepted frosted workbench material. Panels, controls, record tables, chips and
-   dialogs follow the --ui-* contract supplied by app/glass-controls.css; the
-   literal fallbacks repeat those values so the module still matches if a token is
-   ever missing. Reading boxes use the shared 12px tier, panels 16px, controls 10px
-   and status chips 7px. */
-
-:global(.glass-workspace) .eyebrow {
-  font-size: 9px;
-  font-weight: 400;
-  letter-spacing: 1.2px;
-  color: var(--muted);
-}
-
-:global(.glass-workspace) .intro h2 {
-  font-size: 20px;
-  font-weight: 500;
-  letter-spacing: -0.3px;
-}
-
-:global(.glass-workspace) .metricGrid {
-  border: 0;
-  background: transparent;
-  gap: 12px;
-}
-
-:global(.glass-workspace) .metricCard,
-:global(.glass-workspace) .datasetCard {
-  border: 1px solid var(--glass-border);
-  border-top-color: var(--glass-rim);
-  border-radius: var(--ui-panel-radius, 16px);
-  background: transparent;
-}
-
-:global(.glass-workspace) .metricCard::after {
-  display: none;
-}
-
-:global(.glass-workspace) .metricCard strong {
-  font-family: inherit;
-  font-weight: 500;
-}
-
-:global(.glass-workspace) .metricCard small {
-  padding-right: 0;
-}
-
-:global(.glass-workspace) .datasetCard[data-enabled="false"] {
-  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
-}
-
-:global(.glass-workspace) .toolbar,
-:global(.glass-workspace) .pagination,
-:global(.glass-workspace) .formActions,
-:global(.glass-workspace) .datasetFooter,
-:global(.glass-workspace) .coverageStrip,
-:global(.glass-workspace) .requestBreakdown,
-:global(.glass-workspace) .limitations,
-:global(.glass-workspace) .rangeNote,
-:global(.glass-workspace) .emptyState,
-:global(.glass-workspace) .loadingState {
-  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
-}
-
-:global(.glass-workspace) .datasetChoices,
-:global(.glass-workspace) .requestBreakdown,
-:global(.glass-workspace) .limitations,
-:global(.glass-workspace) .emptyState,
-:global(.glass-workspace) .loadingState,
-:global(.glass-workspace) .tablePanel {
-  border-color: var(--ui-control-border, var(--line));
-}
-
-:global(.glass-workspace) .tablePanel {
-  border-radius: var(--ui-panel-radius, 16px);
-}
-
-:global(.glass-workspace) .datasetChoices,
-:global(.glass-workspace) .requestBreakdown,
-:global(.glass-workspace) .limitations,
-:global(.glass-workspace) .emptyState,
-:global(.glass-workspace) .loadingState {
-  border-radius: 12px;
-}
-
-:global(.glass-workspace) .dangerButton,
-:global(.glass-workspace) .switchButton {
-  min-height: var(--ui-control-height, 36px);
-  padding: 7px 14px;
-  border-radius: var(--ui-control-radius, 10px);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-:global(.glass-workspace) .switchButton {
-  border-color: var(--ui-control-border, var(--line));
-  background: var(--ui-control-bg, color-mix(in srgb, var(--surface-raised) 52%, transparent));
-}
-
-:global(.glass-workspace) .switchButton[data-checked="true"] {
-  border-color: color-mix(in srgb, var(--success) 65%, var(--line));
-}
-
-:global(.glass-workspace) .searchField {
-  min-height: var(--ui-control-height, 36px);
-  border: 1px solid var(--ui-control-border, var(--line));
-  border-radius: var(--ui-control-radius, 10px);
-  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
-  box-shadow: inset 0 1px 2px #0000000a;
-}
-
-:global(.glass-workspace) .searchField input {
-  min-height: 0;
-  background: transparent;
-  color: inherit;
-  font-size: 13px;
-  font-weight: 400;
-}
-
-:global(.glass-workspace) .searchField:focus-within {
-  border-color: var(--ui-focus, var(--accent-ink));
-}
-
-:global(.glass-workspace) .compactField label,
-:global(.glass-workspace) .logFilters label {
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0;
-}
-
-:global(.glass-workspace) .compactField select,
-:global(.glass-workspace) .logFilters input,
-:global(.glass-workspace) .logFilters select,
-:global(.glass-workspace) .pagination select {
-  min-height: var(--ui-control-height, 36px);
-  padding: 7px 10px;
-  border: 1px solid var(--ui-control-border, var(--line));
-  border-radius: var(--ui-control-radius, 10px);
-  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 400;
-  box-shadow: inset 0 1px 2px #0000000a;
-}
-
-:global(.glass-workspace) .paginationControls button {
-  width: var(--ui-control-height, 36px);
-  min-width: var(--ui-control-height, 36px);
-  height: var(--ui-control-height, 36px);
-  min-height: var(--ui-control-height, 36px);
-  border-radius: var(--ui-control-radius, 10px);
-}
-
-:global(.glass-workspace) .table th {
-  padding: 11px 14px;
-  border-bottom-color: var(--ui-control-border, var(--line));
-  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
-  color: var(--muted);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-:global(.glass-workspace) .table td {
-  padding: 11px 14px;
-}
-
-:global(.glass-workspace) .grantList > span,
-:global(.glass-workspace) .capabilities span {
-  padding: 4px 8px;
-  border-color: var(--ui-control-border, var(--line));
-  border-radius: 7px;
-  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
-  color: var(--ink);
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 500;
-}
-
-:global(.glass-workspace) .avatar,
-:global(.glass-workspace) .emptyIcon,
-:global(.glass-workspace) .dialogIcon,
-:global(.glass-workspace) .datasetIcon {
-  border: 1px solid var(--ui-control-border, var(--line));
-  border-radius: var(--ui-control-radius, 10px);
-  background: var(--ui-selected-bg, color-mix(in srgb, var(--sage) 19%, var(--surface-inset)));
-}
-
-:global(.glass-workspace) .dialogIcon.dangerIcon {
-  border-color: color-mix(in srgb, var(--danger) 58%, var(--line));
-  background: color-mix(in srgb, var(--danger) 12%, transparent);
-  color: var(--danger);
-}
-
-:global(.glass-workspace) .passwordReveal code {
-  border-color: var(--ui-control-border, var(--line));
-  border-radius: var(--ui-control-radius, 10px);
-  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
-}
-
-:global(.glass-workspace) .dialog {
-  border: 1px solid var(--glass-border);
-  border-radius: var(--ui-panel-radius, 16px);
-  background: var(--surface-raised);
-  box-shadow:
-    inset 0 1px 0 #ffffff19,
-    0 20px 70px #00000040;
-}
-
-:global(.glass-workspace) .dialog::backdrop {
-  background: #05090f80;
-  backdrop-filter: blur(6px);
-}
-
-:global(.glass-workspace) .dialogHeader {
-  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
-}
-
 @media (hover: hover) and (pointer: fine) {
-  :global(.glass-workspace) .switchButton:hover:not(:disabled) {
+  .switchButton:hover:not(:disabled) {
     background: var(--ui-control-hover, color-mix(in srgb, var(--ink) 7%, transparent));
     color: var(--ink);
   }
 
-  :global(.glass-workspace) .table tbody tr:hover {
+  .table tbody tr:hover {
     background: var(--ui-control-hover, color-mix(in srgb, var(--ink) 7%, transparent));
   }
 }
-
-:global(.glass-workspace) .dialogHeader h2 {
-  font-size: 22px;
-  font-weight: 500;
-  letter-spacing: -0.3px;
-}
-:global(.glass-workspace) .dialogHeader p {
-  font-size: 12px;
-  line-height: 1.7;
-}
 @media (prefers-reduced-transparency: reduce) {
-  :global(.glass-workspace) .dialog::backdrop {
+  .dialog::backdrop {
     backdrop-filter: none;
   }
 }

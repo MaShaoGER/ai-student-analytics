@@ -1,47 +1,5 @@
-.importLedger {
-  min-width: 0;
-  margin: 0 0 18px;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  overflow: hidden;
-}
-
-.importHeader {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 18px 20px;
-  border-bottom: 1px solid var(--line);
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--accent) 9%, transparent), transparent 44%),
-    var(--surface-raised);
-}
-
-.importHeader::after {
-  position: absolute;
-  inset: 0 0 auto auto;
-  width: 72px;
-  height: 5px;
-  background: repeating-linear-gradient(
-    -45deg,
-    transparent 0 5px,
-    color-mix(in srgb, var(--ink) 28%, transparent) 5px 7px
-  );
-  content: "";
-}
-
 .importHeader > div {
   min-width: 0;
-}
-
-.importHeader h3 {
-  margin: 4px 0 6px;
-  color: var(--ink);
-  font-size: clamp(18px, 2vw, 24px);
-  line-height: 1.2;
-  letter-spacing: -0.025em;
 }
 
 .importHeader p {
@@ -50,15 +8,6 @@
   color: var(--muted);
   font-size: 12px;
   line-height: 1.6;
-}
-
-.eyebrow {
-  color: var(--accent-ink);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
 }
 
 .inlineNotice {
@@ -79,16 +28,6 @@
 
 .staleValidation > button {
   flex: 0 0 auto;
-}
-
-.publishedReceipt {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  padding: 12px 20px;
-  border-bottom: 1px solid color-mix(in srgb, var(--success) 38%, var(--line));
-  background: color-mix(in srgb, var(--success) 8%, var(--paper));
-  color: var(--success);
 }
 
 .receiptIndex {
@@ -122,27 +61,6 @@
   font-size: 10px;
 }
 
-.ledgerGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.stepPanel {
-  position: relative;
-  display: grid;
-  align-content: start;
-  gap: 14px;
-  min-width: 0;
-  min-height: 248px;
-  padding: 18px;
-  border-right: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-}
-
-.stepPanel:nth-child(2n) {
-  border-right: 0;
-}
-
 .stepPanel:nth-last-child(-n + 2) {
   border-bottom: 0;
 }
@@ -152,20 +70,6 @@
   align-items: flex-start;
   gap: 11px;
   min-width: 0;
-}
-
-.stepHeading > span {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  flex: 0 0 30px;
-  place-items: center;
-  border: 1px solid color-mix(in srgb, var(--accent) 48%, var(--line));
-  background: var(--teal-soft);
-  color: var(--accent-ink);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 10px;
-  font-weight: 800;
 }
 
 .stepHeading > div {
@@ -186,30 +90,6 @@
   line-height: 1.5;
 }
 
-.dropZone {
-  position: relative;
-  display: flex;
-  min-height: 112px;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  border: 1px dashed color-mix(in srgb, var(--accent) 52%, var(--line));
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--accent) 5%, transparent), transparent),
-    var(--surface-inset);
-  cursor: pointer;
-  transition:
-    border-color var(--motion-fast) ease,
-    background var(--motion-fast) ease;
-}
-
-.dropZone:hover,
-.dropZone:focus-within,
-.dropZone[data-dragging="true"] {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--paper));
-}
-
 .dropZone[data-has-file="true"] {
   border-style: solid;
 }
@@ -224,17 +104,6 @@
   clip: rect(0, 0, 0, 0);
   border: 0;
   white-space: nowrap;
-}
-
-.dropIcon {
-  display: grid;
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
-  place-items: center;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--accent-ink);
 }
 
 .dropCopy {
@@ -255,28 +124,6 @@
 
 .dropCopy small {
   color: var(--muted);
-  font-size: 10px;
-  line-height: 1.45;
-}
-
-.fileAction {
-  padding: 5px 8px;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--ink);
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.progressLine {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 34px;
-  padding: 8px 10px;
-  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--line));
-  background: var(--teal-soft);
-  color: var(--accent-ink);
   font-size: 10px;
   line-height: 1.45;
 }
@@ -338,22 +185,6 @@
   font-size: 9px;
 }
 
-.previewTableWrap,
-.issueTableWrap {
-  max-width: 100%;
-  overflow: auto;
-  border: 1px solid var(--line);
-  background: var(--paper);
-}
-
-.previewTable,
-.issueTable {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 10px;
-  line-height: 1.45;
-}
-
 .previewTable {
   min-width: 420px;
 }
@@ -376,20 +207,6 @@
 .issueTable th,
 .issueTable td {
   overflow-wrap: anywhere;
-}
-
-.previewTable th,
-.issueTable th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--surface-raised);
-  color: var(--muted);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.035em;
-  white-space: nowrap;
 }
 
 .previewTable th {
@@ -430,22 +247,6 @@
 .issueTable th:last-child,
 .issueTable td:last-child {
   border-right: 0;
-}
-
-.mappingFieldset,
-.publishFieldset {
-  min-width: 0;
-  margin: 0;
-  padding: 11px;
-  border: 1px solid var(--line);
-}
-
-.mappingFieldset legend,
-.publishFieldset legend {
-  padding: 0 5px;
-  color: var(--ink);
-  font-size: 10px;
-  font-weight: 700;
 }
 
 .mappingGrid {
@@ -652,22 +453,6 @@
   gap: 8px;
 }
 
-.modeOptions label {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  cursor: pointer;
-}
-
-.modeOptions label[data-checked="true"] {
-  border-color: color-mix(in srgb, var(--accent) 62%, var(--line));
-  background: var(--teal-soft);
-}
-
 .modeOptions input {
   margin: 2px 0 0;
 }
@@ -721,6 +506,266 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.eyebrow {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  text-transform: uppercase;
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+}
+
+.importLedger {
+  min-width: 0;
+  margin: 0 0 18px;
+  border: 0;
+  border-radius: var(--ui-panel-radius, 16px);
+  background: transparent;
+  overflow: visible;
+}
+
+.importHeader {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid var(--line);
+  border: 0;
+  padding: 0 0 20px;
+  background: transparent;
+}
+
+.importHeader::after {
+  position: absolute;
+  inset: 0 0 auto auto;
+  width: 72px;
+  height: 5px;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0 5px,
+    color-mix(in srgb, var(--ink) 28%, transparent) 5px 7px
+  );
+  content: "";
+  display: none;
+}
+
+.importHeader h3 {
+  margin: 4px 0 6px;
+  color: var(--ink);
+  line-height: 1.2;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+
+.ledgerGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.stepPanel {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+  min-height: 248px;
+  padding: 18px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-top-color: var(--line-strong);
+  border-radius: var(--ui-panel-radius, 16px);
+}
+
+.stepPanel:nth-child(2n) {
+  border-right: 1px solid var(--line);
+}
+
+.stepHeading > span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 48%, var(--line));
+  background: var(--teal-soft);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  font-weight: 800;
+  border-color: var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  color: var(--ui-selected-ink, var(--ink));
+}
+
+.dropZone {
+  position: relative;
+  display: flex;
+  min-height: 112px;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 52%, var(--line));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 5%, transparent), transparent),
+    var(--surface-inset);
+  cursor: pointer;
+  transition:
+    border-color var(--motion-fast) ease,
+    background var(--motion-fast) ease;
+  border-color: color-mix(in srgb, var(--ui-focus, var(--accent-ink)) 52%, var(--line));
+  border-radius: 12px;
+}
+
+.dropZone:hover,
+.dropZone:focus-within,
+.dropZone[data-dragging="true"] {
+  border-color: var(--ui-focus, var(--accent-ink));
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface-inset));
+}
+
+.dropIcon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  place-items: center;
+  border: 1px solid var(--line);
+  color: var(--accent-ink);
+  border-color: var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-control-bg, color-mix(in srgb, var(--surface-raised) 52%, transparent));
+}
+
+.fileAction {
+  border: 1px solid var(--line);
+  color: var(--ink);
+  min-height: var(--ui-control-height, 36px);
+  padding: 7px 10px;
+  border-color: var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-control-bg, color-mix(in srgb, var(--surface-raised) 52%, transparent));
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.progressLine {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 34px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--line));
+  background: var(--teal-soft);
+  color: var(--accent-ink);
+  font-size: 10px;
+  line-height: 1.45;
+  border-radius: var(--ui-control-radius, 10px);
+}
+
+.draftStrip,
+.validateBar,
+.publishGate,
+.validationSummary,
+.stepEmpty {
+  border-color: var(--ui-control-border, var(--line));
+  border-radius: 12px;
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+}
+
+.validateBar button,
+.publishGate > button,
+.issuesToolbar button {
+  min-height: var(--ui-control-height, 36px);
+  border-radius: var(--ui-control-radius, 10px);
+}
+
+.previewTableWrap,
+.issueTableWrap {
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-color: var(--ui-control-border, var(--line));
+  border-radius: 12px;
+  background: transparent;
+}
+
+/* Spreadsheet previews keep their dense 7px/9px grid but share header typography. */
+.previewTable,
+.issueTable {
+  width: 100%;
+  border-collapse: collapse;
+  line-height: 1.45;
+  font-size: 11px;
+}
+
+.previewTable th,
+.issueTable th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  white-space: nowrap;
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.mappingFieldset,
+.publishFieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-color: var(--ui-control-border, var(--line));
+  border-radius: 12px;
+}
+
+.mappingFieldset legend,
+.publishFieldset legend {
+  padding: 0 5px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.modeOptions label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  border-color: var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-control-bg, color-mix(in srgb, var(--surface-raised) 52%, transparent));
+}
+
+.modeOptions label[data-checked="true"] {
+  border-color: var(--accent);
+  background: var(--ui-selected-bg, color-mix(in srgb, var(--sage) 19%, var(--surface-inset)));
+}
+
+.publishedReceipt {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 12px 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--success) 38%, var(--line));
+  background: color-mix(in srgb, var(--success) 8%, var(--paper));
+  color: var(--success);
+  margin-bottom: 16px;
+  border: 1px solid color-mix(in srgb, var(--success) 38%, var(--line));
+  border-radius: 12px;
 }
 
 @media (max-width: 980px) {
@@ -844,171 +889,13 @@
   }
 }
 
-/* Accepted frosted workbench material. Ledger panels, upload controls, option
-   cards and dense preview tables follow the --ui-* contract supplied by
-   app/glass-controls.css; literal fallbacks repeat those values. Panels stay 16px,
-   boxes that hold text or controls 12px, and single controls 10px. */
-
-:global(.glass-workspace) .eyebrow {
-  font-size: 9px;
-  font-weight: 400;
-  letter-spacing: 1.2px;
-  color: var(--muted);
-}
-
-:global(.glass-workspace) .importLedger {
-  border: 0;
-  border-radius: var(--ui-panel-radius, 16px);
-  background: transparent;
-  overflow: visible;
-}
-
-:global(.glass-workspace) .importHeader {
-  border: 0;
-  padding: 0 0 20px;
-  background: transparent;
-}
-
-:global(.glass-workspace) .importHeader::after {
-  display: none;
-}
-
-:global(.glass-workspace) .importHeader h3 {
-  font-size: 20px;
-  font-weight: 500;
-  letter-spacing: -0.3px;
-}
-
-:global(.glass-workspace) .ledgerGrid {
-  gap: 16px;
-}
-
-:global(.glass-workspace) .stepPanel {
-  border: 1px solid var(--glass-border);
-  border-top-color: var(--glass-rim);
-  border-radius: var(--ui-panel-radius, 16px);
-}
-
-:global(.glass-workspace) .stepPanel:nth-child(2n) {
-  border-right: 1px solid var(--glass-border);
-}
-
-:global(.glass-workspace) .stepHeading > span {
-  border-color: var(--ui-control-border, var(--line));
-  border-radius: var(--ui-control-radius, 10px);
-  color: var(--ui-selected-ink, var(--ink));
-}
-
-:global(.glass-workspace) .dropZone {
-  border-color: color-mix(in srgb, var(--ui-focus, var(--accent-ink)) 52%, var(--line));
-  border-radius: 12px;
-}
-
-:global(.glass-workspace) .dropZone:hover,
-:global(.glass-workspace) .dropZone:focus-within,
-:global(.glass-workspace) .dropZone[data-dragging="true"] {
-  border-color: var(--ui-focus, var(--accent-ink));
-  background: color-mix(in srgb, var(--accent) 9%, var(--surface-inset));
-}
-
-:global(.glass-workspace) .dropIcon {
-  border-color: var(--ui-control-border, var(--line));
-  border-radius: var(--ui-control-radius, 10px);
-  background: var(--ui-control-bg, color-mix(in srgb, var(--surface-raised) 52%, transparent));
-}
-
-:global(.glass-workspace) .fileAction {
-  min-height: var(--ui-control-height, 36px);
-  padding: 7px 10px;
-  border-color: var(--ui-control-border, var(--line));
-  border-radius: var(--ui-control-radius, 10px);
-  background: var(--ui-control-bg, color-mix(in srgb, var(--surface-raised) 52%, transparent));
-  font-size: 13px;
-  font-weight: 500;
-}
-
-:global(.glass-workspace) .progressLine {
-  border-radius: var(--ui-control-radius, 10px);
-}
-
-:global(.glass-workspace) .draftStrip,
-:global(.glass-workspace) .validateBar,
-:global(.glass-workspace) .publishGate,
-:global(.glass-workspace) .validationSummary,
-:global(.glass-workspace) .stepEmpty {
-  border-color: var(--ui-control-border, var(--line));
-  border-radius: 12px;
-  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
-}
-
-:global(.glass-workspace) .validateBar button,
-:global(.glass-workspace) .publishGate > button,
-:global(.glass-workspace) .issuesToolbar button {
-  min-height: var(--ui-control-height, 36px);
-  border-radius: var(--ui-control-radius, 10px);
-}
-
-:global(.glass-workspace) .previewTableWrap,
-:global(.glass-workspace) .issueTableWrap {
-  border-color: var(--ui-control-border, var(--line));
-  border-radius: 12px;
-  background: transparent;
-}
-
-/* Spreadsheet previews keep their dense 7px/9px grid but share header typography. */
-:global(.glass-workspace) .previewTable,
-:global(.glass-workspace) .issueTable {
-  font-size: 11px;
-}
-
-:global(.glass-workspace) .previewTable th,
-:global(.glass-workspace) .issueTable th {
-  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
-  color: var(--muted);
-  font-family: inherit;
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-:global(.glass-workspace) .mappingFieldset,
-:global(.glass-workspace) .publishFieldset {
-  border-color: var(--ui-control-border, var(--line));
-  border-radius: 12px;
-}
-
-:global(.glass-workspace) .mappingFieldset legend,
-:global(.glass-workspace) .publishFieldset legend {
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0;
-}
-
-:global(.glass-workspace) .modeOptions label {
-  border-color: var(--ui-control-border, var(--line));
-  border-radius: var(--ui-control-radius, 10px);
-  background: var(--ui-control-bg, color-mix(in srgb, var(--surface-raised) 52%, transparent));
-}
-
-:global(.glass-workspace) .modeOptions label[data-checked="true"] {
-  border-color: var(--accent);
-  background: var(--ui-selected-bg, color-mix(in srgb, var(--sage) 19%, var(--surface-inset)));
-}
-
-:global(.glass-workspace) .publishedReceipt {
-  margin-bottom: 16px;
-  border: 1px solid color-mix(in srgb, var(--success) 38%, var(--line));
-  border-radius: 12px;
-}
-
 @media (hover: hover) and (pointer: fine) {
-  :global(.glass-workspace) .previewTable tbody tr:hover,
-  :global(.glass-workspace) .issueTable tbody tr:hover {
+  .previewTable tbody tr:hover,
+  .issueTable tbody tr:hover {
     background: var(--ui-control-hover, color-mix(in srgb, var(--ink) 7%, transparent));
   }
 
-  :global(.glass-workspace) .fileAction:hover:not(:disabled) {
+  .fileAction:hover:not(:disabled) {
     background: var(--ui-control-hover, color-mix(in srgb, var(--ink) 7%, transparent));
     color: var(--ink);
   }

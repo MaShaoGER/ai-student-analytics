@@ -1,18 +1,8 @@
-.panel {
-  min-width: 0;
-  padding: 32px;
-}
 .heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-}
-.heading h2 {
-  margin: 8px 0;
-  font-size: 26px;
-  font-weight: 600;
-  letter-spacing: -0.8px;
 }
 .heading p,
 .note,
@@ -64,15 +54,6 @@
 }
 .muted {
   color: var(--muted);
-}
-.cohortName {
-  max-width: 100%;
-  padding: 6px 10px;
-  border-radius: var(--corner-radius);
-  background: var(--accent);
-  color: var(--button-ink);
-  font-weight: 500;
-  overflow-wrap: anywhere;
 }
 .layout {
   display: grid;
@@ -179,27 +160,10 @@
   display: grid;
   gap: 6px;
 }
-.path {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  min-height: 54px;
-  text-align: left;
-  padding: 10px;
-  border: 0;
-  border-radius: var(--corner-radius);
-  background: transparent;
-  color: var(--ink);
-  box-shadow: none;
-  font: inherit;
-}
 .path:hover {
   background: var(--surface-inset);
   transform: none;
   box-shadow: none;
-}
-.path[aria-pressed="true"] {
-  background: var(--score-soft);
 }
 .path:disabled {
   cursor: wait;
@@ -322,6 +286,114 @@
   color: var(--muted);
   font-size: 13px;
 }
+html[data-motion="off"] .ribbon {
+  transition: none;
+}
+
+/* ---- 数据到达后的首次绘制：描线 / 生长 / 错峰 --------------------------------
+   只在「交互动效」开启（html[data-motion="on"]）时播放；元素挂载即播放一次，
+   筛选/聚焦等交互不会重播。只用 stroke-dashoffset / transform / opacity，
+   连接带带宽、柱体高度、及格率长度等数据编码在动画结束后与动画前完全一致。 */
+@keyframes panorama-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes panorama-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes panorama-bar {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes panorama-pass {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+html[data-motion="on"] .entering .ribbonGroup {
+  animation: panorama-fade 480ms var(--enter-ease) var(--enter-delay, 120ms) both;
+}
+html[data-motion="on"] .entering .ribbonGroup .ribbon {
+  stroke-dasharray: 1;
+  animation: panorama-draw 760ms var(--enter-ease) var(--enter-delay, 120ms) both;
+}
+html[data-motion="on"] .entering .columnGroup {
+  animation: panorama-fade 480ms var(--enter-ease) var(--enter-delay, 160ms) both;
+}
+html[data-motion="on"] .entering .bar {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: panorama-bar 760ms var(--enter-ease) var(--enter-delay, 160ms) both;
+}
+html[data-motion="on"] .entering .passFill {
+  transform-box: fill-box;
+  transform-origin: 0 50%;
+  animation: panorama-pass 620ms var(--enter-ease) var(--enter-delay, 160ms) both;
+}
+html[data-motion="on"] .entering .frameGroup,
+html[data-motion="on"] .entering .threshold {
+  animation: panorama-fade 480ms var(--ease-out) var(--enter-delay, 60ms) both;
+}
+
+/* Shared glass UI hierarchy; the chart's marks and scale remain untouched. */
+.heading h2 {
+  margin: 8px 0;
+  font-size: 20px;
+  font-weight: 550;
+  letter-spacing: -0.025em;
+}
+.panel {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--panel-radius);
+  background: var(--paper);
+}
+
+.path {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 54px;
+  text-align: left;
+  padding: 10px;
+  background: transparent;
+  color: var(--ink);
+  box-shadow: none;
+  font: inherit;
+  border: 1px solid transparent;
+  border-radius: var(--ui-control-radius);
+}
+.path[aria-pressed="true"] {
+  background: var(--ui-selected-bg);
+  border-color: var(--line);
+}
+.cohortName {
+  max-width: 100%;
+  padding: 6px 10px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+  background: var(--ui-selected-bg);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
 @media (max-width: 1000px) {
   .layout {
     grid-template-columns: minmax(0, 1fr);
@@ -411,74 +483,10 @@
     margin-left: 0;
   }
 }
-html[data-motion="off"] .ribbon {
-  transition: none;
-}
 @media (prefers-reduced-motion: reduce) {
   .ribbon {
     transition: none;
   }
-}
-
-/* ---- 数据到达后的首次绘制：描线 / 生长 / 错峰 --------------------------------
-   只在「交互动效」开启（html[data-motion="on"]）时播放；元素挂载即播放一次，
-   筛选/聚焦等交互不会重播。只用 stroke-dashoffset / transform / opacity，
-   连接带带宽、柱体高度、及格率长度等数据编码在动画结束后与动画前完全一致。 */
-@keyframes panorama-draw {
-  from {
-    stroke-dashoffset: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-@keyframes panorama-fade {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-@keyframes panorama-bar {
-  from {
-    transform: scaleY(0);
-  }
-  to {
-    transform: scaleY(1);
-  }
-}
-@keyframes panorama-pass {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
-html[data-motion="on"] .entering .ribbonGroup {
-  animation: panorama-fade 480ms var(--enter-ease) var(--enter-delay, 120ms) both;
-}
-html[data-motion="on"] .entering .ribbonGroup .ribbon {
-  stroke-dasharray: 1;
-  animation: panorama-draw 760ms var(--enter-ease) var(--enter-delay, 120ms) both;
-}
-html[data-motion="on"] .entering .columnGroup {
-  animation: panorama-fade 480ms var(--enter-ease) var(--enter-delay, 160ms) both;
-}
-html[data-motion="on"] .entering .bar {
-  transform-box: fill-box;
-  transform-origin: 50% 100%;
-  animation: panorama-bar 760ms var(--enter-ease) var(--enter-delay, 160ms) both;
-}
-html[data-motion="on"] .entering .passFill {
-  transform-box: fill-box;
-  transform-origin: 0 50%;
-  animation: panorama-pass 620ms var(--enter-ease) var(--enter-delay, 160ms) both;
-}
-html[data-motion="on"] .entering .frameGroup,
-html[data-motion="on"] .entering .threshold {
-  animation: panorama-fade 480ms var(--ease-out) var(--enter-delay, 60ms) both;
 }
 @media (prefers-reduced-motion: reduce) {
   html[data-motion="on"]
@@ -491,36 +499,11 @@ html[data-motion="on"] .entering .threshold {
   }
 }
 
-/* Shared glass UI hierarchy; the chart's marks and scale remain untouched. */
-:global(.glass-workspace) .heading h2 {
-  font-size: 20px;
-  font-weight: 500;
-  letter-spacing: -0.3px;
-}
-:global(.glass-workspace) .panel {
-  padding: 24px;
-}
-
-:global(.glass-workspace) .path {
-  border: 1px solid transparent;
-  border-radius: var(--ui-control-radius);
-}
-:global(.glass-workspace) .path[aria-pressed="true"] {
-  background: var(--ui-selected-bg);
-  border-color: var(--line);
-}
-:global(.glass-workspace) .cohortName {
-  background: var(--ui-selected-bg);
-  color: var(--ink);
-  border: 1px solid var(--line);
-  border-radius: 7px;
-}
-
 @media (max-width: 760px) {
-  :global(.glass-workspace) .panel {
+  .panel {
     padding: 20px 16px;
   }
-  :global(.glass-workspace) .heading h2 {
+  .heading h2 {
     font-size: 18px;
   }
 }

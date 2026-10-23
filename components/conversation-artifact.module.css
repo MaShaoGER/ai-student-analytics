@@ -1,28 +1,7 @@
-.wrapper {
-  --artifact-rule: color-mix(in srgb, var(--line) 78%, transparent);
-  --artifact-inset: color-mix(in srgb, var(--surface-inset) 70%, var(--paper));
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--artifact-rule);
-  background: color-mix(in srgb, var(--paper) 94%, var(--surface-inset));
-  color: var(--ink);
-}
-
 .wrapper *,
 .wrapper *::before,
 .wrapper *::after {
   box-sizing: border-box;
-}
-
-.header {
-  min-width: 0;
-  padding: 13px 14px 12px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  border-bottom: 1px solid var(--artifact-rule);
-  background: var(--artifact-inset);
 }
 
 .heading {
@@ -41,13 +20,6 @@
   letter-spacing: 0.08em;
 }
 
-.heading h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 650;
-  letter-spacing: -0.015em;
-}
-
 .identity {
   min-width: 0;
   overflow: hidden;
@@ -61,39 +33,9 @@
   white-space: nowrap;
 }
 
-.controls {
-  min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 2px;
-}
-
-.controls button {
-  min-height: 32px;
-  padding: 4px 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  border: 1px solid transparent;
-  border-radius: var(--corner-radius);
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: 11px;
-  line-height: 1.3;
-  cursor: pointer;
-}
-
 .controls button:hover {
   color: var(--ink);
   background: color-mix(in srgb, var(--ink) 4%, transparent);
-}
-
-.controls button[aria-pressed="true"] {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
-  color: var(--ink);
-  background: var(--paper);
 }
 
 .controls button:focus-visible {
@@ -104,18 +46,6 @@
 .body {
   min-width: 0;
   padding: 4px;
-}
-
-.footer {
-  padding: 9px 14px 11px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  border-top: 1px solid var(--artifact-rule);
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.55;
 }
 
 .footer p {
@@ -146,6 +76,95 @@
     monospace;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+:global(html[data-motion="off"]) .controls button {
+  transition: none;
+}
+
+.wrapper {
+  --artifact-rule: color-mix(in srgb, var(--line) 78%, transparent);
+  --artifact-inset: color-mix(in srgb, var(--surface-inset) 70%, var(--paper));
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--panel-radius);
+  background: var(--paper);
+}
+.header {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--artifact-rule);
+  padding: 12px 16px;
+  background: var(--surface-inset);
+}
+.heading h3 {
+  margin: 0;
+  letter-spacing: -0.015em;
+  font-size: 14px;
+  font-weight: 550;
+}
+.footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--artifact-rule);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+  padding: 12px 16px;
+}
+
+/* An attachment is part of the message, not another full glass workspace. */
+.body :global(.analysis-result) {
+  border: 0;
+}
+.wrapper .body :global(.result-focus) {
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 12%, transparent);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.body :global(.result-focus)::after {
+  display: none;
+}
+
+.controls {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 4px;
+}
+.controls button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid transparent;
+  color: var(--muted);
+  font: inherit;
+  line-height: 1.3;
+  cursor: pointer;
+  min-height: var(--ui-control-height);
+  border-radius: var(--ui-control-radius);
+  padding: 6px 10px;
+  background: var(--ui-control-bg);
+  border-color: var(--ui-control-border);
+  font-size: 12px;
+}
+.controls button[aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--ui-selected-bg);
+  color: var(--ui-selected-ink);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -192,10 +211,6 @@
   }
 }
 
-:global(html[data-motion="off"]) .controls button {
-  transition: none;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .wrapper *,
   .wrapper *::before,
@@ -203,63 +218,4 @@
     animation-duration: 0ms !important;
     transition-duration: 0ms !important;
   }
-}
-
-:global(.glass-workspace) .wrapper {
-  border: 0;
-  background: transparent;
-}
-:global(.glass-workspace) .header {
-  background: transparent;
-  padding: 12px 16px;
-}
-:global(.glass-workspace) .heading h3 {
-  font-size: 13px;
-  font-weight: 500;
-}
-:global(.glass-workspace) .controls {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 3px;
-}
-:global(.glass-workspace) .controls button {
-  border-radius: 5px;
-}
-:global(.glass-workspace) .controls button[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--sage) 16%, transparent);
-  border-color: transparent;
-}
-:global(.glass-workspace) .footer {
-  padding: 12px 16px;
-}
-
-/* An attachment is part of the message, not another full glass workspace. */
-:global(.glass-workspace) .body :global(.analysis-result) {
-  border: 0;
-}
-:global(.glass-workspace) .wrapper .body :global(.result-focus) {
-  border: 1px solid var(--line);
-  background: color-mix(in srgb, var(--paper) 12%, transparent);
-  box-shadow: none;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
-:global(.glass-workspace) .body :global(.result-focus)::after {
-  display: none;
-}
-
-:global(.glass-workspace) .controls {
-  gap: 4px;
-}
-:global(.glass-workspace) .controls button {
-  min-height: var(--ui-control-height);
-  border-radius: var(--ui-control-radius);
-  padding: 6px 10px;
-  background: var(--ui-control-bg);
-  border-color: var(--ui-control-border);
-  font-size: 12px;
-}
-:global(.glass-workspace) .controls button[aria-pressed="true"] {
-  background: var(--ui-selected-bg);
-  color: var(--ui-selected-ink);
 }

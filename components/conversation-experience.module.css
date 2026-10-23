@@ -1,11 +1,8 @@
-/* Formal conversation adopts the approved preview's document workbench.
-   Intent: teachers read evidence and resume account history. Orange identifies
-   actions; quiet borders and 4px spacing preserve the existing paper palette. */
 .shell:global(.workbench-shell)[data-conversation="true"] {
   height: var(--conversation-viewport-height, 100dvh);
   min-height: 0;
   overflow: hidden;
-  grid-template-rows: 64px minmax(0, 1fr);
+  grid-template-rows: var(--workspace-header-height, 64px) minmax(0, 1fr);
 }
 .shell[data-conversation="true"] :global(.workbench-main),
 .shell[data-conversation="true"] :global(.workbench-content),
@@ -24,41 +21,6 @@
 .shell[data-conversation="true"] :global(.workbench-footer) {
   display: none;
 }
-.layout {
-  height: 100%;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: 236px minmax(0, 1fr);
-  overflow: hidden;
-}
-.layout[data-history-collapsed="true"] {
-  grid-template-columns: 52px minmax(0, 1fr);
-}
-.historyRail {
-  position: relative;
-  overflow: hidden;
-  border-right: 1px solid var(--line);
-}
-.historyRail .history {
-  width: 236px;
-  height: 100%;
-  padding-top: 60px;
-  border-right: 0;
-}
-.historyToggle {
-  position: absolute;
-  top: 12px;
-  right: 6px;
-  z-index: 1;
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--ink);
-  cursor: pointer;
-}
 .historyToggle[aria-expanded="true"] svg {
   rotate: 180deg;
 }
@@ -72,11 +34,6 @@
     transform 240ms var(--ease-drawer),
     opacity 160ms var(--ease-out),
     visibility 240ms;
-}
-@media (prefers-reduced-motion: reduce) {
-  .historyRail .history {
-    transition: none !important;
-  }
 }
 .history {
   min-width: 0;
@@ -93,8 +50,8 @@
   align-items: center;
   justify-content: space-between;
   color: var(--muted);
-  font: 700 9px/1.5 monospace;
-  letter-spacing: 0.1em;
+  font: 500 11px/1.5 var(--font-sans);
+  letter-spacing: 0;
 }
 .historyHeading button,
 .deleteButton {
@@ -105,20 +62,6 @@
   min-height: 40px;
   cursor: pointer;
 }
-.newChat {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 8px 12px;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--ink);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
 .retention,
 .historyEmpty,
 .historyError {
@@ -127,10 +70,6 @@
   line-height: 1.8;
   color: var(--muted);
   overflow-wrap: anywhere;
-}
-.historyEmpty {
-  border: 1px dashed var(--line);
-  padding: 16px;
 }
 .historyError button {
   display: block;
@@ -145,14 +84,6 @@
   display: grid;
   gap: 4px;
 }
-.historyRow {
-  position: relative;
-  border-left: 2px solid transparent;
-}
-.historyRow[data-active="true"] {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 7%, transparent);
-}
 .historyItem {
   min-height: 76px;
   width: 100%;
@@ -165,11 +96,6 @@
   color: var(--ink);
   text-align: left;
   cursor: pointer;
-}
-.historyIndex {
-  grid-row: 1 / 3;
-  color: var(--accent-ink);
-  font: 700 10px/1.7 monospace;
 }
 .historyItem strong {
   font-size: 12px;
@@ -186,30 +112,6 @@
   right: -8px;
   top: 0;
 }
-.deleteConfirm {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  font-size: 11px;
-}
-.deleteConfirm button {
-  min-height: 40px;
-  padding: 4px 8px;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--ink);
-  cursor: pointer;
-}
-.historyFoot {
-  margin-top: auto;
-  padding-top: 24px;
-  display: grid;
-  gap: 12px;
-  color: var(--muted);
-  font-size: 10px;
-}
 .historyFoot a {
   color: var(--muted);
   text-underline-offset: 4px;
@@ -222,7 +124,144 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-@media (max-width: 900px) {
+.layout {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  overflow: hidden;
+  grid-template-columns: 243px minmax(0, 1fr);
+  gap: 0;
+  border-top-color: color-mix(in srgb, var(--line-strong) 55%, transparent);
+  border: 0;
+  border-radius: 0;
+  background: var(--paper);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.layout[data-history-collapsed="true"] {
+  grid-template-columns: 52px minmax(0, 1fr);
+}
+.historyRail {
+  position: relative;
+  overflow: hidden;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: var(--surface-inset);
+}
+.historyRail .history {
+  height: 100%;
+  padding-top: 60px;
+  border-right: 0;
+  width: 224px;
+  padding: 64px 14px 20px;
+  background: transparent;
+}
+.newChat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  margin-top: 12px;
+  background: var(--paper);
+  border-radius: var(--corner-radius);
+  font-size: 12px;
+}
+.historyEmpty {
+  border-radius: 10px;
+  border-style: solid;
+  background: transparent;
+  border: 0;
+  padding: 16px 4px;
+  font-size: 12px;
+}
+.historyRow {
+  position: relative;
+  border-left: 2px solid transparent;
+  border: 1px solid transparent;
+  border-radius: 9px;
+}
+.historyRow[data-active="true"] {
+  background: var(--selection);
+  border-color: transparent;
+}
+.historyIndex {
+  grid-row: 1 / 3;
+  color: var(--accent-ink);
+  font: 700 10px/1.7 monospace;
+  font-weight: 400;
+}
+.retention {
+  font-size: 10px;
+  line-height: 1.9;
+}
+.deleteConfirm button {
+  min-height: 40px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  border-radius: 7px;
+}
+.historyFoot {
+  margin-top: auto;
+  display: grid;
+  color: var(--muted);
+  font-size: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  gap: 8px;
+}
+
+.newChat,
+.mobileHistory {
+  min-height: var(--ui-control-height);
+  border-radius: var(--ui-control-radius);
+  border: 1px solid var(--ui-control-border);
+  background: var(--ui-control-bg);
+  font-size: 12px;
+  font-weight: 500;
+}
+.historyToggle {
+  position: absolute;
+  z-index: 1;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  cursor: pointer;
+  top: 12px;
+  left: 12px;
+  right: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--corner-radius);
+  background: var(--paper);
+}
+.deleteConfirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  background: var(--ui-surface);
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}
+@media (prefers-reduced-motion: reduce) {
+  .historyRail .history {
+    transition: none !important;
+  }
+}
+@media (max-width: 1100px) {
   .layout,
   .layout[data-history-collapsed="true"] {
     grid-template-columns: minmax(0, 1fr);
@@ -274,116 +313,32 @@
     cursor: pointer;
   }
 }
-
-/* V4: history and transcript share one continuous smoked-glass surface. */
-:global(.glass-workspace) .layout {
-  grid-template-columns: 243px minmax(0, 1fr);
-  gap: 0;
-  border: 1px solid var(--glass-border);
-  border-top-color: color-mix(in srgb, var(--glass-rim) 55%, transparent);
-  border-radius: var(--glass-radius);
-  background: linear-gradient(125deg, #dcefeb08, transparent 48%, #b9b3df08), var(--glass-fill);
-  box-shadow: var(--glass-shadow);
-  -webkit-backdrop-filter: blur(16px) saturate(120%);
-  backdrop-filter: blur(16px) saturate(120%);
-}
-:global(.glass-workspace) .layout[data-history-collapsed="true"] {
-  grid-template-columns: 52px minmax(0, 1fr);
-}
-:global(.glass-workspace) .historyRail {
-  background: transparent;
-  border: 0;
-}
-:global(.glass-workspace) .historyRail .history {
-  width: 224px;
-  background: transparent;
-  padding: 64px 14px 20px;
-}
-:global(.glass-workspace) .historyToggle {
-  top: 12px;
-  left: 12px;
-  right: auto;
-  border-radius: 9px;
-  background: transparent;
-}
-:global(.glass-workspace) .newChat {
-  border-radius: 9px;
-  background: var(--glass-fill);
-  margin-top: 12px;
-}
-:global(.glass-workspace) .historyEmpty {
-  border-radius: 10px;
-  border-style: solid;
-}
-:global(.glass-workspace) .historyRow {
-  border: 1px solid transparent;
-  border-radius: 9px;
-}
-:global(.glass-workspace) .historyRow[data-active="true"] {
-  border-color: var(--line);
-  background: var(--glass-relief), var(--glass-fill-dense);
-}
-:global(.glass-workspace) .historyIndex {
-  font-weight: 400;
-}
-:global(.glass-workspace) .retention {
-  font-size: 10px;
-  line-height: 1.9;
-}
-:global(.glass-workspace) .deleteConfirm button {
-  border-radius: 7px;
-}
-:global(.glass-workspace) .historyFoot {
-  border-top: 1px solid var(--line);
-  padding-top: 16px;
-  gap: 8px;
-}
 @supports not (backdrop-filter: blur(1px)) {
-  :global(.glass-workspace) .layout {
+  .layout {
     background: var(--paper);
   }
 }
 @media (prefers-reduced-transparency: reduce) {
-  :global(.glass-workspace) .layout {
+  .layout {
     background: var(--paper);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
 }
-@media (max-width: 900px) {
-  :global(.glass-workspace) .layout,
-  :global(.glass-workspace) .layout[data-history-collapsed="true"] {
+@media (max-width: 1100px) {
+  .layout,
+  .layout[data-history-collapsed="true"] {
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
   }
-  :global(.glass-workspace) .mobileHistory {
+  .mobileHistory {
     border-radius: 9px;
     right: 16px;
     top: 12px;
     background: var(--surface);
   }
-  :global(.glass-workspace) .historyDrawer:popover-open {
+  .historyDrawer:popover-open {
     background: var(--surface-raised);
     border-radius: 0 16px 16px 0;
   }
-}
-
-:global(.glass-workspace) .newChat,
-:global(.glass-workspace) .mobileHistory {
-  min-height: var(--ui-control-height);
-  border-radius: var(--ui-control-radius);
-  border: 1px solid var(--ui-control-border);
-  background: var(--ui-control-bg);
-  font-size: 12px;
-  font-weight: 500;
-}
-:global(.glass-workspace) .historyToggle {
-  border: 1px solid var(--ui-control-border);
-  background: var(--ui-control-bg);
-  border-radius: var(--ui-control-radius);
-}
-:global(.glass-workspace) .deleteConfirm {
-  background: var(--ui-surface);
-  border-radius: 12px;
-  border: 1px solid var(--line);
 }
