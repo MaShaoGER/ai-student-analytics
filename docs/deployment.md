@@ -115,6 +115,20 @@ OPENAI_MODEL=gpt-4o-mini
 - `records/` 卷保存分析记录，以及 `records/system` 下的账号、会话、AI 设置和用量
 - `data/sample/` 包含在镜像中
 
+### 在 Docker 终端重设登录密码
+
+管理员忘记密码或无法登录页面时，在部署目录执行：
+
+```bash
+docker compose exec student-analytics node scripts/reset-password.mjs
+```
+
+按提示输入已有登录账号、新密码与确认密码（12–128 个字符，密码以星号遮盖）。支持管理员和普通账号，无需旧密码；权限来自服务器终端访问权。不要使用 `-T`，也不要将密码放进命令参数或环境变量。本地开发可运行 `pnpm account:password`，会读取 `.env.local`，账号目录遵循 `APP_STATE_DIR`。
+
+新密码立即生效，该账号全部旧登录会话被撤销，无需重启。角色、数据授权、停用状态及其他账号保持原样；账号文件只保存 scrypt 哈希，同时记录操作者为 `server-cli` 的密码重置日志。此操作不清除登录失败限流，刚触发限流时需等待限制解除。
+
+脚本随新版镜像提供；旧镜像需要先更新才能使用。VPS 使用独立 Compose 文件时，请沿用该环境的项目名和配置路径，例如 `docker compose --project-name 项目名 --file /实际路径/compose.yml exec student-analytics node scripts/reset-password.mjs`。脚本和应用必须使用同一个 `APP_STATE_DIR` 和持久化卷；它不会创建缺失的账号文件。
+
 ## 验证部署
 
 ### 本地快速验证
