@@ -20,6 +20,7 @@
 - [AI学生数据分析系统开发路线图.md](AI学生数据分析系统开发路线图.md)：产品、架构、开发计划和验收标准。
 - [赛事改进路线](docs/competition-improvement-roadmap.md)：2026-10-18 确认的优先顺序、实施范围和验收标准；第一阶段已本地实施，见[实施记录](docs/competition-phase1.md)；第二阶段首版见[实施与验收](docs/competition-phase2.md)。
 - [AI 统一对话与统计分析改进路线图](docs/unified-ai-workflow-roadmap.md)：第 1–4 步已本地实施，统一问答入口、上下文、统计结果与请求用量；后续[回答可靠性修正](docs/ai-answer-reliability.md)补充完整性检查、数字含义绑定与独立语义评测，旧评测未通过项仍如实保留。
+- [创意图表候选与实装备忘](docs/creative-chart-catalog.md)：40 个作品集风格的图形、布局与交互候选，记录虚拟数据映射、参考来源、实现难点及建议批次；目前为调研方案。
 - `oulad_raw/OULAD.names`：OULAD 数据字段说明。
 - `app/`、`components/`、`lib/`：Next.js 页面、图表和受控 DuckDB 分析链路。
 - `data/sample/`、`data/schema/`：虚构演示数据、数据字典和冻结的指标口径。
