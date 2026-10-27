@@ -565,7 +565,7 @@
   box-shadow: none;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-  overflow: hidden;
+  overflow: clip;
 }
 .glass-workspace[data-conversation="true"] .workbench-content {
   padding: 0;
@@ -868,6 +868,47 @@
 .glass-workspace .result-section-heading h2 {
   font-size: 18px;
   font-weight: 500;
+}
+.result-period-details {
+  display: none;
+}
+@media (max-width: 600px) {
+  .glass-workspace .result-section-heading {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .glass-workspace .result-section-heading > div:first-child {
+    min-width: 0;
+    flex: 1;
+  }
+  .glass-workspace .result-period {
+    display: none;
+  }
+  .glass-workspace .result-period-details {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .result-period-details > summary {
+    min-height: 36px;
+    padding-block: 8px;
+    cursor: pointer;
+  }
+  .glass-workspace .result-heading-actions {
+    width: auto;
+    flex: 0 0 auto;
+  }
+  .glass-workspace .result-report-button {
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  .result-report-button > span {
+    display: none;
+  }
 }
 .glass-workspace .result-focus {
   background: var(--glass-fill);

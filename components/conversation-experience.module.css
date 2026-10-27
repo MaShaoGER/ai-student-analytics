@@ -12,7 +12,8 @@
 .shell[data-conversation="true"] :global(.view-surface) {
   min-height: 0;
   height: 100%;
-  overflow: hidden;
+  /* Only the transcript/history scroll; focus must not scroll these wrappers. */
+  overflow: clip;
 }
 .shell[data-conversation="true"] :global(.workbench-content) {
   max-width: none;
@@ -29,7 +30,8 @@
   min-height: 0;
   display: grid;
   grid-template-columns: 236px minmax(0, 1fr);
-  overflow: hidden;
+  overflow: clip;
+  isolation: isolate;
 }
 .layout[data-history-collapsed="true"] {
   grid-template-columns: 52px minmax(0, 1fr);
@@ -282,6 +284,8 @@
   border: 1px solid var(--glass-border);
   border-top-color: color-mix(in srgb, var(--glass-rim) 55%, transparent);
   border-radius: var(--glass-radius);
+  /* Preserve the rounded clip for composited charts and backdrop layers. */
+  clip-path: inset(0 round var(--glass-radius));
   background: linear-gradient(125deg, #dcefeb08, transparent 48%, #b9b3df08), var(--glass-fill);
   box-shadow: var(--glass-shadow);
   -webkit-backdrop-filter: blur(16px) saturate(120%);
@@ -386,4 +390,16 @@
   background: var(--ui-surface);
   border-radius: 12px;
   border: 1px solid var(--line);
+}
+
+@media (max-width: 600px) {
+  :global(.glass-workspace) .mobileHistory {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  .mobileHistory > span {
+    display: none;
+  }
 }

@@ -331,7 +331,7 @@ export function buildChartOption({
       splitLine: { show: false },
       axisLabel: {
         color: colors.text,
-        fontSize: compact ? 10 : 11,
+        fontSize: compact ? 11 : 12,
         width: compact ? 88 : 140,
         overflow: "truncate",
         interval: 0,

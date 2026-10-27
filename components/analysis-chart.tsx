@@ -229,6 +229,11 @@ export function AnalysisChart({
       <div
         ref={rootRef}
         className="chart"
+        style={
+          view === "bar" && barOrientation === "horizontal"
+            ? { height: Math.max(310, rows.length * 28 + 88) }
+            : undefined
+        }
         role={onSelectDimension ? "group" : "img"}
         aria-label={summary}
         tabIndex={onSelectDimension ? 0 : undefined}

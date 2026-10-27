@@ -178,6 +178,9 @@ export function AnalysisResultView({
   // Activity is a sum of whole events, so its count-up must stay integer; scores
   // and percentages may legitimately carry two decimals.
   const valueDecimals = result?.unit === "次" ? 0 : 2;
+  const description = result
+    ? `按${dimension}比较 · ${result.period}`
+    : "选择指标，或用一句话描述你想了解的问题。";
 
   return (
     <section
@@ -192,17 +195,25 @@ export function AnalysisResultView({
       <div className="result-section-heading" data-enter="rise-sm" style={enterAt(60)}>
         <div>
           <h2>{result ? `${result.metricLabel}对比` : "分析结果"}</h2>
-          <p>
-            {result
-              ? `按${dimension}比较 · ${result.period}`
-              : "选择指标，或用一句话描述你想了解的问题。"}
-          </p>
+          <p className={result ? "result-period" : undefined}>{description}</p>
+          {result && (
+            <details className="result-period-details">
+              <summary>数据范围与口径</summary>
+              <p>{description}</p>
+            </details>
+          )}
         </div>
         <div className="result-heading-actions">
           {result && (
-            <button className="secondary-button" type="button" onClick={() => onReport(result)}>
+            <button
+              className="secondary-button result-report-button"
+              type="button"
+              aria-label="生成报告"
+              title="生成报告"
+              onClick={() => onReport(result)}
+            >
               <Icon name="file" size={15} />
-              生成报告
+              <span>生成报告</span>
             </button>
           )}
         </div>

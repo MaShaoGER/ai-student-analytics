@@ -175,10 +175,12 @@ export function ConversationHistory(
       <button
         className={styles.mobileHistory}
         type="button"
+        aria-label="历史对话"
+        title="历史对话"
         popoverTarget="conversation-history-drawer"
       >
         <Icon name="menu" size={16} />
-        历史对话
+        <span>历史对话</span>
       </button>
       <div
         ref={drawer}

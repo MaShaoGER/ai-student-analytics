@@ -225,6 +225,7 @@ export function ConversationArtifact({
             <button
               key={view}
               type="button"
+              aria-label={VIEW_LABEL[view]}
               aria-pressed={activeView === view}
               onClick={() => change(view)}
               title={`${VIEW_LABEL[view]}（复用同一计算结果，不重新查询）`}

@@ -267,9 +267,16 @@ export function ConversationWorkspace({
   // Collapsing only hides controls: the draft lives in the parent's `question`
   // state, so the textarea keeps its value while folded away.
   const [composerCollapsed, setComposerCollapsed] = useState(false);
+  const foldFrom = useRef<DOMRect | null>(null);
+  const { enabled: motionEnabled, reduced: reducedMotion } = useMotionPreferences();
   const [historyCollapsed, setHistoryCollapsed] = useState(false);
   const wasCollapsed = useRef(false);
   const stopRequested = useRef(false);
+
+  const foldComposer = (collapsed: boolean) => {
+    foldFrom.current = composer.current?.getBoundingClientRect() ?? null;
+    setComposerCollapsed(collapsed);
+  };
 
   // A reply can start while the composer is folded (e.g. a transcript
   // suggestion); unfold so "停止回复" stays on screen and reachable.
@@ -354,8 +361,8 @@ export function ConversationWorkspace({
     const dock = composer.current;
     const surface = root.current;
     if (!dock || !surface) return;
-    // The dock floats over the transcript. Reserve scrollable tail space so
-    // the final answer can still be read entirely above it, at any input size.
+    // Size the reading region above the dock so the final answer stays clear
+    // of both the expanded input and its compact handle.
     const measure = () =>
       surface.style.setProperty("--composer-clearance", `${dock.getBoundingClientRect().height}px`);
     const observer = new ResizeObserver(measure);
@@ -372,21 +379,33 @@ export function ConversationWorkspace({
   }, [question, composerCollapsed]);
 
   useLayoutEffect(() => {
-    if (composerCollapsed) return;
+    const from = foldFrom.current;
+    foldFrom.current = null;
     const dock = composer.current;
-    const form = dock?.querySelector("form");
-    const toggle = dock?.querySelector<HTMLButtonElement>('button[aria-label="收起输入区"]');
-    if (!dock || !form || !toggle) return;
-    const measure = () => {
-      // Keep the square at the same screen position as the expanded toggle.
-      const offset = form.getBoundingClientRect().bottom - toggle.getBoundingClientRect().bottom;
-      dock.style.setProperty("--composer-fold-offset", `${offset}px`);
+    if (!from || !dock || !motionEnabled || reducedMotion) return;
+    const to = dock.getBoundingClientRect();
+    // Both states are anchored on the right, so the surface contracts toward
+    // its handle without scaling text or changing the transcript's position.
+    const animation = dock.animate(
+      [
+        { width: `${from.width}px`, height: `${from.height}px` },
+        { width: `${to.width}px`, height: `${to.height}px` },
+      ],
+      { duration: 320, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+    );
+    const fields = dock.querySelector<HTMLElement>(`#${COMPOSER_FIELDS_ID}`);
+    const reveal = !composerCollapsed
+      ? fields?.animate([{ opacity: 0 }, { opacity: 1 }], {
+          duration: 220,
+          delay: 60,
+          fill: "backwards",
+        })
+      : null;
+    return () => {
+      animation.cancel();
+      reveal?.cancel();
     };
-    const observer = new ResizeObserver(measure);
-    observer.observe(form);
-    measure();
-    return () => observer.disconnect();
-  }, [composerCollapsed]);
+  }, [composerCollapsed, motionEnabled, reducedMotion]);
 
   // The folded square retains a short, whitespace-normalised draft tooltip.
   const draftText = question.replace(/\s+/g, " ").trim();
@@ -717,7 +736,7 @@ export function ConversationWorkspace({
               </p>
             )
           ) : (
-            notice
+            !composerCollapsed && notice
           )}
           <form
             className={styles.composer}
@@ -779,11 +798,14 @@ export function ConversationWorkspace({
                       {messages.length > 0 && (
                         <button
                           type="button"
+                          className={styles.newConversation}
+                          aria-label="新对话"
+                          title="新对话"
                           disabled={loading}
                           onClick={() => setClearConfirming(true)}
                         >
                           <Icon name="plus" size={13} />
-                          新对话
+                          <span>新对话</span>
                         </button>
                       )}
                     </>
@@ -798,7 +820,7 @@ export function ConversationWorkspace({
                     disabled={loading}
                     onClick={() => {
                       setClearConfirming(false);
-                      setComposerCollapsed(true);
+                      foldComposer(true);
                     }}
                   >
                     <Icon name="chevron" size={13} />
@@ -808,7 +830,7 @@ export function ConversationWorkspace({
               </div>
               {contextLabel ? (
                 <div className={styles.contextRow}>
-                  <span className={styles.contextChip}>
+                  <span className={styles.contextChip} title={contextLabel}>
                     <Icon name="sliders" size={12} />
                     <span>{contextLabel}</span>
                     <button
@@ -913,7 +935,7 @@ export function ConversationWorkspace({
                   aria-controls={COMPOSER_FIELDS_ID}
                   aria-label="展开输入区"
                   title={draftPreview ? `展开输入区 · 草稿已保留：${draftPreview}` : "展开输入区"}
-                  onClick={() => setComposerCollapsed(false)}
+                  onClick={() => foldComposer(false)}
                 >
                   <Icon name="chevron" size={13} />
                   <span className="sr-only">展开输入区{draftPreview ? "，草稿已保留" : ""}</span>

@@ -192,6 +192,31 @@
   }
 }
 
+@media (max-width: 600px) {
+  .header {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+  .heading {
+    flex: 1;
+  }
+  .controls {
+    flex: 0 0 auto;
+    width: auto;
+    flex-wrap: nowrap;
+  }
+  .controls button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px;
+    justify-content: center;
+  }
+  .controls button > span {
+    display: none;
+  }
+}
+
 :global(html[data-motion="off"]) .controls button {
   transition: none;
 }

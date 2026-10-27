@@ -85,6 +85,10 @@
 .glass-workspace .overview-metric[data-glass-tier="3"]:not(.is-selected) {
   --glass-dot-current: 0;
 }
+.glass-workspace .result-focus {
+  --glass-dot-pitch: 14px;
+  --glass-lens-depth: 1.4;
+}
 .glass-workspace .overview-ask-card[data-glass-tier="3"] {
   --glass-dot-current: 0.2;
 }

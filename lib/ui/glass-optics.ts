@@ -183,6 +183,7 @@ const glassSource = `
     uniform vec4 u_surface[12];
     uniform vec4 u_reliefRects[12];
     uniform vec4 u_reliefMaterials[12];
+    uniform vec2 u_reliefOrigins[12];
     uniform float u_pixelScale;
     uniform float u_dotVibrancy;
 
@@ -231,6 +232,8 @@ const glassSource = `
         // adding another pane (which could escape a scrolling DOM clip). Their
         // relief value raises the dot lattice locally, without a second pass.
         float dotStrength = clamp(surface.x, 0.0, 1.0);
+        vec2 lensLocal = local;
+        float lensDepth = 0.65;
         for (int i = 0; i < 12; i++) {
           if (u_reliefRects[i].z > 0.0) {
             float d = roundedRect(p, u_reliefRects[i], u_reliefMaterials[i].x);
@@ -240,6 +243,9 @@ const glassSource = `
               // fraction of the tier-3 cap, which is theme dependent.
               float reliefCap = mix(0.40, 0.55, u_lightTheme);
               dotStrength = min(relief * reliefCap, reliefCap);
+              lensLocal = p - u_reliefOrigins[i];
+              surface.y = u_reliefMaterials[i].z;
+              lensDepth = u_reliefMaterials[i].w;
             }
           }
         }
@@ -248,8 +254,6 @@ const glassSource = `
         // bends the backdrop for real instead of only perturbing a normal.
         vec2 textureBend = vec2(0.0);
         vec2 facetNormal = vec2(0.0);
-        float facetHeight = 0.0;
-        float dotShade = 0.0;
         float dotMask = 0.0;
         float dotChroma = 0.0;
         if (dotStrength > 0.001) {
@@ -257,23 +261,27 @@ const glassSource = `
           float sa = sin(surface.z);
           // The lattice maths is carried out in canvas device pixels: u_pixelScale
           // lifts CSS pitch/distance into that space before the fract() grid.
-          vec2 rotated = vec2(local.x * ca - local.y * sa, local.x * sa + local.y * ca)
+          vec2 rotated = vec2(lensLocal.x * ca - lensLocal.y * sa, lensLocal.x * sa + lensLocal.y * ca)
                        * u_pixelScale;
           float pitch = max(surface.y * u_pixelScale, 2.5);
           vec2 cell = fract(rotated / pitch) - 0.5;
           float rr = length(cell);
-          float dome = smoothstep(0.40, 0.02, rr);
+          float lensRadius = clamp(rr / 0.46, 0.0, 1.0);
+          float slope = sin(lensRadius * 3.14159265);
           vec2 dirn = normalize(cell + vec2(1e-5));
-          vec2 dotBend = dirn * dome * dotStrength * pitch * 0.42;
-          dotShade = (dome - 0.30) * dotStrength * 0.20;
-          dotMask = smoothstep(0.30, 0.44, rr) * dotStrength;
+          // A converging lens redirects each cell's background rays. Undo the
+          // lattice rotation before sampling; additive white disks cannot
+          // describe refraction, especially over the dark smoke background.
+          vec2 screenDirection = vec2(dirn.x * ca + dirn.y * sa, -dirn.x * sa + dirn.y * ca);
+          vec2 dotBend = -screenDirection * slope * dotStrength * pitch * lensDepth * 1.15;
+          dotMask = smoothstep(0.72, 0.90, lensRadius)
+                  * (1.0 - smoothstep(0.94, 1.0, lensRadius)) * dotStrength;
           // Sampling below happens in CSS pixels, so bring the device-pixel
           // bend (and therefore the chroma spread it drives) back into CSS.
           textureBend = dotBend / u_pixelScale;
-          dotChroma = length(textureBend) * 0.10;
-          // Facet normal and height derive from the same dome as the bend.
-          facetNormal = dirn * dome;
-          facetHeight = dome - 0.30;
+          dotChroma = length(textureBend) * 0.25;
+          // Bevel lighting follows the same radial slope as the refracted rays.
+          facetNormal = screenDirection * slope;
         }
         vec2 drift = vec2(2.2 * sin(u_time * 0.31 + local.y * 0.009),
                           1.4 * cos(u_time * 0.27 + local.x * 0.008));
@@ -284,21 +292,21 @@ const glassSource = `
         float spectralWidth = (2.8 + edge * 10.0 + dotStrength * 1.6 + dotChroma)
                             * mix(1.0, 0.35, smoke);
         vec2 spectralDirection = normalize(normal * edge + vec2(0.7, 0.4));
-        vec2 center = pane.xy + pane.zw * 0.5;
-        vec2 refracted = center + (p - center) * (1.0 - dotStrength * 0.055) + bend;
+        vec2 refracted = p + bend;
 
         color = vec3(
           lightAt(refracted + spectralDirection * spectralWidth).r,
           lightAt(refracted).g,
           lightAt(refracted - spectralDirection * spectralWidth).b
         );
-        if (frost > 0.2) {
+        float localFrost = frost * (1.0 - clamp(dotStrength * 3.0, 0.0, 0.85));
+        if (localFrost > 0.02) {
           vec3 softened = lightAt(refracted) * 0.24
             + lightAt(refracted + vec2(16.0, 9.0)) * 0.19
             + lightAt(refracted + vec2(-16.0, -9.0)) * 0.19
             + lightAt(refracted + vec2(10.0, -18.0)) * 0.19
             + lightAt(refracted + vec2(-10.0, 18.0)) * 0.19;
-          color = mix(color, softened, frost);
+          color = mix(color, softened, localFrost);
         }
 
         color = mix(color, mix(vec3(0.055, 0.095, 0.12), vec3(0.83, 0.88, 0.86), u_lightTheme), 0.12 + frost * 0.18);
@@ -309,13 +317,11 @@ const glassSource = `
         // reads as embossed glass instead of a moving noise overlay.
         if (dotStrength > 0.001) {
           float facetLight = dot(facetNormal, normalize(vec2(-0.65, -0.8)));
-          float emboss = facetLight * (0.045 + min(lightLevel, 0.65) * 0.16);
+          float emboss = facetLight * (0.015 + min(lightLevel, 0.65) * 0.06);
           float facetSpecular = pow(max(0.0, facetLight), 7.0);
           vec3 coating = mix(vec3(0.76, 0.72, 0.95), vec3(0.32, 0.42, 0.48), u_lightTheme);
           color += dotStrength * coating * (emboss + facetSpecular * 0.035);
-          color += dotStrength * facetHeight * vec3(0.006, 0.004, 0.010);
-          color += dotShade;
-          color *= 1.0 - dotMask * 0.16;
+          color *= 1.0 - dotMask * 0.12;
           // Dense dots read heavier, so vivid panes compensate saturation.
           float vibrancy = 1.0 + (u_dotVibrancy - 0.5) * 0.4;
           float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
@@ -405,8 +411,10 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
     if (!gl || disposed || !ready || document.hidden || !intersecting || gl.isContextLost()) return;
     const animated = canAnimate();
     if (animated || timestamp < settleUntil) frameId = requestAnimationFrame(tick);
-    // Decorative optics stay bounded at 24fps with a display-aware pixel budget.
-    if (previous && timestamp - previous < 1000 / 24) return;
+    // Scroll/resize geometry must reach the next frame, even when the ambient
+    // animation is throttled. Otherwise a moving relief leaves its old lens
+    // behind the already-scrolled DOM until the next decorative frame.
+    if (!dirty && previous && timestamp - previous < 1000 / 24) return;
     if (previous && animated) phase += Math.min((timestamp - previous) / 1000, 0.15);
     previous = timestamp;
     if (timestamp < settleUntil) dirty = true;
@@ -497,9 +505,11 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
     const materialLocation = gl.getUniformLocation(glass.handle, "u_materials[0]");
     const surfaceLocation = gl.getUniformLocation(glass.handle, "u_surface[0]");
     const reliefRects = new Float32Array(48),
-      reliefMaterials = new Float32Array(48);
+      reliefMaterials = new Float32Array(48),
+      reliefOrigins = new Float32Array(24);
     const reliefRectLocation = gl.getUniformLocation(glass.handle, "u_reliefRects[0]");
     const reliefMaterialLocation = gl.getUniformLocation(glass.handle, "u_reliefMaterials[0]");
+    const reliefOriginLocation = gl.getUniformLocation(glass.handle, "u_reliefOrigins[0]");
     const resolutionLocation = gl.getUniformLocation(glass.handle, "u_resolution");
     const textureLocation = gl.getUniformLocation(glass.handle, "u_light");
     const pixelScaleLocation = gl.getUniformLocation(glass.handle, "u_pixelScale");
@@ -612,6 +622,7 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
       });
       reliefRects.fill(0);
       reliefMaterials.fill(0);
+      reliefOrigins.fill(0);
       let reliefIndex = 0;
       for (const element of stage.querySelectorAll<HTMLElement>("[data-glass-relief]")) {
         if (reliefIndex === 12) break;
@@ -642,19 +653,23 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
           }
         }
         if (opacity < 0.01 || right <= left || bottom <= top) continue;
+        const style = getComputedStyle(element);
         reliefRects.set(
           [left - bounds.left, top - bounds.top, right - left, bottom - top],
           reliefIndex * 4,
         );
         reliefMaterials.set(
           [
-            parseFloat(getComputedStyle(element).borderTopLeftRadius) || 8,
+            parseFloat(style.borderTopLeftRadius) || 8,
             Number(element.dataset.glassRelief) * opacity,
-            0,
-            0,
+            Math.max(2.5, cssNumber(style, "--glass-dot-pitch", 9)),
+            Math.max(0, cssNumber(style, "--glass-lens-depth", 0.65)),
           ],
           reliefIndex * 4,
         );
+        // The clip may cut off part of a scrolling card; its lattice remains
+        // anchored to the original card instead of sliding along that cut.
+        reliefOrigins.set([rect.left - bounds.left, rect.top - bounds.top], reliefIndex * 2);
         reliefIndex++;
       }
       gl.useProgram(glass.handle);
@@ -663,6 +678,7 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
       gl.uniform4fv(surfaceLocation, surfaces);
       gl.uniform4fv(reliefRectLocation, reliefRects);
       gl.uniform4fv(reliefMaterialLocation, reliefMaterials);
+      gl.uniform2fv(reliefOriginLocation, reliefOrigins);
       gl.uniform2f(resolutionLocation, width, height);
       // CSS pixels -> canvas device pixels; pitch and refraction travel in CSS.
       gl.uniform1f(pixelScaleLocation, canvas.width / Math.max(width, 1));
