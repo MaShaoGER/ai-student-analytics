@@ -9,6 +9,7 @@ import "./motion-auth.css";
 import "./glass-workspace.css";
 import "./glass-auth.css";
 import "./glass-controls.css";
+import "./glass-hierarchy.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 
 export const metadata: Metadata = {

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { Icon, type IconName } from "@/components/app-icons";
 import { ChartViewPicker } from "@/components/chart-view-picker";
 import { AnimatedNumber } from "@/components/ui/animated-number";
-import { resolveChartView, type ChartViewType } from "@/lib/analysis/visualization";
+import { CHART_VIEWS, resolveChartView, type ChartViewType } from "@/lib/analysis/visualization";
 import { METRICS } from "@/lib/analysis/metrics";
 import { suggestedQuestionsFor } from "@/lib/ai/suggested-questions";
 import type { AnalysisResult, DatasetProfile, Metric } from "@/lib/analysis/types";
@@ -255,6 +255,16 @@ export function LearningOverview({
                   <Icon name={card.icon} size={16} />
                   {card.label}
                   <span className="metric-index">0{index + 1}</span>
+                  <span className="overview-metric-state">
+                    {metric === card.metric ? (
+                      <>
+                        <Icon name="check" size={12} />
+                        当前查看
+                      </>
+                    ) : (
+                      "切换查看"
+                    )}
+                  </span>
                 </span>
                 <span className="overview-metric-body">
                   <MetricNumber
@@ -299,8 +309,9 @@ export function LearningOverview({
         data-enter="wipe"
         style={{ "--enter-delay": "340ms" } as CSSProperties}
       >
-        <span>
-          <small>A—01</small>课程表现，一眼看清
+        <span className="overview-chart-context">
+          <span aria-live="polite">{METRICS[metric].label}</span>
+          <small>选择上方指标，切换课程对比</small>
         </span>
         <button className="text-button" type="button" onClick={() => onExplore(metric)}>
           进入详细分析
@@ -318,8 +329,8 @@ export function LearningOverview({
           >
             <div className="overview-panel-heading">
               <div>
-                <span className="section-kicker">COURSE PERFORMANCE</span>
-                <h2>课程信号</h2>
+                <h2>课程对比</h2>
+                <p className="overview-chart-hint">点选图形，查看课程详情</p>
               </div>
               <div className="overview-panel-actions">
                 <span className="overview-chart-legend">
@@ -353,18 +364,38 @@ export function LearningOverview({
                   </button>
                 ))}
               </div>
-              <ChartViewPicker
-                value={chartView}
-                onChange={(value) => setChartViews((current) => ({ ...current, [metric]: value }))}
-                rows={result?.rows ?? []}
-                unit={result?.unit ?? METRICS[metric].unit}
-                includeTable={false}
-                scatterDescription={
-                  comparison
-                    ? `每个气泡代表一门课程。横轴：${comparison.metricLabel}；纵轴：${result?.metricLabel}。气泡面积表示人数，关联不代表因果。`
-                    : undefined
-                }
-              />
+              <details className="overview-chart-options">
+                <summary>
+                  图表样式
+                  <span>
+                    {
+                      CHART_VIEWS.find(
+                        (view) =>
+                          view.value ===
+                          resolveChartView(
+                            chartView,
+                            result?.unit ?? METRICS[metric].unit,
+                            result?.rows ?? [],
+                          ),
+                      )?.label
+                    }
+                  </span>
+                </summary>
+                <ChartViewPicker
+                  value={chartView}
+                  onChange={(value) =>
+                    setChartViews((current) => ({ ...current, [metric]: value }))
+                  }
+                  rows={result?.rows ?? []}
+                  unit={result?.unit ?? METRICS[metric].unit}
+                  includeTable={false}
+                  scatterDescription={
+                    comparison
+                      ? `每个气泡代表一门课程。横轴：${comparison.metricLabel}；纵轴：${result?.metricLabel}。气泡面积表示人数，关联不代表因果。`
+                      : undefined
+                  }
+                />
+              </details>
             </div>
             {result?.rows.length ? (
               <AnalysisChart
@@ -401,7 +432,7 @@ export function LearningOverview({
                         {number(trailing.value, result?.unit)} {result?.unit}
                       </>
                     )}
-                    。点击图形或表格，查看各组数据。
+                    。
                   </>
                 ) : (
                   "每一份洞察，都从可追溯的数据开始。"
@@ -503,28 +534,14 @@ export function LearningOverview({
             data-enter="slide-right"
             style={{ "--enter-delay": "420ms" } as CSSProperties}
           >
-            <div className="ask-card-top">
-              <span className="ask-card-symbol">
-                <Icon name="sparkles" size={23} />
-              </span>
-              <span>AI 分析助手</span>
-            </div>
-            <h2>
-              好的分析，
-              <br />
-              从一个问题开始。
-            </h2>
-            <p>
-              用日常语言提问，
-              <br />
-              把好奇心变成有依据的结论。
-            </p>
+            <h2>进一步了解</h2>
+            <p>比较课程、查看变化，或提出一个具体问题。</p>
             <div
               className="overview-terminal"
               data-enter="rise-sm"
               style={{ "--enter-delay": "620ms" } as CSSProperties}
             >
-              <div className="terminal-label">Q / 01 — QUESTION INPUT</div>
+              <div className="terminal-label">分析问题</div>
               <form
                 onSubmit={(event) => {
                   event.preventDefault();

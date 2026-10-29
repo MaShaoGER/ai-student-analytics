@@ -42,13 +42,14 @@ export function ConversationHistory(
   const [deleting, setDeleting] = useState<string | null>(null);
   const content = (
     <>
-      <div className={styles.historyHeading}>
-        <span>账号对话 / HISTORY</span>
+      <div data-workspace-part="historyHeading" className={styles.historyHeading}>
+        <span>历史对话</span>
         <button type="button" aria-label="刷新历史" onClick={props.onRefresh}>
           <Icon name="refresh" size={15} />
         </button>
       </div>
       <button
+        data-workspace-part="newChat"
         className={styles.newChat}
         type="button"
         onClick={() => {
@@ -59,7 +60,9 @@ export function ConversationHistory(
         <Icon name="plus" size={15} />
         新建对话
       </button>
-      <p className={styles.retention}>最后一条消息更新后保留 10 天。浏览与切换图表不续期。</p>
+      <p data-workspace-part="retention" className={styles.retention}>
+        最后一条消息更新后保留 10 天。浏览与切换图表不续期。
+      </p>
       {props.error ? (
         <p role="alert" className={styles.historyError}>
           {props.error}
@@ -69,12 +72,14 @@ export function ConversationHistory(
         </p>
       ) : null}
       {props.loading ? (
-        <p role="status" className={styles.retention}>
+        <p role="status" data-workspace-part="retention" className={styles.retention}>
           正在读取历史…
         </p>
       ) : null}
       {!props.loading && !props.error && !props.entries.length ? (
-        <p className={styles.historyEmpty}>从一个教学问题开始。你的对话会保存在当前账号。</p>
+        <p data-workspace-part="historyEmpty" className={styles.historyEmpty}>
+          从一个教学问题开始。你的对话会保存在当前账号。
+        </p>
       ) : null}
       <div className={styles.historyList}>
         {props.entries.map((entry, index) => (
@@ -135,11 +140,16 @@ export function ConversationHistory(
         ))}
       </div>
       {props.hasMore ? (
-        <button type="button" className={styles.newChat} onClick={props.onMore}>
+        <button
+          type="button"
+          data-workspace-part="newChat"
+          className={styles.newChat}
+          onClick={props.onMore}
+        >
           加载更早对话
         </button>
       ) : null}
-      <div className={styles.historyFoot}>
+      <div data-workspace-part="historyFoot" className={styles.historyFoot}>
         <span>聚合分析 · 数字可追溯</span>
         <a href="https://www.rareui.com/" target="_blank" rel="noreferrer">
           Rare UI 组件来源 ↗
@@ -150,9 +160,10 @@ export function ConversationHistory(
   );
   return (
     <>
-      <div className={styles.historyRail}>
+      <div data-workspace-part="historyRail" className={styles.historyRail}>
         <button
           type="button"
+          data-workspace-part="historyToggle"
           className={styles.historyToggle}
           aria-label={props.collapsed ? "展开账号历史" : "向左收起账号历史"}
           title={props.collapsed ? "展开账号历史" : "向左收起账号历史"}
@@ -164,6 +175,7 @@ export function ConversationHistory(
         </button>
         <aside
           id="desktop-conversation-history"
+          data-workspace-part="history"
           className={styles.history}
           aria-label="账号历史对话"
           inert={props.collapsed}

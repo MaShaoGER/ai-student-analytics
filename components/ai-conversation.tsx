@@ -49,6 +49,12 @@ export type ConversationTurn = ChatMessage & {
 
 const QUESTION_ERROR_ID = "analysis-question-error";
 const COMPOSER_FIELDS_ID = "analysis-composer-fields";
+const WELCOME_QUESTION_TITLES: Record<string, string> = {
+  "compare-courses": "课程成绩",
+  "term-trend": "学期变化",
+  "score-distribution": "成绩分布",
+  "absence-relationship": "出勤关联",
+};
 /** Enough of the draft to recognise it in the folded button's tooltip. */
 const DRAFT_PREVIEW_LENGTH = 24;
 /** The server's "tool-call check" error speaks to administrators; say this instead. */
@@ -416,6 +422,7 @@ export function ConversationWorkspace({
 
   return (
     <div
+      data-workspace-part="layout"
       className={experience.layout}
       data-history-collapsed={historyCollapsed}
       data-glass-pane="0.35"
@@ -428,26 +435,25 @@ export function ConversationWorkspace({
       <div ref={root} className={styles.conversation}>
         {messages.length === 0 && !loading ? (
           <>
-            <header className={styles.formalHeader}>
+            <header data-workspace-part="formalHeader" className={styles.formalHeader}>
               <div>
-                <span>从问题出发 / ASK YOUR DATA</span>
-                <h1 id="conversation-heading">一句话分析</h1>
-                <p>从一个教学问题，走到看得见的依据。</p>
+                <h1 id="conversation-heading">分析对话</h1>
+                <p
+                  data-workspace-part="availability"
+                  className={styles.availability}
+                  data-enter="fade"
+                  style={{ "--enter-delay": "300ms" } as CSSProperties}
+                >
+                  <span className={aiAllowed && aiReady ? "status-dot" : "status-dot is-muted"} />
+                  {!aiAllowed
+                    ? "当前账号不能使用 AI 对话"
+                    : aiReady
+                      ? `可以自由提问${model ? ` · ${model}` : ""}`
+                      : "常用问题可直接分析"}
+                </p>
               </div>
               {sourceControl}
             </header>
-            <p
-              className={styles.availability}
-              data-enter="fade"
-              style={{ "--enter-delay": "300ms" } as CSSProperties}
-            >
-              <span className={aiAllowed && aiReady ? "status-dot" : "status-dot is-muted"} />
-              {!aiAllowed
-                ? "当前账号不能使用 AI 对话"
-                : aiReady
-                  ? `连续对话已开启${model ? ` · ${model}` : ""}`
-                  : "推荐问题可直接使用 · 自由对话未开启"}
-            </p>
           </>
         ) : (
           <h1 id="conversation-heading" className="sr-only">
@@ -467,32 +473,33 @@ export function ConversationWorkspace({
             {!loading && historyActivity}
             {!messages.length && !loading && (
               <div
+                data-workspace-part="empty"
                 className={styles.empty}
                 data-suggestion-count={welcomeSuggestions.length}
                 data-enter="rise-sm"
                 style={{ "--enter-delay": "400ms" } as CSSProperties}
               >
-                <div className={styles.welcomeMark} aria-hidden="true">
-                  <Icon name="sparkles" size={30} />
-                </div>
-                <span className={styles.welcomeEyebrow}>AI / LEARNING INTELLIGENCE</span>
-                <h2>
-                  <em>一句话分析，</em>
-                  把问题聊清楚。
-                </h2>
+                <h2>从你关心的问题开始</h2>
                 <p>
                   {aiAllowed
                     ? aiReady
-                      ? "问成绩、看趋势、找关联。用你习惯的方式提问，让 AI 帮你整理线索，给出有依据的回答。"
-                      : "可以先用下面的推荐问题；自由对话需要管理员在 AI 设置中开启。"
+                      ? "选择一个常用问题，或在下方输入你想了解的学习情况。"
+                      : "选择一个常用问题，查看课程成绩、学期变化或学习关联。"
                     : "只读账号可使用指标分析，不能使用 AI 对话。请返回指标分析查看确定性统计结果。"}
                 </p>
                 {aiAllowed && (
-                  <div className={styles.welcomeSuggestions} aria-label="推荐问题">
-                    <div className={styles.suggestionHeading}>
-                      <span>没想好怎么问？从一条线索开始</span>
+                  <div
+                    data-workspace-part="welcomeSuggestions"
+                    className={styles.welcomeSuggestions}
+                    aria-label="推荐问题"
+                  >
+                    <div
+                      data-workspace-part="suggestionHeading"
+                      className={styles.suggestionHeading}
+                    >
+                      <span>先看整体，再深入分析</span>
                       <span>
-                        点击直接分析
+                        点击卡片开始
                         <Icon name="arrowUpRight" size={12} />
                       </span>
                     </div>
@@ -500,6 +507,8 @@ export function ConversationWorkspace({
                       <button
                         type="button"
                         key={item.id}
+                        aria-label={item.question}
+                        data-recommended={item.id === "compare-courses" || undefined}
                         disabled={loading || !canRun}
                         onClick={() => {
                           if (!aiAllowed) return;
@@ -517,14 +526,22 @@ export function ConversationWorkspace({
                           }
                           size={17}
                         />
-                        <span>{item.question}</span>
+                        {item.id === "compare-courses" && (
+                          <span className="welcome-start-label" aria-hidden="true">
+                            建议先看
+                          </span>
+                        )}
+                        <span className="welcome-question-copy">
+                          <strong>{WELCOME_QUESTION_TITLES[item.id] ?? "进一步分析"}</strong>
+                          <small>{item.question}</small>
+                        </span>
                         <Icon name="arrowUpRight" size={14} />
                       </button>
                     ))}
                   </div>
                 )}
                 {aiAllowed && (
-                  <p className={styles.privacy}>
+                  <p data-workspace-part="privacy" className={styles.privacy}>
                     <Icon name="shield" size={13} />
                     仅分析群体统计 · 统计数字由本地计算 · 结论有据可查
                   </p>
@@ -717,10 +734,15 @@ export function ConversationWorkspace({
           ) : null}
         </div>
         {!loading && pendingSteps.length > 0 ? <ExecutionSteps steps={pendingSteps} /> : null}
-        <div ref={composer} className={styles.composerDock} data-collapsed={composerCollapsed}>
+        <div
+          ref={composer}
+          data-workspace-part="composerDock"
+          className={styles.composerDock}
+          data-collapsed={composerCollapsed}
+        >
           {aiAllowed && !aiReady && !composerCollapsed && (
-            <p className={styles.note}>
-              推荐问题和表格切换无需连接 AI。自由对话需要管理员在 AI 设置中开启。
+            <p data-workspace-part="composerNote" className={styles.note}>
+              常用问题可直接使用。自由提问需管理员开启 AI 连接。
               {onConfigure && (
                 <button type="button" className="text-button" onClick={onConfigure}>
                   去设置
@@ -739,6 +761,7 @@ export function ConversationWorkspace({
             !composerCollapsed && notice
           )}
           <form
+            data-workspace-part="composer"
             className={styles.composer}
             aria-label="对话输入"
             aria-disabled={!aiAllowed}
@@ -755,16 +778,12 @@ export function ConversationWorkspace({
               className={styles.composerFields}
               hidden={composerCollapsed}
             >
-              <div className={styles.composerHeading}>
+              <div data-workspace-part="composerHeading" className={styles.composerHeading}>
                 <label htmlFor="analysis-question">
-                  <Icon name="sparkles" size={14} />
-                  {!aiReady
-                    ? "自由对话未开启"
-                    : messages.length
-                      ? "继续追问"
-                      : "把你的问题，交给 AI"}
+                  <Icon name="messages" size={14} />
+                  {aiReady && messages.length ? "继续追问" : "输入分析问题"}
                 </label>
-                <div className={styles.composerTools}>
+                <div data-workspace-part="composerTools" className={styles.composerTools}>
                   {clearConfirming && messages.length > 0 ? (
                     <div
                       className={styles.clearConfirm}
@@ -812,6 +831,7 @@ export function ConversationWorkspace({
                   )}
                   <button
                     type="button"
+                    data-workspace-part="collapseToggle"
                     className={styles.collapseToggle}
                     aria-expanded="true"
                     aria-controls={COMPOSER_FIELDS_ID}
@@ -865,7 +885,7 @@ export function ConversationWorkspace({
                       ? messages.length
                         ? "只看上学期、换成表格，或继续追问…"
                         : "你想了解哪些学习情况？"
-                      : "可先用推荐问题；自由对话需管理员在 AI 设置中开启"
+                      : "例如：各学期平均成绩如何？"
                     : "只读账号不能使用 AI 对话"
                 }
                 disabled={!aiAllowed}
@@ -892,7 +912,7 @@ export function ConversationWorkspace({
                   {inputError}
                 </p>
               ) : null}
-              <div className={styles.composerActions}>
+              <div data-workspace-part="composerActions" className={styles.composerActions}>
                 <span>
                   {question.length}/500
                   <span className={styles.shortcut}> · Enter 发送，Shift + Enter 换行</span>
@@ -930,6 +950,7 @@ export function ConversationWorkspace({
                 <button
                   ref={expandButton}
                   type="button"
+                  data-workspace-part="collapseToggle"
                   className={styles.collapseToggle}
                   aria-expanded="false"
                   aria-controls={COMPOSER_FIELDS_ID}
@@ -1058,7 +1079,7 @@ function DistributionResult({
       {!rows.length && (
         <p role="status">当前范围没有满足样本要求的数据，请调整筛选。缺失值不作零分。</p>
       )}
-      <p className={styles.note}>
+      <p data-workspace-part="composerNote" className={styles.note}>
         仅展示至少 {artifact.data.minSampleSize}{" "}
         人的课程学期分组；同一学生、课程、学期先取有效成绩均值。跨学期分别计次。热力图颜色越深，数量越多，全部课程共用色阶。
       </p>

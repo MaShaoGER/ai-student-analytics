@@ -1,0 +1,331 @@
+/* Refine the committed glass workspace's hierarchy without replacing its
+   optical renderer, transparent materials, motion, or transcript clearance. */
+:root[data-theme] .glass-workspace [data-workspace-part="formalHeader"] {
+  padding-bottom: 12px;
+}
+:root[data-theme] .glass-workspace [data-workspace-part="formalHeader"] h1 {
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 500;
+  margin: 4px 0;
+}
+:root[data-theme] .glass-workspace [data-workspace-part="formalHeader"] .workbench-source {
+  padding: 0;
+}
+:root[data-theme] .glass-workspace [data-workspace-part="formalHeader"] .workbench-source > span {
+  display: none;
+}
+:root[data-theme]
+  .glass-workspace
+  [data-workspace-part="formalHeader"]
+  [data-workspace-part="availability"] {
+  min-height: 20px;
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+:root[data-theme] .glass-workspace [data-workspace-part="empty"] {
+  padding: 8px 0 20px;
+}
+:root[data-theme] .glass-workspace [data-workspace-part="empty"] h2 {
+  font-size: 28px;
+  line-height: 1.4;
+  letter-spacing: -0.5px;
+  font-weight: 500;
+  margin: 8px 0 12px;
+}
+:root[data-theme] .glass-workspace [data-workspace-part="empty"] > p {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+:root[data-theme] .glass-workspace [data-workspace-part="suggestionHeading"] {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+:root[data-theme] .glass-workspace [data-workspace-part="welcomeSuggestions"] {
+  margin-top: 20px;
+  gap: 12px;
+  max-width: none;
+}
+:root[data-theme] .glass-workspace [data-workspace-part="welcomeSuggestions"] button {
+  position: relative;
+  align-items: center;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 18px 14px;
+  min-height: 54px;
+}
+:root[data-theme]
+  .glass-workspace
+  [data-workspace-part="welcomeSuggestions"]
+  button[data-recommended="true"] {
+  border-color: color-mix(in srgb, var(--ink) 45%, var(--line));
+  background: color-mix(in srgb, var(--ink) 9%, var(--glass-fill));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--ink) 16%, transparent);
+}
+:root[data-theme] .glass-workspace .welcome-start-label {
+  position: absolute;
+  top: -10px;
+  left: 14px;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--instrument-bg);
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 18px;
+}
+:root[data-theme] .glass-workspace .welcome-question-copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+:root[data-theme] .glass-workspace .welcome-question-copy strong {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+}
+:root[data-theme] .glass-workspace .welcome-question-copy small {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+:root[data-theme] .glass-workspace [data-workspace-part="empty"] [data-workspace-part="privacy"] {
+  margin-top: 12px;
+  font-size: 11px;
+  line-height: 1.6;
+}
+:root[data-theme]
+  .glass-workspace
+  [data-workspace-part="welcomeSuggestions"]
+  button
+  > svg:last-child {
+  opacity: 0.6;
+}
+:root[data-theme] .glass-workspace [data-workspace-part="historyHeading"] {
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+:root[data-theme] .glass-workspace [data-workspace-part="composerHeading"] {
+  font-size: 13px;
+}
+:root[data-theme] .glass-workspace [data-workspace-part="composer"] textarea {
+  font-size: 14px;
+}
+:root[data-theme]
+  .glass-workspace
+  [data-workspace-part="composerDock"]
+  [data-workspace-part="composerNote"] {
+  color: var(--muted);
+  font-size: 12px;
+}
+:root[data-theme] .glass-workspace[data-view="overview"] .page-eyebrow,
+:root[data-theme] .glass-workspace .overview-metric .metric-index {
+  display: none;
+}
+:root[data-theme] .glass-workspace .overview-introduction {
+  padding-bottom: 18px;
+}
+:root[data-theme] .glass-workspace .overview-toolbar p,
+:root[data-theme] .glass-workspace .overview-metric-note {
+  font-size: 12px;
+  line-height: 1.7;
+}
+:root[data-theme] .glass-workspace .overview-metric {
+  padding: 16px;
+  gap: 8px;
+}
+:root[data-theme] .glass-workspace .overview-metric-label {
+  font-size: 13px;
+}
+:root[data-theme] .glass-workspace .overview-metric-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 400;
+  white-space: nowrap;
+  color: var(--muted);
+}
+:root[data-theme] .glass-workspace .overview-metric.is-selected .overview-metric-state {
+  color: var(--ink);
+}
+:root[data-theme] .glass-workspace .overview-metric.is-selected {
+  border-color: color-mix(in srgb, var(--ink) 44%, var(--line));
+}
+:root[data-theme] .glass-workspace .overview-metric-value {
+  font-variant-numeric: tabular-nums;
+}
+:root[data-theme] .glass-workspace .overview-section-bar {
+  margin: 20px 0 12px;
+}
+:root[data-theme] .glass-workspace .overview-chart-context {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+:root[data-theme] .glass-workspace .overview-chart-context small {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+:root[data-theme] .glass-workspace .overview-chart-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+:root[data-theme] .glass-workspace .overview-chart-toolbar {
+  align-items: flex-start;
+  gap: 12px;
+}
+:root[data-theme] .glass-workspace .overview-chart-options {
+  min-width: 0;
+  max-width: 100%;
+}
+:root[data-theme] .glass-workspace .overview-chart-options summary {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 9px 10px;
+  min-height: 38px;
+  cursor: pointer;
+}
+:root[data-theme] .glass-workspace .overview-chart-options summary span {
+  margin-left: 10px;
+  color: var(--ink);
+}
+:root[data-theme] .glass-workspace .overview-chart-options[open] {
+  flex-basis: 100%;
+}
+:root[data-theme] .glass-workspace .overview-chart-options .chart-view-picker {
+  padding-top: 8px;
+}
+:root[data-theme] .glass-workspace .overview-ask-card {
+  padding: 22px;
+}
+:root[data-theme] .glass-workspace .overview-ask-card h2 {
+  font-size: 19px;
+  line-height: 1.5;
+  margin: 0 0 8px;
+}
+:root[data-theme] .glass-workspace .overview-ask-card > p {
+  font-size: 13px;
+}
+:root[data-theme] .glass-workspace .terminal-label {
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+@media (min-width: 901px) {
+  :root[data-theme] .glass-workspace [data-workspace-part="welcomeSuggestions"] {
+    grid-template-columns: 1.15fr 1fr 1fr;
+  }
+  :root[data-theme]
+    .glass-workspace
+    [data-suggestion-count="4"]
+    [data-workspace-part="welcomeSuggestions"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  :root[data-theme]
+    .glass-workspace
+    [data-suggestion-count="2"]
+    [data-workspace-part="welcomeSuggestions"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  :root[data-theme] .glass-workspace [data-workspace-part="welcomeSuggestions"] button {
+    min-height: 68px;
+  }
+}
+@media (min-width: 1101px) {
+  :root[data-theme] .glass-workspace .overview-columns {
+    grid-template-columns: minmax(0, 1fr) 260px;
+    gap: 20px;
+  }
+}
+@media (max-width: 600px) {
+  :root[data-theme] .glass-workspace [data-workspace-part="empty"] {
+    padding-top: 0;
+  }
+  :root[data-theme] .glass-workspace [data-workspace-part="empty"] h2 {
+    font-size: 22px;
+    margin: 4px 0 8px;
+  }
+  :root[data-theme] .glass-workspace [data-workspace-part="empty"] > p {
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  :root[data-theme] .glass-workspace [data-workspace-part="welcomeSuggestions"] {
+    margin-top: 12px;
+    gap: 10px;
+  }
+  :root[data-theme] .glass-workspace [data-workspace-part="welcomeSuggestions"] button {
+    min-height: 50px;
+    padding: 9px 10px;
+  }
+  :root[data-theme] .glass-workspace .welcome-question-copy {
+    gap: 1px;
+  }
+  :root[data-theme] .glass-workspace .welcome-question-copy strong {
+    font-size: 13px;
+  }
+  :root[data-theme] .glass-workspace .welcome-question-copy small {
+    font-size: 11px;
+  }
+  :root[data-theme] .glass-workspace [data-suggestion-count="4"] .welcome-question-copy small {
+    display: none;
+  }
+  :root[data-theme] .glass-workspace .welcome-start-label {
+    top: -9px;
+    left: auto;
+    right: 12px;
+    font-size: 10px;
+    line-height: 16px;
+  }
+  :root[data-theme] .glass-workspace [data-workspace-part="composer"] textarea {
+    font-size: 16px;
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  :root[data-theme]
+    .glass-workspace
+    [data-workspace-part="welcomeSuggestions"]
+    button:hover:not(:disabled),
+  :root[data-theme] .glass-workspace .overview-metric:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--ink) 55%, var(--line));
+    background-color: color-mix(in srgb, var(--ink) 7%, transparent);
+  }
+  :root[data-theme]
+    .glass-workspace
+    [data-workspace-part="welcomeSuggestions"]
+    button:hover:not(:disabled)
+    > svg:last-child {
+    opacity: 1;
+    transform: translate(2px, -2px);
+  }
+}
+:root[data-theme]
+  .glass-workspace
+  [data-workspace-part="welcomeSuggestions"]
+  button:focus-visible
+  > svg:last-child {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-theme][data-motion="on"]
+    .glass-workspace
+    [data-workspace-part="welcomeSuggestions"]
+    button
+    > svg:last-child {
+    transition:
+      transform 160ms ease,
+      opacity 160ms ease;
+  }
+}
