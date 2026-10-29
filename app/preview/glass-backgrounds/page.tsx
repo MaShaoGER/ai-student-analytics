@@ -3,6 +3,7 @@
 import { GlassBackdrop } from "@/components/glass-backdrop";
 import { ThemeToggle } from "@/components/ui/theme-provider";
 import { glassPatterns } from "@/lib/ui/glass-patterns";
+import "../optics-tiers.css";
 import styles from "./backgrounds.module.css";
 
 /** Static, like-for-like comparison; no account, data or AI requests. */

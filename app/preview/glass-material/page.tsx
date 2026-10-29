@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/ui/theme-provider";
 import { useMotionPreferences } from "@/components/ui/motion-preferences";
 import { glassPatterns, type GlassPattern } from "@/lib/ui/glass-patterns";
 import { Icon } from "@/components/app-icons";
+import "../optics-tiers.css";
 import styles from "./material.module.css";
 
 /** Public visual specimen only: no account, dataset, or model calls. */

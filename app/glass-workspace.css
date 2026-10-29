@@ -1,68 +1,7 @@
-/* V4 implementation: teachers move between evidence-led conversation and course
-   aggregates. Mint marks selection; cyan/violet/amber stay in the glass edges.
-   4px rhythm, 14px reading text, 24px headings, 224px supporting navigation. */
+/* Workspace layout and materials. Every colour, material and type value is a
+   token from app/tokens.css; this file only arranges and applies them.
+   4px rhythm, 14px reading text, 224px supporting navigation. */
 .glass-workspace {
-  --corner-radius: 10px;
-  --panel-radius: 16px;
-  --glass-radius: 18px;
-  --glass-fill: #eaf2edc9;
-  --glass-border: #38554b29;
-  --glass-rim: #ffffffc2;
-  --glass-shadow: inset 0 1px 0 #ffffffd9, inset 0 -1px 2px #537d7412, 0 8px 28px #223b3510;
-  --background: #dbe5e1;
-  --paper: #eaf1ed;
-  --surface: #e7efea;
-  --surface-inset: #dbe6df;
-  --surface-raised: #f3f7f3;
-  --ink: #243e37;
-  --muted: #506a62;
-  --muted-on-sage: #486359;
-  --line: #38554b30;
-  --accent: #365d4e;
-  --accent-ink: #2b5443;
-  --button-ink: #f3f7ee;
-  --sage: #91b5a1;
-  --sage-surface: #c7d9ce;
-  --sage-soft: #d5e3da;
-  --teal: var(--accent);
-  --teal-soft: var(--sage-soft);
-  --teal-dark: var(--accent-ink);
-  --control-group: #dbe7df;
-  --score: #3b6654;
-  --score-soft: #d2e3d9;
-  --score-bar: #6f9f88;
-  --activity: #795c3e;
-  --activity-soft: #ece4d8;
-  --activity-bar: #aa8c64;
-  --completion: #3c6863;
-  --completion-soft: #d3e4df;
-  --completion-bar: #719f94;
-  --instrument-bg: #e2ece6;
-  --instrument-ink: var(--ink);
-  --instrument-muted: var(--muted);
-  --instrument-inset: #d9e6dd;
-  --instrument-raised: #f0f5f0;
-  --instrument-line: var(--line);
-  --instrument-soft: #c8ddd1;
-  --instrument-grid: #51746430;
-  --instrument-tooltip: var(--surface-raised);
-  --instrument-tooltip-line: var(--line);
-  --chart-primary: var(--accent);
-  --chart-secondary: var(--score-bar);
-  --chart-text: var(--ink);
-  --chart-muted: var(--muted);
-  --chart-grid: var(--line);
-  --chart-tooltip-bg: var(--surface-raised);
-  --chart-tooltip-border: var(--line);
-  /* CSS fallback microlens: round dimples on a 9px pitch (matches
-     --glass-dot-pitch). Static material for the no-WebGL path only. */
-  --glass-relief:
-    radial-gradient(ellipse 1.6px 1.4px at 2.6px 2.2px, rgb(255 255 255 / 0.1), transparent 88%) 0
-      0 / 9px 9px,
-    radial-gradient(ellipse 1.6px 1.4px at 4.6px 4.2px, rgb(0 0 0 / 0.16), transparent 88%) 0 0 /
-      9px 9px;
-  --glass-fill-dense:
-    linear-gradient(125deg, rgb(255 255 255 / 0.09), transparent 55%), var(--glass-fill);
   position: relative;
   isolation: isolate;
   display: grid;
@@ -74,66 +13,36 @@
   min-height: 100dvh;
   margin: 0;
   padding: 24px 28px;
-  background: var(--background);
+  background: var(--field-ground);
   color: var(--ink);
+  font-family: var(--font-sans);
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
 }
-:root[data-theme="dark"] .glass-workspace {
-  --glass-fill: #16272eb8;
-  --glass-border: #d4e8e02b;
-  --glass-rim: #ecf6ee62;
-  --glass-shadow:
-    inset 0 1px 0 #effff31c, inset 0 -1px 2px #d2eaf012, 0 3px 0 #07151c38, 0 10px 30px #07152224;
-  --background: #111e24;
-  --paper: #17282e;
-  --surface: #1c2e34;
-  --surface-inset: #122229;
-  --surface-raised: #293e44;
-  --ink: #ecf2ee;
-  --muted: #afc3bd;
-  --muted-on-sage: #b9cec2;
-  --line: #d4e8e02b;
-  --accent: #c4d7cb;
-  --accent-ink: #d6e6d5;
-  --button-ink: #243b35;
-  --sage: #a8c7b8;
-  --sage-surface: #29433d;
-  --sage-soft: #233c36;
-  --control-group: #10232a;
-  --score: #c5dccf;
-  --score-soft: #263e35;
-  --score-bar: #8fb9a4;
-  --activity: #e5c2a0;
-  --activity-soft: #3e352c;
-  --activity-bar: #c0a180;
-  --completion: #b2d4cd;
-  --completion-soft: #203c37;
-  --completion-bar: #82b4a9;
-  --instrument-bg: #12242a;
-  --instrument-inset: #172c32;
-  --instrument-raised: #2b4145;
-  --instrument-soft: #2b453b;
-  --instrument-grid: #c5ddd32b;
-  --danger: #ffb6ac;
-  --warning: #f0c9a3;
-  --success: #b7d7bd;
-}
-/* One optical rim and one frost layer per large surface. Content stays sharp. */
-.glass-workspace .workbench-main,
+/* Frame: regular frosted glass refracting the light field. No dispersion rim. */
 .glass-workspace .glass-data-sidebar,
 .glass-workspace .glass-mode-switch,
 .glass-workspace .glass-tools {
   border: 1px solid var(--glass-border);
-  border-top-color: var(--glass-rim);
   border-radius: var(--glass-radius);
-  background: linear-gradient(125deg, #dcefeb08, transparent 48%, #b9b3df08), var(--glass-fill);
+  background: var(--glass-fill);
   box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
 }
-.glass-workspace .workbench-main,
 .glass-workspace .glass-data-sidebar {
-  -webkit-backdrop-filter: blur(16px) saturate(120%);
-  backdrop-filter: blur(16px) saturate(120%);
+  background: var(--glass-fill-dim);
+}
+/* Reading surface: a diffused veil, so the field arrives only as a tint. */
+.glass-workspace .workbench-main {
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse 60% 40% at 88% 0%, var(--surface-glint), transparent 70%),
+    linear-gradient(180deg, var(--surface-sheen) 0, transparent 1px) top / 100% 1px no-repeat,
+    var(--surface-veil);
+  box-shadow: var(--surface-shadow);
+  -webkit-backdrop-filter: var(--surface-blur);
+  backdrop-filter: var(--surface-blur);
 }
 .glass-workspace .workbench-main {
   grid-column: 2;
@@ -220,17 +129,23 @@
   font-size: 12px;
   white-space: nowrap;
 }
-.glass-mode-switch button[aria-pressed="true"] {
-  background: var(--glass-relief), var(--glass-fill-dense);
-  color: var(--ink);
-  box-shadow:
-    inset 0 1px 0 #ffffff4d,
-    0 2px 4px #07152218;
+.glass-mode-switch button {
+  position: relative;
 }
-.glass-context {
-  font-size: 11px;
-  color: var(--muted-on-sage);
-  letter-spacing: 0.5px;
+.glass-mode-switch button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  color: var(--ink);
+  font-weight: 600;
+}
+.glass-mode-switch button[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  width: 14px;
+  height: 2px;
+  margin-left: -7px;
+  background: var(--accent);
 }
 .glass-workspace .glass-tools {
   gap: 8px;
@@ -266,11 +181,91 @@
 .glass-avatar {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--line);
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  background: var(--glass-relief), var(--glass-fill-dense);
+  background: var(--ink);
+  color: var(--paper);
+  font: 600 13px/1 var(--font-serif);
+}
+/* Account menu: identity, appearance and session actions in one place. */
+.glass-workspace .account-menu {
+  position: fixed;
+  inset: 96px 28px auto auto;
+  width: 252px;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  background: var(--glass-fill-dense);
+  color: var(--ink);
+  box-shadow:
+    var(--glass-shadow),
+    0 18px 48px #0000002e;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.glass-workspace .account-menu:popover-open {
+  display: grid;
+  gap: 2px;
+  animation: account-menu-in 160ms var(--ease-out);
+}
+@keyframes account-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.account-menu-head {
+  display: grid;
+  gap: 3px;
+  padding: 10px 10px 12px;
+}
+.account-menu-head strong {
+  font: 600 14px/1.4 var(--font-serif);
+}
+.account-menu-head span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.glass-workspace .account-menu > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  text-align: left;
+}
+.glass-workspace .account-menu > button:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+.glass-workspace .account-menu > button:disabled {
+  color: var(--faint);
+}
+.account-menu hr {
+  margin: 4px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+.account-menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 4px 4px 10px;
+  font-size: 13px;
+}
+@media (max-width: 760px) {
+  .glass-workspace .account-menu {
+    /* The top bar wraps to two rows here; open below the tools row. */
+    inset: 124px 12px auto auto;
+  }
 }
 .glass-user-name {
   max-width: 100px;
@@ -297,14 +292,6 @@
   font-size: 12px;
   color: var(--ink);
 }
-.glass-sidebar-label small {
-  font:
-    9px/1.5 "SFMono-Regular",
-    Consolas,
-    monospace;
-  color: var(--muted);
-  letter-spacing: 1.6px;
-}
 .glass-workspace .workspace-nav {
   display: flex;
   flex-direction: column;
@@ -324,11 +311,40 @@
   background: transparent;
   font-size: 12px;
 }
+.glass-workspace .workspace-nav button {
+  position: relative;
+}
+.glass-workspace .workspace-nav button:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+}
+.glass-workspace .workspace-nav .nav-index {
+  min-width: 18px;
+  font: 11px/1 var(--font-mono);
+  color: var(--faint);
+}
+.glass-workspace .workspace-nav button small {
+  margin-left: auto;
+  font: 11px/1 var(--font-mono);
+  color: var(--faint);
+}
 .glass-workspace .workspace-nav button[aria-current="page"] {
   color: var(--ink);
-  background: var(--glass-relief), var(--glass-fill-dense);
-  border-color: var(--line);
-  box-shadow: inset 0 1px 0 #ffffff0c;
+  font-weight: 600;
+  border-left: 1px solid transparent;
+  background: transparent;
+}
+.glass-workspace .workspace-nav button[aria-current="page"] .nav-index {
+  color: var(--accent);
+}
+.glass-workspace .workspace-nav button[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  background: var(--accent);
 }
 .glass-workspace .workspace-nav .navigation-indicator {
   display: none;
@@ -378,20 +394,19 @@
   margin-bottom: 24px;
 }
 .glass-workspace .page-introduction h1 {
-  font-size: 26px;
-  font-weight: 500;
-  letter-spacing: -0.5px;
+  font-family: var(--font-serif);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   margin: 10px 0 8px;
 }
 .glass-workspace .page-introduction p {
   font-size: 12px;
 }
 .glass-workspace .page-eyebrow {
-  font:
-    9px/1.5 "SFMono-Regular",
-    Consolas,
-    monospace;
-  letter-spacing: 1.2px;
+  font: 11px/1.5 var(--font-mono);
+  letter-spacing: 0.04em;
+  color: var(--muted);
 }
 .glass-workspace .page-eyebrow::before {
   display: none;
@@ -399,8 +414,8 @@
 .glass-workspace .panel {
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: color-mix(in srgb, var(--surface) 65%, transparent);
-  box-shadow: inset 0 1px 0 #ffffff08;
+  background: color-mix(in srgb, var(--ink) 2%, transparent);
+  box-shadow: none;
 }
 .glass-workspace .overview-hero {
   display: block;
@@ -414,39 +429,61 @@
   border: 0;
 }
 .glass-workspace .overview-introduction h1 {
-  font-size: 28px;
-  line-height: 1.3;
+  font-family: var(--font-serif);
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
 }
 .glass-workspace .overview-toolbar {
   margin: 0;
   padding-top: 8px;
 }
+/* Readout band: one row of instruments split by hairlines, not three cards. */
 .glass-workspace .overview-metrics {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 0;
   background: transparent;
   border: 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 .glass-workspace .overview-metric,
 .glass-workspace .overview-metric:first-child,
 .glass-workspace .overview-metric:last-child {
   grid-column: auto;
-  padding: 20px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--glass-fill);
+  gap: 8px;
+  padding: 22px 24px 20px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.glass-workspace .overview-metric + .overview-metric {
+  border-left: 1px solid var(--line);
+}
+.glass-workspace .overview-metric:first-child {
+  padding-left: 4px;
+}
+.glass-workspace .overview-metric:hover {
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
 }
 .glass-workspace .overview-metric.is-selected {
-  background: var(--glass-relief), var(--glass-fill-dense);
-  border-top-color: var(--glass-rim);
+  background: linear-gradient(var(--accent), var(--accent)) top left / 28px 2px no-repeat;
+}
+.glass-workspace .overview-metric-label {
+  font-family: var(--font-serif);
+  font-size: 15px;
 }
 .glass-workspace .overview-metric-value {
-  font-size: 32px;
+  font-family: var(--font-mono);
+  font-size: clamp(28px, 2.8vw, 40px);
   font-weight: 500;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
 }
 .glass-workspace .overview-metric:first-child .overview-metric-value {
-  font-size: 36px;
+  font-size: clamp(28px, 2.8vw, 40px);
 }
 .glass-workspace .overview-metric-note {
   color: var(--muted);
@@ -455,14 +492,15 @@
   color: var(--muted);
 }
 .glass-workspace .overview-section-bar {
-  margin: 24px 0 16px;
+  margin: 32px 0 16px;
   padding: 0;
   border: 0;
   background: transparent;
 }
 .glass-workspace .overview-section-bar > span {
-  font-size: 14px;
-  font-weight: 500;
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 600;
 }
 .glass-workspace .overview-section-bar small {
   color: var(--muted);
@@ -485,8 +523,9 @@
   background: transparent;
 }
 .glass-workspace .overview-panel-heading h2 {
-  font-size: 18px;
-  font-weight: 500;
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 600;
 }
 .glass-workspace .overview-ask-card {
   border-radius: 14px;
@@ -506,10 +545,16 @@
 .glass-workspace .overview-secondary {
   border: 0;
 }
+/* The legacy single-grid layout pinned these cards to column 2; inside the
+   secondary column they flow in its own grid. */
+.glass-workspace .overview-secondary > * {
+  grid-column: auto;
+  grid-row: auto;
+}
 .glass-workspace .primary-button {
-  color: var(--ink);
-  background: var(--glass-relief), var(--glass-fill-dense);
-  border-color: color-mix(in srgb, var(--glass-rim) 45%, transparent);
+  color: var(--button-ink);
+  background: var(--ink);
+  border-color: var(--ink);
   border-radius: 8px;
 }
 .glass-workspace .secondary-button {
@@ -588,7 +633,6 @@
 }
 /* Keep every existing function reachable below the desktop composition. */
 @media (max-width: 1200px) {
-  .glass-context,
   .glass-user-name {
     display: none;
   }
@@ -668,7 +712,11 @@
   }
   .glass-workspace .overview-metric,
   .glass-workspace .overview-metric:first-child {
-    padding: 16px;
+    padding: 18px 4px;
+  }
+  .glass-workspace .overview-metric + .overview-metric {
+    border-left: 0;
+    border-top: 1px solid var(--line);
   }
   .glass-workspace .overview-secondary {
     grid-template-columns: minmax(0, 1fr);
@@ -703,137 +751,13 @@
   overflow-y: auto;
 }
 
-/* Optical material pass: broad transmitted light + a polished chromatic rim.
-   The renderer bends only the background; foreground pixels stay untouched. */
-.glass-workspace {
-  --glass-fill: #eaf2ed69;
-  --glass-border: #638b8059;
-  --glass-rim: #ffffffed;
-  --glass-shadow:
-    inset 0 1px 2px #ffffffec, inset 1px 0 2px #ffffff94, inset 0 -2px 4px #779f9c30,
-    0 3px 0 #71988a3b, 0 5px 0 #effff259, 0 16px 32px #233c3526;
-}
-:root[data-theme="dark"] .glass-workspace {
-  --glass-fill: #10232b52;
-  --glass-border: #d4ece464;
-  --glass-rim: #f1fff3bd;
-  --glass-shadow:
-    inset 0 1px 2px #effff36e, inset 1px 0 2px #d8eff04d, inset 0 -2px 4px #abc9ef40,
-    0 3px 0 #081923a3, 0 5px 0 #b6d8df29, 0 16px 30px #0715224d;
-}
+/* Inside the reading surface everything is flat: hairlines, no glass. */
 .glass-workspace :is([data-glass-pane], .panel) {
   position: relative;
 }
-.glass-workspace :is([data-glass-pane], .panel)::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  width: auto;
-  height: auto;
-  padding: 1px;
-  border-radius: inherit;
-  pointer-events: none;
-  background: conic-gradient(
-    from 35deg,
-    transparent 0deg,
-    #b9efffdd 42deg,
-    #d1a8ffb8 54deg,
-    transparent 86deg,
-    #ffd6a9b8 145deg,
-    transparent 185deg,
-    #c1a9ef7d 224deg,
-    transparent 267deg,
-    #f0ffe9d1 306deg,
-    transparent 338deg
-  );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-}
-.glass-workspace[data-optics="webgl"] :is([data-glass-pane], .panel) {
-  background: linear-gradient(125deg, #dcefeb08, transparent 48%, #b9b3df09), var(--glass-fill);
-  box-shadow: var(--glass-shadow);
+.glass-workspace .workbench-main :is([data-glass-pane], .panel) {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-}
-.glass-workspace[data-optics="webgl"] .overview-metric {
-  background: var(--glass-fill);
-}
-/* The CSS dot material is a degraded fallback only. Once the optical pass owns
-   the surface, every legacy relief consumer resolves to its plain fill and the
-   WebGL lattice stays the single texture source. */
-:root .glass-workspace[data-optics="webgl"][data-glass-pattern] {
-  --glass-relief: none;
-}
-/* WebGL is the sole source of the lattice. Only the non-optical path (fallback,
-   solid, or optics not initialised yet) paints the static CSS material on the
-   accent tier: tier-3 accents, the selected metric card and the
-   data-glass-relief selections. Unselected metric cards clear
-   --glass-dot-current in the tier contract, so they stay out of this rule;
-   charts, tables and long-form text never carry these attributes. */
-.glass-workspace:not([data-optics="webgl"]) [data-glass-tier="3"]:not(.overview-metric),
-.glass-workspace:not([data-optics="webgl"]) .overview-metric.is-selected,
-.glass-workspace:not([data-optics="webgl"]) [data-glass-relief] {
-  background: var(--glass-relief), var(--glass-fill-dense);
-}
-.glass-workspace .glass-optics-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 36px;
-  padding: 4px 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--ink);
-  font-size: 11px;
-}
-.glass-optics-toggle > span:first-child {
-  font: 13px/1 monospace;
-}
-.glass-workspace .glass-optics-toggle[aria-pressed="true"] {
-  background: var(--glass-relief), var(--glass-fill-dense);
-}
-.glass-workspace .glass-optics-toggle:disabled {
-  opacity: 0.65;
-}
-@media (max-width: 760px) {
-  .glass-workspace .glass-optics-toggle {
-    padding-inline: 8px;
-  }
-  .glass-optics-toggle > span:last-child {
-    display: none;
-  }
-}
-@media (prefers-reduced-transparency: reduce) {
-  /* Reduced transparency disables the lattice entirely: transparent materials
-     resolve to opaque paper and accent surfaces drop the CSS fallback dots. */
-  .glass-workspace {
-    --glass-relief: none;
-    --glass-fill-dense: var(--paper);
-  }
-  .glass-workspace :is([data-glass-pane], .panel) {
-    background: var(--paper);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-  .glass-workspace :is([data-glass-pane], .panel)::after {
-    display: none;
-  }
-  .glass-workspace .overview-metrics .overview-metric,
-  .glass-workspace .overview-metric.is-selected,
-  .glass-workspace [data-glass-tier="3"],
-  .glass-workspace [data-glass-relief] {
-    background: var(--paper);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
 }
 .glass-workspace .glass-data-sidebar[data-glass-pane] {
   position: sticky;
@@ -969,69 +893,6 @@
   }
   .glass-workspace .analysis-workspace-controls {
     padding: 16px;
-  }
-}
-
-/* Selected smoke-silver background: neutral reading surfaces and silver rims. */
-.glass-workspace[data-glass-pattern="smoke"] {
-  --glass-fill: #e9edf16b;
-  --background: #d6d9dd;
-  --paper: #edf0f2;
-  --surface: #e6e9ed;
-  --surface-inset: #d9dfe4;
-  --surface-raised: #f5f6f8;
-  --glass-border: #53606e40;
-  --glass-rim: #ffffffc9;
-  --glass-shadow: inset 0 1px 1px #ffffffa6, inset 0 -1px 2px #8c9caa24, 0 8px 24px #0b111b1f;
-}
-:root[data-theme="dark"] .glass-workspace[data-glass-pattern="smoke"] {
-  --glass-fill: #1014196b;
-  --background: #090c10;
-  --paper: #171c22;
-  --surface: #1b2229;
-  --surface-inset: #10161d;
-  --surface-raised: #29323c;
-  --ink: #ecf0f3;
-  --muted: #b1bcc6;
-  --muted-on-sage: #b9c6c4;
-  --line: #d4dce32b;
-  --glass-border: #d4dce347;
-  --glass-rim: #eff3f77a;
-  --glass-shadow: inset 0 1px 1px #ffffff45, inset 0 -1px 2px #c8d3df1a, 0 8px 28px #02040747;
-}
-:root[data-theme="light"] .glass-workspace {
-  --glass-relief:
-    radial-gradient(ellipse 1.6px 1.4px at 2.6px 2.2px, rgb(255 255 255 / 0.34), transparent 88%) 0
-      0 / 9px 9px,
-    radial-gradient(ellipse 1.6px 1.4px at 4.6px 4.2px, rgb(20 28 36 / 0.1), transparent 88%) 0 0 /
-      9px 9px;
-  --glass-fill-dense:
-    linear-gradient(125deg, rgb(255 255 255 / 0.55), transparent 55%), var(--glass-fill);
-}
-.glass-workspace[data-glass-pattern="smoke"] :is([data-glass-pane], .panel)::after {
-  background: linear-gradient(
-    135deg,
-    #e2e8f0aa,
-    transparent 26%,
-    #b5c2d54d 45%,
-    transparent 63%,
-    #d4c5b45e 88%,
-    #f0f4f8aa
-  );
-}
-
-/* GPU embossing transmits the real moving scene; no printed pattern overlays it. */
-.glass-workspace[data-optics="webgl"] [data-glass-relief] {
-  background:
-    linear-gradient(125deg, #ffffff12, transparent 58%),
-    color-mix(in srgb, var(--glass-fill) 60%, transparent);
-}
-/* The light theme re-declares the dense fill after the reduced-transparency
-   block; re-assert opaque paper and no lattice when transparency is reduced. */
-@media (prefers-reduced-transparency: reduce) {
-  :root[data-theme="light"] .glass-workspace {
-    --glass-relief: none;
-    --glass-fill-dense: var(--paper);
   }
 }
 

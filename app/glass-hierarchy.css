@@ -28,10 +28,11 @@
   padding: 8px 0 20px;
 }
 :root[data-theme] .glass-workspace [data-workspace-part="empty"] h2 {
-  font-size: 28px;
-  line-height: 1.4;
-  letter-spacing: -0.5px;
-  font-weight: 500;
+  font-family: var(--font-serif);
+  font-size: 34px;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+  font-weight: 600;
   margin: 8px 0 12px;
 }
 :root[data-theme] .glass-workspace [data-workspace-part="empty"] > p {
@@ -60,9 +61,9 @@
   .glass-workspace
   [data-workspace-part="welcomeSuggestions"]
   button[data-recommended="true"] {
-  border-color: color-mix(in srgb, var(--ink) 45%, var(--line));
-  background: color-mix(in srgb, var(--ink) 9%, var(--glass-fill));
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--ink) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  box-shadow: none;
 }
 :root[data-theme] .glass-workspace .welcome-start-label {
   position: absolute;
@@ -71,8 +72,8 @@
   padding: 1px 8px;
   border: 1px solid var(--line);
   border-radius: 5px;
-  background: var(--instrument-bg);
-  color: var(--ink);
+  background: var(--surface-raised);
+  color: var(--accent-ink);
   font-size: 11px;
   line-height: 18px;
 }
@@ -84,8 +85,9 @@
   gap: 4px;
 }
 :root[data-theme] .glass-workspace .welcome-question-copy strong {
-  font-size: 15px;
-  font-weight: 500;
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 600;
   color: var(--ink);
 }
 :root[data-theme] .glass-workspace .welcome-question-copy small {
@@ -136,13 +138,6 @@
   font-size: 12px;
   line-height: 1.7;
 }
-:root[data-theme] .glass-workspace .overview-metric {
-  padding: 16px;
-  gap: 8px;
-}
-:root[data-theme] .glass-workspace .overview-metric-label {
-  font-size: 13px;
-}
 :root[data-theme] .glass-workspace .overview-metric-state {
   display: inline-flex;
   align-items: center;
@@ -155,15 +150,6 @@
 }
 :root[data-theme] .glass-workspace .overview-metric.is-selected .overview-metric-state {
   color: var(--ink);
-}
-:root[data-theme] .glass-workspace .overview-metric.is-selected {
-  border-color: color-mix(in srgb, var(--ink) 44%, var(--line));
-}
-:root[data-theme] .glass-workspace .overview-metric-value {
-  font-variant-numeric: tabular-nums;
-}
-:root[data-theme] .glass-workspace .overview-section-bar {
-  margin: 20px 0 12px;
 }
 :root[data-theme] .glass-workspace .overview-chart-context {
   display: flex;
@@ -244,7 +230,8 @@
     min-height: 68px;
   }
 }
-@media (min-width: 1101px) {
+/* Matches the 1200px stacking breakpoint in app/glass-workspace.css. */
+@media (min-width: 1201px) {
   :root[data-theme] .glass-workspace .overview-columns {
     grid-template-columns: minmax(0, 1fr) 260px;
     gap: 20px;

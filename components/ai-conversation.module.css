@@ -1506,15 +1506,22 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
     backdrop-filter: none;
   }
 }
-/* Collapsing account history must not shift the transcript column. */
+/* With history collapsed the transcript, header and composer centre as one
+   reading column. Percentages resolve against the conversation width for both
+   the padding and the absolutely positioned dock. */
 :global(.glass-workspace [data-history-collapsed="true"]) .conversation {
-  --history-offset: 191px;
-  padding-left: calc(var(--history-offset) + var(--conversation-inset));
+  --conversation-inset: max(clamp(20px, 3vw, 48px), calc((100% - 920px) / 2));
+  /* Balance the 52px collapsed rail so the column centres in the panel. */
+  --rail-balance: 52px;
+  padding-right: calc(var(--conversation-inset) + var(--rail-balance));
+}
+:global(.glass-workspace [data-history-collapsed="true"]) .composerDock[data-collapsed] {
+  right: calc(var(--conversation-inset) + var(--rail-balance));
+  width: calc(100% - 2 * var(--conversation-inset) - var(--rail-balance));
 }
 @media (max-width: 900px) {
   :global(.glass-workspace [data-history-collapsed="true"]) .conversation {
-    --history-offset: 0px;
-    padding-left: var(--conversation-inset);
+    --rail-balance: 0px;
   }
   :global(.glass-workspace) .readingArea {
     margin-top: 48px;

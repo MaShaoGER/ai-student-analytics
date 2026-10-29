@@ -1,0 +1,174 @@
+/* Single source of colour, material and type tokens for the workspace and the
+   sign-in screen (direction A, route 1, confirmed 2026-10-29). Component and
+   layout files only read these names; they never declare palette values.
+
+   One flat world lit by a soft light field: frosted glass on the frame (top bar,
+   sidebar, menus), a diffused veil on the reading surface, hairlines inside it.
+   Neutral marks, one vermilion accent for selection and the focused value. */
+.glass-workspace {
+  --font-sans: -apple-system, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  --font-serif: "Songti SC", "STSong", "Noto Serif SC", "Source Han Serif SC", serif;
+  --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+
+  --corner-radius: 10px;
+  --panel-radius: 16px;
+  --glass-radius: 16px;
+
+  /* Ground and reading surfaces */
+  --background: #e9e7e1;
+  --paper: #f4f2ed;
+  --surface: #f1efe9;
+  --surface-inset: #e9e7e0;
+  --surface-raised: #fbfaf7;
+  --control-group: #e7e5de;
+
+  /* Ink */
+  --ink: #1b1d1e;
+  --muted: #5f6264;
+  --muted-on-sage: #54585a;
+  --faint: #8f9295;
+  --line: #1b1d1e1a;
+  --line-strong: #1b1d1e38;
+
+  /* Accent: selection, focus and the single highlighted value */
+  --accent: #d24619;
+  --accent-ink: #a8380f;
+  --accent-soft: #d246191a;
+  --button-ink: #fbfaf7;
+  --teal: var(--accent);
+  --teal-dark: var(--accent-ink);
+  --teal-soft: var(--accent-soft);
+  --sage: #b9b5ab;
+  --sage-surface: #e4e1d9;
+  --sage-soft: #ebe8e1;
+  --live: #2f8a5b;
+
+  /* Metric marks stay neutral; hue differences only separate the three units */
+  --score: #2b2e30;
+  --score-soft: #e6e3dc;
+  --score-bar: #c4c0b6;
+  --activity: #4a3f35;
+  --activity-soft: #ebe5dc;
+  --activity-bar: #c9bfb1;
+  --completion: #2f3a3d;
+  --completion-soft: #e1e5e4;
+  --completion-bar: #b9c2c1;
+
+  --instrument-bg: transparent;
+  --instrument-ink: var(--ink);
+  --instrument-muted: var(--muted);
+  --instrument-inset: var(--surface-inset);
+  --instrument-raised: var(--surface-raised);
+  --instrument-line: var(--line);
+  --instrument-soft: var(--accent-soft);
+  --instrument-grid: #1b1d1e14;
+  --instrument-tooltip: var(--surface-raised);
+  --instrument-tooltip-line: var(--line-strong);
+
+  --chart-primary: var(--accent);
+  --chart-secondary: var(--score-bar);
+  --chart-text: var(--ink);
+  --chart-muted: var(--muted);
+  --chart-grid: #1b1d1e14;
+  --chart-tooltip-bg: var(--surface-raised);
+  --chart-tooltip-border: var(--line-strong);
+
+  --danger: #a63b32;
+  --warning: #825623;
+  --success: #2f6b4a;
+
+  /* Frame material: regular frosted glass, a hairline and one top highlight */
+  --glass-fill: #f4f2ed9e;
+  --glass-fill-dim: #eeece694;
+  --glass-fill-dense: #f7f5f0d9;
+  --glass-border: #1b1d1e1a;
+  --glass-rim: #ffffffa6;
+  --glass-shadow: inset 0 1px 0 #ffffffa6;
+  --glass-blur: blur(24px) saturate(160%);
+  --glass-relief: none;
+
+  /* Reading surface: heavily diffused veil, the light field arrives as a tint */
+  --surface-veil: color-mix(in srgb, var(--paper) 78%, transparent);
+  --surface-sheen: #ffffffb8;
+  --surface-glint: #ff7a4a14;
+  --surface-blur: blur(56px) saturate(150%);
+  --surface-shadow: 0 0 0 1px #1b1d1e0f, 0 1px 2px #1b1d1e0d, 0 12px 32px #1b1d1e0f;
+
+  /* Light field behind everything */
+  --field-ground: #e9e7e1;
+  --field-warm: #ff7a4a2e;
+  --field-cool: #8fa3b847;
+  --field-light: #ffffffb3;
+  --field-grain: 0.22;
+
+  font-family: var(--font-sans);
+}
+:root[data-theme="dark"] .glass-workspace {
+  --background: #08090a;
+  --paper: #0f1214;
+  --surface: #121517;
+  --surface-inset: #0b0d0f;
+  --surface-raised: #171b1e;
+  --control-group: #0c0e10;
+
+  --ink: #ecebe6;
+  --muted: #9c9fa1;
+  --muted-on-sage: #a8abad;
+  --faint: #686d70;
+  --line: #ecebe617;
+  --line-strong: #ecebe633;
+
+  --accent: #ff6b3d;
+  --accent-ink: #ff9a78;
+  --accent-soft: #ff6b3d24;
+  --button-ink: #0f1214;
+  --sage: #4b5155;
+  --sage-surface: #1c2124;
+  --sage-soft: #171b1e;
+  --live: #6fcf97;
+
+  --score: #e4e3de;
+  --score-soft: #1c2023;
+  --score-bar: #3b4145;
+  --activity: #e6d9c9;
+  --activity-soft: #221e1a;
+  --activity-bar: #4a433c;
+  --completion: #d5dfde;
+  --completion-soft: #1a2021;
+  --completion-bar: #3c4648;
+
+  --instrument-grid: #ecebe612;
+  --chart-grid: #ecebe612;
+
+  --danger: #ffab9f;
+  --warning: #f3c689;
+  --success: #8fd6ad;
+
+  --glass-fill: #121517a3;
+  --glass-fill-dim: #0e1012b3;
+  --glass-fill-dense: #15191ce0;
+  --glass-border: #ecebe617;
+  --glass-rim: #ffffff14;
+  --glass-shadow: inset 0 1px 0 #ffffff14;
+
+  --surface-veil: color-mix(in srgb, var(--paper) 80%, transparent);
+  --surface-sheen: #ffffff12;
+  --surface-glint: #ff6b3d12;
+  --surface-shadow: 0 0 0 1px #ffffff0f, 0 16px 40px #0000004d;
+
+  --field-ground: #08090a;
+  --field-warm: #ff6b3d3d;
+  --field-cool: #4f6a8a4d;
+  --field-light: #c9d3dc14;
+  --field-grain: 0.1;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass-workspace {
+    --glass-fill: var(--surface-raised);
+    --glass-fill-dim: var(--surface-raised);
+    --glass-fill-dense: var(--surface-raised);
+    --surface-veil: var(--paper);
+    --glass-blur: none;
+    --surface-blur: none;
+  }
+}

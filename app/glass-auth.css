@@ -1,12 +1,10 @@
-/* Login screen in the V4 optical glass material.
+/* Login screen on the shared light field.
    Scoped overrides only: .glass-auth reworks the .glass-workspace grid for the two
-   sign-in columns and paints one shared frost + emboss recipe on both panes.
+   sign-in columns; the story reads as frame glass, the form as the reading veil.
    Import after app/glass-workspace.css. Logic, copy and semantics stay in the component. */
 
 .glass-workspace.glass-auth {
   --auth-corner: 22px;
-  --auth-emboss-hi: #ffffff1f;
-  --auth-emboss-lo: #22403a16;
   grid-template-columns: minmax(0, 1.1fr) minmax(430px, 0.9fr);
   grid-template-rows: minmax(min-content, 1fr);
   align-content: stretch;
@@ -18,29 +16,21 @@
   color-scheme: light;
 }
 :root[data-theme="dark"] .glass-workspace.glass-auth {
-  --auth-emboss-hi: #dff5ee17;
-  --auth-emboss-lo: #04121a9c;
   color-scheme: dark;
 }
 
-/* One material for both panes: frost, fixed-surface emboss lattice, thick polished edge. */
+/* Story is frame glass; the form card below takes the reading veil. */
 .glass-auth .login-story,
 .glass-auth .login-form-card {
   display: flex;
   flex-direction: column;
   min-width: 0;
   border: 1px solid var(--glass-border);
-  border-top-color: var(--glass-rim);
   border-radius: var(--auth-corner);
-  background:
-    repeating-linear-gradient(52deg, var(--auth-emboss-hi) 0 1px, transparent 1px 7.5px),
-    repeating-linear-gradient(-52deg, var(--auth-emboss-lo) 0 1px, transparent 1px 7.5px),
-    radial-gradient(115% 80% at 14% 6%, #f8fffc33, transparent 58%), var(--glass-fill);
-  box-shadow:
-    var(--glass-shadow),
-    0 26px 60px -28px #1b312966;
-  -webkit-backdrop-filter: blur(28px) saturate(135%);
-  backdrop-filter: blur(28px) saturate(135%);
+  background: var(--glass-fill);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
 }
 /* Copy stays above the material; the chromatic rim ring from glass-workspace stays decorative. */
 .glass-auth [data-glass-pane] > * {
@@ -63,8 +53,7 @@
   padding: 18px 20px 14px;
   border: 1px solid var(--line);
   border-radius: calc(var(--auth-corner) - 8px);
-  background: color-mix(in srgb, var(--sage) 15%, transparent);
-  box-shadow: inset 0 1px 0 #ffffff4d;
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
 }
 
 /* Form column: the area stays bare so only the card carries the glass. */
@@ -79,11 +68,23 @@
   width: 100%;
   max-width: 412px;
   padding: clamp(24px, 2.4vw, 34px);
+  background:
+    radial-gradient(ellipse 70% 40% at 90% 0%, var(--surface-glint), transparent 70%),
+    var(--surface-veil);
+  box-shadow: var(--surface-shadow);
+  -webkit-backdrop-filter: var(--surface-blur);
+  backdrop-filter: var(--surface-blur);
+}
+.glass-auth .login-story-copy h1,
+.glass-auth .login-form-card h2 {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 /* Stable text over a refracting surface: fields keep their own backing. */
 .glass-auth .login-form .form-field input {
   background: color-mix(in srgb, var(--paper) 80%, transparent);
-  box-shadow: inset 0 1px 2px #22403a1a;
+  box-shadow: none;
 }
 
 @media (max-width: 940px) {

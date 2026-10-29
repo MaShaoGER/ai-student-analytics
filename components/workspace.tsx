@@ -1,6 +1,6 @@
 "use client";
 
-import { GlassBackdrop } from "@/components/glass-backdrop";
+import { LightField } from "@/components/light-field";
 import { ProductBrand } from "@/components/product-brand";
 
 import { MotionToggle, useMotionPreferences } from "@/components/ui/motion-preferences";
@@ -467,11 +467,7 @@ function AccountPanel({
         <h2>{user.displayName}</h2>
         <p>{user.username}</p>
         <span className="badge badge-teal">
-          {user.role === "admin"
-            ? "管理员"
-            : user.role === "readonly"
-              ? "只读用户"
-              : "分析用户"}
+          {user.role === "admin" ? "管理员" : user.role === "readonly" ? "只读用户" : "分析用户"}
         </span>
         <div className="account-note">
           <Icon name="shield" size={19} />
@@ -693,6 +689,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
   const sidebar = useRef<HTMLElement>(null);
   const pageHeading = useRef<HTMLHeadingElement>(null);
   const logoutDialog = useRef<HTMLDialogElement>(null);
+  const accountMenu = useRef<HTMLDivElement>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
   const [profiles, setProfiles] = useState<DatasetProfile[]>([]);
@@ -1889,7 +1886,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
           ["data", "数据"],
           ["reports", "分析报告"],
         ] as const
-      ).map(([key, label]) => {
+      ).map(([key, label], index) => {
         const active =
           key === "analysis" ? view === "analysis" && mode === "metrics" : view === key;
         return (
@@ -1904,7 +1901,9 @@ export function Workspace({ initialConversation = false }: { initialConversation
               } else navigate(key);
             }}
           >
-            {key === "overview" && <Icon name="dashboard" size={16} />}
+            <span className="nav-index" aria-hidden="true">
+              {String(index + 1).padStart(2, "0")}
+            </span>
             <span>{label}</span>
             {key === "reports" && sessionAnalyses.length > 0 && (
               <small>{sessionAnalyses.length}</small>
@@ -1987,7 +1986,9 @@ export function Workspace({ initialConversation = false }: { initialConversation
       <a className="skip-link" href="#main-content">
         跳到主要内容
       </a>
-      <GlassBackdrop paused={glassPaused} />
+      <LightField
+        drifting={!glassPaused && motionPreference.enabled && !motionPreference.reduced}
+      />
       <header className="workbench-header glass-topbar">
         <div className="glass-entry">
           <button
@@ -2039,7 +2040,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
               <span>数据浏览</span>
             </button>
           </div>
-          <span className="glass-context">学习数据，循证而行</span>
         </div>
         <div className="glass-tools" data-glass-pane="0.08">
           {datasetId === "demo" && <span className="glass-demo-tag">模拟演示数据</span>}
@@ -2055,69 +2055,95 @@ export function Workspace({ initialConversation = false }: { initialConversation
           </button>
           <button
             type="button"
-            className="glass-optics-toggle"
-            disabled={motionPreference.reduced}
-            aria-pressed={!glassPaused && motionPreference.enabled && !motionPreference.reduced}
-            aria-label={
-              motionPreference.reduced
-                ? "光效已跟随系统减少动态"
-                : !glassPaused && motionPreference.enabled
-                  ? "暂停流光"
-                  : "播放流光"
-            }
-            onClick={() => {
-              if (!motionPreference.enabled) {
-                motionPreference.setEnabled(true);
-                setGlassPaused(false);
-              } else setGlassPaused((value) => !value);
-            }}
-          >
-            <span aria-hidden="true">
-              {!glassPaused && motionPreference.enabled && !motionPreference.reduced ? "Ⅱ" : "▷"}
-            </span>
-            <span>流光</span>
-          </button>
-          <ThemeToggle compact />
-          {user.role === "admin" && !passwordChangeRequired && (
-            <button
-              type="button"
-              className="icon-button"
-              aria-label="系统管理"
-              title="系统管理"
-              onClick={() => {
-                setAdminInitialTab(undefined);
-                navigate("admin");
-              }}
-            >
-              <Icon name="settings" size={18} />
-            </button>
-          )}
-          <button
-            type="button"
             className="glass-account"
-            aria-label="我的账号"
+            aria-label="账号与偏好"
             title={user.displayName || user.username}
-            onClick={() => navigate("account")}
+            popoverTarget="account-menu"
           >
             <span className="glass-avatar">{Array.from(user.displayName || user.username)[0]}</span>
             <span className="glass-user-name">{user.displayName || user.username}</span>
           </button>
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="退出登录"
-            title="退出登录"
-            onClick={requestLogout}
+          <div
+            id="account-menu"
+            ref={accountMenu}
+            className="account-menu"
+            popover="auto"
+            role="menu"
+            aria-label="账号与偏好"
           >
-            <Icon name="logout" size={17} />
-          </button>
+            <div className="account-menu-head">
+              <strong>{user.displayName || user.username}</strong>
+              <span>
+                {user.role === "admin" ? "管理员" : "教师"} · {user.username}
+              </span>
+            </div>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                accountMenu.current?.hidePopover();
+                navigate("account");
+              }}
+            >
+              <Icon name="users" size={16} />
+              我的账号
+            </button>
+            {user.role === "admin" && !passwordChangeRequired && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  accountMenu.current?.hidePopover();
+                  setAdminInitialTab(undefined);
+                  navigate("admin");
+                }}
+              >
+                <Icon name="settings" size={16} />
+                系统管理
+              </button>
+            )}
+            <hr />
+            <div className="account-menu-row">
+              <span>外观</span>
+              <ThemeToggle />
+            </div>
+            <button
+              type="button"
+              role="menuitemcheckbox"
+              aria-checked={!glassPaused && motionPreference.enabled && !motionPreference.reduced}
+              disabled={motionPreference.reduced}
+              onClick={() => {
+                if (!motionPreference.enabled) {
+                  motionPreference.setEnabled(true);
+                  setGlassPaused(false);
+                } else setGlassPaused((value) => !value);
+              }}
+            >
+              <Icon name="activity" size={16} />
+              {motionPreference.reduced
+                ? "光场跟随系统静止"
+                : !glassPaused && motionPreference.enabled
+                  ? "停止光场漂移"
+                  : "光场漂移"}
+            </button>
+            <hr />
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                accountMenu.current?.hidePopover();
+                requestLogout();
+              }}
+            >
+              <Icon name="logout" size={16} />
+              退出登录
+            </button>
+          </div>
         </div>
       </header>
       {!(view === "analysis" && mode === "question") && (
         <aside className="glass-data-sidebar" data-glass-pane="0.45" aria-label="数据浏览导航">
-          <span className="glass-sidebar-label">
-            学习工作台 <small>WORKSPACE</small>
-          </span>
+          <span className="glass-sidebar-label">学习工作台</span>
           {navigation}
           <div className="glass-sidebar-source">{sourcePicker}</div>
           <div className="glass-sidebar-bottom">
@@ -2153,7 +2179,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
         aria-label="工作台导航"
       >
         <div className="drawer-heading">
-          <span className="drawer-label">导航 / NAVIGATION</span>
+          <span className="drawer-label">导航</span>
           <button
             type="button"
             className="icon-button"

@@ -5,7 +5,7 @@ import type { SessionUser } from "@/lib/client-types";
 import { ProductBrand } from "@/components/product-brand";
 import { Icon } from "@/components/app-icons";
 import { ThemeToggle } from "@/components/ui/theme-provider";
-import { GlassBackdrop } from "@/components/glass-backdrop";
+import { LightField } from "@/components/light-field";
 
 const REMEMBERED_USERNAME = "student-analytics.remembered-username";
 
@@ -98,7 +98,7 @@ export function LoginScreen({
 
   return (
     <main className="login-screen glass-workspace glass-auth">
-      <GlassBackdrop />
+      <LightField />
       <div className="login-appearance" data-enter="fade">
         <ThemeToggle />
       </div>
