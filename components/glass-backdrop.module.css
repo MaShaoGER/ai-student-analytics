@@ -1,0 +1,183 @@
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse at 89% 16%, #b3d5c92b, transparent 48%),
+    radial-gradient(ellipse at 16% 92%, #9e91b92b, transparent 48%), var(--background);
+}
+.halo,
+.arc,
+.prism {
+  position: absolute;
+}
+.halo {
+  inset: -12%;
+  background:
+    radial-gradient(ellipse at 85% 45%, #b9b7df22, transparent 35%),
+    radial-gradient(ellipse at 12% 76%, #e7c69a14, transparent 38%);
+}
+.arc {
+  width: 150%;
+  height: 80%;
+  left: -52%;
+  top: 12%;
+  border: 2px solid #a2ccd333;
+  border-right-color: #b0ddea9c;
+  border-bottom-color: #c4b9e278;
+  border-radius: 50%;
+  box-shadow:
+    5px 7px 0 #a6a2d822,
+    10px 12px 20px #b3c9e247,
+    inset -3px -5px 12px #e4e4e63b,
+    0 0 32px #c4e5ed24;
+  transform: rotate(-22deg);
+  opacity: 0.65;
+}
+.prism {
+  width: 100%;
+  height: 160%;
+  right: -45%;
+  top: -20%;
+  border-radius: 48%;
+  border-left: 2px solid #c7e4df55;
+  box-shadow:
+    -12px 0 24px #aab9da26,
+    -28px 0 36px #bccadb16;
+  transform: rotate(38deg);
+}
+.grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.12;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23777' d='M0 0h180v180H0z' filter='url(%23n)' opacity='.25'/%3E%3C/svg%3E");
+}
+:global(html[data-theme="light"]) .arc {
+  opacity: 0.4;
+}
+:global(html[data-theme="light"]) .prism {
+  opacity: 0.5;
+}
+/* Paused by default: hidden tabs, reduced motion, and application preference. */
+.arc {
+  animation: drift 28s ease-in-out infinite alternate paused;
+}
+.prism {
+  animation: refract 34s ease-in-out infinite alternate paused;
+}
+.backdrop[data-active="true"] .arc,
+.backdrop[data-active="true"] .prism {
+  animation-play-state: running;
+}
+@keyframes drift {
+  to {
+    transform: translate(3%, 4%) rotate(-16deg);
+  }
+}
+@keyframes refract {
+  to {
+    transform: translate(-5%, 2%) rotate(32deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arc,
+  .prism {
+    animation: none;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .arc,
+  .prism,
+  .halo,
+  .grain {
+    display: none;
+  }
+  .backdrop {
+    background: var(--background);
+  }
+}
+.optics {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+}
+:global(.glass-workspace[data-optics="webgl"]) .optics {
+  display: block;
+}
+:global(.glass-workspace[data-optics="webgl"]) :is(.halo, .arc, .prism, .grain) {
+  display: none;
+}
+
+/* Static pattern alternatives survive WebGL unavailability. */
+.backdrop[data-pattern="contours"] {
+  background: repeating-radial-gradient(
+    ellipse at 68% 40%,
+    #172634 0 12px,
+    #685371 18px,
+    #b08a6559 20px,
+    #172634 24px
+  );
+}
+.backdrop[data-pattern="water"] {
+  background:
+    radial-gradient(ellipse at 65% 20%, #4b8f8933, transparent 70%),
+    repeating-conic-gradient(
+      from 22deg at 30% 70%,
+      #102b34 0deg 18deg,
+      #4a8b815c 25deg,
+      #102b34 36deg
+    );
+}
+.backdrop[data-pattern="aurora"] {
+  background: repeating-linear-gradient(105deg, #0c2029 0%, #29594f 14%, #374758 18%, #0c2029 27%);
+}
+.backdrop[data-pattern="ripples"] {
+  background: repeating-radial-gradient(
+    ellipse at 72% 50%,
+    #15222e 0 6px,
+    #778c9d70 8px,
+    #15222e 11px
+  );
+}
+:global(html[data-theme="light"]) .backdrop:not([data-pattern="ribbons"]) {
+  background-color: #c5d4d2;
+  background-blend-mode: soft-light;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .backdrop[data-pattern] {
+    background: var(--background);
+  }
+}
+
+/* CSS fallback for the locally drawn smoke-silver direction. */
+.backdrop[data-pattern="smoke"] {
+  background: radial-gradient(ellipse at 66% 55%, #21252b33, transparent 65%), #07090c;
+}
+.backdrop[data-pattern="smoke"] .halo {
+  background: radial-gradient(ellipse at 65% 60%, #a8afb61a, transparent 50%);
+}
+.backdrop[data-pattern="smoke"] .arc {
+  border-color: #aab3be0d;
+  border-bottom-color: #e5e8ed80;
+  box-shadow:
+    0 6px 8px #d6dce53b,
+    inset 0 -18px 30px #9da5b13d;
+  opacity: 0.6;
+}
+.backdrop[data-pattern="smoke"] .prism {
+  border-left-color: #e1e7ef3d;
+  box-shadow: -12px 0 28px #c8cedd1a;
+}
+:global(html[data-theme="light"]) .backdrop[data-pattern="smoke"] {
+  background: #d6d9dd;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .backdrop[data-pattern="smoke"] {
+    background: var(--background);
+  }
+}

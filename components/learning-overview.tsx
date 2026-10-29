@@ -1,11 +1,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Icon, type IconName } from "@/components/app-icons";
 import { ChartViewPicker } from "@/components/chart-view-picker";
 import { AnimatedNumber } from "@/components/ui/animated-number";
-import { resolveChartView, type ChartViewType } from "@/lib/analysis/visualization";
+import { CHART_VIEWS, resolveChartView, type ChartViewType } from "@/lib/analysis/visualization";
 import { METRICS } from "@/lib/analysis/metrics";
 import { suggestedQuestionsFor } from "@/lib/ai/suggested-questions";
 import type { AnalysisResult, DatasetProfile, Metric } from "@/lib/analysis/types";
@@ -22,7 +22,13 @@ const AnalysisChart = dynamic(
   },
 );
 export type OverviewResults = Partial<Record<Metric, AnalysisResult>>;
-const number = (value: number) => value.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
+// One display rule for cards, tables and insights: scores keep two decimals,
+// counts stay whole with thousands, and other metrics drop trailing zeros.
+const number = (value: number, unit?: string) =>
+  value.toLocaleString("zh-CN", {
+    minimumFractionDigits: unit === "分" ? 2 : 0,
+    maximumFractionDigits: unit === "次" || unit === "人" ? 0 : 2,
+  });
 const highest = (result?: AnalysisResult) =>
   result?.rows.reduce<AnalysisResult["rows"][number] | undefined>(
     (best, row) => (!best || row.value > best.value ? row : best),
@@ -55,9 +61,15 @@ function MetricNumber({
       {loading ? (
         <span className="motion-skeleton metric-pending" aria-hidden="true" />
       ) : (
-        <AnimatedNumber value={value} decimals={decimals} fallback="暂无" />
+        <AnimatedNumber
+          value={value}
+          decimals={decimals}
+          fixedDecimals={decimals > 0}
+          fallback="暂无"
+        />
       )}
-      {!loading && <small>{unit}</small>}
+      {/* No data means no unit either: “暂无 次” reads like a broken value. */}
+      {!loading && value !== undefined && <small>{unit}</small>}
     </span>
   );
 }
@@ -113,6 +125,8 @@ export function LearningOverview({
   const [question, setQuestion] = useState("");
   const [selected, setSelected] = useState<string>();
   const [chartViews, setChartViews] = useState<Partial<Record<Metric, ChartViewType>>>({});
+  const chartToolbar = useRef<HTMLDivElement>(null);
+  const chartViewMounted = useRef(false);
   const result = results[metric];
   const score = highest(results.score);
   const completion = highest(results.completion_rate);
@@ -124,6 +138,17 @@ export function LearningOverview({
   const trailing = ranked.length > 1 ? ranked[ranked.length - 1] : undefined;
   const period = scopeLabel(result?.period);
   const chartView = chartViews[metric] ?? "bar";
+  // The narrow toolbar scrolls horizontally, so a freshly chosen chart form can
+  // land off-screen. Reveal it once mounted, without stealing the first paint.
+  useEffect(() => {
+    if (!chartViewMounted.current) {
+      chartViewMounted.current = true;
+      return;
+    }
+    chartToolbar.current
+      ?.querySelector<HTMLButtonElement>(".chart-view-options button[aria-pressed='true']")
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [chartView]);
   const comparisonResult = results[metric === "activity" ? "score" : "activity"];
   // Pair metrics by group name only when both results cover the same visible groups.
   const comparison =
@@ -153,7 +178,7 @@ export function LearningOverview({
       note: score
         ? scoreLead === undefined
           ? `${score.dimension} · 当前唯一可见课程`
-          : `${score.dimension} · 领先第 2 名 ${number(scoreLead)} 分`
+          : `${score.dimension} · 领先第 2 名 ${number(scoreLead, "分")} 分`
         : "等待成绩数据",
       icon: "book",
       metric: "score",
@@ -165,7 +190,7 @@ export function LearningOverview({
       unit: "次",
       note: results.activity
         ? `${results.activity.rows.length} 门可见课程合计`
-        : "可见课程的资源访问总次数",
+        : "当前数据源不含资源访问记录",
       icon: "activity",
       metric: "activity",
       result: results.activity,
@@ -177,7 +202,7 @@ export function LearningOverview({
       note: completion
         ? completionLead === undefined
           ? `${completion.dimension} · 当前唯一可见课程`
-          : `${completion.dimension} · 领先第 2 名 ${number(completionLead)} 个百分点`
+          : `${completion.dimension} · 领先第 2 名 ${number(completionLead, "%")} 个百分点`
         : "等待完成率数据",
       icon: "check",
       metric: "completion_rate",
@@ -207,6 +232,9 @@ export function LearningOverview({
             .map((card, index) => (
               <button
                 className={`overview-metric${metric === card.metric ? " is-selected" : ""}`}
+                data-glass-pane="0.55"
+                data-glass-tier="3"
+                data-glass-relief={metric === card.metric ? "1" : undefined}
                 type="button"
                 key={card.metric}
                 data-metric={card.metric}
@@ -227,6 +255,16 @@ export function LearningOverview({
                   <Icon name={card.icon} size={16} />
                   {card.label}
                   <span className="metric-index">0{index + 1}</span>
+                  <span className="overview-metric-state">
+                    {metric === card.metric ? (
+                      <>
+                        <Icon name="check" size={12} />
+                        当前查看
+                      </>
+                    ) : (
+                      "切换查看"
+                    )}
+                  </span>
                 </span>
                 <span className="overview-metric-body">
                   <MetricNumber
@@ -271,8 +309,9 @@ export function LearningOverview({
         data-enter="wipe"
         style={{ "--enter-delay": "340ms" } as CSSProperties}
       >
-        <span>
-          <small>A—01</small>课程表现，一眼看清
+        <span className="overview-chart-context">
+          <span aria-live="polite">{METRICS[metric].label}</span>
+          <small>选择上方指标，切换课程对比</small>
         </span>
         <button className="text-button" type="button" onClick={() => onExplore(metric)}>
           进入详细分析
@@ -283,14 +322,15 @@ export function LearningOverview({
         <div className="overview-primary">
           <section
             className="panel overview-chart-panel"
+            data-glass-pane="0.55"
             aria-busy={loading}
             data-enter="panel"
             style={{ "--enter-delay": "380ms" } as CSSProperties}
           >
             <div className="overview-panel-heading">
               <div>
-                <span className="section-kicker">COURSE PERFORMANCE</span>
-                <h2>课程信号</h2>
+                <h2>课程对比</h2>
+                <p className="overview-chart-hint">点选图形，查看课程详情</p>
               </div>
               <div className="overview-panel-actions">
                 <span className="overview-chart-legend">
@@ -307,7 +347,7 @@ export function LearningOverview({
                 </button>
               </div>
             </div>
-            <div className="overview-chart-toolbar">
+            <div className="overview-chart-toolbar" ref={chartToolbar}>
               <div className="overview-metric-tabs" aria-label="概览图表指标">
                 {availableMetrics.map((value) => (
                   <button
@@ -324,18 +364,38 @@ export function LearningOverview({
                   </button>
                 ))}
               </div>
-              <ChartViewPicker
-                value={chartView}
-                onChange={(value) => setChartViews((current) => ({ ...current, [metric]: value }))}
-                rows={result?.rows ?? []}
-                unit={result?.unit ?? METRICS[metric].unit}
-                includeTable={false}
-                scatterDescription={
-                  comparison
-                    ? `每个气泡代表一门课程。横轴：${comparison.metricLabel}；纵轴：${result?.metricLabel}。气泡面积表示人数，关联不代表因果。`
-                    : undefined
-                }
-              />
+              <details className="overview-chart-options">
+                <summary>
+                  图表样式
+                  <span>
+                    {
+                      CHART_VIEWS.find(
+                        (view) =>
+                          view.value ===
+                          resolveChartView(
+                            chartView,
+                            result?.unit ?? METRICS[metric].unit,
+                            result?.rows ?? [],
+                          ),
+                      )?.label
+                    }
+                  </span>
+                </summary>
+                <ChartViewPicker
+                  value={chartView}
+                  onChange={(value) =>
+                    setChartViews((current) => ({ ...current, [metric]: value }))
+                  }
+                  rows={result?.rows ?? []}
+                  unit={result?.unit ?? METRICS[metric].unit}
+                  includeTable={false}
+                  scatterDescription={
+                    comparison
+                      ? `每个气泡代表一门课程。横轴：${comparison.metricLabel}；纵轴：${result?.metricLabel}。气泡面积表示人数，关联不代表因果。`
+                      : undefined
+                  }
+                />
+              </details>
             </div>
             {result?.rows.length ? (
               <AnalysisChart
@@ -364,15 +424,15 @@ export function LearningOverview({
                   <>
                     最高 <strong>{leading.dimension}</strong>{" "}
                     <strong>
-                      {number(leading.value)} {result?.unit}
+                      {number(leading.value, result?.unit)} {result?.unit}
                     </strong>
                     {trailing && trailing.dimension !== leading.dimension && (
                       <>
-                        ，最低 <strong>{trailing.dimension}</strong> {number(trailing.value)}{" "}
-                        {result?.unit}
+                        ，最低 <strong>{trailing.dimension}</strong>{" "}
+                        {number(trailing.value, result?.unit)} {result?.unit}
                       </>
                     )}
-                    。点击图形或表格，查看各组数据。
+                    。
                   </>
                 ) : (
                   "每一份洞察，都从可追溯的数据开始。"
@@ -392,6 +452,7 @@ export function LearningOverview({
           </section>
           <section
             className="panel overview-ranking"
+            data-glass-pane="0.55"
             data-enter="rise"
             style={{ "--enter-delay": "480ms" } as CSSProperties}
           >
@@ -432,9 +493,9 @@ export function LearningOverview({
                         </button>
                       </td>
                       <td className="numeric">
-                        {number(row.value)} <small>{result?.unit}</small>
+                        {number(row.value, result?.unit)} <small>{result?.unit}</small>
                       </td>
-                      <td className="numeric">{number(row.sampleSize)} 人</td>
+                      <td className="numeric">{number(row.sampleSize, "人")} 人</td>
                       <td>
                         <span className="ranking-track">
                           <i
@@ -467,31 +528,20 @@ export function LearningOverview({
         <aside className="overview-secondary">
           <section
             className="overview-ask-card"
+            data-glass-pane="0.6"
+            data-glass-tier="3"
+            data-glass-relief="0.5"
             data-enter="slide-right"
             style={{ "--enter-delay": "420ms" } as CSSProperties}
           >
-            <div className="ask-card-top">
-              <span className="ask-card-symbol">
-                <Icon name="sparkles" size={23} />
-              </span>
-              <span>AI 分析助手</span>
-            </div>
-            <h2>
-              好的分析，
-              <br />
-              从一个问题开始。
-            </h2>
-            <p>
-              用日常语言提问，
-              <br />
-              把好奇心变成有依据的结论。
-            </p>
+            <h2>进一步了解</h2>
+            <p>比较课程、查看变化，或提出一个具体问题。</p>
             <div
               className="overview-terminal"
               data-enter="rise-sm"
               style={{ "--enter-delay": "620ms" } as CSSProperties}
             >
-              <div className="terminal-label">Q / 01 — QUESTION INPUT</div>
+              <div className="terminal-label">分析问题</div>
               <form
                 onSubmit={(event) => {
                   event.preventDefault();
@@ -544,6 +594,7 @@ export function LearningOverview({
           </section>
           <section
             className="panel overview-source-card"
+            data-glass-pane="0.6"
             data-enter="slide-right"
             style={{ "--enter-delay": "540ms" } as CSSProperties}
           >

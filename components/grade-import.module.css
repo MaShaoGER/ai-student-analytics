@@ -67,6 +67,20 @@
   border-left: 0;
 }
 
+/* "校验已失效" keeps its reason on one flexible line and the retry at the end. */
+.staleValidation {
+  align-items: center;
+}
+
+.staleValidation > span {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.staleValidation > button {
+  flex: 0 0 auto;
+}
+
 .publishedReceipt {
   display: flex;
   align-items: center;
@@ -357,6 +371,10 @@
   border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
   text-align: left;
   vertical-align: top;
+}
+
+.issueTable th,
+.issueTable td {
   overflow-wrap: anywhere;
 }
 
@@ -374,6 +392,10 @@
   white-space: nowrap;
 }
 
+.previewTable th {
+  min-width: 64px;
+}
+
 .previewTable th > span {
   display: block;
   margin-bottom: 2px;
@@ -384,6 +406,18 @@
 .previewTable td {
   max-width: 240px;
   color: var(--ink);
+}
+
+/* Numeric columns must never break "54.96" into two lines. */
+.previewTable .cellNumeric {
+  min-width: 64px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.previewTable .cellText {
+  min-width: 96px;
+  overflow-wrap: anywhere;
 }
 
 .previewTable tr:last-child td,
@@ -807,5 +841,175 @@
 
   .dropZone {
     transition: none;
+  }
+}
+
+/* Accepted frosted workbench material. Ledger panels, upload controls, option
+   cards and dense preview tables follow the --ui-* contract supplied by
+   app/glass-controls.css; literal fallbacks repeat those values. Panels stay 16px,
+   boxes that hold text or controls 12px, and single controls 10px. */
+
+:global(.glass-workspace) .eyebrow {
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+}
+
+:global(.glass-workspace) .importLedger {
+  border: 0;
+  border-radius: var(--ui-panel-radius, 16px);
+  background: transparent;
+  overflow: visible;
+}
+
+:global(.glass-workspace) .importHeader {
+  border: 0;
+  padding: 0 0 20px;
+  background: transparent;
+}
+
+:global(.glass-workspace) .importHeader::after {
+  display: none;
+}
+
+:global(.glass-workspace) .importHeader h3 {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+
+:global(.glass-workspace) .ledgerGrid {
+  gap: 16px;
+}
+
+:global(.glass-workspace) .stepPanel {
+  border: 1px solid var(--glass-border);
+  border-top-color: var(--glass-rim);
+  border-radius: var(--ui-panel-radius, 16px);
+}
+
+:global(.glass-workspace) .stepPanel:nth-child(2n) {
+  border-right: 1px solid var(--glass-border);
+}
+
+:global(.glass-workspace) .stepHeading > span {
+  border-color: var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  color: var(--ui-selected-ink, var(--ink));
+}
+
+:global(.glass-workspace) .dropZone {
+  border-color: color-mix(in srgb, var(--ui-focus, var(--accent-ink)) 52%, var(--line));
+  border-radius: 12px;
+}
+
+:global(.glass-workspace) .dropZone:hover,
+:global(.glass-workspace) .dropZone:focus-within,
+:global(.glass-workspace) .dropZone[data-dragging="true"] {
+  border-color: var(--ui-focus, var(--accent-ink));
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface-inset));
+}
+
+:global(.glass-workspace) .dropIcon {
+  border-color: var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-control-bg, color-mix(in srgb, var(--surface-raised) 52%, transparent));
+}
+
+:global(.glass-workspace) .fileAction {
+  min-height: var(--ui-control-height, 36px);
+  padding: 7px 10px;
+  border-color: var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-control-bg, color-mix(in srgb, var(--surface-raised) 52%, transparent));
+  font-size: 13px;
+  font-weight: 500;
+}
+
+:global(.glass-workspace) .progressLine {
+  border-radius: var(--ui-control-radius, 10px);
+}
+
+:global(.glass-workspace) .draftStrip,
+:global(.glass-workspace) .validateBar,
+:global(.glass-workspace) .publishGate,
+:global(.glass-workspace) .validationSummary,
+:global(.glass-workspace) .stepEmpty {
+  border-color: var(--ui-control-border, var(--line));
+  border-radius: 12px;
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+}
+
+:global(.glass-workspace) .validateBar button,
+:global(.glass-workspace) .publishGate > button,
+:global(.glass-workspace) .issuesToolbar button {
+  min-height: var(--ui-control-height, 36px);
+  border-radius: var(--ui-control-radius, 10px);
+}
+
+:global(.glass-workspace) .previewTableWrap,
+:global(.glass-workspace) .issueTableWrap {
+  border-color: var(--ui-control-border, var(--line));
+  border-radius: 12px;
+  background: transparent;
+}
+
+/* Spreadsheet previews keep their dense 7px/9px grid but share header typography. */
+:global(.glass-workspace) .previewTable,
+:global(.glass-workspace) .issueTable {
+  font-size: 11px;
+}
+
+:global(.glass-workspace) .previewTable th,
+:global(.glass-workspace) .issueTable th {
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+:global(.glass-workspace) .mappingFieldset,
+:global(.glass-workspace) .publishFieldset {
+  border-color: var(--ui-control-border, var(--line));
+  border-radius: 12px;
+}
+
+:global(.glass-workspace) .mappingFieldset legend,
+:global(.glass-workspace) .publishFieldset legend {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+:global(.glass-workspace) .modeOptions label {
+  border-color: var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-control-bg, color-mix(in srgb, var(--surface-raised) 52%, transparent));
+}
+
+:global(.glass-workspace) .modeOptions label[data-checked="true"] {
+  border-color: var(--accent);
+  background: var(--ui-selected-bg, color-mix(in srgb, var(--sage) 19%, var(--surface-inset)));
+}
+
+:global(.glass-workspace) .publishedReceipt {
+  margin-bottom: 16px;
+  border: 1px solid color-mix(in srgb, var(--success) 38%, var(--line));
+  border-radius: 12px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :global(.glass-workspace) .previewTable tbody tr:hover,
+  :global(.glass-workspace) .issueTable tbody tr:hover {
+    background: var(--ui-control-hover, color-mix(in srgb, var(--ink) 7%, transparent));
+  }
+
+  :global(.glass-workspace) .fileAction:hover:not(:disabled) {
+    background: var(--ui-control-hover, color-mix(in srgb, var(--ink) 7%, transparent));
+    color: var(--ink);
   }
 }

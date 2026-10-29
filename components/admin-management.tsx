@@ -141,6 +141,12 @@ const sourceLabels: Record<LogSource, string> = {
   "ai-config": "AI 配置",
   "analysis-settings": "分析设置",
 };
+const targetTypeLabels: Record<string, string> = {
+  user: "账号",
+  dataset: "数据集",
+  "ai-config": "AI 配置",
+  "analysis-settings": "分析设置",
+};
 const actionLabels: Record<string, string> = {
   "user.admin_initialize": "初始化管理员",
   "user.create": "创建账号",
@@ -811,7 +817,12 @@ function OverviewMetric({
   loading: boolean;
 }) {
   return (
-    <article className={styles.metricCard}>
+    <article
+      className={styles.metricCard}
+      data-glass-pane="0.6"
+      data-glass-tier="3"
+      data-glass-relief="1"
+    >
       <span>{label}</span>
       <strong>
         <AnimatedNumber value={value} loading={loading} fallback="—" />
@@ -905,7 +916,12 @@ function OverviewWorkspace({ request }: { request: AdminRequest }) {
               detail="AI 用量，不等同于业务请求"
               loading={loading}
             />
-            <article className={`${styles.metricCard} ${styles.costMetric}`}>
+            <article
+              className={`${styles.metricCard} ${styles.costMetric}`}
+              data-glass-pane="0.6"
+              data-glass-tier="3"
+              data-glass-relief="1"
+            >
               <span>估算费用</span>
               <strong>{formatCost(data.ai.costUsd)}</strong>
               <small>根据记录单价估算，不是供应商账单</small>
@@ -1174,6 +1190,14 @@ function AccountsWorkspace({ request, user }: { request: AdminRequest; user: Ses
     role: "user" | "readonly";
     datasetIds: DatasetId[];
   }>({ username: "", displayName: "", password: "", role: "user", datasetIds: [] });
+  const [createErrors, setCreateErrors] = useState<{
+    displayName?: string;
+    username?: string;
+    password?: string;
+  }>({});
+  const displayNameInput = useRef<HTMLInputElement>(null);
+  const usernameInput = useRef<HTMLInputElement>(null);
+  const passwordInput = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState<ManagedUser | null>(null);
   const [editDraft, setEditDraft] = useState<{
     displayName: string;
@@ -1261,26 +1285,39 @@ function AccountsWorkspace({ request, user }: { request: AdminRequest; user: Ses
     setFeedback(null);
   }
 
+  function clearCreateError(field: "displayName" | "username" | "password"): void {
+    setCreateErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
+
   async function createAccount(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || datasetsLoading || datasetsError) return;
     const username = newUser.username.trim();
     const displayName = newUser.displayName.trim();
-    if (!/^[A-Za-z0-9._-]{3,40}$/.test(username)) {
-      setFeedback({
-        kind: "error",
-        message: "登录账号需为 3–40 个字母、数字、点、下划线或短横线。",
-      });
-      return;
-    }
+    const nextErrors: typeof createErrors = {};
     if (!displayName || displayName.length > 60) {
-      setFeedback({ kind: "error", message: "显示名称需为 1–60 个字符。" });
-      return;
+      nextErrors.displayName = "显示名称需为 1–60 个字符。";
+    }
+    if (!/^[A-Za-z0-9._-]{3,40}$/.test(username)) {
+      nextErrors.username = "登录账号需为 3–40 个字母、数字、点、下划线或短横线。";
     }
     if (newUser.password.length < 12 || newUser.password.length > 128) {
-      setFeedback({ kind: "error", message: "初始密码需为 12–128 个字符。" });
+      nextErrors.password = "初始密码需为 12–128 个字符。";
+    }
+    if (Object.keys(nextErrors).length) {
+      setCreateErrors(nextErrors);
+      setFeedback({ kind: "error", message: "请先修正标出的字段，再创建账号。" });
+      if (nextErrors.displayName) displayNameInput.current?.focus();
+      else if (nextErrors.username) usernameInput.current?.focus();
+      else passwordInput.current?.focus();
       return;
     }
+    setCreateErrors({});
     setBusy("create");
     setFeedback(null);
     try {
@@ -1336,7 +1373,7 @@ function AccountsWorkspace({ request, user }: { request: AdminRequest; user: Ses
       });
       setEditing(null);
       refreshAccounts();
-      setFeedback({ kind: "success", message: `${displayName} 的资料与权限已更新。` });
+      setFeedback({ kind: "success", message: `${displayName}的资料与权限已更新。` });
     } catch (caught) {
       setFeedback({ kind: "error", message: requestMessage(caught, "账号更新失败，请稍后重试。") });
     } finally {
@@ -1349,8 +1386,8 @@ function AccountsWorkspace({ request, user }: { request: AdminRequest; user: Ses
     setConfirmation({
       title: disabling ? "停用这个账号？" : "重新启用这个账号？",
       description: disabling
-        ? `${account.displayName} 将立即退出所有会话，并无法登录。已有分析权限不会改变。`
-        : `${account.displayName} 将可以重新登录，并继续使用已授予的数据集。`,
+        ? `${account.displayName}将立即退出所有会话，并无法登录。已有分析权限不会改变。`
+        : `${account.displayName}将可以重新登录，并继续使用已授予的数据集。`,
       label: disabling ? "停用账号" : "启用账号",
       tone: disabling ? "danger" : undefined,
       run: async () => {
@@ -1363,8 +1400,8 @@ function AccountsWorkspace({ request, user }: { request: AdminRequest; user: Ses
         setFeedback({
           kind: "success",
           message: disabling
-            ? `${account.displayName} 的账号已停用。`
-            : `${account.displayName} 的账号已启用。`,
+            ? `${account.displayName}的账号已停用。`
+            : `${account.displayName}的账号已启用。`,
         });
       },
     });
@@ -1373,7 +1410,7 @@ function AccountsWorkspace({ request, user }: { request: AdminRequest; user: Ses
   function confirmResetPassword(account: ManagedUser) {
     setConfirmation({
       title: "重置临时密码？",
-      description: `${account.displayName} 的现有会话将立即失效。新密码只显示一次，账号下次登录时必须修改它。`,
+      description: `${account.displayName}的现有会话将立即失效。新密码只显示一次，账号下次登录时必须修改它。`,
       label: "生成临时密码",
       tone: "danger",
       run: async () => {
@@ -1397,7 +1434,7 @@ function AccountsWorkspace({ request, user }: { request: AdminRequest; user: Ses
   function confirmRevokeSessions(account: ManagedUser) {
     setConfirmation({
       title: "撤销全部登录会话？",
-      description: `${account.displayName} 已登录的设备会立即退出，需要使用当前密码重新登录。密码和权限不会改变。`,
+      description: `${account.displayName}已登录的设备会立即退出，需要使用当前密码重新登录。密码和权限不会改变。`,
       label: "撤销会话",
       tone: "danger",
       run: async () => {
@@ -1406,7 +1443,7 @@ function AccountsWorkspace({ request, user }: { request: AdminRequest; user: Ses
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ action: "revoke-sessions", id: account.id }),
         });
-        setFeedback({ kind: "success", message: `${account.displayName} 的登录会话已撤销。` });
+        setFeedback({ kind: "success", message: `${account.displayName}的登录会话已撤销。` });
       },
     });
   }
@@ -1448,6 +1485,7 @@ function AccountsWorkspace({ request, user }: { request: AdminRequest; user: Ses
           onClick={() => {
             setShowCreate((value) => !value);
             setFeedback(null);
+            setCreateErrors({});
           }}
           aria-expanded={showCreate}
           aria-controls="admin-create-account"
@@ -1472,6 +1510,7 @@ function AccountsWorkspace({ request, user }: { request: AdminRequest; user: Ses
           className={`panel ${styles.createPanel}`}
           onSubmit={createAccount}
           aria-busy={busy === "create"}
+          noValidate
         >
           <div className="panel-header">
             <div>
@@ -1482,22 +1521,46 @@ function AccountsWorkspace({ request, user }: { request: AdminRequest; user: Ses
           </div>
           <div className={styles.createGrid}>
             <div className="form-field">
-              <label htmlFor="admin-new-display-name">显示名称</label>
+              <label htmlFor="admin-new-display-name">
+                显示名称
+                <span className={styles.requiredMark} aria-hidden="true">
+                  *
+                </span>
+              </label>
               <input
                 id="admin-new-display-name"
+                ref={displayNameInput}
                 required
                 maxLength={60}
                 autoComplete="off"
                 value={newUser.displayName}
-                onChange={(event) => setNewUser({ ...newUser, displayName: event.target.value })}
+                aria-invalid={createErrors.displayName ? true : undefined}
+                aria-describedby={
+                  createErrors.displayName ? "admin-new-display-name-error" : undefined
+                }
+                onChange={(event) => {
+                  clearCreateError("displayName");
+                  setNewUser({ ...newUser, displayName: event.target.value });
+                }}
                 disabled={busy === "create"}
                 placeholder="例如 王老师"
               />
+              {createErrors.displayName ? (
+                <p className={styles.fieldError} id="admin-new-display-name-error">
+                  {createErrors.displayName}
+                </p>
+              ) : null}
             </div>
             <div className="form-field">
-              <label htmlFor="admin-new-username">登录账号</label>
+              <label htmlFor="admin-new-username">
+                登录账号
+                <span className={styles.requiredMark} aria-hidden="true">
+                  *
+                </span>
+              </label>
               <input
                 id="admin-new-username"
+                ref={usernameInput}
                 required
                 minLength={3}
                 maxLength={40}
@@ -1505,26 +1568,58 @@ function AccountsWorkspace({ request, user }: { request: AdminRequest; user: Ses
                 autoComplete="off"
                 spellCheck={false}
                 value={newUser.username}
-                onChange={(event) => setNewUser({ ...newUser, username: event.target.value })}
+                aria-invalid={createErrors.username ? true : undefined}
+                aria-describedby={
+                  createErrors.username
+                    ? "admin-new-username-help admin-new-username-error"
+                    : "admin-new-username-help"
+                }
+                onChange={(event) => {
+                  clearCreateError("username");
+                  setNewUser({ ...newUser, username: event.target.value });
+                }}
                 disabled={busy === "create"}
                 placeholder="例如 teacher.wang"
               />
-              <span className="form-help">3–40 个字母、数字、点、下划线或短横线。</span>
+              <span className="form-help" id="admin-new-username-help">
+                3–40 个字母、数字、点、下划线或短横线。
+              </span>
+              {createErrors.username ? (
+                <p className={styles.fieldError} id="admin-new-username-error">
+                  {createErrors.username}
+                </p>
+              ) : null}
             </div>
             <div className="form-field">
-              <label htmlFor="admin-new-password">初始密码</label>
+              <label htmlFor="admin-new-password">
+                初始密码
+                <span className={styles.requiredMark} aria-hidden="true">
+                  *
+                </span>
+              </label>
               <input
                 id="admin-new-password"
+                ref={passwordInput}
                 type="password"
                 required
                 minLength={12}
                 maxLength={128}
                 autoComplete="new-password"
                 value={newUser.password}
-                onChange={(event) => setNewUser({ ...newUser, password: event.target.value })}
+                aria-invalid={createErrors.password ? true : undefined}
+                aria-describedby={createErrors.password ? "admin-new-password-error" : undefined}
+                onChange={(event) => {
+                  clearCreateError("password");
+                  setNewUser({ ...newUser, password: event.target.value });
+                }}
                 disabled={busy === "create"}
                 placeholder="至少 12 个字符"
               />
+              {createErrors.password ? (
+                <p className={styles.fieldError} id="admin-new-password-error">
+                  {createErrors.password}
+                </p>
+              ) : null}
             </div>
             <div className="form-field">
               <label htmlFor="admin-new-role">角色</label>
@@ -1551,7 +1646,10 @@ function AccountsWorkspace({ request, user }: { request: AdminRequest; user: Ses
             <button
               type="button"
               className="secondary-button"
-              onClick={() => setShowCreate(false)}
+              onClick={() => {
+                setShowCreate(false);
+                setCreateErrors({});
+              }}
               disabled={busy === "create"}
             >
               取消
@@ -1653,18 +1751,21 @@ function AccountsWorkspace({ request, user }: { request: AdminRequest; user: Ses
                     return (
                       <tr key={account.id}>
                         <td data-label="账号">
-                          <div className={styles.accountIdentity}>
-                            <span className={styles.avatar}>
+                          <div
+                            className={styles.accountIdentity}
+                            title={`${account.displayName}（${account.username}）`}
+                          >
+                            <span className={styles.avatar} aria-hidden="true">
                               {(account.displayName || account.username).slice(0, 1)}
                             </span>
                             <span>
-                              <strong>
+                              <strong title={account.displayName}>
                                 {account.displayName}
                                 {account.id === user.id ? (
                                   <span className="badge badge-muted">你</span>
                                 ) : null}
                               </strong>
-                              <small>{account.username}</small>
+                              <small title={account.username}>{account.username}</small>
                             </span>
                           </div>
                         </td>
@@ -1681,9 +1782,16 @@ function AccountsWorkspace({ request, user }: { request: AdminRequest; user: Ses
                         <td data-label="数据集">
                           <div className={styles.grantList}>
                             {grants.length ? (
-                              grants.map((id) => (
-                                <span key={id}>{id === "demo" ? "模拟校园" : "OULAD"}</span>
-                              ))
+                              grants.map((id) => {
+                                const datasetName = datasets.find(
+                                  (dataset) => dataset.id === id,
+                                )?.name;
+                                return (
+                                  <span key={id} title={datasetName ?? id}>
+                                    {datasetName ?? id}
+                                  </span>
+                                );
+                              })
                             ) : (
                               <span className={styles.mutedCell}>未授权</span>
                             )}
@@ -1767,19 +1875,21 @@ function AccountsWorkspace({ request, user }: { request: AdminRequest; user: Ses
                 }
               />
             ) : null}
-            <Pagination
-              page={data.page}
-              pageSize={data.pageSize}
-              total={data.total}
-              busy={loading}
-              pageSizeOptions={[20, 50]}
-              onPage={setPage}
-              onPageSize={(size) => {
-                setPageSize(size);
-                setPage(1);
-              }}
-              noun="账号"
-            />
+            {data.total > 0 ? (
+              <Pagination
+                page={data.page}
+                pageSize={data.pageSize}
+                total={data.total}
+                busy={loading}
+                pageSizeOptions={[20, 50]}
+                onPage={setPage}
+                onPageSize={(size) => {
+                  setPageSize(size);
+                  setPage(1);
+                }}
+                noun="账号"
+              />
+            ) : null}
           </>
         ) : null}
       </section>
@@ -2168,6 +2278,17 @@ function DatasetsWorkspace({ request }: { request: AdminRequest }) {
   );
 }
 
+function summaryValue(key: string, value: string | number | boolean | null): string {
+  if (typeof value === "boolean") return value ? "是" : "否";
+  if (value === null) return "未记录";
+  if (
+    (key === "role" || key === "beforeRole") &&
+    (value === "admin" || value === "user" || value === "readonly")
+  )
+    return roleLabels[value];
+  return String(value).replaceAll("demo", "模拟校园").replaceAll("oulad", "OULAD");
+}
+
 function summaryParts(log: AuditLog): string[] {
   return Object.entries(log.summary)
     .filter(([key]) => knownSummaryFields.has(key))
@@ -2193,16 +2314,13 @@ function summaryParts(log: AuditLog): string[] {
         keyChanged: "密钥变更",
         mustChangePassword: "强制改密",
       };
-      const display =
-        typeof value === "boolean"
-          ? value
-            ? "是"
-            : "否"
-          : value === null
-            ? "未记录"
-            : String(value).replaceAll("demo", "模拟校园").replaceAll("oulad", "OULAD");
-      return `${label[key] ?? key}：${display}`;
+      return `${label[key] ?? key}：${summaryValue(key, value)}`;
     });
+}
+
+/** IDs stay available as a `title`, but rows read as names rather than UUIDs. */
+function shortId(value: string): string {
+  return value.length > 8 ? `${value.slice(0, 8)}…` : value;
 }
 
 function LogsWorkspace({ request }: { request: AdminRequest }) {
@@ -2217,10 +2335,61 @@ function LogsWorkspace({ request }: { request: AdminRequest }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [data, setData] = useState<LogsResponse | null>(null);
+  const [actors, setActors] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterError, setFilterError] = useState<string | null>(null);
   const requestId = useRef(0);
+
+  // The directory is only used to read audit rows as names; ids remain in title.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const parsed = parseAccounts(
+          await request<unknown>("/api/admin/users?page=1&pageSize=100"),
+        );
+        if (!cancelled) setActors(parsed.users);
+      } catch {
+        // Fall back to truncated ids; the audit list itself must stay readable.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [request]);
+
+  function actorAccount(id: string): ManagedUser | undefined {
+    return actors.find((account) => account.id === id);
+  }
+
+  function actorLabel(id: string): string {
+    return actorAccount(id)?.displayName ?? shortId(id);
+  }
+
+  function actorTitle(id: string): string {
+    const account = actorAccount(id);
+    return account ? `${account.displayName}（${account.username}）· ${id}` : id;
+  }
+
+  function targetLabel(log: AuditLog): string {
+    if (log.targetType === "user") {
+      const account = actorAccount(log.targetId);
+      if (account) return account.displayName;
+    }
+    return log.targetId;
+  }
+
+  /** The API filters by exact actor id; accept a name/username and resolve it. */
+  function resolveActorFilter(value: string): string {
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+    const byUsername = actors.find((account) => account.username === trimmed);
+    if (byUsername) return byUsername.id;
+    if (actors.some((account) => account.id === trimmed)) return trimmed;
+    const byName = actors.filter((account) => account.displayName === trimmed);
+    return byName.length === 1 ? byName[0].id : trimmed;
+  }
 
   const load = useCallback(async () => {
     const id = ++requestId.current;
@@ -2278,7 +2447,7 @@ function LogsWorkspace({ request }: { request: AdminRequest }) {
       }
     }
     setPage(1);
-    setFilters(draft);
+    setFilters({ ...draft, actorId: resolveActorFilter(draft.actorId) });
   }
 
   function clearFilters() {
@@ -2304,14 +2473,18 @@ function LogsWorkspace({ request }: { request: AdminRequest }) {
       <form className={`panel ${styles.logFilters}`} onSubmit={applyFilters}>
         <div className={styles.filterGrid}>
           <div className="form-field">
-            <label htmlFor="admin-log-actor">操作者 ID</label>
+            <label htmlFor="admin-log-actor">操作者姓名或账号</label>
             <input
               id="admin-log-actor"
               value={draft.actorId}
               onChange={(event) => setDraft({ ...draft, actorId: event.target.value })}
-              placeholder="精确匹配账号 ID"
+              placeholder="输入登录账号、姓名或账号 ID"
+              aria-describedby="admin-log-actor-help"
               maxLength={100}
             />
+            <span className="form-help" id="admin-log-actor-help">
+              姓名或账号需精确输入；也可粘贴账号 ID。
+            </span>
           </div>
           <div className="form-field">
             <label htmlFor="admin-log-action">操作类型</label>
@@ -2407,11 +2580,13 @@ function LogsWorkspace({ request }: { request: AdminRequest }) {
                       </td>
                       <td data-label="操作">
                         <strong>{actionLabels[log.action] ?? log.action}</strong>
-                        <small>操作者 {log.actorId}</small>
+                        <small title={actorTitle(log.actorId)}>
+                          操作者 {actorLabel(log.actorId)}
+                        </small>
                       </td>
                       <td data-label="对象">
-                        <span>{log.targetType}</span>
-                        <small>{log.targetId}</small>
+                        <span>{targetTypeLabels[log.targetType] ?? log.targetType}</span>
+                        <small title={log.targetId}>{targetLabel(log)}</small>
                       </td>
                       <td data-label="结果">
                         <span

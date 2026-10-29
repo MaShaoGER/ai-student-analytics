@@ -1,0 +1,93 @@
+/* Rare UI AI Status adaptation; see ai-status.tsx and licenses/rare-ui-LICENSE.txt. */
+.status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 32px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  color: var(--accent-ink);
+}
+.iconFrame {
+  display: flex;
+}
+.status[data-state="done"] .icon {
+  color: var(--success);
+}
+.status[data-state="error"] .icon {
+  color: var(--danger);
+}
+.status:is([data-state="stopped"], [data-state="partial"]) .icon {
+  color: var(--warning);
+}
+.label {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--muted);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.labelFrame {
+  display: block;
+}
+.detail {
+  padding-left: 8px;
+  border-left: 1px solid var(--line);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+}
+/* The upstream shimmer paints only this short label; no full-card blur/layers. */
+.shimmer {
+  color: var(--muted);
+}
+@supports (background-clip: text) {
+  :global(html[data-motion="on"][data-input-modality="pointer"]) .shimmer {
+    background: linear-gradient(90deg, var(--muted) 40%, var(--ink) 50%, var(--muted) 60%);
+    background-size: 250% 100%;
+    background-clip: text;
+    color: transparent;
+    animation: shine 1.6s linear infinite;
+  }
+}
+@keyframes shine {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0% 0;
+  }
+}
+@media (max-width: 600px) {
+  .label {
+    flex: 1;
+  }
+  .detail {
+    flex-basis: 100%;
+    padding-left: 32px;
+    border-left: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shimmer {
+    animation: none !important;
+    background: none !important;
+    color: var(--muted) !important;
+  }
+}

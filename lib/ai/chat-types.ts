@@ -16,6 +16,7 @@ import { RESULT_KINDS, type FactRef, type ResultRef } from "./result-contract";
 // Type-only import: keeps this module (and every client component importing it)
 // free of the server-only ai-cost runtime (node:crypto, settings storage).
 import type { RequestUsage } from "../security/ai-cost";
+import type { StoredArtifactPresentationPolicy } from "../analysis/presentation-policy";
 
 export const chatViewSchema = z.enum([
   "bar",
@@ -74,6 +75,10 @@ export const chatInputSchema = z
   .object({
     question: z.string().trim().min(2).max(500),
     datasetId: dataSourceSchema,
+    conversationId: z.string().uuid().optional(),
+    turnId: z.string().uuid().optional(),
+    expectedRevision: z.number().int().nonnegative().optional(),
+    resetContext: z.boolean().optional(),
     history: z
       .array(
         z.object({
@@ -88,6 +93,9 @@ export const chatInputSchema = z
     context: chatIntentSchema.nullable().default(null),
   })
   .superRefine((value, ctx) => {
+    const durableFields = [value.conversationId, value.turnId, value.expectedRevision];
+    if (durableFields.some((field) => field !== undefined) && durableFields.some((field) => field === undefined))
+      ctx.addIssue({ code: "custom", path: ["conversationId"], message: "会话、轮次和修订号须一并提交。" });
     value.history.forEach((message, index) => {
       if (message.role === "user" && message.results?.length)
         ctx.addIssue({
@@ -137,6 +145,11 @@ export type ChatArtifact =
       view: "table" | "heatmap";
     };
 export type ChatResponse = {
+  presentationPolicies?: StoredArtifactPresentationPolicy[];
+  /** Durable turn identity. Display changes do not update this revision. */
+  conversation?: { id: string; revision: number; turnId: string };
+  generatedAt?: string;
+  persistence?: "saved" | "pending";
   completion?: "complete" | "partial";
   failureCode?: string;
   artifacts?: ChatArtifact[];

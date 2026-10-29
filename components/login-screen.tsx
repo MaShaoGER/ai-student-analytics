@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import type { SessionUser } from "@/lib/client-types";
 import { ProductBrand } from "@/components/product-brand";
 import { Icon } from "@/components/app-icons";
 import { ThemeToggle } from "@/components/ui/theme-provider";
+import { LightField } from "@/components/light-field";
 
 const REMEMBERED_USERNAME = "student-analytics.remembered-username";
 
@@ -27,6 +28,9 @@ export function LoginScreen({
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [noticeDismissed, setNoticeDismissed] = useState(false);
+  const usernameInput = useRef<HTMLInputElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     try {
@@ -40,11 +44,28 @@ export function LoginScreen({
     }
   }, []);
 
+  // Logout and session expiry both land here: start keyboard/reader users on the
+  // first real control instead of the appearance toggle or the page body.
+  useEffect(() => {
+    if (setupRequired) heading.current?.focus({ preventScroll: true });
+    else usernameInput.current?.focus({ preventScroll: true });
+  }, [setupRequired]);
+
+  // A fresh notice (e.g. the session just expired) overwrites an earlier dismissal.
+  useEffect(() => {
+    setNoticeDismissed(false);
+  }, [notice]);
+
+  function dismissNotice(): void {
+    setNoticeDismissed(true);
+  }
+
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (loading || setupRequired) return;
     setLoading(true);
     setError(null);
+    dismissNotice();
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
@@ -76,11 +97,12 @@ export function LoginScreen({
   }
 
   return (
-    <main className="login-screen">
+    <main className="login-screen glass-workspace glass-auth">
+      <LightField />
       <div className="login-appearance" data-enter="fade">
         <ThemeToggle />
       </div>
-      <section className="login-story" aria-labelledby="login-product-title">
+      <section className="login-story" data-glass-pane="0.5" aria-labelledby="login-product-title">
         <div
           className="login-brand"
           data-enter="rise-sm"
@@ -203,6 +225,8 @@ export function LoginScreen({
         </div>
         <div
           className="login-form-card"
+          data-glass-pane="0.5"
+          data-glass-tier="3"
           data-enter="slide-right"
           style={{ "--enter-delay": "160ms" } as MotionStyle}
         >
@@ -212,7 +236,9 @@ export function LoginScreen({
             style={{ "--enter-group-delay": "280ms" } as MotionStyle}
           >
             <span className="login-eyebrow">WELCOME BACK</span>
-            <h2 id="login-title">欢迎回来</h2>
+            <h2 id="login-title" ref={heading} tabIndex={-1}>
+              欢迎回来
+            </h2>
             <p>登录账号，继续你的探索与发现。</p>
           </div>
           {setupRequired && (
@@ -221,7 +247,7 @@ export function LoginScreen({
               <span>尚未创建管理员账号，请联系部署管理员完成初始化。</span>
             </div>
           )}
-          {notice && (
+          {notice && !error && !noticeDismissed && (
             <div className="notice notice-info" role="status">
               <Icon name="info" />
               <span>{notice}</span>
@@ -246,12 +272,16 @@ export function LoginScreen({
               </label>
               <input
                 id="login-username"
+                ref={usernameInput}
                 name="username"
                 type="text"
                 autoComplete="username"
                 placeholder="请输入账号"
                 value={username}
-                onChange={(event) => setUsername(event.target.value)}
+                onChange={(event) => {
+                  dismissNotice();
+                  setUsername(event.target.value);
+                }}
                 required
                 maxLength={40}
                 disabled={loading || setupRequired}
@@ -267,7 +297,10 @@ export function LoginScreen({
                   autoComplete="current-password"
                   placeholder="请输入密码"
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  onChange={(event) => {
+                    dismissNotice();
+                    setPassword(event.target.value);
+                  }}
                   required
                   maxLength={128}
                   disabled={loading || setupRequired}
@@ -294,7 +327,6 @@ export function LoginScreen({
                 />
                 记住账号
               </label>
-              <span>账号问题请联系管理员</span>
             </div>
             <button className="primary-button" type="submit" disabled={loading || setupRequired}>
               <span>{loading ? "正在登录…" : "登录工作台"}</span>

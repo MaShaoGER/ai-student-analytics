@@ -1,0 +1,95 @@
+/* Optical-renderer tiers for the historical glass specimens under /preview.
+   The workspace itself no longer uses the WebGL renderer (see app/tokens.css);
+   only the specimen pages import this file. */
+.glass-workspace {
+  /* Four glass tiers. Components choose a semantic level with
+     data-glass-tier="0|1|2|3"; only these tokens carry numeric material
+     values. The accent tier (3) is the sole place the dot-matrix microlens
+     may appear: charts, tables and long-form text never receive it. */
+  --glass-blur-0: 16px;
+  --glass-alpha-0: 0.1;
+  --glass-refract-0: 7px;
+  --glass-dot-0: 0;
+  --glass-blur-1: 10px;
+  --glass-alpha-1: 0.22;
+  --glass-refract-1: 3.5px;
+  --glass-dot-1: 0;
+  --glass-blur-2: 28px;
+  --glass-alpha-2: 0.13;
+  --glass-refract-2: 14px;
+  --glass-dot-2: 0;
+  --glass-blur-3: 14px;
+  --glass-alpha-3: 0.14;
+  --glass-refract-3: 19px;
+  --glass-dot-3: 0.4;
+
+  /* Dot lattice geometry: 9px pitch at 45°, low strength on dark glass. */
+  --glass-dot-pitch: 9px;
+  --glass-dot-angle: 45deg;
+  --glass-dot-vibrancy: 0.85;
+
+  /* Resolved tier values read by the optical renderer. Untiered surfaces keep
+     the structural refraction default and no dot lattice. */
+  --glass-blur-current: var(--glass-blur-0);
+  --glass-alpha-current: var(--glass-alpha-0);
+  /* Untiered surfaces keep the previous optical edge strength until they are
+     migrated; tier-mapped surfaces read the table values above. */
+  --glass-refract-current: 32px;
+  --glass-dot-current: 0;
+}
+:root[data-theme="light"] .glass-workspace {
+  --glass-dot-3: 0.55;
+}
+.glass-workspace [data-glass-tier="0"] {
+  --glass-blur-current: var(--glass-blur-0);
+  --glass-alpha-current: var(--glass-alpha-0);
+  --glass-refract-current: var(--glass-refract-0);
+  --glass-dot-current: var(--glass-dot-0);
+}
+.glass-workspace [data-glass-tier="1"] {
+  --glass-blur-current: var(--glass-blur-1);
+  --glass-alpha-current: var(--glass-alpha-1);
+  --glass-refract-current: var(--glass-refract-1);
+  --glass-dot-current: var(--glass-dot-1);
+}
+.glass-workspace [data-glass-tier="2"] {
+  --glass-blur-current: var(--glass-blur-2);
+  --glass-alpha-current: var(--glass-alpha-2);
+  --glass-refract-current: var(--glass-refract-2);
+  --glass-dot-current: var(--glass-dot-2);
+}
+.glass-workspace [data-glass-tier="3"] {
+  --glass-blur-current: var(--glass-blur-3);
+  --glass-alpha-current: var(--glass-alpha-3);
+  --glass-refract-current: var(--glass-refract-3);
+  --glass-dot-current: var(--glass-dot-3);
+}
+/* The lattice marks "which metric is being read", so only the selected card
+   keeps it. The ask card and sign-in card are quieter accent instances. */
+.glass-workspace .overview-metric[data-glass-tier="3"]:not(.is-selected) {
+  --glass-dot-current: 0;
+}
+.glass-workspace .result-focus {
+  --glass-dot-pitch: 14px;
+  --glass-lens-depth: 1.4;
+}
+.glass-workspace .overview-ask-card[data-glass-tier="3"] {
+  --glass-dot-current: 0.2;
+}
+.glass-workspace .login-form-card[data-glass-tier="3"] {
+  --glass-dot-current: 0.35;
+}
+:root[data-theme="light"] .glass-workspace .overview-ask-card[data-glass-tier="3"] {
+  --glass-dot-current: 0.28;
+}
+:root[data-theme="light"] .glass-workspace .login-form-card[data-glass-tier="3"] {
+  --glass-dot-current: 0.48;
+}
+.glass-workspace[data-glass-pattern="smoke"] {
+  --instrument-bg: var(--surface-inset);
+  --instrument-inset: var(--surface-inset);
+  --instrument-raised: var(--surface-raised);
+  --instrument-soft: var(--ui-selected-bg);
+  --instrument-grid: var(--line);
+  --control-group: var(--ui-inset);
+}

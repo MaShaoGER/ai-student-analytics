@@ -53,6 +53,13 @@ const fieldHints: Record<GradeField, string> = {
   score: "必填 · 0–100 分或空值",
   completed: "可选 · 0 / 1 完成状态",
 };
+const numericCellPattern = /^-?\d+(?:[.,]\d+)?%?$/;
+/** Column previews keep numbers on one line; text may wrap only when it must. */
+function previewCellClass(value: string | number | null | undefined): string {
+  if (typeof value === "number") return styles.cellNumeric;
+  return numericCellPattern.test(String(value ?? "").trim()) ? styles.cellNumeric : styles.cellText;
+}
+
 const dateTimeFormat = new Intl.DateTimeFormat("zh-CN", {
   timeZone: "Asia/Shanghai",
   month: "2-digit",
@@ -330,6 +337,7 @@ export function GradeImport({
   const [mapping, setMapping] = useState<GradeMapping>({});
   const [validation, setValidation] = useState<GradeValidation | null>(null);
   const [validatedKey, setValidatedKey] = useState<string | null>(null);
+  const [invalidatedReason, setInvalidatedReason] = useState<string | null>(null);
   const [publicationMode, setPublicationMode] = useState<PublicationMode>("new");
   const [targetId, setTargetId] = useState("");
   const [name, setName] = useState("");
@@ -430,7 +438,8 @@ export function GradeImport({
     void deleteDraft(draftId).catch(() => undefined);
   }
 
-  function clearValidation(): void {
+  function clearValidation(reason?: string): void {
+    const hadValidation = Boolean(validation || validatedKey);
     validationGeneration.current += 1;
     validationController.current?.abort();
     validationController.current = null;
@@ -438,6 +447,9 @@ export function GradeImport({
     setValidatedKey(null);
     setPublished(null);
     setFeedback(null);
+    // Keep an explicit card when a passed check stops applying, instead of
+    // falling back to the "完成列映射后…" placeholder.
+    setInvalidatedReason(hadValidation && reason ? reason : null);
   }
 
   const loadPreview = useCallback(
@@ -501,6 +513,7 @@ export function GradeImport({
     validationController.current = null;
     setValidation(null);
     setValidatedKey(null);
+    setInvalidatedReason(null);
     setFeedback({
       kind: "warning",
       message: "导入暂存已过期。请取消当前导入后重新选择文件，过期暂存不会再用于校验或发布。",
@@ -572,8 +585,10 @@ export function GradeImport({
     setPreview(null);
     setPreviewError(null);
     setMapping({});
+    const hadValidation = Boolean(validation || validatedKey);
     setValidation(null);
     setValidatedKey(null);
+    setInvalidatedReason(hadValidation ? "已替换导入文件，之前的校验结果已失效。" : null);
     setPublicationMode("new");
     setTargetId("");
     setName(nextFile.name.replace(/\.(csv|xlsx)$/i, ""));
@@ -642,7 +657,7 @@ export function GradeImport({
   }
 
   function changeSheet(nextSheet: number): void {
-    clearValidation();
+    clearValidation("工作表已切换，之前的校验结果已失效。");
     setSheet(nextSheet);
     setHeaderRowText("1");
     setPreview(null);
@@ -651,7 +666,7 @@ export function GradeImport({
   }
 
   function changeHeaderRow(value: string): void {
-    clearValidation();
+    clearValidation("表头行已修改，之前的校验结果已失效。");
     setHeaderRowText(value);
     setPreview(null);
     setPreviewError(null);
@@ -659,7 +674,7 @@ export function GradeImport({
   }
 
   function changeMapping(field: GradeField, value: string): void {
-    clearValidation();
+    clearValidation("列映射已修改，之前的校验结果已失效。");
     setMapping((current) => {
       const next = { ...current };
       if (value === "") delete next[field];
@@ -669,7 +684,7 @@ export function GradeImport({
   }
 
   function changePublicationMode(nextMode: PublicationMode): void {
-    clearValidation();
+    clearValidation("发布方式已修改，之前的校验结果已失效。");
     setPublicationMode(nextMode);
     if (nextMode === "new") {
       setTargetId("");
@@ -682,14 +697,14 @@ export function GradeImport({
   }
 
   function changeTarget(nextTargetId: string): void {
-    clearValidation();
+    clearValidation("发布目标已更改，之前的校验结果已失效。");
     setTargetId(nextTargetId);
     const nextTarget = targets.find((target) => target.id === nextTargetId);
     if (nextTarget) setName(nextTarget.name);
   }
 
   function changeName(value: string): void {
-    clearValidation();
+    clearValidation("数据集名称已修改，之前的校验结果已失效。");
     setName(value);
   }
 
@@ -703,6 +718,7 @@ export function GradeImport({
     setValidating(true);
     setValidation(null);
     setValidatedKey(null);
+    setInvalidatedReason(null);
     setFeedback(null);
     try {
       const payload = await request<unknown>("/api/admin/imports/validation", {
@@ -812,6 +828,7 @@ export function GradeImport({
       setMapping({});
       setValidation(null);
       setValidatedKey(null);
+      setInvalidatedReason(null);
       setPublished(dataset);
       setFeedback({
         kind: "success",
@@ -853,6 +870,7 @@ export function GradeImport({
     setMapping({});
     setValidation(null);
     setValidatedKey(null);
+    setInvalidatedReason(null);
     setPublished(null);
     setPreviewError(null);
     setUploading(false);
@@ -988,7 +1006,11 @@ export function GradeImport({
       ) : null}
 
       <div className={styles.ledgerGrid}>
-        <section className={styles.stepPanel} aria-labelledby="grade-import-source-title">
+        <section
+          className={styles.stepPanel}
+          data-glass-pane="0.6"
+          aria-labelledby="grade-import-source-title"
+        >
           <div className={styles.stepHeading}>
             <span>01</span>
             <div>
@@ -1076,7 +1098,11 @@ export function GradeImport({
           ) : null}
         </section>
 
-        <section className={styles.stepPanel} aria-labelledby="grade-import-selection-title">
+        <section
+          className={styles.stepPanel}
+          data-glass-pane="0.6"
+          aria-labelledby="grade-import-selection-title"
+        >
           <div className={styles.stepHeading}>
             <span>02</span>
             <div>
@@ -1158,7 +1184,9 @@ export function GradeImport({
                         {preview.preview.slice(0, 6).map((row, rowIndex) => (
                           <tr key={rowIndex}>
                             {preview.headers.map((_, columnIndex) => (
-                              <td key={columnIndex}>{row[columnIndex] || "—"}</td>
+                              <td key={columnIndex} className={previewCellClass(row[columnIndex])}>
+                                {row[columnIndex] || "—"}
+                              </td>
                             ))}
                           </tr>
                         ))}
@@ -1250,7 +1278,11 @@ export function GradeImport({
           )}
         </section>
 
-        <section className={styles.stepPanel} aria-labelledby="grade-import-validation-title">
+        <section
+          className={styles.stepPanel}
+          data-glass-pane="0.6"
+          aria-labelledby="grade-import-validation-title"
+        >
           <div className={styles.stepHeading}>
             <span>03</span>
             <div>
@@ -1361,11 +1393,15 @@ export function GradeImport({
                           <tr
                             key={`${row.id_student}-${row.code_module}-${row.code_presentation}-${index}`}
                           >
-                            <td>{row.id_student}</td>
-                            <td>{row.code_module}</td>
-                            <td>{row.code_presentation}</td>
-                            <td>{row.score ?? "—"}</td>
-                            <td>{row.completed ?? "—"}</td>
+                            <td className={previewCellClass(row.id_student)}>{row.id_student}</td>
+                            <td className={previewCellClass(row.code_module)}>{row.code_module}</td>
+                            <td className={previewCellClass(row.code_presentation)}>
+                              {row.code_presentation}
+                            </td>
+                            <td className={previewCellClass(row.score)}>{row.score ?? "—"}</td>
+                            <td className={previewCellClass(row.completed)}>
+                              {row.completed ?? "—"}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1374,6 +1410,28 @@ export function GradeImport({
                 </div>
               ) : null}
             </>
+          ) : validating ? (
+            <div className={styles.progressLine} role="status">
+              <span aria-hidden="true" />
+              正在校验当前选择…
+            </div>
+          ) : invalidatedReason ? (
+            <div
+              className={`notice notice-warning ${styles.inlineNotice} ${styles.staleValidation}`}
+              role="status"
+            >
+              <Icon name="info" />
+              <span>{invalidatedReason}</span>
+              <button
+                type="button"
+                className="text-button"
+                disabled={!canValidate || validating}
+                onClick={() => void validateSelection()}
+              >
+                <Icon name="refresh" size={16} />
+                重新校验
+              </button>
+            </div>
           ) : (
             <div className={styles.stepEmpty}>
               <Icon name="check" size={20} />
@@ -1382,7 +1440,11 @@ export function GradeImport({
           )}
         </section>
 
-        <section className={styles.stepPanel} aria-labelledby="grade-import-publish-title">
+        <section
+          className={styles.stepPanel}
+          data-glass-pane="0.6"
+          aria-labelledby="grade-import-publish-title"
+        >
           <div className={styles.stepHeading}>
             <span>04</span>
             <div>

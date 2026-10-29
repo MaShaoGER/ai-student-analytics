@@ -383,12 +383,30 @@
 .accountIdentity {
   display: flex;
   min-width: 170px;
+  max-width: 240px;
   align-items: center;
   gap: 10px;
 }
 
 .accountIdentity > span:last-child {
   min-width: 0;
+  flex: 1 1 auto;
+}
+
+.accountIdentity strong,
+.accountIdentity small {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accountIdentity small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
 }
 
 .avatar {
@@ -585,6 +603,21 @@
   color: var(--muted);
   font-size: 12px;
   line-height: 1.55;
+}
+
+.requiredMark {
+  /* Label rows use flex + 8px gap, so pull the star back next to the label text. */
+  margin-left: -5px;
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.fieldError {
+  margin: 0;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.6;
 }
 
 .datasetChoices {
@@ -1147,6 +1180,10 @@
     min-width: 0;
   }
 
+  .accountIdentity {
+    max-width: 100%;
+  }
+
   .rowActions {
     gap: 1px 12px;
   }
@@ -1202,5 +1239,250 @@
   .switchButton,
   .rowActions button {
     transition: none;
+  }
+}
+
+/* Accepted frosted workbench material. Panels, controls, record tables, chips and
+   dialogs follow the --ui-* contract supplied by app/glass-controls.css; the
+   literal fallbacks repeat those values so the module still matches if a token is
+   ever missing. Reading boxes use the shared 12px tier, panels 16px, controls 10px
+   and status chips 7px. */
+
+:global(.glass-workspace) .eyebrow {
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+}
+
+:global(.glass-workspace) .intro h2 {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+
+:global(.glass-workspace) .metricGrid {
+  border: 0;
+  background: transparent;
+  gap: 12px;
+}
+
+:global(.glass-workspace) .metricCard,
+:global(.glass-workspace) .datasetCard {
+  border: 1px solid var(--glass-border);
+  border-top-color: var(--glass-rim);
+  border-radius: var(--ui-panel-radius, 16px);
+  background: transparent;
+}
+
+:global(.glass-workspace) .metricCard::after {
+  display: none;
+}
+
+:global(.glass-workspace) .metricCard strong {
+  font-family: inherit;
+  font-weight: 500;
+}
+
+:global(.glass-workspace) .metricCard small {
+  padding-right: 0;
+}
+
+:global(.glass-workspace) .datasetCard[data-enabled="false"] {
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+}
+
+:global(.glass-workspace) .toolbar,
+:global(.glass-workspace) .pagination,
+:global(.glass-workspace) .formActions,
+:global(.glass-workspace) .datasetFooter,
+:global(.glass-workspace) .coverageStrip,
+:global(.glass-workspace) .requestBreakdown,
+:global(.glass-workspace) .limitations,
+:global(.glass-workspace) .rangeNote,
+:global(.glass-workspace) .emptyState,
+:global(.glass-workspace) .loadingState {
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+}
+
+:global(.glass-workspace) .datasetChoices,
+:global(.glass-workspace) .requestBreakdown,
+:global(.glass-workspace) .limitations,
+:global(.glass-workspace) .emptyState,
+:global(.glass-workspace) .loadingState,
+:global(.glass-workspace) .tablePanel {
+  border-color: var(--ui-control-border, var(--line));
+}
+
+:global(.glass-workspace) .tablePanel {
+  border-radius: var(--ui-panel-radius, 16px);
+}
+
+:global(.glass-workspace) .datasetChoices,
+:global(.glass-workspace) .requestBreakdown,
+:global(.glass-workspace) .limitations,
+:global(.glass-workspace) .emptyState,
+:global(.glass-workspace) .loadingState {
+  border-radius: 12px;
+}
+
+:global(.glass-workspace) .dangerButton,
+:global(.glass-workspace) .switchButton {
+  min-height: var(--ui-control-height, 36px);
+  padding: 7px 14px;
+  border-radius: var(--ui-control-radius, 10px);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+:global(.glass-workspace) .switchButton {
+  border-color: var(--ui-control-border, var(--line));
+  background: var(--ui-control-bg, color-mix(in srgb, var(--surface-raised) 52%, transparent));
+}
+
+:global(.glass-workspace) .switchButton[data-checked="true"] {
+  border-color: color-mix(in srgb, var(--success) 65%, var(--line));
+}
+
+:global(.glass-workspace) .searchField {
+  min-height: var(--ui-control-height, 36px);
+  border: 1px solid var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+  box-shadow: inset 0 1px 2px #0000000a;
+}
+
+:global(.glass-workspace) .searchField input {
+  min-height: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+:global(.glass-workspace) .searchField:focus-within {
+  border-color: var(--ui-focus, var(--accent-ink));
+}
+
+:global(.glass-workspace) .compactField label,
+:global(.glass-workspace) .logFilters label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+:global(.glass-workspace) .compactField select,
+:global(.glass-workspace) .logFilters input,
+:global(.glass-workspace) .logFilters select,
+:global(.glass-workspace) .pagination select {
+  min-height: var(--ui-control-height, 36px);
+  padding: 7px 10px;
+  border: 1px solid var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 400;
+  box-shadow: inset 0 1px 2px #0000000a;
+}
+
+:global(.glass-workspace) .paginationControls button {
+  width: var(--ui-control-height, 36px);
+  min-width: var(--ui-control-height, 36px);
+  height: var(--ui-control-height, 36px);
+  min-height: var(--ui-control-height, 36px);
+  border-radius: var(--ui-control-radius, 10px);
+}
+
+:global(.glass-workspace) .table th {
+  padding: 11px 14px;
+  border-bottom-color: var(--ui-control-border, var(--line));
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+:global(.glass-workspace) .table td {
+  padding: 11px 14px;
+}
+
+:global(.glass-workspace) .grantList > span,
+:global(.glass-workspace) .capabilities span {
+  padding: 4px 8px;
+  border-color: var(--ui-control-border, var(--line));
+  border-radius: 7px;
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+:global(.glass-workspace) .avatar,
+:global(.glass-workspace) .emptyIcon,
+:global(.glass-workspace) .dialogIcon,
+:global(.glass-workspace) .datasetIcon {
+  border: 1px solid var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-selected-bg, color-mix(in srgb, var(--sage) 19%, var(--surface-inset)));
+}
+
+:global(.glass-workspace) .dialogIcon.dangerIcon {
+  border-color: color-mix(in srgb, var(--danger) 58%, var(--line));
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
+:global(.glass-workspace) .passwordReveal code {
+  border-color: var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 10px);
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+}
+
+:global(.glass-workspace) .dialog {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--ui-panel-radius, 16px);
+  background: var(--surface-raised);
+  box-shadow:
+    inset 0 1px 0 #ffffff19,
+    0 20px 70px #00000040;
+}
+
+:global(.glass-workspace) .dialog::backdrop {
+  background: #05090f80;
+  backdrop-filter: blur(6px);
+}
+
+:global(.glass-workspace) .dialogHeader {
+  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :global(.glass-workspace) .switchButton:hover:not(:disabled) {
+    background: var(--ui-control-hover, color-mix(in srgb, var(--ink) 7%, transparent));
+    color: var(--ink);
+  }
+
+  :global(.glass-workspace) .table tbody tr:hover {
+    background: var(--ui-control-hover, color-mix(in srgb, var(--ink) 7%, transparent));
+  }
+}
+
+:global(.glass-workspace) .dialogHeader h2 {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+:global(.glass-workspace) .dialogHeader p {
+  font-size: 12px;
+  line-height: 1.7;
+}
+@media (prefers-reduced-transparency: reduce) {
+  :global(.glass-workspace) .dialog::backdrop {
+    backdrop-filter: none;
   }
 }

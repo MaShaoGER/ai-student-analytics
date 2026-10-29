@@ -96,8 +96,8 @@
   background: var(--surface-inset);
 }
 .avatar[data-role="assistant"] {
-  background: var(--sage);
-  border-color: var(--sage);
+  background: var(--glass-relief), var(--glass-fill-dense);
+  border-color: color-mix(in srgb, var(--glass-rim) 45%, transparent);
 }
 .pending {
   scroll-margin-top: calc(var(--chat-header-height, 64px) + 20px);
@@ -180,8 +180,7 @@
   min-width: 0;
   max-width: 100%;
 }
-.composerTools > button,
-.presets > summary {
+.composerTools > button {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -193,9 +192,6 @@
   background: transparent;
   border: 0;
   cursor: pointer;
-}
-.presets {
-  position: static;
 }
 /* ---- Collapsible input (roadmap step 3) ---------------------------------
    Folding only hides controls; the draft stays in the parent's `question`
@@ -255,35 +251,6 @@
 .collapsedDraft {
   color: var(--instrument-ink);
 }
-.presets > summary {
-  list-style: none;
-}
-.presets > summary::-webkit-details-marker {
-  display: none;
-}
-.presets > div {
-  position: absolute;
-  max-height: min(280px, 40dvh);
-  overflow-y: auto;
-  right: 0;
-  bottom: calc(100% + 12px);
-  width: min(300px, calc(100vw - var(--rail-width) - 48px));
-  padding: 8px;
-  border: 1px solid var(--line);
-  background: var(--surface-raised);
-  color: var(--ink);
-}
-.presets button {
-  display: block;
-  text-align: left;
-  width: 100%;
-  padding: 12px;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: 13px;
-}
 .composer textarea {
   display: block;
   width: 100%;
@@ -330,9 +297,9 @@
   cursor: pointer;
 }
 .clearConfirm > .clearConfirmAction {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--button-ink);
+  background: var(--glass-relief), var(--glass-fill-dense);
+  border-color: color-mix(in srgb, var(--glass-rim) 45%, transparent);
+  color: var(--ink);
 }
 /* Follow-up scope chip above the textarea. Clearing it only affects the next
    questions, which the chip itself and the live status line make explicit. */
@@ -409,8 +376,8 @@
   min-height: 36px;
   padding: 8px;
   border: 0;
-  background: var(--accent);
-  color: var(--button-ink);
+  background: var(--glass-relief), var(--glass-fill-dense);
+  color: var(--ink);
 }
 .send svg {
   transform: rotate(-90deg);
@@ -424,7 +391,6 @@
   cursor: not-allowed;
 }
 .composer button:focus-visible,
-.presets summary:focus-visible,
 .chartToggle:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
@@ -758,5 +724,1073 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 @media (prefers-reduced-motion: reduce) {
   .composer .collapseToggle > svg {
     transition: none;
+  }
+}
+
+/* Desktop conversation lives inside the existing workbench shell. */
+.workspaceHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 0;
+}
+.workspaceHeading :global(.page-introduction) h1 {
+  font-size: 19px;
+  letter-spacing: -0.5px;
+  margin: 6px 0;
+}
+.workspaceHeading :global(.page-introduction) p {
+  display: none;
+}
+.workspaceHeading :global(.page-eyebrow) {
+  font-size: 9px;
+}
+.navBadge {
+  padding: 3px 5px;
+  background: var(--glass-relief), var(--glass-fill-dense);
+  color: var(--ink);
+  font: 9px monospace;
+}
+.conversation {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding-top: 4px;
+}
+.availability {
+  font-size: 10px;
+}
+.empty {
+  padding: 8px 0 32px;
+  border: 0;
+}
+.welcomeMark {
+  width: 42px;
+  height: 42px;
+  display: inline-grid;
+  vertical-align: middle;
+  place-items: center;
+  background: var(--instrument-bg);
+  color: var(--accent);
+  margin-bottom: 0;
+}
+.welcomeEyebrow {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 14px;
+  font: 10px monospace;
+  letter-spacing: 1.2px;
+  color: var(--accent-ink);
+}
+.empty h2 {
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -1.5px;
+  margin: 18px 0;
+}
+.empty h2 em {
+  font-style: normal;
+  color: var(--accent-ink);
+}
+.empty > p {
+  max-width: 56ch;
+  font-size: 13px;
+  line-height: 1.9;
+}
+.welcomeSuggestions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 32px;
+  margin-top: 20px;
+  max-width: 760px;
+}
+.suggestionHeading {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 10px;
+  margin-bottom: 12px;
+}
+.suggestionHeading > span:last-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.welcomeSuggestions button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 36px;
+  padding: 10px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.welcomeSuggestions button > svg:first-child {
+  color: var(--accent-ink);
+  flex-shrink: 0;
+}
+.welcomeSuggestions button > svg:last-child {
+  margin-left: auto;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.welcomeSuggestions button:hover:not(:disabled) {
+  color: var(--accent-ink);
+  background: var(--surface-inset);
+}
+.welcomeSuggestions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.welcomeSuggestions button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.empty .privacy {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 24px;
+  font-size: 10px;
+}
+.composerDock {
+  max-width: 944px;
+  margin-inline: auto;
+}
+.composer {
+  border-top: 3px solid var(--accent);
+  box-shadow: 5px 5px 0 color-mix(in srgb, var(--ink) 15%, transparent);
+}
+.composerHeading > label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.composerHeading > label svg {
+  color: var(--accent);
+}
+.composerCollapsed {
+  justify-content: space-between;
+  flex-wrap: nowrap;
+}
+.composerCollapsed > .collapsedHint {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.composerCollapsed > .collapseToggle {
+  margin-left: auto;
+}
+.message {
+  border-bottom: 0;
+  margin-bottom: 12px;
+}
+
+.conversationFooter {
+  display: none;
+}
+
+/* Approved experience layout: bounded reading region and always visible input. */
+.conversation {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-width: none;
+  overflow: clip;
+  padding: 0 clamp(16px, 3vw, 36px);
+}
+.formalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex: 0 0 auto;
+  padding: 12px 0 8px;
+  border-bottom: 1px solid var(--line);
+}
+/* The floating history trigger owns the top-right corner below 900px; keep the
+   source picker clear of it instead of letting the button cover its arrow. */
+@media (max-width: 900px) {
+  .formalHeader {
+    padding-right: 104px;
+  }
+}
+.formalHeader > div {
+  min-width: 0;
+}
+.formalHeader > div > span {
+  color: var(--muted);
+  font: 700 9px/1.5 monospace;
+  letter-spacing: 0.08em;
+}
+.formalHeader h1 {
+  font-size: 21px;
+  line-height: 1.3;
+  margin: 4px 0;
+  font-weight: 600;
+  letter-spacing: -0.6px;
+}
+.formalHeader p {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 4px 0;
+}
+.formalHeader :global(.workbench-source) {
+  max-width: 240px;
+  margin: 0;
+  padding: 4px;
+}
+.availability {
+  flex: 0 0 auto;
+  min-height: 32px;
+  margin: 0;
+}
+.transcript {
+  /* Keep positioned chart layers and sticky cells inside the scrolling clip. */
+  position: relative;
+  isolation: isolate;
+  contain: paint;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  overflow-anchor: none;
+  scrollbar-gutter: stable;
+  padding: 0 8px 24px 0;
+  scroll-behavior: auto;
+}
+.readingArea {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  overflow: clip;
+}
+.readingArea > .transcript {
+  height: 100%;
+  padding-right: 12px;
+}
+.scrollRuler {
+  display: flex;
+  flex-direction: column;
+  align-self: center;
+  flex: 0 0 36px;
+  max-height: 80%;
+  border-left: 1px solid var(--line);
+}
+.roundTicks {
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-width: thin;
+}
+.scrollRuler button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: 10px/1.5 monospace;
+  cursor: pointer;
+}
+.scrollRuler button::after {
+  content: "";
+  width: 8px;
+  height: 1px;
+  background: currentColor;
+}
+.scrollRuler button[aria-current],
+.scrollRuler button[data-unread="true"] {
+  color: var(--ink);
+  background: var(--glass-fill);
+}
+.scrollRuler button[aria-current]::after {
+  width: 13px;
+  height: 2px;
+}
+.scrollRuler button > svg {
+  rotate: 90deg;
+}
+.validationNote {
+  margin: 12px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.validationNote summary {
+  cursor: pointer;
+  min-height: 36px;
+  padding-block: 7px;
+}
+.composer .collapseToggle {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+}
+.composerDock[data-collapsed="true"] .composer {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  margin-left: auto;
+  margin-right: 17px;
+  border: 0;
+  transform: translateY(calc(-1 * var(--composer-fold-offset, 0px)));
+}
+.composerDock[data-collapsed="true"] .composerCollapsed {
+  width: 40px;
+  height: 40px;
+}
+@media (max-width: 600px) {
+  .composerDock[data-collapsed="true"] .composer {
+    margin-right: 11px;
+  }
+  .scrollRuler {
+    flex-basis: 28px;
+  }
+  .scrollRuler button {
+    min-height: 44px;
+    gap: 2px;
+  }
+}
+.message {
+  scroll-margin-top: 16px;
+  padding: 20px 0;
+  margin-bottom: 0;
+}
+.message[data-role="user"] {
+  padding: 16px;
+  margin-block: 12px;
+  background: var(--surface-inset);
+  border-left: 2px solid var(--accent);
+}
+.messageText {
+  font-size: 14px;
+  line-height: 1.9;
+  max-width: 90ch;
+}
+.composerDock {
+  position: static;
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+.composer {
+  box-shadow: none;
+  border-top: 2px solid var(--accent);
+  padding: 10px 16px;
+}
+.composer textarea {
+  min-height: 40px;
+  max-height: 104px;
+}
+.composerTools {
+  gap: 12px;
+}
+.composerTools > button {
+  min-height: 40px;
+}
+.composer .collapseToggle {
+  min-height: 40px;
+}
+.snapshotNote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  margin: 8px 0;
+  font-size: 10px;
+  color: var(--muted);
+}
+/* Contract/version identifiers are for verification, not for reading first:
+   folded by default, still one click away. */
+.technical {
+  font-size: inherit;
+  color: inherit;
+}
+.technical > summary {
+  min-height: 24px;
+  padding-block: 2px;
+  cursor: pointer;
+  font-size: 10px;
+  color: var(--muted);
+}
+.technical > summary:hover {
+  color: var(--ink);
+}
+.technical p {
+  margin: 4px 0 0;
+  font-size: 10px;
+  line-height: 1.7;
+}
+.chartAttachment {
+  background: var(--paper);
+}
+@media (max-width: 900px) {
+  .readingArea {
+    margin-top: 52px;
+  }
+  .formalHeader {
+    padding-top: 10px;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .formalHeader :global(.workbench-source) {
+    max-width: 100%;
+    font-size: 11px;
+  }
+  .formalHeader p {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .formalHeader h1 {
+    font-size: 18px;
+  }
+  .formalHeader :global(.workbench-source) > span {
+    display: none;
+  }
+  .formalHeader :global(.workbench-source) select {
+    max-width: 150px;
+    min-height: 32px;
+    font-size: 12px;
+  }
+  .messageText {
+    font-size: 13px;
+  }
+  .empty h2 {
+    font-size: 28px;
+  }
+  .welcomeSuggestions {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .welcomeSuggestions button {
+    min-height: 44px;
+  }
+  .welcomeEyebrow {
+    font-size: 8px;
+    margin-left: 8px;
+  }
+  .suggestionHeading > span:last-child {
+    display: none;
+  }
+  .composer textarea {
+    font-size: 16px;
+  }
+  .composerDock {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .composer {
+    padding: 8px 10px;
+  }
+  /* Phones keep the label as the textarea's accessible name even though the
+     compact card has no room to show it: hide it visually, not from AT. */
+  .composerHeading > label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .composerHeading {
+    justify-content: flex-end;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .attachmentBody {
+    transition: none;
+    transform: none;
+  }
+}
+:global(html[data-motion="off"]) .attachmentBody {
+  transition: none;
+  transform: none;
+}
+
+/* V4: a unified reading surface, with data embedded in the assistant reply.
+   14px reading text / 22px title, 4px rhythm, one frost layer per outer pane. */
+:global(.glass-workspace) .conversation {
+  --conversation-inset: clamp(20px, 3vw, 48px);
+  --history-offset: 0px;
+  border: 0;
+  border-radius: 0;
+  padding: 20px var(--conversation-inset) 0;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:global(.glass-workspace) .formalHeader {
+  border: 0;
+  padding: 0 0 16px;
+}
+:global(.glass-workspace) .formalHeader h1 {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0;
+  margin: 6px 0;
+}
+:global(.glass-workspace) .formalHeader > div > span {
+  font-weight: 400;
+  font-size: 9px;
+  letter-spacing: 1.2px;
+}
+:global(.glass-workspace) .formalHeader p {
+  font-size: 11px;
+}
+:global(.glass-workspace) .availability {
+  font-size: 11px;
+}
+:global(.glass-workspace) .transcript {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--sage) 30%, transparent) transparent;
+  padding-bottom: 24px;
+  scroll-padding-bottom: 24px;
+}
+:global(.glass-workspace) .readingArea {
+  /* The transcript ends above the dock: text and charts must never travel
+     behind the input or reappear in the gap below it. */
+  margin-bottom: calc(var(--composer-clearance, 220px) + 28px);
+}
+:global(.glass-workspace) .empty {
+  padding: 28px 0;
+  border: 0;
+}
+:global(.glass-workspace) .empty h2 {
+  font-size: clamp(28px, 3vw, 38px);
+  font-weight: 500;
+  letter-spacing: -1px;
+}
+:global(.glass-workspace) .welcomeMark {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--glass-fill);
+}
+:global(.glass-workspace) .welcomeSuggestions {
+  gap: 10px 12px;
+}
+:global(.glass-workspace) .welcomeSuggestions button {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  min-height: 48px;
+  padding: 12px;
+}
+:global(.glass-workspace) .message {
+  padding: 20px 0;
+}
+:global(.glass-workspace) .message[data-role="user"] {
+  width: fit-content;
+  max-width: 76%;
+  margin: 12px 0 16px auto;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px 12px 3px 12px;
+  background: var(--glass-fill);
+}
+:global(.glass-workspace) .message[data-role="user"] .speaker {
+  justify-content: flex-end;
+}
+:global(.glass-workspace) .message[data-role="user"] .avatar {
+  display: none;
+}
+:global(.glass-workspace) .message[data-role="user"] .messageText {
+  margin-top: 4px;
+}
+:global(.glass-workspace) .speaker strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+:global(.glass-workspace) .avatar {
+  border-radius: 8px;
+  background: var(--glass-relief), var(--glass-fill-dense);
+  color: var(--ink);
+  border-color: var(--line);
+}
+:global(.glass-workspace) .messageText {
+  line-height: 1.9;
+}
+:global(.glass-workspace) .snapshotNote {
+  font-size: 10px;
+  line-height: 1.7;
+}
+:global(.glass-workspace) .chartAttachment {
+  border-radius: 13px;
+  background: transparent;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  box-shadow: none;
+}
+:global(.glass-workspace) .chartToggle {
+  background: transparent;
+  padding: 12px 16px;
+}
+:global(.glass-workspace) .chartToggle > span {
+  font-size: 12px;
+}
+:global(.glass-workspace) .suggestions button {
+  border-radius: 7px;
+  font-size: 11px;
+  background: transparent;
+}
+:global(.glass-workspace) .scrollRuler {
+  border-left-color: var(--line);
+  flex-basis: 28px;
+}
+:global(.glass-workspace) .composerDock {
+  position: absolute;
+  z-index: 3;
+  left: calc(var(--history-offset) + var(--conversation-inset));
+  right: var(--conversation-inset);
+  bottom: 16px;
+  width: auto;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  pointer-events: none;
+}
+:global(.glass-workspace) .composerDock > * {
+  pointer-events: auto;
+}
+:global(.glass-workspace) .composerDock[data-collapsed="false"] {
+  /* The dock floats over the transcript, so hint line, notices and input share
+     one near-opaque backing: at 70% paper the table behind ghosted through the
+     text box, and the bare hint line collided with course names and table rows.
+     Blur stays for the glass feel, but the text no longer sits on the content. */
+  border: 1px solid var(--glass-border);
+  border-radius: var(--ui-panel-radius, 14px);
+  background: color-mix(in srgb, var(--paper) 95%, transparent);
+  box-shadow: 0 8px 24px #02040726;
+  -webkit-backdrop-filter: blur(16px) saturate(110%);
+  backdrop-filter: blur(16px) saturate(110%);
+  padding: 10px 16px max(10px, env(safe-area-inset-bottom, 0px));
+  /* The panel is opaque, so it must also swallow clicks: without this the
+     transcript underneath (now invisible) could still be clicked through the
+     padding ring. */
+  pointer-events: auto;
+}
+:global(.glass-workspace) .composerDock[data-collapsed="false"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 18px;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--paper) 90%, transparent),
+    transparent
+  );
+}
+:global(.glass-workspace) .composerDock[data-collapsed="false"]:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--glass-border));
+}
+/* The panel owns the surface; the form stays a bare layout container. */
+:global(.glass-workspace) .composerDock[data-collapsed="false"] .composer {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+:global(.glass-workspace) .composerDock[data-collapsed="false"] .composer textarea {
+  background: transparent;
+}
+:global(.glass-workspace) .composerDock > :global(.notice) {
+  border-radius: calc(var(--ui-panel-radius, 14px) - 4px);
+}
+:global(.glass-workspace) .composerDock .note {
+  margin: 0 0 8px;
+  padding: 0 2px 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+/* "去设置" is a link inside a sentence: inline, no extra line height. */
+.composerDock .note :global(.text-button) {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  margin: 0 0 0 2px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: inherit;
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.composerDock .note :global(.text-button):hover {
+  color: var(--accent);
+}
+.localNotice {
+  margin: 0 0 8px;
+  color: var(--warning);
+  font-size: 12px;
+  line-height: 1.6;
+}
+:global(.glass-workspace) .composer {
+  border: 1px solid var(--glass-border);
+  border-top-color: color-mix(in srgb, var(--glass-rim) 55%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--paper) 70%, transparent);
+  box-shadow:
+    inset 0 1px 0 #ffffff0c,
+    0 8px 24px #02040726;
+  padding: 10px 16px;
+}
+:global(.glass-workspace) .composer textarea {
+  background: transparent;
+  font-size: 14px;
+}
+:global(.glass-workspace) .composerHeading > label {
+  font-size: 11px;
+}
+:global(.glass-workspace) .composerTools button {
+  font-size: 11px;
+}
+:global(.glass-workspace) .collapseToggle,
+:global(.glass-workspace) .send {
+  border-radius: 8px;
+}
+:global(.glass-workspace) .contextChip {
+  border-radius: 6px;
+}
+:global(.glass-workspace) .composerDock[data-collapsed="true"] {
+  /* The expanded panel's padding vanishes when folded; re-add the same bottom
+     inset so the square keeps the expanded toggle's screen position. */
+  padding: 0 16px max(10px, env(safe-area-inset-bottom, 0px));
+}
+:global(.glass-workspace) .composerDock[data-collapsed="true"] .composer {
+  margin-right: 1px;
+  border-radius: 10px;
+  -webkit-backdrop-filter: blur(16px) saturate(110%);
+  backdrop-filter: blur(16px) saturate(110%);
+}
+@supports not (backdrop-filter: blur(1px)) {
+  :global(.glass-workspace) .composerDock[data-collapsed="false"] {
+    background: var(--paper);
+  }
+  :global(.glass-workspace) .composer {
+    background: var(--paper);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :global(.glass-workspace) .composerDock[data-collapsed="false"],
+  :global(.glass-workspace) .composer {
+    background: var(--paper);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+/* With history collapsed the transcript, header and composer centre as one
+   reading column. Percentages resolve against the conversation width for both
+   the padding and the absolutely positioned dock. */
+:global(.glass-workspace [data-history-collapsed="true"]) .conversation {
+  --conversation-inset: max(clamp(20px, 3vw, 48px), calc((100% - 920px) / 2));
+  /* Balance the 52px collapsed rail so the column centres in the panel. */
+  --rail-balance: 52px;
+  padding-right: calc(var(--conversation-inset) + var(--rail-balance));
+}
+:global(.glass-workspace [data-history-collapsed="true"]) .composerDock[data-collapsed] {
+  right: calc(var(--conversation-inset) + var(--rail-balance));
+  width: calc(100% - 2 * var(--conversation-inset) - var(--rail-balance));
+}
+@media (max-width: 900px) {
+  :global(.glass-workspace [data-history-collapsed="true"]) .conversation {
+    --rail-balance: 0px;
+  }
+  :global(.glass-workspace) .readingArea {
+    margin-top: 48px;
+  }
+}
+@media (max-width: 600px) {
+  :global(.glass-workspace) .conversation {
+    --conversation-inset: 14px;
+    padding: 12px var(--conversation-inset) 0;
+  }
+  :global(.glass-workspace) .formalHeader h1 {
+    font-size: 18px;
+  }
+  :global(.glass-workspace) .message[data-role="user"] {
+    max-width: 94%;
+    padding: 12px;
+  }
+  :global(.glass-workspace) .welcomeSuggestions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :global(.glass-workspace) .composer {
+    padding: 8px 10px;
+  }
+  :global(.glass-workspace) .composer textarea {
+    font-size: 16px;
+  }
+}
+
+/* The same control and inset recipe as data analysis and administration. */
+:global(.glass-workspace) .actions button,
+:global(.glass-workspace) .composerTools > button,
+:global(.glass-workspace) .suggestions button {
+  min-height: var(--ui-control-height);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  font-size: 12px;
+  font-weight: 500;
+}
+:global(.glass-workspace) .actions button[aria-pressed="true"] {
+  background: var(--ui-selected-bg);
+  color: var(--ui-selected-ink);
+}
+:global(.glass-workspace) .chartToggle {
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-inset);
+}
+:global(.glass-workspace) .chartAttachment {
+  border-radius: var(--ui-panel-radius);
+}
+:global(.glass-workspace) .contextChip {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--ui-inset);
+}
+:global(.glass-workspace) .welcomeSuggestions button {
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+}
+:global(.glass-workspace) .composer {
+  border-radius: var(--ui-panel-radius);
+}
+:global(.glass-workspace) .collapseToggle,
+:global(.glass-workspace) .send {
+  border-radius: var(--ui-control-radius);
+}
+
+/* ---- Phones: the empty state has to fit above the floating input -----------
+   At 390×844 and 320×720 the hero, the explanation and all three recommended
+   questions must be visible (and tappable) without scrolling or being covered
+   by the dock. Each block below trims vertical rhythm rather than hiding the
+   questions; the decorative eyebrow and the privacy footnote go entirely. */
+@media (max-width: 600px) {
+  :global(.glass-workspace) .formalHeader > div > span {
+    display: none;
+  }
+  :global(.glass-workspace) .availability {
+    margin-bottom: 8px;
+  }
+  :global(.glass-workspace) .readingArea {
+    margin-top: 0;
+  }
+  :global(.glass-workspace) .empty {
+    padding: 4px 0 12px;
+  }
+  :global(.glass-workspace) .welcomeMark {
+    width: 32px;
+    height: 32px;
+  }
+  :global(.glass-workspace) .welcomeEyebrow {
+    display: none;
+  }
+  :global(.glass-workspace) .empty h2 {
+    font-size: 28px;
+    line-height: 1.22;
+    letter-spacing: -0.5px;
+    margin: 10px 0 8px;
+  }
+  :global(.glass-workspace) .empty > p {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    margin-top: 8px;
+    line-height: 1.65;
+  }
+  :global(.glass-workspace) .empty .privacy {
+    display: none;
+  }
+  :global(.glass-workspace) .welcomeSuggestions {
+    margin-top: 10px;
+    gap: 4px;
+  }
+  :global(.glass-workspace) .welcomeSuggestions button {
+    min-height: 44px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  :global(.glass-workspace) .suggestionHeading {
+    margin-bottom: 6px;
+  }
+  :global(.glass-workspace) .composerDock[data-collapsed="false"] {
+    padding: 8px 10px max(8px, env(safe-area-inset-bottom, 0px));
+  }
+  :global(.glass-workspace) .composerDock[data-collapsed="false"]::before {
+    height: 12px;
+  }
+  :global(.glass-workspace) .composerDock[data-collapsed="true"] {
+    padding: 0 10px max(8px, env(safe-area-inset-bottom, 0px));
+  }
+  :global(.glass-workspace) .composerDock[data-collapsed="true"] .composer {
+    margin-right: 1px;
+  }
+  /* Three questions fit above the dock on a phone; once the model is on the
+     fourth question earns the space the description paragraph used. */
+  :global(.glass-workspace) .empty[data-suggestion-count="4"] > p {
+    display: none;
+  }
+  /* The same guidance is in the empty-state copy, label and placeholder; the
+     line would only eat the space the questions need on a phone. */
+  :global(.glass-workspace) .composerDock .note {
+    display: none;
+  }
+}
+
+/* 320-wide screens have ~50px less reading height: drop the decorative mark and
+   the suggestion caption so all three questions still clear the input card. */
+@media (max-width: 380px) {
+  /* The compact hero already says what the page does; keep the h1 for screen
+     readers only so the recommended questions clear the dock. */
+  :global(.glass-workspace) .formalHeader h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  :global(.glass-workspace) .welcomeMark {
+    display: none;
+  }
+  :global(.glass-workspace) .suggestionHeading {
+    display: none;
+  }
+  /* The availability line above already explains the model state; at 320 the
+     description would push the last question under the dock. */
+  :global(.glass-workspace) .empty > p {
+    display: none;
+  }
+  :global(.glass-workspace) .welcomeSuggestions {
+    margin-top: 6px;
+  }
+  :global(.glass-workspace) .empty {
+    padding-bottom: 6px;
+  }
+  :global(.glass-workspace) .availability {
+    min-height: 24px;
+  }
+}
+
+/* Keep the source picker clear of the floating history trigger on narrow
+   layouts (later media blocks reset the header padding, so win here). */
+@media (max-width: 900px) {
+  .conversation .formalHeader {
+    padding-right: 104px;
+  }
+}
+
+/* A single right-anchored surface morphs into the compact input handle. */
+:global(.glass-workspace) .composerDock[data-collapsed] {
+  left: auto;
+  width: calc(100% - var(--history-offset) - 2 * var(--conversation-inset));
+  overflow: clip;
+}
+:global(.glass-workspace) .composerDock[data-collapsed="true"] {
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--paper) 95%, transparent);
+  box-shadow: 0 8px 24px #02040726;
+  -webkit-backdrop-filter: blur(16px) saturate(110%);
+  backdrop-filter: blur(16px) saturate(110%);
+}
+:global(.glass-workspace) .composerDock[data-collapsed="true"]:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+:global(.glass-workspace) .composerDock[data-collapsed="true"] .composer {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  transform: none;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:global(.glass-workspace) .composerDock[data-collapsed="true"] .composerCollapsed {
+  width: 100%;
+  height: 100%;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+:global(.glass-workspace) .composerDock .collapseToggle {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+}
+:global(.glass-workspace) .collapseToggle[aria-expanded="true"] > svg {
+  transform: rotate(0deg);
+}
+:global(.glass-workspace) .collapseToggle[aria-expanded="false"] > svg {
+  transform: rotate(180deg);
+}
+@media (max-width: 900px) {
+  .composerTools {
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+  :global(.glass-workspace) .composerTools > .newConversation {
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  .newConversation > span {
+    display: none;
+  }
+  .contextChip > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .contextChip > svg {
+    flex-shrink: 0;
+  }
+  .contextHint {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .conversation .formalHeader {
+    padding-right: 52px;
+  }
+  :global(.glass-workspace) .scrollRuler {
+    flex-basis: 22px;
   }
 }

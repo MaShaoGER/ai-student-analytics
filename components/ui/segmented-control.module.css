@@ -7,16 +7,16 @@
   width: max-content;
   max-width: 100%;
   min-width: 0;
-  padding: 4px;
-  border: 1px solid transparent;
-  border-radius: var(--corner-radius, 0);
-  background: var(--surface-inset, #19212c);
+  padding: var(--ui-segment-inset, 4px);
+  border: 1px solid var(--ui-control-border, transparent);
+  border-radius: var(--ui-control-radius, var(--corner-radius, 0));
+  background: var(--ui-inset, var(--surface-inset, #19212c));
   vertical-align: middle;
 }
 
 .track {
   position: absolute;
-  inset: 4px;
+  inset: var(--ui-segment-inset, 4px);
   pointer-events: none;
 }
 
@@ -24,8 +24,8 @@
   display: block;
   height: 100%;
   border: 0;
-  border-radius: var(--corner-radius, 0);
-  background: var(--metric-soft, var(--surface-raised));
+  border-radius: var(--ui-segment-radius, var(--corner-radius, 0));
+  background: var(--ui-selected-bg, var(--metric-soft, var(--surface-raised)));
   transition: transform var(--motion-standard, 180ms)
     var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
@@ -42,10 +42,10 @@
   justify-content: center;
   gap: 7px;
   min-width: 0;
-  min-height: 36px;
-  padding: 7px 15px;
+  min-height: var(--ui-segment-button-height, 36px);
+  padding: var(--ui-segment-button-padding, 7px) var(--ui-segment-inline-padding, 15px);
   border: 0;
-  border-radius: var(--corner-radius, 0);
+  border-radius: var(--ui-segment-radius, var(--corner-radius, 0));
   background: transparent;
   color: var(--muted, #a7b3c2);
   font: inherit;
@@ -60,7 +60,7 @@
 }
 
 .control .button[aria-pressed="true"] {
-  color: var(--metric-color, var(--ink));
+  color: var(--ui-selected-ink, var(--metric-color, var(--ink)));
 }
 
 .control .button:focus-visible {
@@ -95,7 +95,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .control .button:hover:not(:disabled) {
-    color: var(--metric-color, var(--ink));
+    color: var(--ui-selected-ink, var(--metric-color, var(--ink)));
   }
 }
 
@@ -115,14 +115,25 @@
   }
 
   .control .button {
-    min-height: 40px;
+    min-height: var(--ui-segment-button-height, 40px);
     padding-inline: 10px;
   }
 }
 
 @media (max-width: 380px) {
   .control .button {
-    padding-inline: 6px;
+    padding-inline: 3px;
+    font-size: 12px;
+    line-height: 1.25;
+    /* Four-character labels (“关联全景”) must not collapse to two characters;
+       let them wrap inside their own segment instead of truncating. */
+    white-space: normal;
+  }
+
+  .control .label {
+    overflow: visible;
+    text-overflow: clip;
+    word-break: break-word;
   }
 
   .icon {

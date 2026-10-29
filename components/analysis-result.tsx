@@ -9,6 +9,7 @@ import { planningMethodLabel } from "@/lib/ai/context-label";
 import { METRICS } from "@/lib/analysis/metrics";
 import type { AnalysisResult, AnalysisRow } from "@/lib/analysis/types";
 import { resolveChartView, type ChartViewType } from "@/lib/analysis/visualization";
+import { orderTimeRows } from "@/lib/analysis/presentation-policy";
 import {
   analysisDimensionLabel,
   analysisSourceLabel,
@@ -35,7 +36,14 @@ export type AnalysisPlanning = {
   model?: string | null;
 };
 
-const formatNumber = (value: number) => value.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
+// Scores always show two decimals (72.9 → 72.90); whole-event counts stay
+// integers with thousands; other metrics keep up to two decimals.
+const formatNumber = (value: number, unit: string) =>
+  value.toLocaleString("zh-CN", {
+    minimumFractionDigits: unit === "分" ? 2 : 0,
+    maximumFractionDigits: unit === "次" ? 0 : 2,
+  });
+const formatCount = (value: number) => value.toLocaleString("zh-CN", { maximumFractionDigits: 0 });
 
 // Entrance choreography follows the shared motion system: each region mounts with
 // its own delay, so data arriving later still enters in a controlled order.
@@ -90,8 +98,8 @@ function ResultTable({
                   {row.dimension}
                 </button>
               </td>
-              <td className="numeric">{formatNumber(row.value)}</td>
-              <td className="numeric">{formatNumber(row.sampleSize)} 人</td>
+              <td className="numeric">{formatNumber(row.value, result.unit)}</td>
+              <td className="numeric">{formatCount(row.sampleSize)} 人</td>
             </tr>
           ))}
         </tbody>
@@ -108,6 +116,10 @@ export function AnalysisResultView({
   planning,
   canExport,
   onReport,
+  allowedViews,
+  showViewPicker = true,
+  hideViewPicker = false,
+  barOrientation = "vertical",
 }: {
   result: AnalysisResult | null;
   chartType: ChartViewType;
@@ -117,6 +129,13 @@ export function AnalysisResultView({
   /** Browser-side CSV/HTML downloads are unavailable to read-only accounts. */
   canExport: boolean;
   onReport: (result: AnalysisResult) => void;
+  /** Optional semantic whitelist supplied by ConversationArtifact. */
+  allowedViews?: readonly ChartViewType[];
+  /** Deprecated compatibility flag; prefer hideViewPicker. */
+  showViewPicker?: boolean;
+  /** Hide the built-in picker when the conversation wrapper owns the choice. */
+  hideViewPicker?: boolean;
+  barOrientation?: "horizontal" | "vertical";
 }) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("default");
@@ -147,12 +166,21 @@ export function AnalysisResultView({
   const definition = Object.values(METRICS).find((metric) => metric.label === result?.metricLabel);
   const gap = highest && selected ? Math.round((highest.value - selected.value) * 100) / 100 : 0;
   const activeChart = resolveChartView(chartType, result?.unit ?? "", rows);
+  // Search/sort may reorder the visible table, but a term trend must never
+  // connect observations in an arbitrary alphabetical or value order.
+  const chartRows = useMemo(() => {
+    if (activeChart !== "line" || result?.dimension !== "term") return rows;
+    return orderTimeRows(rows) ?? rows;
+  }, [activeChart, result?.dimension, rows]);
   // Counts animate on data arrival; while the user searches, the visible number
   // must respond immediately, so those counts render as plain text.
   const animateCounts = search.trim() === "";
   // Activity is a sum of whole events, so its count-up must stay integer; scores
   // and percentages may legitimately carry two decimals.
   const valueDecimals = result?.unit === "次" ? 0 : 2;
+  const description = result
+    ? `按${dimension}比较 · ${result.period}`
+    : "选择指标，或用一句话描述你想了解的问题。";
 
   return (
     <section
@@ -167,17 +195,25 @@ export function AnalysisResultView({
       <div className="result-section-heading" data-enter="rise-sm" style={enterAt(60)}>
         <div>
           <h2>{result ? `${result.metricLabel}对比` : "分析结果"}</h2>
-          <p>
-            {result
-              ? `按${dimension}比较 · ${result.period}`
-              : "选择指标，或用一句话描述你想了解的问题。"}
-          </p>
+          <p className={result ? "result-period" : undefined}>{description}</p>
+          {result && (
+            <details className="result-period-details">
+              <summary>数据范围与口径</summary>
+              <p>{description}</p>
+            </details>
+          )}
         </div>
         <div className="result-heading-actions">
           {result && (
-            <button className="secondary-button" type="button" onClick={() => onReport(result)}>
+            <button
+              className="secondary-button result-report-button"
+              type="button"
+              aria-label="生成报告"
+              title="生成报告"
+              onClick={() => onReport(result)}
+            >
               <Icon name="file" size={15} />
-              生成报告
+              <span>生成报告</span>
             </button>
           )}
         </div>
@@ -203,14 +239,17 @@ export function AnalysisResultView({
         </div>
       ) : (
         <>
-          <div className="result-chart-picker" data-enter="rise-sm" style={enterAt(120)}>
-            <ChartViewPicker
-              value={chartType}
-              onChange={onChartChange}
-              rows={rows}
-              unit={result.unit}
-            />
-          </div>
+          {!hideViewPicker && showViewPicker ? (
+            <div className="result-chart-picker" data-enter="rise-sm" style={enterAt(120)}>
+              <ChartViewPicker
+                value={chartType}
+                onChange={onChartChange}
+                rows={rows}
+                unit={result.unit}
+                allowedViews={allowedViews}
+              />
+            </div>
+          ) : null}
           <div
             className="result-filter"
             aria-label="筛选与排序"
@@ -275,9 +314,10 @@ export function AnalysisResultView({
                   />
                 ) : (
                   <AnalysisChart
-                    rows={rows}
+                    rows={chartRows}
                     chartType={activeChart}
                     unit={result.unit}
+                    barOrientation={barOrientation}
                     metricLabel={result.metricLabel}
                     dimensionLabel={dimension}
                     selectedDimension={selected?.dimension}
@@ -291,7 +331,7 @@ export function AnalysisResultView({
                     <p>
                       <strong>{highest.dimension}</strong> 的{result.metricLabel}最高，为{" "}
                       <strong>
-                        {formatNumber(highest.value)} {result.unit}
+                        {formatNumber(highest.value, result.unit)} {result.unit}
                       </strong>
                       。{search && <span>仅比较筛选后的分组。</span>}
                     </p>
@@ -301,6 +341,9 @@ export function AnalysisResultView({
               {selected && (
                 <aside
                   className="result-focus"
+                  data-glass-pane="0.55"
+                  data-glass-tier="3"
+                  data-glass-relief="1"
                   aria-label="选中分组的统计详情"
                   data-enter="slide-right"
                   data-enter-group="rise"
@@ -466,7 +509,7 @@ export function AnalysisResultView({
                 </div>
                 <div>
                   <dt>查询用时</dt>
-                  <dd>{formatNumber(result.durationMs)} ms</dd>
+                  <dd>{formatCount(result.durationMs)} ms</dd>
                 </div>
                 {planning && (
                   <div>

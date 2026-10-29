@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { toolLabel } from "@/lib/ai/chart-capabilities";
 import {
+  isValidElement,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -13,6 +14,7 @@ import {
 } from "react";
 import { AnalysisResultView } from "./analysis-result";
 import { Icon } from "./app-icons";
+import { ConversationEvidence, ExecutionSteps } from "./conversation-evidence";
 import { useMotionPreferences } from "./ui/motion-preferences";
 import { distributionRows, scoreInterval } from "@/lib/analysis/score-distribution";
 import type { AnalysisResult } from "@/lib/analysis/types";
@@ -24,9 +26,16 @@ import type {
   ChatDisplayView,
   AnalysisStep,
 } from "@/lib/ai/chat-types";
+import { RESULT_CONTRACT_VERSION } from "@/lib/ai/result-contract";
 import { planningMethodLabel } from "@/lib/ai/context-label";
 import { suggestedQuestionsFor } from "@/lib/ai/suggested-questions";
 import styles from "./ai-conversation.module.css";
+import experience from "./conversation-experience.module.css";
+import { ConversationArtifactBoundary } from "./conversation-artifact-boundary";
+import { ConversationArtifact } from "./conversation-artifact";
+import { policyForArtifact } from "@/lib/analysis/presentation-policy";
+import { ConversationHistory, type ConversationHistoryProps } from "./conversation-history";
+import { useConversationScroll } from "./hooks/use-conversation-scroll";
 
 export type ConversationTurn = ChatMessage & {
   id: string;
@@ -34,12 +43,33 @@ export type ConversationTurn = ChatMessage & {
   /** Locally generated status line (e.g. a cancelled turn), not sent to the model. */
   system?: boolean;
   steps?: AnalysisStep[];
+  generatedAt?: number;
+  restored?: boolean;
 };
 
 const QUESTION_ERROR_ID = "analysis-question-error";
 const COMPOSER_FIELDS_ID = "analysis-composer-fields";
-/** Enough of the draft to recognise it in the collapsed bar, without wrapping. */
+const WELCOME_QUESTION_TITLES: Record<string, string> = {
+  "compare-courses": "课程成绩",
+  "term-trend": "学期变化",
+  "score-distribution": "成绩分布",
+  "absence-relationship": "出勤关联",
+};
+/** Enough of the draft to recognise it in the folded button's tooltip. */
 const DRAFT_PREVIEW_LENGTH = 24;
+/** The server's "tool-call check" error speaks to administrators; say this instead. */
+const FREE_CHAT_OFF_HINT =
+  "自由对话还没开启：可先用推荐问题或切换表格；需要管理员在 AI 设置中开启。";
+/** Capability/configuration failures arrive as administrator-facing sentences. */
+const AI_CONFIG_NOTICE = /工具调用检测|AI 对话分析已停用|AI 设置/;
+
+/** Flatten a rendered notice to its text, so the dock can rephrase it. */
+function noticeText(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map((child) => noticeText(child)).join("");
+  if (isValidElement<{ children?: ReactNode }>(node)) return noticeText(node.props.children);
+  return "";
+}
 
 function Speaker({ role }: { role: ChatMessage["role"] }) {
   return (
@@ -65,7 +95,7 @@ const ConversationToolResult = dynamic(
 
 function artifactLabel(artifact: ChatArtifact) {
   if (artifact.kind === "studio")
-    return `${artifact.tool === "density" && artifact.densityMode === "scatter" ? "关系散点图" : toolLabel(artifact.tool)} · ${artifact.term}`;
+    return `${artifact.tool === "density" ? "联合分档密度图" : toolLabel(artifact.tool)} · ${artifact.term}`;
   if (artifact.kind === "relations" || artifact.kind === "panorama")
     return `${artifact.kind === "relations" ? "学科关联弦图" : "学科全景"} · ${artifact.data.term ?? "无可用学期"}`;
   return artifact.kind === "analysis"
@@ -138,6 +168,39 @@ function PlanningNote({ planning }: { planning: ChatResponse["planning"] }) {
   );
 }
 
+function ResponseWarning({ warning }: { warning: string }) {
+  // Old saved turns retain their original warning; explain them without
+  // rewriting the stored response or changing the message TTL.
+  const filtered = /未核验数字|事实引用核验|文字核验|已省略这些句子/.test(warning);
+  if (!filtered)
+    return (
+      <p className="notice notice-warning" role="status">
+        {warning}
+      </p>
+    );
+  const onlyFiltering =
+    /^(?:部分解释含未核验数字或无效事实引用，已省略这些句子。|文字核验：[^。]*。[^。]*。)$/.test(
+      warning,
+    );
+  // Tool, timeout and save failures remain visible even alongside a filter notice.
+  if (!onlyFiltering)
+    return (
+      <p className="notice notice-warning" role="status">
+        {warning}
+      </p>
+    );
+  return (
+    <details className={styles.validationNote}>
+      <summary>部分解释未通过核验 · 查看说明</summary>
+      <p>{warning}</p>
+      <p>
+        过滤只针对 AI
+        解释文字；已返回的可信统计结果可在附件和分析依据中核对。未核验句子不会作为结论展示。
+      </p>
+    </details>
+  );
+}
+
 export function ConversationWorkspace({
   messages,
   question,
@@ -162,7 +225,17 @@ export function ConversationWorkspace({
   onReport,
   onConfigure,
   notice,
+  history,
+  conversationId,
+  sourceControl,
+  onRetrySave,
+  historyActivity,
 }: {
+  historyActivity?: ReactNode;
+  onRetrySave: (id: string) => void;
+  history: ConversationHistoryProps;
+  conversationId: string | null;
+  sourceControl?: ReactNode;
   messages: ConversationTurn[];
   question: string;
   loading: boolean;
@@ -193,15 +266,23 @@ export function ConversationWorkspace({
   const textarea = useRef<HTMLTextAreaElement>(null);
   const sendButton = useRef<HTMLButtonElement>(null);
   const expandButton = useRef<HTMLButtonElement>(null);
-  const newest = useRef<HTMLElement>(null);
-  const pending = useRef<HTMLDivElement>(null);
+  const scroll = useConversationScroll(conversationId ?? "new", messages.length, loading);
+  const { newest, pending } = scroll;
   const [clearConfirming, setClearConfirming] = useState(false);
   const [contextNotice, setContextNotice] = useState("");
   // Collapsing only hides controls: the draft lives in the parent's `question`
   // state, so the textarea keeps its value while folded away.
   const [composerCollapsed, setComposerCollapsed] = useState(false);
+  const foldFrom = useRef<DOMRect | null>(null);
+  const { enabled: motionEnabled, reduced: reducedMotion } = useMotionPreferences();
+  const [historyCollapsed, setHistoryCollapsed] = useState(false);
   const wasCollapsed = useRef(false);
   const stopRequested = useRef(false);
+
+  const foldComposer = (collapsed: boolean) => {
+    foldFrom.current = composer.current?.getBoundingClientRect() ?? null;
+    setComposerCollapsed(collapsed);
+  };
 
   // A reply can start while the composer is folded (e.g. a transcript
   // suggestion); unfold so "停止回复" stays on screen and reachable.
@@ -231,17 +312,6 @@ export function ConversationWorkspace({
     return () => cancelAnimationFrame(frame);
   }, [loading]);
 
-  // The browser owns the wording; this only asks for its confirmation dialog.
-  useEffect(() => {
-    if (!messages.length) return;
-    const warn = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [messages.length]);
-
   useEffect(() => {
     // A new turn re-establishes context and settles any pending clear action, so
     // both the confirmation row and its announcement close themselves.
@@ -249,42 +319,62 @@ export function ConversationWorkspace({
     setContextNotice("");
   }, [messages.length]);
 
-  const rounds = messages.filter((message) => message.role === "user").length;
-
   useLayoutEffect(() => {
-    const main = root.current?.closest<HTMLElement>(".workbench-content");
-    const header = document.querySelector<HTMLElement>(".workbench-header");
-    const input = composer.current;
-    if (!main || !input) return;
-    const measure = () => {
-      const viewport = window.visualViewport;
-      const keyboard = viewport
-        ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
-        : 0;
-      main.style.setProperty("--chat-composer-height", `${input.getBoundingClientRect().height}px`);
-      main.style.setProperty("--chat-keyboard-inset", `${keyboard}px`);
-      main.style.setProperty(
-        "--chat-header-height",
-        `${header?.getBoundingClientRect().height ?? 64}px`,
-      );
-    };
-    const observer = new ResizeObserver(measure);
-    observer.observe(input);
-    if (header) observer.observe(header);
-    window.visualViewport?.addEventListener("resize", measure);
-    window.visualViewport?.addEventListener("scroll", measure);
+    const shell = root.current?.closest<HTMLElement>('[data-conversation="true"]');
+    const viewport = window.visualViewport;
+    if (!shell || !viewport) return;
+    const measure = () =>
+      shell.style.setProperty("--conversation-viewport-height", `${viewport.height}px`);
+    viewport.addEventListener("resize", measure);
     measure();
     return () => {
-      observer.disconnect();
-      window.visualViewport?.removeEventListener("resize", measure);
-      window.visualViewport?.removeEventListener("scroll", measure);
-      for (const property of [
-        "--chat-composer-height",
-        "--chat-keyboard-inset",
-        "--chat-header-height",
-      ])
-        main.style.removeProperty(property);
+      viewport.removeEventListener("resize", measure);
+      shell.style.removeProperty("--conversation-viewport-height");
     };
+  }, []);
+
+  const rounds = messages.filter((message) => message.role === "user").length;
+  const isEmpty = messages.length === 0 && !loading;
+  // Only the AI configuration notice is rephrased; save and transport failures
+  // keep their own wording and retry actions.
+  const rawNotice = noticeText(notice);
+  const configNotice = !aiReady && AI_CONFIG_NOTICE.test(rawNotice);
+  // The compact phone empty state can carry three questions, not four: the
+  // extra one (only offered once AI is configured) makes the CSS drop the
+  // description paragraph so every question stays above the dock.
+  const welcomeSuggestions = suggestedQuestionsFor(aiReady);
+
+  useLayoutEffect(() => {
+    // The empty state is the only view that must fit without scrolling, so a
+    // stale scroll offset from a previous conversation must never hide its hero
+    // and recommended questions.
+    if (!isEmpty) return;
+    scroll.transcript.current?.scrollTo({ top: 0 });
+  }, [conversationId, isEmpty, scroll.transcript]);
+
+  useEffect(() => {
+    if (!isEmpty) return;
+    // Shrinking a desktop window into the phone layout keeps the same transcript
+    // instance; reset it so the compact empty state starts at the top instead of
+    // at the bottom of the old scroll range.
+    const mobile = window.matchMedia("(max-width: 600px)");
+    const reset = () => scroll.transcript.current?.scrollTo({ top: 0 });
+    mobile.addEventListener("change", reset);
+    return () => mobile.removeEventListener("change", reset);
+  }, [isEmpty, scroll.transcript]);
+
+  useLayoutEffect(() => {
+    const dock = composer.current;
+    const surface = root.current;
+    if (!dock || !surface) return;
+    // Size the reading region above the dock so the final answer stays clear
+    // of both the expanded input and its compact handle.
+    const measure = () =>
+      surface.style.setProperty("--composer-clearance", `${dock.getBoundingClientRect().height}px`);
+    const observer = new ResizeObserver(measure);
+    observer.observe(dock);
+    measure();
+    return () => observer.disconnect();
   }, []);
 
   useLayoutEffect(() => {
@@ -294,16 +384,36 @@ export function ConversationWorkspace({
     textarea.current.style.height = `${Math.min(144, textarea.current.scrollHeight)}px`;
   }, [question, composerCollapsed]);
 
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      const target = loading ? pending.current : newest.current;
-      target?.scrollIntoView({ block: "start", behavior: "instant" });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [messages.length, loading]);
+  useLayoutEffect(() => {
+    const from = foldFrom.current;
+    foldFrom.current = null;
+    const dock = composer.current;
+    if (!from || !dock || !motionEnabled || reducedMotion) return;
+    const to = dock.getBoundingClientRect();
+    // Both states are anchored on the right, so the surface contracts toward
+    // its handle without scaling text or changing the transcript's position.
+    const animation = dock.animate(
+      [
+        { width: `${from.width}px`, height: `${from.height}px` },
+        { width: `${to.width}px`, height: `${to.height}px` },
+      ],
+      { duration: 320, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+    );
+    const fields = dock.querySelector<HTMLElement>(`#${COMPOSER_FIELDS_ID}`);
+    const reveal = !composerCollapsed
+      ? fields?.animate([{ opacity: 0 }, { opacity: 1 }], {
+          duration: 220,
+          delay: 60,
+          fill: "backwards",
+        })
+      : null;
+    return () => {
+      animation.cancel();
+      reveal?.cancel();
+    };
+  }, [composerCollapsed, motionEnabled, reducedMotion]);
 
-  // Collapsed bar hint: "草稿已保留" plus a short, whitespace-normalised preview
-  // so a folded draft is recognisable at a glance.
+  // The folded square retains a short, whitespace-normalised draft tooltip.
   const draftText = question.replace(/\s+/g, " ").trim();
   const draftPreview =
     Array.from(draftText).length > DRAFT_PREVIEW_LENGTH
@@ -311,457 +421,550 @@ export function ConversationWorkspace({
       : draftText;
 
   return (
-    <div ref={root} className={styles.conversation}>
-      <p
-        className={styles.availability}
-        data-enter="fade"
-        style={{ "--enter-delay": "300ms" } as CSSProperties}
-      >
-        <span className={aiAllowed && aiReady ? "status-dot" : "status-dot is-muted"} />
-        {!aiAllowed
-          ? "当前账号不能使用 AI 对话"
-          : aiReady
-            ? `连续对话已开启${model ? ` · ${model}` : ""}`
-            : "推荐问题可直接使用"}
-      </p>
-      <div
-        className={styles.transcript}
-        role="log"
-        aria-label="分析对话"
-        aria-live="polite"
-        aria-relevant="additions"
-        data-enter="fade"
-        style={{ "--enter-delay": "340ms" } as CSSProperties}
-      >
-        {!messages.length && (
-          <div
-            className={styles.empty}
-            data-enter="rise-sm"
-            style={{ "--enter-delay": "400ms" } as CSSProperties}
-          >
-            <Speaker role="assistant" />
-            <p>
-              {aiAllowed
-                ? "可以直接说想比较什么、观察趋势、分布或指标关系。我会选择合适的文字、图表或数值表，也可以按你的要求调整。继续追问会沿用当前筛选。"
-                : "只读账号可使用指标分析，不能使用 AI 对话。请返回指标分析查看确定性统计结果。"}
-            </p>
-            {aiAllowed && (
-              <div className={styles.suggestions} aria-label="推荐问题">
-                {suggestedQuestionsFor(aiReady).map((item) => (
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    key={item.id}
-                    disabled={loading || !canRun}
-                    onClick={() => {
-                      if (aiAllowed) onAsk(item.question);
-                    }}
-                  >
-                    {item.question}
-                  </button>
-                ))}
-              </div>
-            )}
-            {aiAllowed && (
-              <p className={styles.privacy}>
-                AI
-                负责理解问题、选择工具和组织说明；统计数字由本地计算；只做群体统计，不提供个体名单或排名；对话正文不写入审计记录。
-              </p>
-            )}
-          </div>
-        )}
-        {messages.map((message, index) => {
-          const response = message.response;
-          const artifacts = response?.artifacts ?? (response?.artifact ? [response.artifact] : []);
-          return (
-            <article
-              ref={index === messages.length - 1 ? newest : undefined}
-              key={message.id}
-              className={styles.message}
-              data-role={message.role}
-              data-system={message.system ? "true" : undefined}
-              data-enter="rise-sm"
-              style={
-                {
-                  "--enter-delay": index === messages.length - 1 ? "70ms" : "0ms",
-                } as CSSProperties
-              }
-            >
-              <Speaker role={message.role} />
-              <p className={styles.messageText}>{message.content}</p>
-              {response?.warning && (
-                <p className="notice notice-warning" role="status">
-                  {response.warning}
-                </p>
-              )}
-              {/* The unified path always has execution steps, so gating on
-                  "no steps" hid the numbers exactly where they matter most.
-                  Show the collapsed evidence whenever facts exist. */}
-              {response?.facts.length ? (
-                <details
-                  className={styles.facts}
+    <div
+      data-workspace-part="layout"
+      className={experience.layout}
+      data-history-collapsed={historyCollapsed}
+      data-glass-pane="0.35"
+    >
+      <ConversationHistory
+        {...history}
+        collapsed={historyCollapsed}
+        onToggle={() => setHistoryCollapsed((value) => !value)}
+      />
+      <div ref={root} className={styles.conversation}>
+        {messages.length === 0 && !loading ? (
+          <>
+            <header data-workspace-part="formalHeader" className={styles.formalHeader}>
+              <div>
+                <h1 id="conversation-heading">分析对话</h1>
+                <p
+                  data-workspace-part="availability"
+                  className={styles.availability}
                   data-enter="fade"
-                  style={{ "--enter-delay": "120ms" } as CSSProperties}
+                  style={{ "--enter-delay": "300ms" } as CSSProperties}
                 >
-                  <summary>
-                    <strong>数字从哪来</strong>
-                    {response.resultRefs?.length ? (
-                      <span className={styles.resultScope}>
-                        {" "}
-                        · {response.resultRefs.length} 份统计结果
+                  <span className={aiAllowed && aiReady ? "status-dot" : "status-dot is-muted"} />
+                  {!aiAllowed
+                    ? "当前账号不能使用 AI 对话"
+                    : aiReady
+                      ? `可以自由提问${model ? ` · ${model}` : ""}`
+                      : "常用问题可直接分析"}
+                </p>
+              </div>
+              {sourceControl}
+            </header>
+          </>
+        ) : (
+          <h1 id="conversation-heading" className="sr-only">
+            分析对话
+          </h1>
+        )}
+        <div className={styles.readingArea}>
+          <div
+            ref={scroll.transcript}
+            tabIndex={0}
+            onScroll={scroll.onScroll}
+            className={styles.transcript}
+            role="region"
+            aria-label="分析对话"
+            aria-live="off"
+          >
+            {!loading && historyActivity}
+            {!messages.length && !loading && (
+              <div
+                data-workspace-part="empty"
+                className={styles.empty}
+                data-suggestion-count={welcomeSuggestions.length}
+                data-enter="rise-sm"
+                style={{ "--enter-delay": "400ms" } as CSSProperties}
+              >
+                <h2>从你关心的问题开始</h2>
+                <p>
+                  {aiAllowed
+                    ? aiReady
+                      ? "选择一个常用问题，或在下方输入你想了解的学习情况。"
+                      : "选择一个常用问题，查看课程成绩、学期变化或学习关联。"
+                    : "只读账号可使用指标分析，不能使用 AI 对话。请返回指标分析查看确定性统计结果。"}
+                </p>
+                {aiAllowed && (
+                  <div
+                    data-workspace-part="welcomeSuggestions"
+                    className={styles.welcomeSuggestions}
+                    aria-label="推荐问题"
+                  >
+                    <div
+                      data-workspace-part="suggestionHeading"
+                      className={styles.suggestionHeading}
+                    >
+                      <span>先看整体，再深入分析</span>
+                      <span>
+                        点击卡片开始
+                        <Icon name="arrowUpRight" size={12} />
                       </span>
-                    ) : null}
-                  </summary>
-                  <ul>
-                    {response.facts.map((fact, index) => {
-                      // Matching factRefs carry the verifiable identity; the
-                      // prose stays exactly as computed by the program.
-                      const ref = response.factRefs?.find((item) => item.text === fact);
-                      return (
-                        <li key={ref?.factId ?? index}>
-                          {fact}
-                          {ref ? <small className={styles.factId}>{ref.factId}</small> : null}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </details>
-              ) : null}
-              {response?.planning ? <PlanningNote planning={response.planning} /> : null}
-              <ExecutionSteps steps={response?.steps ?? message.steps ?? []} />
-              {response?.citations?.length ? (
-                <div className={styles.citations}>
-                  <strong>依据与引用</strong>
-                  {response.citations.map((citation, index) => (
-                    <details key={citation.id}>
-                      <summary>
-                        ［{index + 1}］{citation.title} · {citation.version}
-                      </summary>
-                      <p>{citation.excerpt}</p>
-                      <a href={citation.source} target="_blank" rel="noreferrer">
-                        查看来源与适用范围
-                      </a>
-                    </details>
-                  ))}
-                </div>
-              ) : null}
-              {response &&
-                response.presentation !== "text" &&
-                artifacts.map((artifact, artifactIndex) => {
-                  const attachmentId = response.artifacts
-                    ? `${message.id}:${artifactIndex}`
-                    : message.id;
-                  const expanded = expandedChartId === attachmentId;
-                  const chartId = `conversation-chart-${attachmentId}`;
-                  return (
-                    <div key={attachmentId} className={styles.chartAttachment}>
+                    </div>
+                    {welcomeSuggestions.map((item) => (
                       <button
                         type="button"
-                        className={styles.chartToggle}
-                        aria-expanded={expanded}
-                        aria-controls={chartId}
-                        onClick={() => onExpandChart(expanded ? null : attachmentId)}
+                        key={item.id}
+                        aria-label={item.question}
+                        data-recommended={item.id === "compare-courses" || undefined}
+                        disabled={loading || !canRun}
+                        onClick={() => {
+                          if (!aiAllowed) return;
+                          scroll.begin();
+                          onAsk(item.question);
+                        }}
                       >
-                        <Icon name="chart" size={17} />
-                        <span>{artifactLabel(artifact)}</span>
-                        <small>{expanded ? "收起图表" : "展开图表"}</small>
-                        <Icon name="chevron" size={15} />
-                      </button>
-                      <ChartAttachmentBody expanded={expanded} id={chartId}>
-                        <ConversationResult
-                          response={response}
-                          artifact={artifact}
-                          onChartChange={(view) => onChartChange(message.id, view, artifactIndex)}
-                          canExport={canExport}
-                          onReport={onReport}
+                        <Icon
+                          name={
+                            item.id === "term-trend"
+                              ? "line"
+                              : item.id === "absence-relationship"
+                                ? "link"
+                                : "chart"
+                          }
+                          size={17}
                         />
-                      </ChartAttachmentBody>
-                    </div>
-                  );
-                })}
-              {aiAllowed && index === messages.length - 1 && response?.suggestions.length ? (
-                <div
-                  className={styles.suggestions}
-                  aria-label="继续探索"
-                  data-enter="fade"
-                  style={{ "--enter-delay": "240ms" } as CSSProperties}
+                        {item.id === "compare-courses" && (
+                          <span className="welcome-start-label" aria-hidden="true">
+                            建议先看
+                          </span>
+                        )}
+                        <span className="welcome-question-copy">
+                          <strong>{WELCOME_QUESTION_TITLES[item.id] ?? "进一步分析"}</strong>
+                          <small>{item.question}</small>
+                        </span>
+                        <Icon name="arrowUpRight" size={14} />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {aiAllowed && (
+                  <p data-workspace-part="privacy" className={styles.privacy}>
+                    <Icon name="shield" size={13} />
+                    仅分析群体统计 · 统计数字由本地计算 · 结论有据可查
+                  </p>
+                )}
+              </div>
+            )}
+            {messages.map((message, index) => {
+              const response = message.response;
+              const artifacts =
+                response?.artifacts ?? (response?.artifact ? [response.artifact] : []);
+              return (
+                <article
+                  ref={index === messages.length - 1 ? newest : undefined}
+                  key={message.id}
+                  data-message-id={message.id}
+                  className={styles.message}
+                  data-role={message.role}
+                  data-system={message.system ? "true" : undefined}
+                  data-enter="rise-sm"
+                  style={
+                    {
+                      "--enter-delay": index === messages.length - 1 ? "70ms" : "0ms",
+                    } as CSSProperties
+                  }
                 >
-                  {response.suggestions.map((suggestion) => (
+                  <Speaker role={message.role} />
+                  {message.role === "assistant" ? (
+                    <ExecutionSteps
+                      steps={response?.steps ?? message.steps ?? []}
+                      completion={response?.completion}
+                    />
+                  ) : null}
+                  {message.generatedAt ? (
+                    <div className={styles.snapshotNote}>
+                      <span>
+                        {message.restored ? "历史结果" : "生成于"} ·{" "}
+                        {new Date(message.generatedAt).toLocaleString("zh-CN")}
+                        {message.restored ? " · 数据可能已更新，继续提问会重新查询" : ""}
+                      </span>
+                      <details className={styles.technical}>
+                        <summary>技术详情</summary>
+                        <p>
+                          结果契约 v{RESULT_CONTRACT_VERSION}
+                          {response?.resultRefs?.length
+                            ? ` · 数据声明版本 ${[...new Set(response.resultRefs.map((ref) => ref.datasetVersion))].join(" / ")} · 指标 ${[...new Set(response.resultRefs.map((ref) => ref.metricVersion))].join(" / ")}`
+                            : ""}
+                        </p>
+                      </details>
+                    </div>
+                  ) : null}
+                  <p className={styles.messageText}>{message.content}</p>
+                  {response?.warning ? <ResponseWarning warning={response.warning} /> : null}
+                  {response?.persistence === "pending" ? (
                     <button
                       type="button"
                       className="secondary-button"
-                      key={suggestion}
-                      disabled={loading}
-                      onClick={() => {
-                        if (aiAllowed) onAsk(suggestion);
-                      }}
+                      onClick={() => onRetrySave(message.id)}
                     >
-                      {suggestion}
+                      重试保存到历史
                     </button>
-                  ))}
+                  ) : null}
+                  {response &&
+                    response.presentation !== "text" &&
+                    artifacts.map((artifact, artifactIndex) => {
+                      const attachmentId = response.artifacts
+                        ? `${message.id}:${artifactIndex}`
+                        : message.id;
+                      const expanded = expandedChartId === attachmentId;
+                      const chartId = `conversation-chart-${attachmentId}`;
+                      return (
+                        <div key={attachmentId} className={styles.chartAttachment}>
+                          <button
+                            type="button"
+                            className={styles.chartToggle}
+                            aria-expanded={expanded}
+                            aria-controls={chartId}
+                            onClick={() => onExpandChart(expanded ? null : attachmentId)}
+                          >
+                            <Icon name="chart" size={17} />
+                            <span>{artifactLabel(artifact)}</span>
+                            <small>{expanded ? "收起图表" : "展开图表"}</small>
+                            <Icon name="chevron" size={15} />
+                          </button>
+                          <ChartAttachmentBody expanded={expanded} id={chartId}>
+                            <ConversationArtifactBoundary>
+                              <ConversationResult
+                                response={response}
+                                artifact={artifact}
+                                artifactIndex={artifactIndex}
+                                onChartChange={(view) =>
+                                  onChartChange(message.id, view, artifactIndex)
+                                }
+                                canExport={canExport}
+                                onReport={onReport}
+                              />
+                            </ConversationArtifactBoundary>
+                          </ChartAttachmentBody>
+                        </div>
+                      );
+                    })}
+                  {response ? <ConversationEvidence response={response} /> : null}
+                  {response?.planning ? <PlanningNote planning={response.planning} /> : null}
+                  {aiAllowed && index === messages.length - 1 && response?.suggestions.length ? (
+                    <div
+                      className={styles.suggestions}
+                      aria-label="继续探索"
+                      data-enter="fade"
+                      style={{ "--enter-delay": "240ms" } as CSSProperties}
+                    >
+                      {response.suggestions.map((suggestion) => (
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          key={suggestion}
+                          disabled={loading}
+                          onClick={() => {
+                            if (aiAllowed) {
+                              scroll.begin();
+                              onAsk(suggestion);
+                            }
+                          }}
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
+            {loading && (
+              <div ref={pending} data-scroll-pending className={styles.pending}>
+                <div
+                  className={styles.message}
+                  data-role="user"
+                  data-enter="rise-sm"
+                  style={{ "--enter-delay": "0ms" } as CSSProperties}
+                >
+                  <Speaker role="user" />
+                  <p className={styles.messageText}>{pendingQuestion}</p>
                 </div>
-              ) : null}
-            </article>
-          );
-        })}
-        {loading && (
-          <div ref={pending} className={styles.pending}>
-            <div
-              className={styles.message}
-              data-role="user"
-              data-enter="rise-sm"
-              style={{ "--enter-delay": "0ms" } as CSSProperties}
-            >
-              <Speaker role="user" />
-              <p className={styles.messageText}>{pendingQuestion}</p>
-            </div>
-            <div
-              className={styles.message}
-              data-role="assistant"
-              data-enter="rise-sm"
-              style={{ "--enter-delay": "60ms" } as CSSProperties}
-            >
-              <Speaker role="assistant" />
-              <p className={styles.pendingStatus} role="status">
-                <span className="spinner" />
-                {[...pendingSteps].reverse().find((step) => step.status === "running")?.label ??
-                  "正在处理分析请求…"}
-              </p>
-              <ExecutionSteps steps={pendingSteps} live />
-            </div>
+                <div
+                  className={styles.message}
+                  data-role="assistant"
+                  data-enter="rise-sm"
+                  style={{ "--enter-delay": "60ms" } as CSSProperties}
+                >
+                  <Speaker role="assistant" />
+                  <ExecutionSteps steps={pendingSteps} live />
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-      {!loading && pendingSteps.length > 0 ? <ExecutionSteps steps={pendingSteps} /> : null}
-      {aiAllowed && !aiReady && (
-        <p className={styles.note}>
-          推荐问题和已有结果的表格切换无需连接 AI。自由对话需要管理员开启并配置 AI。
-          {onConfigure && (
-            <button type="button" className="text-button" onClick={onConfigure}>
-              去设置
-            </button>
-          )}
-        </p>
-      )}
-      <div ref={composer} className={styles.composerDock}>
-        {notice}
-        <form
-          className={styles.composer}
-          aria-label="对话输入"
-          data-enter="rise"
-          style={{ "--enter-delay": "420ms" } as CSSProperties}
-          aria-disabled={!aiAllowed}
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (aiAllowed) onAsk();
-          }}
-        >
-          <div id={COMPOSER_FIELDS_ID} className={styles.composerFields} hidden={composerCollapsed}>
-            <div className={styles.composerHeading}>
-              <label htmlFor="analysis-question">{messages.length ? "继续追问" : "分析问题"}</label>
-              <div className={styles.composerTools}>
-                {clearConfirming && messages.length > 0 ? (
-                  <div
-                    className={styles.clearConfirm}
-                    role="group"
-                    aria-label="确认清空对话"
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape") {
-                        event.preventDefault();
-                        setClearConfirming(false);
-                      }
-                    }}
-                  >
-                    <span>将清空当前 {rounds} 轮对话</span>
-                    <button type="button" autoFocus onClick={() => setClearConfirming(false)}>
-                      取消
-                    </button>
+          {messages.length > 0 || loading ? (
+            <nav className={styles.scrollRuler} aria-label="对话刻度导航">
+              <button
+                type="button"
+                title="对话开头"
+                aria-label="跳到对话开头"
+                onClick={(event) => scroll.jump(null, event.detail === 0)}
+              >
+                <span aria-hidden="true">始</span>
+              </button>
+              <div className={styles.roundTicks}>
+                {messages
+                  .filter((message) => message.role === "user")
+                  .map((message, index) => (
                     <button
                       type="button"
-                      className={styles.clearConfirmAction}
-                      onClick={() => {
-                        setClearConfirming(false);
-                        onClear();
-                        textarea.current?.focus({ preventScroll: true });
-                      }}
+                      key={message.id}
+                      title={`第 ${index + 1} 轮：${message.content.slice(0, 60)}`}
+                      aria-label={`跳到第 ${index + 1} 轮：${message.content.slice(0, 60)}`}
+                      aria-current={scroll.activeId === message.id ? "location" : undefined}
+                      onClick={(event) => scroll.jump(message.id, event.detail === 0)}
                     >
-                      清空
+                      <span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
                     </button>
-                  </div>
-                ) : (
-                  <>
-                    {/* Without a model the deterministic presets only work in a
-                      fresh conversation; offering them mid-transcript would fail. */}
-                    {aiAllowed && (aiReady || !messages.length) ? (
-                      <details className={styles.presets}>
-                        <summary>推荐问题</summary>
-                        <div>
-                          {suggestedQuestionsFor(aiReady).map((item) => (
-                            <button
-                              type="button"
-                              key={item.id}
-                              disabled={loading || !canRun}
-                              onClick={(event) => {
-                                event.currentTarget.closest("details")?.removeAttribute("open");
-                                if (aiAllowed) onAsk(item.question);
-                              }}
-                            >
-                              {item.question}
-                            </button>
-                          ))}
-                        </div>
-                      </details>
-                    ) : null}
-                    {messages.length > 0 && (
-                      <button
-                        type="button"
-                        disabled={loading}
-                        onClick={() => setClearConfirming(true)}
-                      >
-                        <Icon name="plus" size={13} />
-                        新对话
-                      </button>
-                    )}
-                  </>
-                )}
-                <button
-                  type="button"
-                  className={styles.collapseToggle}
-                  aria-expanded="true"
-                  aria-controls={COMPOSER_FIELDS_ID}
-                  title={loading ? "回复中不能收起输入区" : "收起输入区"}
-                  disabled={loading}
-                  onClick={() => {
-                    setClearConfirming(false);
-                    setComposerCollapsed(true);
-                  }}
-                >
-                  <Icon name="chevron" size={13} />
-                  <span>收起输入区</span>
-                </button>
+                  ))}
               </div>
-            </div>
-            {contextLabel ? (
-              <div className={styles.contextRow}>
-                <span className={styles.contextChip}>
-                  <Icon name="sliders" size={12} />
-                  <span>{contextLabel}</span>
-                  <button
-                    type="button"
-                    aria-label={`清除筛选：${contextLabel}`}
-                    onClick={() => {
-                      onClearContext?.();
-                      setContextNotice("已清除筛选，后续追问不再沿用当前范围。");
-                    }}
-                  >
-                    <Icon name="close" size={12} />
-                  </button>
-                </span>
-                <span className={styles.contextHint}>仅影响后续追问</span>
-              </div>
-            ) : null}
-            {contextNotice ? (
-              <p className={styles.contextNotice} role="status" aria-live="polite">
-                {contextNotice}
-              </p>
-            ) : null}
-            <textarea
-              ref={textarea}
-              id="analysis-question"
-              name="analysis-question"
-              rows={2}
-              maxLength={500}
-              value={question}
-              placeholder={
-                aiAllowed
-                  ? messages.length
-                    ? "只看上学期、换成表格，或继续追问…"
-                    : "你想了解哪些学习情况？"
-                  : "只读账号不能使用 AI 对话"
-              }
-              disabled={!aiAllowed}
-              aria-invalid={inputError ? true : undefined}
-              aria-describedby={inputError ? QUESTION_ERROR_ID : undefined}
-              onChange={(event) => {
-                if (aiAllowed) onQuestionChange(event.target.value);
-              }}
-              onKeyDown={(event) => {
-                if (
-                  aiAllowed &&
-                  event.key === "Enter" &&
-                  !event.shiftKey &&
-                  !event.nativeEvent.isComposing
-                ) {
-                  event.preventDefault();
-                  onAsk();
-                }
-              }}
-            />
-            {inputError ? (
-              <p className={styles.fieldError} id={QUESTION_ERROR_ID} role="alert">
-                {inputError}
-              </p>
-            ) : null}
-            <div className={styles.composerActions}>
-              <span>
-                {question.length}/500
-                <span className={styles.shortcut}> · Enter 发送，Shift + Enter 换行</span>
-              </span>
-              {loading ? (
-                <button
-                  type="button"
-                  key="stop"
-                  className={styles.stop}
-                  onClick={(event) => {
-                    // Cancelling swaps this control for a submit button during the click.
-                    event.preventDefault();
-                    stopRequested.current = true;
-                    onStop();
-                  }}
-                >
-                  停止回复
-                </button>
-              ) : (
-                <button
-                  ref={sendButton}
-                  type="submit"
-                  key="send"
-                  className={styles.send}
-                  disabled={!aiAllowed || (!canRun && !aiReady) || question.trim().length < 2}
-                  aria-label="发送"
-                >
-                  <Icon name="arrow" size={19} />
+              <button
+                type="button"
+                title="最新内容"
+                aria-label="跳到最新内容"
+                data-unread={scroll.hasNew}
+                onClick={(event) => scroll.latest(event.detail === 0)}
+              >
+                <Icon name="arrow" size={14} />
+              </button>
+            </nav>
+          ) : null}
+        </div>
+        {!loading && pendingSteps.length > 0 ? <ExecutionSteps steps={pendingSteps} /> : null}
+        <div
+          ref={composer}
+          data-workspace-part="composerDock"
+          className={styles.composerDock}
+          data-collapsed={composerCollapsed}
+        >
+          {aiAllowed && !aiReady && !composerCollapsed && (
+            <p data-workspace-part="composerNote" className={styles.note}>
+              常用问题可直接使用。自由提问需管理员开启 AI 连接。
+              {onConfigure && (
+                <button type="button" className="text-button" onClick={onConfigure}>
+                  去设置
                 </button>
               )}
-            </div>
-          </div>
-          {composerCollapsed ? (
-            <div className={styles.composerCollapsed}>
-              <button
-                ref={expandButton}
-                type="button"
-                className={styles.collapseToggle}
-                aria-expanded="false"
-                aria-controls={COMPOSER_FIELDS_ID}
-                title="展开输入区"
-                onClick={() => setComposerCollapsed(false)}
-              >
-                <Icon name="chevron" size={13} />
-                <span>展开输入区</span>
-              </button>
-              <p className={styles.collapsedHint}>
-                {draftPreview ? (
-                  <>
-                    输入区已收起，草稿已保留
-                    <span className={styles.collapsedDraft}>：「{draftPreview}」</span>
-                  </>
-                ) : (
-                  "输入区已收起"
-                )}
+            </p>
+          )}
+          {configNotice ? (
+            composerCollapsed ? null : (
+              <p className={styles.localNotice} role="alert">
+                {FREE_CHAT_OFF_HINT}
+                {rawNotice.includes("上次成功的结果仍可查看") ? "上次成功的结果仍可查看。" : ""}
               </p>
+            )
+          ) : (
+            !composerCollapsed && notice
+          )}
+          <form
+            data-workspace-part="composer"
+            className={styles.composer}
+            aria-label="对话输入"
+            aria-disabled={!aiAllowed}
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (aiAllowed) {
+                scroll.begin();
+                onAsk();
+              }
+            }}
+          >
+            <div
+              id={COMPOSER_FIELDS_ID}
+              className={styles.composerFields}
+              hidden={composerCollapsed}
+            >
+              <div data-workspace-part="composerHeading" className={styles.composerHeading}>
+                <label htmlFor="analysis-question">
+                  <Icon name="messages" size={14} />
+                  {aiReady && messages.length ? "继续追问" : "输入分析问题"}
+                </label>
+                <div data-workspace-part="composerTools" className={styles.composerTools}>
+                  {clearConfirming && messages.length > 0 ? (
+                    <div
+                      className={styles.clearConfirm}
+                      role="group"
+                      aria-label="新建对话确认"
+                      onKeyDown={(event) => {
+                        if (event.key === "Escape") {
+                          event.preventDefault();
+                          setClearConfirming(false);
+                        }
+                      }}
+                    >
+                      <span>当前 {rounds} 轮已保存，可从历史继续</span>
+                      <button type="button" autoFocus onClick={() => setClearConfirming(false)}>
+                        取消
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.clearConfirmAction}
+                        onClick={() => {
+                          setClearConfirming(false);
+                          onClear();
+                          textarea.current?.focus({ preventScroll: true });
+                        }}
+                      >
+                        新建
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {messages.length > 0 && (
+                        <button
+                          type="button"
+                          className={styles.newConversation}
+                          aria-label="新对话"
+                          title="新对话"
+                          disabled={loading}
+                          onClick={() => setClearConfirming(true)}
+                        >
+                          <Icon name="plus" size={13} />
+                          <span>新对话</span>
+                        </button>
+                      )}
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    data-workspace-part="collapseToggle"
+                    className={styles.collapseToggle}
+                    aria-expanded="true"
+                    aria-controls={COMPOSER_FIELDS_ID}
+                    aria-label="收起输入区"
+                    title={loading ? "回复中不能收起输入区" : "收起输入区"}
+                    disabled={loading}
+                    onClick={() => {
+                      setClearConfirming(false);
+                      foldComposer(true);
+                    }}
+                  >
+                    <Icon name="chevron" size={13} />
+                    <span className="sr-only">收起输入区</span>
+                  </button>
+                </div>
+              </div>
+              {contextLabel ? (
+                <div className={styles.contextRow}>
+                  <span className={styles.contextChip} title={contextLabel}>
+                    <Icon name="sliders" size={12} />
+                    <span>{contextLabel}</span>
+                    <button
+                      type="button"
+                      aria-label={`清除筛选：${contextLabel}`}
+                      onClick={() => {
+                        onClearContext?.();
+                        setContextNotice("已清除筛选，后续追问不再沿用当前范围。");
+                      }}
+                    >
+                      <Icon name="close" size={12} />
+                    </button>
+                  </span>
+                  <span className={styles.contextHint}>仅影响后续追问</span>
+                </div>
+              ) : null}
+              {contextNotice ? (
+                <p className={styles.contextNotice} role="status" aria-live="polite">
+                  {contextNotice}
+                </p>
+              ) : null}
+              <textarea
+                ref={textarea}
+                id="analysis-question"
+                name="analysis-question"
+                rows={2}
+                maxLength={500}
+                value={question}
+                placeholder={
+                  aiAllowed
+                    ? aiReady
+                      ? messages.length
+                        ? "只看上学期、换成表格，或继续追问…"
+                        : "你想了解哪些学习情况？"
+                      : "例如：各学期平均成绩如何？"
+                    : "只读账号不能使用 AI 对话"
+                }
+                disabled={!aiAllowed}
+                aria-invalid={inputError ? true : undefined}
+                aria-describedby={inputError ? QUESTION_ERROR_ID : undefined}
+                onChange={(event) => {
+                  if (aiAllowed) onQuestionChange(event.target.value);
+                }}
+                onKeyDown={(event) => {
+                  if (
+                    aiAllowed &&
+                    event.key === "Enter" &&
+                    !event.shiftKey &&
+                    !event.nativeEvent.isComposing
+                  ) {
+                    event.preventDefault();
+                    scroll.begin();
+                    onAsk();
+                  }
+                }}
+              />
+              {inputError ? (
+                <p className={styles.fieldError} id={QUESTION_ERROR_ID} role="alert">
+                  {inputError}
+                </p>
+              ) : null}
+              <div data-workspace-part="composerActions" className={styles.composerActions}>
+                <span>
+                  {question.length}/500
+                  <span className={styles.shortcut}> · Enter 发送，Shift + Enter 换行</span>
+                </span>
+                {loading ? (
+                  <button
+                    type="button"
+                    key="stop"
+                    className={styles.stop}
+                    onClick={(event) => {
+                      // Cancelling swaps this control for a submit button during the click.
+                      event.preventDefault();
+                      stopRequested.current = true;
+                      onStop();
+                    }}
+                  >
+                    停止回复
+                  </button>
+                ) : (
+                  <button
+                    ref={sendButton}
+                    type="submit"
+                    key="send"
+                    className={styles.send}
+                    disabled={!aiAllowed || !canRun || question.trim().length < 2}
+                    aria-label="发送"
+                  >
+                    <Icon name="arrow" size={19} />
+                  </button>
+                )}
+              </div>
             </div>
-          ) : null}
-        </form>
+            {composerCollapsed ? (
+              <div className={styles.composerCollapsed}>
+                <button
+                  ref={expandButton}
+                  type="button"
+                  data-workspace-part="collapseToggle"
+                  className={styles.collapseToggle}
+                  aria-expanded="false"
+                  aria-controls={COMPOSER_FIELDS_ID}
+                  aria-label="展开输入区"
+                  title={draftPreview ? `展开输入区 · 草稿已保留：${draftPreview}` : "展开输入区"}
+                  onClick={() => foldComposer(false)}
+                >
+                  <Icon name="chevron" size={13} />
+                  <span className="sr-only">展开输入区{draftPreview ? "，草稿已保留" : ""}</span>
+                </button>
+              </div>
+            ) : null}
+          </form>
+        </div>
       </div>
     </div>
   );
@@ -770,7 +973,9 @@ export function ConversationWorkspace({
 function DistributionResult({
   artifact,
   onViewChange,
+  showViewPicker = true,
 }: {
+  showViewPicker?: boolean;
   artifact: Extract<ChatArtifact, { kind: "distribution" }>;
   onViewChange: (view: "table" | "heatmap") => void;
 }) {
@@ -802,30 +1007,32 @@ function DistributionResult({
             分一档
           </p>
         </div>
-        <div className={styles.actions} aria-label="成绩分布展示方式">
-          <button
-            type="button"
-            className="secondary-button"
-            aria-pressed={view === "heatmap"}
-            onClick={() => {
-              setView("heatmap");
-              onViewChange("heatmap");
-            }}
-          >
-            热力图
-          </button>
-          <button
-            type="button"
-            className="secondary-button"
-            aria-pressed={view === "table"}
-            onClick={() => {
-              setView("table");
-              onViewChange("table");
-            }}
-          >
-            数值表
-          </button>
-        </div>
+        {showViewPicker ? (
+          <div className={styles.actions} aria-label="成绩分布展示方式">
+            <button
+              type="button"
+              className="secondary-button"
+              aria-pressed={view === "heatmap"}
+              onClick={() => {
+                setView("heatmap");
+                onViewChange("heatmap");
+              }}
+            >
+              热力图
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              aria-pressed={view === "table"}
+              onClick={() => {
+                setView("table");
+                onViewChange("table");
+              }}
+            >
+              数值表
+            </button>
+          </div>
+        ) : null}
       </div>
       <label className={styles.search}>
         搜索当前结果中的课程
@@ -872,7 +1079,7 @@ function DistributionResult({
       {!rows.length && (
         <p role="status">当前范围没有满足样本要求的数据，请调整筛选。缺失值不作零分。</p>
       )}
-      <p className={styles.note}>
+      <p data-workspace-part="composerNote" className={styles.note}>
         仅展示至少 {artifact.data.minSampleSize}{" "}
         人的课程学期分组；同一学生、课程、学期先取有效成绩均值。跨学期分别计次。热力图颜色越深，数量越多，全部课程共用色阶。
       </p>
@@ -883,61 +1090,67 @@ function DistributionResult({
 function ConversationResult({
   response,
   artifact,
+  artifactIndex,
   onChartChange,
   canExport,
   onReport,
 }: {
   response: ChatResponse;
   artifact: ChatArtifact;
+  artifactIndex: number;
   onChartChange: (view: ChatDisplayView) => void;
   canExport: boolean;
   onReport: (result: AnalysisResult) => void;
 }) {
+  const resultId = response.resultRefs?.[artifactIndex]?.resultId;
+  const facts = response.factRefs?.filter((fact) => fact.resultId === resultId) ?? [];
+  const policy = policyForArtifact(artifact, { facts, resultId });
+  const safeArtifact =
+    artifact.kind === "studio" &&
+    artifact.tool === "density" &&
+    policy.structure === "joint_distribution"
+      ? { ...artifact, densityMode: "density" as const }
+      : artifact;
   return (
-    <div className={styles.results}>
-      {artifact.kind === "analysis" ? (
-        <AnalysisResultView
-          result={artifact.result}
-          chartType={artifact.view}
-          onChartChange={onChartChange}
-          loading={false}
-          planning={response.planning}
-          canExport={canExport}
-          onReport={onReport}
-        />
-      ) : artifact.kind === "distribution" ? (
-        <DistributionResult artifact={artifact} onViewChange={onChartChange} />
-      ) : (
-        <ConversationToolResult artifact={artifact} onViewChange={onChartChange} />
+    <ConversationArtifact
+      artifact={safeArtifact}
+      displayView={artifact.view}
+      facts={facts}
+      resultId={resultId}
+      totalFacts={response.facts.length}
+      storedPolicy={response.presentationPolicies?.[artifactIndex]}
+      onViewChange={onChartChange}
+      render={(displayArtifact, change) => (
+        <div className={styles.results}>
+          {displayArtifact.kind === "analysis" ? (
+            <AnalysisResultView
+              result={{ ...displayArtifact.result, rows: policy.rows }}
+              chartType={displayArtifact.view}
+              onChartChange={change}
+              showViewPicker={false}
+              barOrientation={policy.orientation === "horizontal" ? "horizontal" : "vertical"}
+              loading={false}
+              planning={response.planning}
+              canExport={canExport}
+              onReport={onReport}
+            />
+          ) : displayArtifact.kind === "distribution" ? (
+            <DistributionResult
+              showViewPicker={false}
+              key={displayArtifact.view}
+              artifact={displayArtifact}
+              onViewChange={change}
+            />
+          ) : (
+            <ConversationToolResult
+              showViewPicker={false}
+              key={displayArtifact.view}
+              artifact={displayArtifact}
+              onViewChange={change}
+            />
+          )}
+        </div>
       )}
-    </div>
-  );
-}
-
-function ExecutionSteps({ steps, live = false }: { steps: AnalysisStep[]; live?: boolean }) {
-  if (!steps.length) return null;
-  const completed = steps.filter((step) => step.status === "completed").length;
-  return (
-    <details className={styles.executionSteps} open={live ? true : undefined}>
-      <summary>
-        执行记录 · 已完成 {completed}/{steps.length} 步
-      </summary>
-      <ol>
-        {steps.map((step) => (
-          <li key={step.id} data-status={step.status}>
-            <span>{step.label}</span>
-            <small>
-              {step.status === "running"
-                ? "执行中"
-                : step.status === "failed"
-                  ? "未完成"
-                  : step.status === "cancelled"
-                    ? "已停止"
-                    : `${(step.durationMs / 1000).toFixed(1)} 秒`}
-            </small>
-          </li>
-        ))}
-      </ol>
-    </details>
+    />
   );
 }

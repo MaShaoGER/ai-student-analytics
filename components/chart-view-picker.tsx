@@ -16,6 +16,7 @@ export function ChartViewPicker({
   unit,
   includeTable = true,
   scatterDescription,
+  allowedViews,
 }: {
   value: ChartViewType;
   onChange: (value: ChartViewType) => void;
@@ -23,13 +24,19 @@ export function ChartViewPicker({
   unit: string;
   includeTable?: boolean;
   scatterDescription?: string;
+  /** Optional semantic whitelist. Omit to keep the existing full picker. */
+  allowedViews?: readonly ChartViewType[];
 }) {
   const effective = resolveChartView(value, unit, rows);
   const fallbackReason = chartUnavailableReason(value, unit, rows);
   return (
     <div className="chart-view-picker">
       <div className="chart-view-options" role="group" aria-label="结果展示方式">
-        {CHART_VIEWS.filter((view) => includeTable || view.value !== "table").map((view) => {
+        {CHART_VIEWS.filter(
+          (view) =>
+            (includeTable || view.value !== "table") &&
+            (!allowedViews || allowedViews.includes(view.value)),
+        ).map((view) => {
           const reason = chartUnavailableReason(view.value, unit, rows);
           return (
             <button
@@ -56,6 +63,11 @@ export function ChartViewPicker({
           );
         })}
       </div>
+      {allowedViews?.length === 0 ? (
+        <p className="chart-view-description" role="status">
+          当前结果没有可切换的图形形式。
+        </p>
+      ) : null}
       <p className="chart-view-description" role="status">
         {fallbackReason
           ? `${fallbackReason} 当前使用柱状图。`

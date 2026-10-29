@@ -41,10 +41,13 @@ export function useCountUp(value: number | undefined, duration = COUNT_UP_MS) {
   return display;
 }
 
-const format = (value: number, decimals: number) =>
+const format = (value: number, decimals: number, fixedDecimals = false) =>
   decimals === 0
     ? Math.round(value).toLocaleString("zh-CN", { maximumFractionDigits: 0 })
-    : value.toLocaleString("zh-CN", { maximumFractionDigits: decimals });
+    : value.toLocaleString("zh-CN", {
+        minimumFractionDigits: fixedDecimals ? decimals : 0,
+        maximumFractionDigits: decimals,
+      });
 
 /**
  * Renders only the formatted number so page typography stays with the caller.
@@ -53,16 +56,19 @@ const format = (value: number, decimals: number) =>
 export function AnimatedNumber({
   value,
   decimals = 0,
+  fixedDecimals = false,
   loading = false,
   fallback = null,
 }: {
   value?: number;
   decimals?: number;
+  /** Keep trailing zeros (72.90) when the column needs a stable decimal width. */
+  fixedDecimals?: boolean;
   loading?: boolean;
   fallback?: React.ReactNode;
 }) {
   const display = useCountUp(loading ? undefined : value);
   if (loading) return <>{fallback}</>;
   if (value === undefined) return <>{fallback}</>;
-  return <>{format(display ?? value, decimals)}</>;
+  return <>{format(display ?? value, decimals, fixedDecimals)}</>;
 }

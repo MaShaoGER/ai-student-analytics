@@ -58,6 +58,8 @@ COPY --from=builder /app/.next/static ./.next/static
 # OULAD.names keeps the dataset's provenance alongside the mounted CSVs.
 COPY --from=builder /app/oulad_raw/OULAD.names ./oulad_raw/OULAD.names
 COPY --from=builder /app/scripts/admin-init.mjs ./scripts/admin-init.mjs
+COPY --from=builder /app/scripts/account-cli.mjs ./scripts/account-cli.mjs
+COPY --from=builder /app/scripts/reset-password.mjs ./scripts/reset-password.mjs
 
 RUN mkdir -p /app/records
 

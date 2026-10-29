@@ -1,7 +1,9 @@
 "use client";
 
-import { NavigationIndicator } from "@/components/ui/navigation-indicator";
-import { MotionToggle } from "@/components/ui/motion-preferences";
+import { LightField } from "@/components/light-field";
+import { ProductBrand } from "@/components/product-brand";
+
+import { MotionToggle, useMotionPreferences } from "@/components/ui/motion-preferences";
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
@@ -13,6 +15,8 @@ import { ThemeToggle, useTheme } from "@/components/ui/theme-provider";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { ScoreDistribution } from "@/components/score-distribution";
 import { ConversationWorkspace, type ConversationTurn } from "@/components/ai-conversation";
+import experienceStyles from "@/components/conversation-experience.module.css";
+import conversationStyles from "@/components/ai-conversation.module.css";
 import {
   artifactWithView,
   intentWithView,
@@ -21,6 +25,11 @@ import {
   type ChatIntent,
   type ChatResponse,
 } from "@/lib/ai/chat-types";
+import type {
+  ConversationDetail,
+  ConversationPage,
+  ConversationSummary,
+} from "@/lib/conversations/types";
 import { readChatStream } from "@/lib/ai/chat-stream";
 import { createPlan } from "@/lib/analysis/plan";
 import { METRICS } from "@/lib/analysis/metrics";
@@ -335,6 +344,60 @@ function sameSessionPresentation(left: SessionUser, right: SessionUser): boolean
   );
 }
 
+function PasswordField({
+  id,
+  label,
+  value,
+  onChange,
+  autoComplete,
+  minLength,
+  maxLength,
+  help,
+  clearError,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  autoComplete: string;
+  minLength?: number;
+  maxLength?: number;
+  help?: string;
+  clearError: () => void;
+}) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <label className="form-field" htmlFor={id}>
+      {label}
+      <span className="password-input-wrap">
+        <input
+          autoComplete={autoComplete}
+          id={id}
+          minLength={minLength}
+          maxLength={maxLength}
+          onChange={(event) => {
+            onChange(event.target.value);
+            clearError();
+          }}
+          required
+          type={visible ? "text" : "password"}
+          value={value}
+        />
+        <button
+          type="button"
+          className="account-password-toggle"
+          aria-label={visible ? "隐藏密码" : "显示密码"}
+          aria-pressed={visible}
+          onClick={() => setVisible((current) => !current)}
+        >
+          <Icon name={visible ? "eyeOff" : "eye"} size={16} />
+        </button>
+      </span>
+      {help && <span className="form-help">{help}</span>}
+    </label>
+  );
+}
+
 function AccountPanel({
   user,
   passwordChangeRequired,
@@ -404,11 +467,7 @@ function AccountPanel({
         <h2>{user.displayName}</h2>
         <p>{user.username}</p>
         <span className="badge badge-teal">
-          {user.role === "admin"
-            ? "管理员"
-            : user.role === "readonly"
-              ? "只读用户"
-              : "教师／分析人员"}
+          {user.role === "admin" ? "管理员" : user.role === "readonly" ? "只读用户" : "分析用户"}
         </span>
         <div className="account-note">
           <Icon name="shield" size={19} />
@@ -435,42 +494,33 @@ function AccountPanel({
           <Icon name="lock" size={22} />
         </div>
         <form onSubmit={submit} className="password-form">
-          <label className="form-field" htmlFor="current-password">
-            当前密码
-            <input
-              autoComplete="current-password"
-              id="current-password"
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              required
-              type="password"
-              value={currentPassword}
-            />
-          </label>
-          <label className="form-field" htmlFor="new-password">
-            新密码
-            <input
-              autoComplete="new-password"
-              id="new-password"
-              minLength={12}
-              maxLength={128}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              type="password"
-              value={newPassword}
-            />
-            <span className="form-help">至少 12 个字符，建议混合字母、数字和符号。</span>
-          </label>
-          <label className="form-field" htmlFor="confirm-password">
-            再次输入新密码
-            <input
-              autoComplete="new-password"
-              id="confirm-password"
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              type="password"
-              value={confirmPassword}
-            />
-          </label>
+          <PasswordField
+            id="current-password"
+            label="当前密码"
+            value={currentPassword}
+            onChange={setCurrentPassword}
+            autoComplete="current-password"
+            clearError={() => setError("")}
+          />
+          <PasswordField
+            id="new-password"
+            label="新密码"
+            value={newPassword}
+            onChange={setNewPassword}
+            autoComplete="new-password"
+            minLength={12}
+            maxLength={128}
+            help="至少 12 个字符，建议混合字母、数字和符号。"
+            clearError={() => setError("")}
+          />
+          <PasswordField
+            id="confirm-password"
+            label="再次输入新密码"
+            value={confirmPassword}
+            onChange={setConfirmPassword}
+            autoComplete="new-password"
+            clearError={() => setError("")}
+          />
           {error && (
             <div className="notice notice-error" role="alert">
               {error}
@@ -623,17 +673,23 @@ function ReportCenter({
   );
 }
 
-export function Workspace() {
+export function Workspace({ initialConversation = false }: { initialConversation?: boolean } = {}) {
+  const initialEntryApplied = useRef(false);
+  const [glassPaused, setGlassPaused] = useState(false);
+  const motionPreference = useMotionPreferences();
+  const lastDataView = useRef<View>("overview");
   const [user, setUser] = useState<SessionUser | null>(null);
   const [bootLoading, setBootLoading] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
   const [bootError, setBootError] = useState("");
   const [view, setView] = useState<View>("overview");
+  const [adminInitialTab, setAdminInitialTab] = useState<"overview" | "ai" | undefined>(undefined);
   const [mode, setMode] = useState<AnalysisMode>("metrics");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebar = useRef<HTMLElement>(null);
   const pageHeading = useRef<HTMLHeadingElement>(null);
   const logoutDialog = useRef<HTMLDialogElement>(null);
+  const accountMenu = useRef<HTMLDivElement>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
   const [profiles, setProfiles] = useState<DatasetProfile[]>([]);
@@ -664,6 +720,24 @@ export function Workspace() {
   const [question, setQuestion] = useState("");
   const [askResult, setAskResult] = useState<AnalysisResult | null>(null);
   const [chatMessages, setChatMessages] = useState<ConversationTurn[]>([]);
+  const [conversation, setConversation] = useState<ConversationSummary | null>(null);
+  const conversationRef = useRef<ConversationSummary | null>(null);
+  const [conversationHistory, setConversationHistory] = useState<ConversationSummary[]>([]);
+  const [historyCursor, setHistoryCursor] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const historyGeneration = useRef(0);
+  const historySelectionPending = useRef(false);
+  const [historySelecting, setHistorySelecting] = useState(false);
+  const resetConversationContext = useRef(false);
+  const pendingTurn = useRef<{
+    id: string;
+    conversationId: string;
+    question: string;
+    revision: number;
+    datasetId: DataSource;
+    resetContext: boolean;
+  } | null>(null);
   const [chatContext, setChatContext] = useState<ChatIntent | null>(null);
   const [expandedChartId, setExpandedChartId] = useState<string | null>(null);
   const [pendingQuestion, setPendingQuestion] = useState("");
@@ -720,12 +794,16 @@ export function Workspace() {
   }, []);
 
   const expire = useCallback((notice: string | null = null) => {
+    lastDataView.current = "overview";
     generation.current++;
     sessionSyncPending.current?.controller.abort();
     sessionSyncPending.current = null;
     askPending.current?.abort();
     askPending.current = null;
     setLoginNotice(notice);
+    setConversationHistory([]);
+    setHistoryCursor(null);
+    setHistoryError(null);
     setUser(null);
     userScope.current = "";
     setProfiles([]);
@@ -740,6 +818,12 @@ export function Workspace() {
     setAskResult(null);
     setSessionAnalyses([]);
     setSelectedReportKey("");
+    conversationRef.current = null;
+    setConversation(null);
+    pendingTurn.current = null;
+    historyGeneration.current++;
+    historySelectionPending.current = false;
+    setHistorySelecting(false);
     setChatMessages([]);
     setPendingQuestion("");
     setPendingSteps([]);
@@ -760,9 +844,13 @@ export function Workspace() {
 
   const clearScopedState = useCallback(
     (nextView: View = "overview", notice: string | null = null) => {
+      lastDataView.current = "overview";
       generation.current++;
       askPending.current?.abort();
       askPending.current = null;
+      setConversationHistory([]);
+      setHistoryCursor(null);
+      setHistoryError(null);
       setProfiles([]);
       profilesLoaded.current = false;
       setProfilesLoading(true);
@@ -776,6 +864,12 @@ export function Workspace() {
       setAskResult(null);
       setSessionAnalyses([]);
       setSelectedReportKey("");
+      conversationRef.current = null;
+      setConversation(null);
+      pendingTurn.current = null;
+      historyGeneration.current++;
+      historySelectionPending.current = false;
+      setHistorySelecting(false);
       setChatMessages([]);
       setPendingQuestion("");
       setPendingSteps([]);
@@ -838,7 +932,9 @@ export function Workspace() {
         const nextUser = payload.user ?? null;
         setSetupRequired(Boolean(payload.setupRequired));
         if (!nextUser) {
-          expire("登录已过期，请重新登录。");
+          // A first visit also lands here with 200 + user:null; only a real
+          // 401 above means the previous session expired.
+          expire(null);
           return;
         }
         const nextScope = sessionScopeKey(nextUser);
@@ -901,6 +997,16 @@ export function Workspace() {
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [user, syncAccess]);
+  // The preview uses this same authenticated workspace and real conversation.
+  // Apply its entry point once, after session and password checks have settled.
+  useEffect(() => {
+    if (!initialConversation || initialEntryApplied.current || bootLoading || !user) return;
+    initialEntryApplied.current = true;
+    if (user.mustChangePassword || !capabilities.canUseAI) return;
+    setMode("question");
+    setView("analysis");
+  }, [initialConversation, bootLoading, user, capabilities.canUseAI]);
+
   const api = useCallback(
     async (url: string, options?: RequestInit, onStep?: (step: AnalysisStep) => void) => {
       const current = generation.current;
@@ -971,6 +1077,153 @@ export function Workspace() {
     },
     [expire],
   );
+  const historyDatasetKey = datasetAccessKey(profiles);
+  const refreshConversationHistory = useCallback(
+    async (cursor?: string) => {
+      const current = historyGeneration.current;
+      const scope = userScope.current;
+      if (!scope) return;
+      setHistoryLoading(true);
+      setHistoryError(null);
+      try {
+        const page = (await api(
+          `/api/conversations${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
+        )) as ConversationPage;
+        if (current !== historyGeneration.current || scope !== userScope.current) return;
+        setConversationHistory((previous) =>
+          cursor
+            ? [
+                ...previous.filter(
+                  (item) => !page.conversations.some((next) => next.id === item.id),
+                ),
+                ...page.conversations,
+              ]
+            : page.conversations,
+        );
+        setHistoryCursor(page.nextCursor);
+      } catch (error) {
+        if (current === historyGeneration.current && scope === userScope.current)
+          setHistoryError(requestMessage(error, "历史读取失败，请重试。"));
+      } finally {
+        if (current === historyGeneration.current) setHistoryLoading(false);
+      }
+    },
+    [api],
+  );
+  useEffect(() => {
+    setConversationHistory([]);
+    setHistoryCursor(null);
+    if (user && !passwordChangeRequired && capabilities.canUseAI) void refreshConversationHistory();
+  }, [
+    user?.id,
+    passwordChangeRequired,
+    capabilities.canUseAI,
+    historyDatasetKey,
+    refreshConversationHistory,
+  ]);
+
+  function applyConversationDetail(detail: ConversationDetail, restored = true) {
+    conversationRef.current = detail.conversation;
+    setConversation(detail.conversation);
+    setDatasetId(detail.conversation.datasetId);
+    setChatMessages(
+      detail.messages.map((message) => ({
+        id: message.id,
+        role: message.role,
+        content: message.content,
+        ...(message.response
+          ? {
+              response: message.response,
+              generatedAt: Date.parse(message.response.generatedAt),
+              restored,
+            }
+          : {}),
+        ...(message.response &&
+        ["failed", "cancelled", "interrupted"].includes(message.response.status)
+          ? { system: true }
+          : {}),
+      })),
+    );
+    const response = [...detail.messages].reverse().find((message) => message.response)?.response;
+    setChatContext(response?.context ?? null);
+    resetConversationContext.current = false;
+    setPendingSteps([]);
+    setPendingQuestion("");
+    setAskLoading(false);
+    setExpandedChartId(null);
+    setQuestion("");
+    setError(null);
+    setFailedAsk(null);
+  }
+  async function openConversation(id: string) {
+    askPending.current?.abort();
+    askPending.current = null;
+    generation.current++;
+    const current = ++historyGeneration.current;
+    const scope = userScope.current;
+    historySelectionPending.current = true;
+    setHistorySelecting(true);
+    setAskLoading(false);
+    setHistoryError(null);
+    try {
+      const detail = (await api(`/api/conversations/${id}`)) as ConversationDetail;
+      if (current !== historyGeneration.current || scope !== userScope.current) return;
+      pendingTurn.current = null;
+      applyConversationDetail(detail);
+    } catch (error) {
+      if (current === historyGeneration.current && scope === userScope.current)
+        setHistoryError(requestMessage(error, "对话已过期、已删除或当前无权访问。"));
+    } finally {
+      if (current === historyGeneration.current) {
+        historySelectionPending.current = false;
+        setHistorySelecting(false);
+      }
+    }
+  }
+  async function deleteConversation(id: string) {
+    const scope = userScope.current;
+    if (conversationRef.current?.id === id) newConversation();
+    try {
+      await api(`/api/conversations/${id}`, { method: "DELETE" });
+      if (scope === userScope.current) await refreshConversationHistory();
+    } catch (error) {
+      if (scope === userScope.current) setHistoryError(requestMessage(error, "删除失败，请重试。"));
+    }
+  }
+  function newConversation() {
+    // Repeated clicks on the same empty draft are display-only no-ops. In
+    // particular, don't invalidate or reload the already visible history list.
+    if (
+      !conversationRef.current &&
+      !historySelectionPending.current &&
+      !askPending.current &&
+      !chatMessages.length &&
+      !pendingTurn.current
+    )
+      return;
+    askPending.current?.abort();
+    askPending.current = null;
+    generation.current++;
+    historyGeneration.current++;
+    historySelectionPending.current = false;
+    setHistorySelecting(false);
+    conversationRef.current = null;
+    setConversation(null);
+    pendingTurn.current = null;
+    setChatMessages([]);
+    setPendingSteps([]);
+    setChatContext(null);
+    setExpandedChartId(null);
+    setAskResult(null);
+    setQuestion("");
+    setError(null);
+    setInputError(null);
+    setFailedAsk(null);
+    setAskLoading(false);
+    resetConversationContext.current = false;
+    setHistoryLoading(false);
+  }
+
   useEffect(() => {
     if (!user || passwordChangeRequired) {
       setProfilesLoading(false);
@@ -1001,6 +1254,12 @@ export function Workspace() {
           setAskResult(null);
           setSessionAnalyses([]);
           setSelectedReportKey("");
+          conversationRef.current = null;
+          setConversation(null);
+          pendingTurn.current = null;
+          historyGeneration.current++;
+          historySelectionPending.current = false;
+          setHistorySelecting(false);
           setChatMessages([]);
           setPendingQuestion("");
           setPendingSteps([]);
@@ -1188,6 +1447,12 @@ export function Workspace() {
     setOverviewLoading(true);
     setAnalysis(null);
     setAskResult(null);
+    conversationRef.current = null;
+    setConversation(null);
+    pendingTurn.current = null;
+    historyGeneration.current++;
+    historySelectionPending.current = false;
+    setHistorySelecting(false);
     setChatMessages([]);
     setPendingSteps([]);
     setChatContext(null);
@@ -1244,7 +1509,13 @@ export function Workspace() {
     }
   }
   async function ask(nextQuestion = question, options: { fresh?: boolean } = {}) {
-    if (!aiAllowed || !eligibleDatasetId || passwordChangeRequired) return;
+    if (
+      !aiAllowed ||
+      !eligibleDatasetId ||
+      passwordChangeRequired ||
+      historySelectionPending.current
+    )
+      return;
     const currentDatasetId = eligibleDatasetId;
     const trimmed = nextQuestion.trim();
     if (trimmed.length < 2 || trimmed.length > 500) {
@@ -1254,9 +1525,22 @@ export function Workspace() {
       return;
     }
     if ((!canRun && !aiReady) || askPending.current) return;
+    if (
+      !options.fresh &&
+      chatMessages.some((message) => message.response?.persistence === "pending")
+    ) {
+      setError("当前分析已完成但尚未保存，请先重试保存，或新建对话。");
+      return;
+    }
     // Entry points outside the transcript (home cards) start a fresh
     // conversation instead of inheriting an unrelated earlier scope.
     if (options.fresh) {
+      conversationRef.current = null;
+      setConversation(null);
+      pendingTurn.current = null;
+      historyGeneration.current++;
+      historySelectionPending.current = false;
+      setHistorySelecting(false);
       setChatMessages([]);
       setChatContext(null);
       setExpandedChartId(null);
@@ -1278,6 +1562,34 @@ export function Workspace() {
       askPending.current === controller &&
       current === generation.current;
     try {
+      let selectedConversation = conversationRef.current;
+      if (!selectedConversation) {
+        const created = await api("/api/conversations", {
+          method: "POST",
+          body: JSON.stringify({ datasetId: currentDatasetId }),
+        });
+        if (!isCurrent()) return;
+        selectedConversation = created.conversation as ConversationSummary;
+        conversationRef.current = selectedConversation;
+        setConversation(selectedConversation);
+      }
+      if (selectedConversation.datasetId !== currentDatasetId)
+        throw new Error("当前对话的数据源已变化，请新建对话。");
+      const previousTurn = pendingTurn.current;
+      const turn =
+        previousTurn &&
+        previousTurn.conversationId === selectedConversation.id &&
+        previousTurn.question === trimmed
+          ? previousTurn
+          : {
+              id: crypto.randomUUID(),
+              conversationId: selectedConversation.id,
+              revision: selectedConversation.revision,
+              question: trimmed,
+              datasetId: currentDatasetId,
+              resetContext: resetConversationContext.current,
+            };
+      pendingTurn.current = turn;
       const payload = (await api(
         "/api/chat",
         {
@@ -1289,33 +1601,10 @@ export function Workspace() {
           body: JSON.stringify({
             question: trimmed,
             datasetId: currentDatasetId,
-            // Assistant turns carry a compact summary of the results they produced
-            // so a follow-up keeps "相关结果与条件" without replaying full artifacts.
-            // User turns stay plain, and empty result lists are omitted entirely.
-            history: (options.fresh ? [] : chatMessages)
-              .filter((message) => !message.system)
-              .slice(-12)
-              .map((message) => {
-                const results =
-                  message.role === "assistant"
-                    ? (message.response?.resultRefs ?? []).slice(0, 4).map((ref) => ({
-                        resultId: ref.resultId,
-                        kind: ref.kind,
-                        label: ref.scopeLabel,
-                      }))
-                    : [];
-                return {
-                  role: message.role,
-                  // The request schema bounds history content; a long multi-result
-                  // answer must not make the next turn fail with 400.
-                  content:
-                    message.content.length > 2900
-                      ? `${message.content.slice(0, 2890)}…（已截断）`
-                      : message.content,
-                  ...(results.length ? { results } : {}),
-                };
-              }),
-            context: options.fresh ? null : chatContext,
+            conversationId: turn.conversationId,
+            turnId: turn.id,
+            expectedRevision: turn.revision,
+            resetContext: turn.resetContext,
           }),
           signal: controller.signal,
         },
@@ -1332,18 +1621,34 @@ export function Workspace() {
       if (!isCurrent()) return;
       setPendingSteps([]);
       setChatContext(payload.context);
-      const turnId = crypto.randomUUID();
+      const turnId = payload.conversation?.turnId ?? turn.id;
+      if (payload.conversation) {
+        const updated = { ...selectedConversation, revision: payload.conversation.revision };
+        conversationRef.current = updated;
+        setConversation(updated);
+      }
+      pendingTurn.current = null;
+      resetConversationContext.current = false;
+      void refreshConversationHistory();
       setChatMessages((previous) =>
         [
           ...(options.fresh ? [] : previous),
           { id: `${turnId}-user`, role: "user" as const, content: trimmed },
-          { id: turnId, role: "assistant" as const, content: payload.answer, response: payload },
+          {
+            id: `${turnId}-assistant`,
+            role: "assistant" as const,
+            content: payload.answer,
+            response: payload,
+            generatedAt: payload.generatedAt ? Date.parse(payload.generatedAt) : Date.now(),
+          },
         ].slice(-40),
       );
       setQuestion((draft) => (draft === nextQuestion ? "" : draft));
       if (payload.artifact) {
         if (payload.presentation !== "text")
-          setExpandedChartId(payload.artifacts?.length ? `${turnId}:0` : turnId);
+          setExpandedChartId(
+            payload.artifacts?.length ? `${turnId}-assistant:0` : `${turnId}-assistant`,
+          );
         if (payload.artifact.kind === "analysis") {
           setAskResult(payload.artifact.result);
           rememberResult(payload.artifact.result);
@@ -1355,6 +1660,30 @@ export function Workspace() {
       // Cancellation is silent: the stop button reports its own outcome.
       if (!message) return;
       setError(message);
+      const failedConversationId = pendingTurn.current?.conversationId;
+      // A transport failure keeps its identity for safe replay. A known terminal
+      // error permits an explicit new retry after refreshing the server revision.
+      if (
+        requestError instanceof ApiError &&
+        requestError.code &&
+        !["CONVERSATION_TURN_RUNNING", "TURN_IN_PROGRESS"].includes(requestError.code)
+      ) {
+        pendingTurn.current = null;
+      }
+      if (failedConversationId) {
+        try {
+          const detail = (await api(
+            `/api/conversations/${failedConversationId}`,
+          )) as ConversationDetail;
+          if (isCurrent() && conversationRef.current?.id === failedConversationId) {
+            conversationRef.current = detail.conversation;
+            setConversation(detail.conversation);
+          }
+        } catch {
+          /* Original error remains visible; no new model request. */
+        }
+      }
+      void refreshConversationHistory();
       setPendingSteps((previous) =>
         previous.map((step) => (step.status === "running" ? { ...step, status: "failed" } : step)),
       );
@@ -1373,6 +1702,61 @@ export function Workspace() {
       }
     }
   }
+  async function retryConversationPersistence(id: string) {
+    const message = chatMessages.find((item) => item.id === id);
+    const metadata = message?.response?.conversation;
+    if (!metadata || message.response?.persistence !== "pending") return;
+    const current = generation.current;
+    try {
+      const response = (await api("/api/conversation-save", {
+        method: "POST",
+        body: JSON.stringify({ conversationId: metadata.id, turnId: metadata.turnId }),
+      })) as ChatResponse;
+      if (current !== generation.current || conversationRef.current?.id !== metadata.id) return;
+      setChatMessages((previous) =>
+        previous.map((item) => (item.id === id ? { ...item, response } : item)),
+      );
+      if (response.conversation && conversationRef.current) {
+        const updated = { ...conversationRef.current, revision: response.conversation.revision };
+        conversationRef.current = updated;
+        setConversation(updated);
+      }
+      setError(null);
+      void refreshConversationHistory();
+    } catch (error) {
+      if (current === generation.current)
+        setError(requestMessage(error, "历史保存失败，请稍后重试保存。"));
+    }
+  }
+  async function stopConversation() {
+    const selected = conversationRef.current;
+    const turnId =
+      pendingTurn.current?.id ??
+      (selected?.lastTurn?.status === "running" ? selected.lastTurn.id : null);
+    if (!askPending.current && !turnId) return;
+    const selectedId = selected?.id;
+    askPending.current?.abort();
+    askPending.current = null;
+    setAskLoading(false);
+    setPendingSteps([]);
+    if (!turnId || !selectedId) return;
+    try {
+      await api(`/api/conversations/${selectedId}/stop`, {
+        method: "POST",
+        body: JSON.stringify({ turnId }),
+      });
+      if (conversationRef.current?.id !== selectedId) return;
+      const detail = (await api(`/api/conversations/${selectedId}`)) as ConversationDetail;
+      if (conversationRef.current?.id === selectedId) {
+        applyConversationDetail(detail, false);
+        pendingTurn.current = null;
+        void refreshConversationHistory();
+      }
+    } catch (error) {
+      if (conversationRef.current?.id === selectedId)
+        setError(requestMessage(error, "停止状态尚未确认，请刷新历史。"));
+    }
+  }
   function changeChatView(id: string, chart: ChatDisplayView, artifactIndex = 0) {
     const selected = chatMessages.find((message) => message.id === id);
     const artifact = selected?.response?.artifacts?.[artifactIndex] ?? selected?.response?.artifact;
@@ -1385,6 +1769,7 @@ export function Workspace() {
               ...message,
               response: {
                 ...message.response,
+                presentation: chart === "table" ? "table" : "chart",
                 artifact: artifactIndex === 0 ? updated : message.response.artifact,
                 ...(message.response.artifacts
                   ? {
@@ -1488,42 +1873,37 @@ export function Workspace() {
   );
   const navigation = passwordChangeRequired ? (
     <nav className="workspace-nav" aria-label="主要功能">
-      <NavigationIndicator activeKey="account" />
       <button type="button" aria-current="page" onClick={() => navigate("account")}>
         <span>修改密码</span>
       </button>
     </nav>
   ) : (
     <nav className="workspace-nav" aria-label="主要功能">
-      <NavigationIndicator activeKey={`${view}-${mode}`} />
       {(
         [
           ["overview", "学习全景"],
           ["analysis", "指标分析"],
-          ...(capabilities.canUseAI ? ([["question", "一句话分析"]] as const) : []),
           ["data", "数据"],
           ["reports", "分析报告"],
         ] as const
-      ).map(([key, label]) => {
+      ).map(([key, label], index) => {
         const active =
-          key === "question"
-            ? view === "analysis" && mode === "question"
-            : key === "analysis"
-              ? view === "analysis" && mode === "metrics"
-              : view === key;
+          key === "analysis" ? view === "analysis" && mode === "metrics" : view === key;
         return (
           <button
             type="button"
             key={key}
             aria-current={active ? "page" : undefined}
             onClick={() => {
-              if (key === "question" || key === "analysis") {
-                changeMode(key === "question" ? "question" : "metrics");
+              if (key === "analysis") {
+                changeMode("metrics");
                 navigate("analysis");
               } else navigate(key);
             }}
           >
-            {key === "overview" && <Icon name="dashboard" size={16} />}
+            <span className="nav-index" aria-hidden="true">
+              {String(index + 1).padStart(2, "0")}
+            </span>
             <span>{label}</span>
             {key === "reports" && sessionAnalyses.length > 0 && (
               <small>{sessionAnalyses.length}</small>
@@ -1545,15 +1925,7 @@ export function Workspace() {
         data-enter="rise"
         style={{ "--enter-delay": "70ms" } as CSSProperties}
       >
-        {view === "overview" ? (
-          <>
-            学习，
-            <br />
-            有迹可循。
-          </>
-        ) : (
-          currentPage.title
-        )}
+        {view === "overview" ? <>学习数据总览</> : currentPage.title}
       </h1>
       <p data-enter="rise-sm" style={{ "--enter-delay": "180ms" } as CSSProperties}>
         {currentPage.description}
@@ -1606,92 +1978,208 @@ export function Workspace() {
   );
   return (
     <div
-      className="graphite-workspace workbench-shell"
+      className={`graphite-workspace workbench-shell glass-workspace ${experienceStyles.shell}`}
       data-view={view}
       data-conversation={(view === "analysis" && mode === "question") || undefined}
+      data-drawer-open={sidebarOpen || undefined}
     >
       <a className="skip-link" href="#main-content">
         跳到主要内容
       </a>
-      <aside
-        className="instrument-rail"
-        aria-label="工作台工具"
-        data-enter="slide-left"
-        style={{ "--enter-dur": "620ms" } as CSSProperties}
-      >
-        <div className="rail-content">
+      <LightField
+        drifting={!glassPaused && motionPreference.enabled && !motionPreference.reduced}
+      />
+      <header className="workbench-header glass-topbar">
+        <div className="glass-entry">
           <button
             type="button"
-            className="rail-brand"
-            aria-label="返回学习全景"
-            onClick={() => navigate("overview")}
+            className="glass-brand"
+            aria-label="返回数据总览"
+            onClick={() => {
+              changeMode("metrics");
+              navigate("overview");
+            }}
           >
-            <span className="instrument-mark" aria-hidden="true">
-              <i />
-              <i />
-              <i />
-              <i />
-            </span>
+            <ProductBrand />
           </button>
+          <div
+            className="glass-mode-switch"
+            data-glass-pane="0.08"
+            role="group"
+            aria-label="工作台模式"
+          >
+            {capabilities.canUseAI && !passwordChangeRequired && (
+              <button
+                type="button"
+                aria-pressed={view === "analysis" && mode === "question"}
+                data-glass-relief={view === "analysis" && mode === "question" ? "0.85" : undefined}
+                onClick={() => {
+                  if (view === "analysis" && mode === "question") return;
+                  lastDataView.current = view;
+                  changeMode("question");
+                  navigate("analysis");
+                }}
+              >
+                <Icon name="sparkles" size={15} />
+                <span>AI 对话</span>
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={passwordChangeRequired}
+              aria-pressed={!(view === "analysis" && mode === "question")}
+              data-glass-relief={!(view === "analysis" && mode === "question") ? "0.85" : undefined}
+              onClick={() => {
+                if (!(view === "analysis" && mode === "question")) return;
+                if (askPending.current) void stopConversation();
+                changeMode("metrics");
+                navigate(lastDataView.current);
+              }}
+            >
+              <Icon name="dashboard" size={15} />
+              <span>数据浏览</span>
+            </button>
+          </div>
+        </div>
+        <div className="glass-tools" data-glass-pane="0.08">
+          {datasetId === "demo" && <span className="glass-demo-tag">模拟演示数据</span>}
           <button
             type="button"
-            className="rail-menu icon-button"
+            className="icon-button glass-menu"
             aria-label={sidebarOpen ? "收起导航" : "打开导航"}
             aria-expanded={sidebarOpen}
             aria-controls="workspace-navigation"
             popoverTarget="workspace-navigation"
           >
-            <Icon name="menu" size={20} />
+            <Icon name="menu" size={18} />
           </button>
-          <span className="rail-wordmark" aria-hidden="true">
-            LEARNING INTELLIGENCE
-          </span>
-          <div className="rail-actions">
-            <ThemeToggle compact />
+          <button
+            type="button"
+            className="glass-account"
+            aria-label="账号与偏好"
+            title={user.displayName || user.username}
+            popoverTarget="account-menu"
+          >
+            <span className="glass-avatar">{Array.from(user.displayName || user.username)[0]}</span>
+            <span className="glass-user-name">{user.displayName || user.username}</span>
+          </button>
+          <div
+            id="account-menu"
+            ref={accountMenu}
+            className="account-menu"
+            popover="auto"
+            role="menu"
+            aria-label="账号与偏好"
+          >
+            <div className="account-menu-head">
+              <strong>{user.displayName || user.username}</strong>
+              <span>
+                {user.role === "admin" ? "管理员" : "教师"} · {user.username}
+              </span>
+            </div>
             <button
               type="button"
-              className="icon-button"
-              aria-label="打开设置"
-              title="设置"
-              onClick={() =>
-                navigate(passwordChangeRequired || user.role !== "admin" ? "account" : "admin")
-              }
+              role="menuitem"
+              onClick={() => {
+                accountMenu.current?.hidePopover();
+                navigate("account");
+              }}
             >
-              <Icon name="settings" size={18} />
+              <Icon name="users" size={16} />
+              我的账号
             </button>
+            {user.role === "admin" && !passwordChangeRequired && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  accountMenu.current?.hidePopover();
+                  setAdminInitialTab(undefined);
+                  navigate("admin");
+                }}
+              >
+                <Icon name="settings" size={16} />
+                系统管理
+              </button>
+            )}
+            <hr />
+            <div className="account-menu-row">
+              <span>外观</span>
+              <ThemeToggle />
+            </div>
             <button
               type="button"
-              className="icon-button"
-              aria-label="退出登录"
-              title="退出登录"
-              onClick={requestLogout}
+              role="menuitemcheckbox"
+              aria-checked={!glassPaused && motionPreference.enabled && !motionPreference.reduced}
+              disabled={motionPreference.reduced}
+              onClick={() => {
+                if (!motionPreference.enabled) {
+                  motionPreference.setEnabled(true);
+                  setGlassPaused(false);
+                } else setGlassPaused((value) => !value);
+              }}
             >
-              <Icon name="logout" size={18} />
+              <Icon name="activity" size={16} />
+              {motionPreference.reduced
+                ? "光场跟随系统静止"
+                : !glassPaused && motionPreference.enabled
+                  ? "停止光场漂移"
+                  : "光场漂移"}
+            </button>
+            <hr />
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                accountMenu.current?.hidePopover();
+                requestLogout();
+              }}
+            >
+              <Icon name="logout" size={16} />
+              退出登录
             </button>
           </div>
-          <span className="rail-hatch" aria-hidden="true" />
         </div>
-      </aside>
-      <header
-        className="workbench-header"
-        data-enter="fade"
-        style={{ "--enter-delay": "60ms" } as CSSProperties}
-      >
-        <div className="desktop-navigation">{navigation}</div>
-        <span className="mobile-workspace-title">
-          学析台<small>{currentPage.title}</small>
-        </span>
       </header>
+      {!(view === "analysis" && mode === "question") && (
+        <aside className="glass-data-sidebar" data-glass-pane="0.45" aria-label="数据浏览导航">
+          <span className="glass-sidebar-label">学习工作台</span>
+          {navigation}
+          <div className="glass-sidebar-source">{sourcePicker}</div>
+          <div className="glass-sidebar-bottom">
+            <Icon name="shield" size={15} />
+            <span>
+              聚合分析 · 保护个人信息<small>从数据出发，回到教学。</small>
+            </span>
+          </div>
+        </aside>
+      )}
       <aside
         id="workspace-navigation"
         ref={sidebar}
         className="workbench-drawer"
         popover="auto"
         onToggle={(event) => setSidebarOpen(event.newState === "open")}
+        onKeyDown={(event) => {
+          if (event.key !== "Tab") return;
+          const focusables = sidebar.current?.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          );
+          if (!focusables?.length) return;
+          const first = focusables[0];
+          const last = focusables[focusables.length - 1];
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        }}
         aria-label="工作台导航"
       >
         <div className="drawer-heading">
-          <span className="drawer-label">导航 / NAVIGATION</span>
+          <span className="drawer-label">导航</span>
           <button
             type="button"
             className="icon-button"
@@ -1704,17 +2192,30 @@ export function Workspace() {
           </button>
         </div>
         {navigation}
+        {!(view === "analysis" && mode === "question") && sourcePicker}
         <div className="drawer-footnote">
           <Icon name="shield" size={14} />
           <span>学析台 · 学习数据分析</span>
         </div>
       </aside>
-      <div className="workbench-main">
-        <main id="main-content" className="workbench-content" aria-labelledby="workspace-heading">
+      <div
+        className="workbench-main"
+        data-glass-pane={view === "analysis" && mode === "question" ? undefined : "0.35"}
+      >
+        <main
+          id="main-content"
+          className="workbench-content"
+          aria-labelledby={
+            view === "analysis" && mode === "question"
+              ? "conversation-heading"
+              : "workspace-heading"
+          }
+        >
           {view !== "overview" && (
-            <div className="workbench-page-heading">
+            <div
+              className={`workbench-page-heading ${view === "analysis" && mode === "question" ? conversationStyles.workspaceHeading : ""}`}
+            >
               {pageHeader}
-              {sourcePicker}
             </div>
           )}
           <div key={view} className="view-surface">
@@ -1723,7 +2224,7 @@ export function Workspace() {
               (capabilities.canUseAI ? (
                 <LearningOverview
                   heading={pageHeader}
-                  sourceControl={sourcePicker}
+                  sourceControl={null}
                   results={overview}
                   loading={profilesLoading || (overviewLoading && canRun)}
                   profile={selectedProfile}
@@ -1749,7 +2250,7 @@ export function Workspace() {
               ) : (
                 <ReadonlyOverview
                   heading={pageHeader}
-                  sourceControl={sourcePicker}
+                  sourceControl={null}
                   profile={selectedProfile}
                   profilesLoading={profilesLoading}
                   profilesError={profilesError}
@@ -1760,6 +2261,48 @@ export function Workspace() {
             {view === "analysis" &&
               (mode === "question" ? (
                 <ConversationWorkspace
+                  historyActivity={
+                    conversation?.lastTurn?.status === "running" ? (
+                      <p className="notice" role="status">
+                        这个会话有一轮分析尚未结束，刷新历史可查看最新状态。
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={() => void openConversation(conversation.id)}
+                        >
+                          刷新状态
+                        </button>
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={() => void stopConversation()}
+                        >
+                          停止这轮分析
+                        </button>
+                      </p>
+                    ) : null
+                  }
+                  onRetrySave={(id) => void retryConversationPersistence(id)}
+                  conversationId={conversation?.id ?? null}
+                  sourceControl={sourcePicker}
+                  history={{
+                    entries: conversationHistory.map((entry) => ({
+                      ...entry,
+                      lastMessageAt: Date.parse(entry.updatedAt),
+                      expiresAt: Date.parse(entry.expiresAt),
+                    })),
+                    selectedId: conversation?.id ?? null,
+                    loading: historyLoading || historySelecting,
+                    error: historyError,
+                    hasMore: Boolean(historyCursor),
+                    onMore: () => {
+                      if (historyCursor) void refreshConversationHistory(historyCursor);
+                    },
+                    onRefresh: () => void refreshConversationHistory(),
+                    onSelect: (id) => void openConversation(id),
+                    onDelete: (id) => void deleteConversation(id),
+                    onNew: newConversation,
+                  }}
                   messages={chatMessages}
                   question={question}
                   loading={askLoading}
@@ -1781,45 +2324,21 @@ export function Workspace() {
                   onExpandChart={setExpandedChartId}
                   onChartChange={changeChatView}
                   onReport={previewReport}
-                  onConfigure={user.role === "admin" ? () => navigate("admin") : undefined}
+                  onConfigure={
+                    user.role === "admin"
+                      ? () => {
+                          setAdminInitialTab("ai");
+                          navigate("admin");
+                        }
+                      : undefined
+                  }
                   notice={notice}
-                  onStop={() => {
-                    // Ignore a second stop click after the request already ended.
-                    if (!askPending.current) return;
-                    askPending.current.abort();
-                    askPending.current = null;
-                    setAskLoading(false);
-                    setPendingSteps([]);
-                    setChatMessages((previous) =>
-                      [
-                        ...previous,
-                        {
-                          id: `stopped-${crypto.randomUUID()}`,
-                          role: "assistant" as const,
-                          content: STOPPED_MESSAGE,
-                          steps: pendingSteps.map((step) =>
-                            step.status === "running"
-                              ? { ...step, status: "cancelled" as const }
-                              : step,
-                          ),
-                          system: true,
-                        },
-                      ].slice(-40),
-                    );
-                  }}
-                  onClearContext={() => setChatContext(null)}
-                  onClear={() => {
-                    setChatMessages([]);
-                    setPendingSteps([]);
+                  onStop={() => void stopConversation()}
+                  onClearContext={() => {
                     setChatContext(null);
-                    setExpandedChartId(null);
-                    setAskResult(null);
-                    setQuestion("");
-                    setError(null);
-                    setInputError(null);
-                    setFailedAsk(null);
-                    window.scrollTo({ top: 0, behavior: "instant" });
+                    resetConversationContext.current = true;
                   }}
+                  onClear={newConversation}
                 />
               ) : (
                 <section
@@ -2039,7 +2558,11 @@ export function Workspace() {
               />
             )}
             {view === "admin" && user.role === "admin" && (
-              <AdminPanel user={user} onSessionExpired={() => expire("登录已过期，请重新登录。")} />
+              <AdminPanel
+                user={user}
+                initialTab={adminInitialTab}
+                onSessionExpired={() => expire("登录已过期，请重新登录。")}
+              />
             )}
             {view === "account" && (
               <>
@@ -2055,7 +2578,9 @@ export function Workspace() {
               </>
             )}
           </div>
-          <footer className="workbench-footer">
+          <footer
+            className={`workbench-footer ${view === "analysis" && mode === "question" ? conversationStyles.conversationFooter : ""}`}
+          >
             <span>学析台 · 学习数据分析</span>
             <span>
               <Icon name="shield" size={13} />

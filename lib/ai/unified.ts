@@ -182,6 +182,8 @@ export function composeBoundAnswer(text: string, facts: FactRef[], catalogLabels
     .filter(Boolean);
   const kept: string[] = [];
   let dropped = 0;
+  // Counts only: never expose or persist the rejected model prose.
+  const rejected = { unknownReference: 0, meaningMismatch: 0, unboundNumber: 0 };
   let bound = 0;
   const citedFactIds: string[] = [];
   for (const sentence of sentences) {
@@ -189,12 +191,20 @@ export function composeBoundAnswer(text: string, facts: FactRef[], catalogLabels
     const ids = matches.map((match) => match[1]);
     if (
       ids.some((id) => !byId.has(id)) ||
+      /\{\{|\}\}/.test(sentence.replace(FACT_PLACEHOLDER, ""))
+    ) {
+      dropped++;
+      rejected.unknownReference++;
+      continue;
+    }
+    if (
       matches.some(
         (match) =>
           !factUseMatchesMeaning(sentence.slice(0, match.index), byId.get(match[1])!, facts),
       )
     ) {
       dropped++;
+      rejected.meaningMismatch++;
       continue;
     }
     const withoutPlaceholders = stripLabels(sentence.replace(FACT_PLACEHOLDER, ""));
@@ -203,6 +213,7 @@ export function composeBoundAnswer(text: string, facts: FactRef[], catalogLabels
       CHINESE_NUMERIC_CLAIM.test(withoutPlaceholders)
     ) {
       dropped++;
+      rejected.unboundNumber++;
       continue;
     }
     bound += ids.length;
@@ -217,7 +228,14 @@ export function composeBoundAnswer(text: string, facts: FactRef[], catalogLabels
     // "79.42分分" that the model may write after it.
     kept.push(rendered.replace(/([0-9])\s*(%|％|分|人|门|次|课时|天)\s*\2/g, "$1$2"));
   }
-  return { answer: kept.join("").trim(), dropped, total: sentences.length, bound, citedFactIds };
+  return {
+    answer: kept.join("").trim(),
+    dropped,
+    total: sentences.length,
+    bound,
+    citedFactIds,
+    rejected,
+  };
 }
 
 export class UnifiedConversationError extends Error {
@@ -467,7 +485,14 @@ export async function converseUnified(
     const bound =
       measuredAnswer && !failureCode
         ? composeBoundAnswer(finalText, mergedFacts, catalogLabels)
-        : { answer: "", dropped: 0, total: 0, bound: 0, citedFactIds: [] };
+        : {
+            answer: "",
+            dropped: 0,
+            total: 0,
+            bound: 0,
+            citedFactIds: [],
+            rejected: { unknownReference: 0, meaningMismatch: 0, unboundNumber: 0 },
+          };
     const templateAnswer = [
       failureCode ? "本轮仅完成部分分析，以下结果可核对：" : "已按实际数据完成以下分析：",
       ...uniqueFacts,
@@ -493,15 +518,27 @@ export async function converseUnified(
     const naturalAnswer = naturalText
       ? `${naturalText}${snippets.length ? "\n指标口径与限制见下方引用。" : ""}`
       : "";
-    if (measuredAnswer && bound.dropped)
+    if (measuredAnswer && bound.dropped) {
+      const reasons = [
+        bound.rejected.unboundNumber ? `${bound.rejected.unboundNumber} 句数字未绑定统计事实` : "",
+        bound.rejected.unknownReference
+          ? `${bound.rejected.unknownReference} 句事实引用不存在或格式无效`
+          : "",
+        bound.rejected.meaningMismatch
+          ? `${bound.rejected.meaningMismatch} 句引用与指标或分组不符`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("、");
       warning = [
         warning,
         naturalAnswer
-          ? "部分解释含未核验数字或无效事实引用，已省略这些句子。"
-          : "AI 解释未通过数字/事实引用核验，已保留可核对的事实。",
+          ? `文字核验：${reasons}，已省略这些句子。其余解释与可信统计结果已保留。`
+          : `AI 解释未通过数字/事实引用核验：${reasons}。本轮展示程序计算的可信事实及附件。`,
       ]
         .filter(Boolean)
         .join(" ");
+    }
     // An empty final turn (or a tool-limit stop) is a fallback, not a natural
     // answer: say so instead of presenting the template as AI prose.
     if (measuredAnswer && !failureCode && !finalText.trim())

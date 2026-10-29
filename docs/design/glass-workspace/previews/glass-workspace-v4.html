@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1600" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23152329'/%3E%3Cpath d='M8 23V9h6v14M19 23V9h6v14M8 16h17' fill='none' stroke='%23e2e9df' stroke-width='1.4'/%3E%3C/svg%3E" />
+    <title>学析台 · 液态玻璃工作台预览</title>
+    <style>
+      :root { --ink: #ecf2ee; --secondary: #bdcbc8; --muted: #859d9e; --line: #d4e8e023; --mint: #c4d7cb; --amber: #efbf94; --violet: #b9b6d8; --mono: "SFMono-Regular", Consolas, monospace; --sans: "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-width: 1600px; background: #101a20; }
+      body { color: var(--ink); font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+      h1, h2, h3, h4, p, fieldset { margin: 0; }
+      button, textarea { font: inherit; }
+      button { color: inherit; cursor: pointer; }
+      button:focus-visible { outline: 2px solid #d9e9f2; outline-offset: 4px; }
+      svg { display: block; }
+      [hidden] { display: none !important; }
+      .mono, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+      .canvas { position: relative; width: 1600px; height: 1000px; padding: 26px 28px; isolation: isolate; overflow: hidden; background: radial-gradient(ellipse at 91% 13%, #82958e45, transparent 48%), radial-gradient(ellipse at 18% 100%, #74709024, transparent 45%), #111d23; }
+      #optics-canvas { position: absolute; inset: 0; z-index: -3; width: 1600px; height: 1000px; pointer-events: none; }
+      .glass { position: relative; isolation: isolate; border: 1px solid #d6e9e133; border-top-color: #ecf6ee69; border-left-color: #e4f4ec47; border-radius: 18px; background: linear-gradient(128deg, #dcefeb0a, transparent 46%, #d9ddf30a), #0c1a2229; box-shadow: inset 0 1px 1px #effff322, inset 0 -2px 4px #d2eaf017, 0 3px 0 #0b1c2666, 0 5px 0 #b4d4d117, 0 15px 25px #07152238; }
+      .glass::after { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 2; background: conic-gradient(from 35deg, transparent 0deg, #c6e9ef9c 42deg, #b9b3df66 51deg, transparent 78deg, #ecdbb961 145deg, transparent 185deg, #d7d5ed38 224deg, transparent 270deg, #f0f5e282 306deg, transparent 338deg); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask-composite: exclude; }
+      .topbar { height: 56px; display: flex; align-items: center; gap: 29px; }
+      .brand { display: flex; align-items: center; gap: 12px; padding-left: 7px; }
+      .brand svg { width: 29px; height: 29px; color: #e8efdf; }
+      .brand strong { font-size: 20px; font-weight: 500; letter-spacing: 4px; }
+      .mode-switch { display: flex; align-items: center; gap: 4px; border-radius: 14px; padding: 5px; background: #13273142; }
+      .mode-switch label { position: relative; cursor: pointer; }
+      .sr-only, .mode-switch input { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+      .mode-switch span { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 113px; padding: 9px 16px; font-size: 12px; color: #b7c7c9; border-radius: 9px; }
+      .mode-switch svg { width: 14px; height: 14px; }
+      .mode-switch input:checked + span { color: #243b35; background: #d8e5d7; box-shadow: inset 0 1px #fff8, 0 2px 5px #06142038; }
+      .mode-switch input:focus-visible + span { outline: 2px solid #dcecf5; outline-offset: 3px; }
+      .top-context { color: #a6bab8; font-size: 11px; letter-spacing: .4px; display: flex; align-items: center; gap: 12px; }
+      .top-context i { width: 3px; height: 3px; background: #98b0a5; border-radius: 50%; }
+      .top-context .mono { font-size: 9px; color: #839b9b; letter-spacing: 1.5px; }
+      .top-right { margin-left: auto; display: flex; align-items: center; gap: 17px; }
+      .demo-tag { padding: 5px 9px; border: 1px solid #b6cabe32; border-radius: 5px; color: #b9cbbd; font-size: 10px; letter-spacing: 1px; }
+      .tools-control { border-radius: 13px; display: flex; align-items: center; gap: 16px; padding: 9px 13px; }
+      .tools-control > svg { width: 16px; height: 16px; color: #bdd0c7; }
+      .tools-control .separator { height: 17px; width: 1px; background: #dceee42a; }
+      .avatar { width: 27px; height: 27px; display: grid; place-items: center; border-radius: 50%; color: #e4dfe8; background: #afa2c335; border: 1px solid #dbc8e147; font-size: 10px; }
+      .top-user { font-size: 11px; color: #c0cec8; }
+      .workspace { height: 838px; margin-top: 22px; display: grid; grid-template-columns: 208px minmax(0, 1fr); gap: 18px; }
+      .sidebar { min-height: 0; padding: 23px 15px 18px; display: flex; flex-direction: column; background: linear-gradient(145deg, #e5f2ec08, #16283352); }
+      .sidebar-label { padding: 0 8px; color: #93adaa; font-size: 10px; letter-spacing: 1px; }
+      .new-chat { margin: 15px 0 0; display: flex; align-items: center; gap: 9px; padding: 12px 13px; color: #d7e4d8; font-size: 12px; border: 1px solid #d5e8dd45; border-radius: 9px; background: #bed3c40c; box-shadow: inset 0 1px #effff212; }
+      .new-chat svg { height: 13px; width: 13px; }
+      .history-label { margin: 26px 8px 9px; font-size: 10px; color: #7d9697; }
+      .history-item { display: flex; gap: 8px; align-items: center; min-height: 43px; padding: 11px 10px; border: 1px solid transparent; border-radius: 8px; font-size: 11px; color: #a4bbb8; }
+      .history-item svg { width: 13px; height: 13px; opacity: .8; flex-shrink: 0; }
+      .history-item.selected { background: #bad8d117; color: #e0ece0; border-color: #cadfd32b; box-shadow: inset 0 1px #e6fff30a; }
+      .history-item .active-dot { margin-left: auto; width: 4px; height: 4px; border-radius: 50%; background: #c7dfc9; }
+      .sidebar-bottom { margin-top: auto; border-top: 1px solid #d2e4d323; padding: 16px 8px 0; }
+      .dataset-label { display: flex; gap: 8px; align-items: center; font-size: 10px; color: #89a49a; }
+      .dataset-label svg { width: 12px; height: 12px; }
+      .dataset-name { margin-top: 10px; color: #d3e3ce; font-size: 12px; font-weight: 500; }
+      .dataset-range { font-size: 10px; color: #92ada0; line-height: 1.9; margin-top: 6px; }
+      .dataset-health { display: flex; align-items: center; gap: 7px; font-size: 9px; color: #91ac98; margin-top: 13px; }
+      .dataset-health i { width: 4px; height: 4px; border-radius: 50%; background: #bfd8b8; }
+      .chat-surface { min-height: 0; display: grid; grid-template-rows: 60px minmax(0, 1fr) 96px; gap: 16px; padding: 22px 30px 23px; background: #1020284d; }
+      .chat-header { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; max-width: 1040px; margin: 0 auto; }
+      .breadcrumb { font-size: 9px; color: #88a1a1; letter-spacing: 1.5px; }
+      .chat-header h1 { font-size: 21px; font-weight: 400; letter-spacing: .5px; margin-top: 5px; }
+      .thread-meta { margin-top: 8px; display: flex; align-items: center; gap: 12px; color: #90a7a4; font-size: 10px; }
+      .thread-meta svg { width: 12px; height: 12px; }
+      .thread-meta .divider { height: 10px; width: 1px; background: #b8d2c733; }
+      .thread-tools { display: flex; gap: 14px; align-items: center; color: #91aaa2; padding-top: 13px; font-size: 10px; }
+      .thread-tools svg { width: 16px; height: 16px; }
+      .chat-scroll { min-height: 0; overflow-y: auto; width: 100%; max-width: 1040px; margin: 0 auto; padding-top: 12px; scrollbar-width: thin; scrollbar-color: #6984875c transparent; }
+      .user-message { margin-left: auto; max-width: 625px; }
+      .message-byline { font-size: 10px; color: #8aa29e; display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 7px; }
+      .message-byline .mono { color: #6f8988; font-size: 9px; }
+      .user-bubble { border: 1px solid #d5e3d52e; border-radius: 12px 12px 3px 12px; background: #c5d7c612; padding: 14px 19px; color: #e1e8dc; font-size: 13px; line-height: 1.8; }
+      .assistant-message { margin-top: 22px; display: grid; grid-template-columns: 31px minmax(0, 1fr); gap: 14px; }
+      .assistant-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: #cbdac317; border: 1px solid #c2dac743; color: #dbe9cb; }
+      .assistant-mark svg { width: 16px; height: 16px; }
+      .assistant-name { display: flex; align-items: center; gap: 10px; color: #d3e1d1; font-size: 11px; font-weight: 500; height: 21px; }
+      .assistant-name span { color: #73908d; font-weight: 400; font-size: 9px; }
+      .assistant-copy { color: #c1d0c9; font-size: 12px; line-height: 1.9; margin-top: 6px; }
+      .assistant-copy strong { color: #f0ccaa; font-weight: 500; }
+      .steps { display: flex; align-items: center; gap: 8px; color: #9ab4a7; font-size: 10px; margin-top: 11px; }
+      .steps svg { width: 12px; height: 12px; color: #bdd5ba; }
+      .steps .divider { color: #5c7a74; margin: 0 3px; }
+      .steps .mono { font-size: 9px; color: #789a88; }
+      .artifact { margin-top: 14px; border-radius: 13px; padding: 15px 18px 12px; background: #0c192254; overflow: hidden; }
+      .artifact-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      .artifact-title { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #d6e5db; font-weight: 500; }
+      .artifact-title svg { width: 13px; height: 13px; color: #afc8c2; }
+      .result-switch { display: flex; gap: 2px; border: 1px solid #b5d0cb2b; padding: 3px; border-radius: 7px; background: #06152222; }
+      .result-switch button { background: transparent; border: 0; border-radius: 4px; padding: 4px 11px; font-size: 10px; color: #8da6a6; min-height: 25px; }
+      .result-switch button[aria-pressed="true"] { background: #c9d8d11c; color: #e5eee3; box-shadow: inset 0 1px #efffff12; }
+      .artifact-subhead { display: flex; justify-content: space-between; align-items: center; font-size: 9px; color: #819c99; margin-top: 13px; }
+      .legend { display: flex; align-items: center; gap: 14px; }
+      .legend span { display: flex; gap: 5px; align-items: center; }
+      .legend i { width: 5px; height: 5px; background: #c6ddd2; }
+      .legend .comparison { background: #718d93; }
+      .chart-view { height: 208px; margin-top: 3px; }
+      .chart-view svg { width: 100%; height: 100%; }
+      .axis-text { font: 9px var(--mono); fill: #7e9a98; }
+      .course-label { font: 10px var(--sans); fill: #b4c9c1; }
+      .bar-value { font: 10px var(--mono); fill: #dce9dc; }
+      .artifact-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 9px; border-top: 1px solid #c0dace21; color: #819f92; font-size: 9px; }
+      .artifact-footer .actions { color: #a5bda9; display: flex; align-items: center; gap: 13px; }
+      .artifact-footer svg { width: 12px; height: 12px; }
+      .evidence-line { display: flex; align-items: center; gap: 7px; color: #7f9e8e; font-size: 9px; margin-top: 11px; }
+      .evidence-line svg { width: 11px; height: 11px; }
+      .followups { display: flex; gap: 9px; margin-top: 12px; }
+      .followups span { border: 1px solid #b6cfc029; border-radius: 6px; padding: 6px 10px; color: #9bb4a2; font-size: 10px; background: #d0e7cd05; }
+      .composer { max-width: 1040px; width: 100%; margin: 0 auto; border-radius: 15px; padding: 16px 18px 12px; background: #c1d8c90b; display: flex; flex-direction: column; justify-content: space-between; }
+      .composer-placeholder { color: #9bb6a9; font-size: 13px; }
+      .composer-bottom { display: flex; align-items: center; gap: 10px; }
+      .composer-bottom > svg { height: 14px; width: 14px; color: #9db6a5; }
+      .composer-choice { color: #bdcfba; font-size: 10px; padding: 4px 9px; border-radius: 5px; border: 1px solid #cce4ca29; background: #bfd6b908; }
+      .composer-choice.secondary { border-color: transparent; color: #88a48c; background: transparent; }
+      .composer-helper { margin-left: auto; color: #6e8d79; font-size: 9px; }
+      .send { width: 28px; height: 28px; display: grid; place-items: center; background: #d2dfc5; border-radius: 7px; color: #284332; box-shadow: inset 0 1px #fff7; }
+      .send svg { height: 15px; width: 15px; }
+      .footer { display: flex; align-items: center; justify-content: space-between; margin-top: 17px; padding: 0 5px; font-size: 9px; color: #7c9b8b; }
+      .footer-left { display: flex; align-items: center; gap: 10px; }
+      .footer-left .mono { font-size: 8px; color: #708f80; letter-spacing: 1.5px; }
+      .footer-left i { width: 3px; height: 3px; background: #739581; border-radius: 50%; }
+      .motion-control { display: flex; align-items: center; gap: 11px; }
+      #motion-state { color: #819c89; font-size: 9px; }
+      #motion-toggle { display: flex; align-items: center; gap: 6px; padding: 4px 8px; margin: -5px 0; border: 1px solid #cde0c32e; border-radius: 5px; background: #d7edca05; color: #a9c1a0; font-size: 9px; }
+      #motion-toggle svg { width: 9px; height: 9px; }
+      #motion-toggle:disabled { color: #748d79; cursor: default; }
+      .table-view { height: 208px; padding-top: 10px; overflow-y: auto; }
+      .table-view table, .detail-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 11px; color: #bacfc3; }
+      .table-view th, .table-view td { padding: 6px 10px; border-bottom: 1px solid #bdd7cf17; }
+      .table-view th { font-size: 10px; color: #7fa293; font-weight: 400; }
+      .table-view td:not(:first-child) { font-family: var(--mono); font-size: 10px; }
+      .evidence-view { height: 208px; padding: 16px 2px; color: #a6c1af; font-size: 11px; line-height: 2.1; }
+      .evidence-view p + p { margin-top: 10px; }
+      .evidence-view strong { color: #d2e1c9; font-weight: 500; }
+      .filter-field { margin-top: 22px; padding: 0 7px; }
+      .filter-field label { display: block; font-size: 10px; color: #819e9a; margin-bottom: 9px; }
+      .filter-value { display: flex; align-items: center; justify-content: space-between; border: 1px solid #c0d5c52e; border-radius: 7px; background: #bdd6c207; padding: 10px 11px; font-size: 11px; color: #c3d6c2; }
+      .filter-value small { color: #779b88; }
+      .filter-options { display: flex; flex-wrap: wrap; gap: 7px; }
+      .filter-options span { padding: 6px 9px; font-size: 10px; border: 1px solid #b3d3bb17; border-radius: 5px; color: #87a78f; }
+      .filter-options span.selected { background: #bdd6bd17; border-color: #c3dec345; color: #d4e3c9; }
+      .data-surface { min-width: 0; min-height: 0; display: grid; grid-template-rows: 78px 86px minmax(0, 1fr) 188px; gap: 17px; padding: 22px 24px; background: #11262b38; }
+      .data-heading { display: flex; justify-content: space-between; align-items: flex-start; }
+      .data-heading h1 { font-size: 24px; font-weight: 400; margin-top: 4px; }
+      .data-heading p { color: #8ba89d; font-size: 11px; margin-top: 5px; }
+      .data-tools { display: flex; gap: 10px; align-items: center; color: #a2bcab; font-size: 10px; padding-top: 10px; }
+      .data-tools span { padding: 7px 10px; border: 1px solid #bfd8bf35; border-radius: 6px; background: #c4d7bf07; }
+      .data-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; }
+      .metric { position: relative; padding: 12px 17px; border: 1px solid #c3dbc125; border-top-color: #d9e8cf40; border-radius: 10px; background: #c4dfc308; }
+      .metric-label { font-size: 10px; color: #9cb8a2; }
+      .metric strong { font-size: 29px; font-weight: 300; color: #e4eed8; letter-spacing: -.6px; font-variant-numeric: tabular-nums; }
+      .metric strong small { font-size: 12px; color: #9db89d; margin-left: 5px; }
+      .metric .metric-detail { position: absolute; right: 14px; bottom: 16px; color: #8fab8d; font-size: 9px; }
+      .data-charts { display: grid; grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr); gap: 17px; min-height: 0; }
+      .data-card { min-width: 0; min-height: 0; padding: 18px 20px; border-radius: 12px; background: #0a1a2454; display: flex; flex-direction: column; }
+      .data-card-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      .data-card-header h2 { font-size: 13px; font-weight: 400; color: #d3e3d0; }
+      .data-card-header span { color: #7f9e8d; font-size: 9px; }
+      .data-main-chart { flex: 1; min-height: 0; margin-top: 14px; }
+      .data-main-chart svg { width: 100%; height: 100%; }
+      .data-note { display: flex; justify-content: space-between; padding-top: 11px; border-top: 1px solid #b8d3bd23; font-size: 9px; color: #83a38b; }
+      .distribution { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: 1; }
+      .ring { position: relative; width: 150px; height: 150px; flex-shrink: 0; }
+      .ring svg { width: 150px; height: 150px; }
+      .ring-center { position: absolute; inset: 49px 0 auto; text-align: center; }
+      .ring-center strong { color: #e0ecd2; font-size: 28px; font-weight: 300; line-height: 1.2; }
+      .ring-center strong small { font-size: 12px; }
+      .ring-center p { color: #8eae92; font-size: 9px; margin-top: 5px; }
+      .distribution-list { display: grid; gap: 15px; font-size: 10px; width: 180px; }
+      .distribution-list p { display: flex; align-items: center; gap: 7px; color: #a9c3a5; }
+      .distribution-list i { width: 4px; height: 4px; background: var(--key); }
+      .distribution-list .num { margin-left: auto; font-size: 10px; color: #c6dcbd; }
+      .distribution-list small { color: #7c9c7c; font: 9px var(--mono); width: 38px; text-align: right; }
+      .rhythm-chart { flex: 1; min-height: 0; margin-top: 11px; }
+      .rhythm-chart svg { width: 100%; height: 100%; }
+      .detail-table { margin-top: 10px; font-size: 10px; }
+      .detail-table th { color: #7e9d81; font-weight: 400; padding: 5px 0; border-bottom: 1px solid #bdd5bb26; }
+      .detail-table td { color: #b5ccab; padding: 7px 0; border-bottom: 1px solid #bdd5bb12; }
+      .detail-table td:not(:first-child) { font-family: var(--mono); font-size: 9px; }
+      .muted { color: #7e9c8c; }
+      .canvas[data-solid="true"] .glass { background: #17252e; }
+      .canvas[data-solid="true"] .glass::after { display: none; }
+      @media (prefers-reduced-transparency: reduce) { .glass { background: #17252e; } .glass::after { display: none; } }
+      @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+      @media (hover: hover) and (pointer: fine) { .result-switch button:hover { color: #e3eee2; background: #c2d7ce12; } #motion-toggle:hover { background: #d7edca10; } }
+    </style>
+  </head>
+  <body>
+    <!-- This is a standalone visual prototype. All statistics and insights are synthetic. -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+      <symbol id="mark" viewBox="0 0 32 32"><path d="M5 25V7h7v18M20 25V7h7v18M5 16h22M12 7l8 18" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2 3h7M2 3v7M30 29h-7M30 29v-7" fill="none" stroke="currentColor" stroke-width=".8"/></symbol>
+      <symbol id="spark" viewBox="0 0 24 24"><path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z" fill="none" stroke="currentColor" stroke-width="1.1"/></symbol>
+      <symbol id="chat" viewBox="0 0 24 24"><path d="M4 4h16v12H10l-5 4v-4H4zM8 8h8M8 12h5" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+      <symbol id="chart" viewBox="0 0 24 24"><path d="M4 3v17h17M8 16V9M13 16V5M18 16v-4" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+      <symbol id="database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M4 5v7c0 4 16 4 16 0V5M4 12v7c0 4 16 4 16 0v-7" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+      <symbol id="plus" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+      <symbol id="check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M7 12l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+      <symbol id="shield" viewBox="0 0 24 24"><path d="M12 2l8 3v7c0 5-8 10-8 10S4 17 4 12V5zM8 12l3 3 5-6" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+      <symbol id="report" viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5zM14 3v5h5M8 12h8M8 16h6" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+      <symbol id="settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1z" fill="none" stroke="currentColor" stroke-width="1.1"/></symbol>
+      <symbol id="more" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></g></symbol>
+      <symbol id="attach" viewBox="0 0 24 24"><path d="M8 15l8-8c3-3 7 1 4 4L9 22c-5 5-12-2-7-7L14 3c4-4 10 2 6 6L9 20" transform="translate(2 -1) scale(.8)" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+      <symbol id="send" viewBox="0 0 24 24"><path d="M12 20V4M5 11l7-7 7 7" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+      <symbol id="download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 16v5h16v-5" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+      <linearGradient id="bar-mint" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#d7e8de" stop-opacity=".85"/><stop offset="1" stop-color="#98bab1" stop-opacity=".24"/></linearGradient>
+      <linearGradient id="bar-amber" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#f3c39d" stop-opacity=".9"/><stop offset="1" stop-color="#c69d7d" stop-opacity=".25"/></linearGradient>
+      <linearGradient id="line-fill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#c2dbc4" stop-opacity=".16"/><stop offset="1" stop-color="#c2dbc4" stop-opacity="0"/></linearGradient>
+      <g id="course-bars">
+        <g stroke="#a7c8c0" stroke-opacity=".12" stroke-width=".7"><path d="M45 20H930M45 50H930M45 80H930M45 110H930M45 140H930M45 170H930"/></g>
+        <g class="axis-text" text-anchor="end"><text x="31" y="24">100</text><text x="31" y="54">80</text><text x="31" y="84">60</text><text x="31" y="114">40</text><text x="31" y="144">20</text><text x="31" y="174">0</text></g>
+        <path d="M45 80H930" stroke="#e9b58b" stroke-opacity=".24" stroke-dasharray="3 6" stroke-width=".7"/>
+        <g fill="#6e9095" fill-opacity=".26"><rect x="70" y="52.7" width="16" height="117.3"/><rect x="181" y="56.6" width="16" height="113.4"/><rect x="292" y="58.4" width="16" height="111.6"/><rect x="403" y="66.8" width="16" height="103.2"/><rect x="514" y="61.3" width="16" height="108.7"/><rect x="625" y="55.8" width="16" height="114.2"/><rect x="736" y="54.8" width="16" height="115.2"/><rect x="847" y="49.4" width="16" height="120.6"/></g>
+        <g fill="url(#bar-mint)" stroke="#d5e9df" stroke-opacity=".24" stroke-width=".5"><rect x="91" y="46.4" width="27" height="123.6" rx="1"/><rect x="202" y="54.8" width="27" height="115.2" rx="1"/><rect x="313" y="50.6" width="27" height="119.4" rx="1"/><rect x="535" y="57.8" width="27" height="112.2" rx="1"/><rect x="646" y="49.7" width="27" height="120.3" rx="1"/><rect x="757" y="53.9" width="27" height="116.1" rx="1"/><rect x="868" y="43.7" width="27" height="126.3" rx="1"/></g>
+        <rect x="424" y="63.2" width="27" height="106.8" rx="1" fill="url(#bar-amber)" stroke="#f0c39e" stroke-opacity=".45" stroke-width=".5"/>
+        <g class="bar-value" text-anchor="middle"><text x="104.5" y="36.4">82.4</text><text x="215.5" y="44.8">76.8</text><text x="326.5" y="40.6">79.6</text><text x="437.5" y="53.2" fill="#efc198">71.2</text><text x="548.5" y="47.8">74.8</text><text x="659.5" y="39.7">80.2</text><text x="770.5" y="43.9">77.4</text><text x="881.5" y="33.7">84.2</text></g>
+        <g class="course-label" text-anchor="middle"><text x="95" y="193">高等数学</text><text x="206" y="193">计算机基础</text><text x="317" y="193">大学英语</text><text x="428" y="193" fill="#dbb393">程序设计</text><text x="539" y="193">数据结构</text><text x="650" y="193">统计学</text><text x="761" y="193">数据库原理</text><text x="872" y="193">软件工程</text></g>
+      </g>
+    </defs></svg>
+    <main class="canvas" data-mode="ai" data-motion="loading" aria-label="学析台玻璃工作台设计预览，全部内容均为演示">
+      <canvas id="optics-canvas" width="1600" height="1000" aria-hidden="true"></canvas>
+      <header class="topbar">
+        <div class="brand"><svg aria-hidden="true"><use href="#mark"/></svg><strong>学析台</strong></div>
+        <fieldset class="mode-switch glass" data-glass="0.1"><legend class="sr-only">切换整个工作区</legend><label><input type="radio" name="workspace-mode" value="ai" checked/><span><svg aria-hidden="true"><use href="#spark"/></svg>AI 对话</span></label><label><input type="radio" name="workspace-mode" value="data"/><span><svg aria-hidden="true"><use href="#chart"/></svg>数据浏览</span></label></fieldset>
+        <div class="top-context"><span>教学洞察工作台</span><i></i><span class="mono">LEARNING INTELLIGENCE</span></div>
+        <div class="top-right"><span class="demo-tag">演示数据</span><div class="tools-control glass" data-glass="0.3"><svg aria-label="报告示意"><use href="#report"/></svg><svg aria-label="设置示意"><use href="#settings"/></svg><span class="separator"></span><span class="avatar">林</span><span class="top-user">林老师</span></div></div>
+      </header>
+
+      <div class="workspace" data-panel="ai">
+        <aside class="sidebar glass" data-glass="0.75" aria-label="分析历史与数据范围">
+          <p class="sidebar-label">我的分析</p><div class="new-chat"><svg aria-hidden="true"><use href="#plus"/></svg>新建分析</div>
+          <p class="history-label">今天</p><div class="history-item selected"><svg aria-hidden="true"><use href="#chat"/></svg>各课程成绩对比<i class="active-dot"></i></div><div class="history-item"><svg aria-hidden="true"><use href="#chat"/></svg>学习活动与成绩</div>
+          <p class="history-label">最近 7 天</p><div class="history-item"><svg aria-hidden="true"><use href="#chat"/></svg>学期表现变化</div><div class="history-item"><svg aria-hidden="true"><use href="#chat"/></svg>程序设计课程观察</div><div class="history-item"><svg aria-hidden="true"><use href="#chat"/></svg>作业提交情况</div>
+          <div class="sidebar-bottom"><p class="dataset-label"><svg aria-hidden="true"><use href="#database"/></svg>当前数据范围</p><p class="dataset-name">模拟校园数据</p><p class="dataset-range">2025—2026 第一学期<br/>全部课程 · 聚合分析</p><p class="dataset-health"><i></i>1,200 名匿名学生 · 18 门课程</p></div>
+        </aside>
+        <section class="chat-surface glass" data-glass="0.8" aria-labelledby="chat-title">
+          <header class="chat-header"><div><p class="breadcrumb">AI 对话 / 教学观察</p><h1 id="chat-title">各课程成绩对比</h1></div><div class="thread-tools"><svg aria-hidden="true"><use href="#shield"/></svg><span>仅聚合数据</span><svg aria-hidden="true"><use href="#more"/></svg></div></header>
+          <div class="chat-scroll">
+            <div class="user-message"><p class="message-byline"><span>你</span><span class="mono">10:24</span></p><div class="user-bubble">比较本学期各课程的成绩表现，有哪些值得继续关注的差异？</div></div>
+            <article class="assistant-message" aria-label="助手回复，包含分析与图表"><div class="assistant-mark"><svg aria-hidden="true"><use href="#spark"/></svg></div><div class="assistant-content">
+              <p class="assistant-name">学析台<span>让判断回到数据</span></p>
+              <p class="assistant-copy">从当前展示的 8 门课程看，软件工程和高等数学均分较高。<strong>程序设计均分为 71.2 分</strong>，低于本学期整体均分 76.8 分，可继续结合成绩分布与作业提交情况核对。</p>
+              <p class="steps"><svg aria-hidden="true"><use href="#check"/></svg>分析完成<span class="divider">/</span>课程平均分<span class="divider">/</span><span class="mono">8 个课程分组</span></p>
+              <section class="artifact glass" data-glass="0.35" aria-labelledby="artifact-title">
+                <header class="artifact-header"><h2 class="artifact-title" id="artifact-title"><svg aria-hidden="true"><use href="#chart"/></svg>课程表现对比</h2><div class="result-switch" role="group" aria-label="切换消息内的结果展示"><button type="button" data-view="chart" aria-pressed="true">图表</button><button type="button" data-view="table" aria-pressed="false">表格</button><button type="button" data-view="evidence" aria-pressed="false">依据</button></div></header>
+                <div class="artifact-subhead"><span>课程平均分 / 满分 100 分</span><div class="legend"><span><i></i>本学期</span><span><i class="comparison"></i>上学期</span></div></div>
+                <div class="chart-view" data-result="chart"><svg viewBox="0 0 960 208" role="img" aria-label="8门演示课程均分柱形对比，程序设计71.2分，软件工程84.2分"><use href="#course-bars"/></svg></div>
+                <div class="table-view" data-result="table" hidden><table><thead><tr><th>课程</th><th>本学期均分</th><th>上学期均分</th><th>变化 / 分</th></tr></thead><tbody><tr><td>高等数学</td><td>82.4</td><td>78.2</td><td>+4.2</td></tr><tr><td>计算机基础</td><td>76.8</td><td>75.6</td><td>+1.2</td></tr><tr><td>大学英语</td><td>79.6</td><td>74.4</td><td>+5.2</td></tr><tr><td>程序设计</td><td>71.2</td><td>68.8</td><td>+2.4</td></tr><tr><td>数据结构</td><td>74.8</td><td>72.5</td><td>+2.3</td></tr><tr><td>统计学</td><td>80.2</td><td>76.1</td><td>+4.1</td></tr><tr><td>数据库原理</td><td>77.4</td><td>76.8</td><td>+0.6</td></tr><tr><td>软件工程</td><td>84.2</td><td>80.4</td><td>+3.8</td></tr></tbody></table></div>
+                <div class="evidence-view" data-result="evidence" hidden><p><strong>数据范围</strong>　模拟校园数据 · 2025—2026 第一学期，展示 18 门课程中的 8 门。</p><p><strong>统计口径</strong>　按课程计算有效成绩均值，不补齐缺失成绩；跨学期比较使用相同课程口径。</p><p><strong>阅读边界</strong>　整体均分与所选课程均分属于不同统计范围；均分差异用于继续观察，不直接解释因果。</p><p><strong>演示声明</strong>　本页数值和回答为设计样例，没有调用实时数据或 AI 服务。</p></div>
+                <footer class="artifact-footer"><span>模拟校园数据<span class="muted">　/　</span>当前展示 8 / 18 门课程</span><span class="actions"><svg aria-hidden="true"><use href="#download"/></svg>导出<span>加入报告</span></span></footer>
+              </section>
+              <p class="evidence-line"><svg aria-hidden="true"><use href="#shield"/></svg>来源、样本范围与统计口径随本条结果保留<span class="muted">　·　</span>演示结论</p>
+              <div class="followups"><span>查看程序设计成绩分布　↗</span><span>对比作业提交情况　↗</span></div>
+            </div></article>
+          </div>
+          <div class="composer glass" data-glass="0.15" aria-label="问题输入区示意"><p class="composer-placeholder">继续追问，或提出一个新问题……</p><div class="composer-bottom"><svg aria-hidden="true"><use href="#attach"/></svg><span class="composer-choice">普通问答 ⌄</span><span class="composer-choice secondary">综合分析</span><span class="composer-helper">用数据回答每一个问题</span><span class="send"><svg aria-hidden="true"><use href="#send"/></svg></span></div></div>
+        </section>
+      </div>
+
+      <div class="workspace" data-panel="data" hidden>
+        <aside class="sidebar glass" data-glass="0.75" aria-label="数据浏览筛选示意"><p class="sidebar-label">数据与筛选</p><div class="filter-field"><label>数据源</label><div class="filter-value">模拟校园数据<small>⌄</small></div></div><div class="filter-field"><label>学期</label><div class="filter-value">2025—2026 第一学期<small>⌄</small></div></div><div class="filter-field"><label>课程范围</label><div class="filter-value">全部课程<small>⌄</small></div></div><div class="filter-field"><label>分组方式</label><div class="filter-options"><span class="selected">按课程</span><span>按学期</span><span>按年级</span></div></div><div class="filter-field"><label>浏览主题</label><div class="filter-options"><span class="selected">成绩</span><span>学习活动</span><span>作业</span><span>出勤</span></div></div><div class="sidebar-bottom"><p class="dataset-label"><svg aria-hidden="true"><use href="#shield"/></svg>数据范围</p><p class="dataset-name">匿名聚合 · 可追溯</p><p class="dataset-range">所有图表共享当前筛选口径。<br/>本页筛选项为视觉示意。</p></div></aside>
+        <section class="data-surface glass" data-glass="0.8" aria-labelledby="data-title">
+          <header class="data-heading"><div><p class="breadcrumb">数据浏览 / 学习全景</p><h1 id="data-title">学习数据总览</h1><p>2025—2026 第一学期 · 全部课程 · 模拟校园数据</p></div><div class="data-tools"><span>统计口径</span><span>导出 / 加入报告</span></div></header>
+          <div class="data-metrics"><section class="metric"><p class="metric-label">学期平均分</p><strong>76.8<small>分</small></strong><span class="metric-detail">较上期 +2.4 分</span></section><section class="metric"><p class="metric-label">学期均分达标率</p><strong>89.4<small>%</small></strong><span class="metric-detail">均分 ≥ 60</span></section><section class="metric"><p class="metric-label">课程覆盖</p><strong>18<small>门</small></strong><span class="metric-detail">跨学科观察</span></section><section class="metric"><p class="metric-label">纳入分析的学生</p><strong>1,200<small>人</small></strong><span class="metric-detail">匿名聚合</span></section></div>
+          <div class="data-charts"><section class="data-card glass" data-glass="0.3"><header class="data-card-header"><h2>课程表现对比</h2><span>平均分 · 同期比较</span></header><div class="data-main-chart"><svg viewBox="0 0 960 360" role="img" aria-label="8门演示课程的学期均分对比"><g stroke="#a2bf9e" stroke-opacity=".13" stroke-width=".7"><path d="M48 300.0H945"/><path d="M48 248.0H945"/><path d="M48 196.0H945"/><path d="M48 144.0H945"/><path d="M48 92.0H945"/><path d="M48 40.0H945"/></g><g class="axis-text" style="font-size:12px" text-anchor="end"><text x="34" y="304.0">0</text><text x="34" y="252.0">20</text><text x="34" y="200.0">40</text><text x="34" y="148.0">60</text><text x="34" y="96.0">80</text><text x="34" y="44.0">100</text></g><rect x="74" y="96.67999999999998" width="20" height="203.32000000000002" fill="#718d93" fill-opacity=".28"/><rect x="101" y="85.75999999999999" width="27" height="214.24" fill="url(#bar-mint)"/><text x="114.5" y="74.75999999999999" class="bar-value" style="font-size:14px" text-anchor="middle">82.4</text><text x="101" y="334" class="course-label" style="font-size:14px" text-anchor="middle">高等数学</text><rect x="186" y="103.44" width="20" height="196.56" fill="#718d93" fill-opacity=".28"/><rect x="213" y="100.32" width="27" height="199.68" fill="url(#bar-mint)"/><text x="226.5" y="89.32" class="bar-value" style="font-size:14px" text-anchor="middle">76.8</text><text x="213" y="334" class="course-label" style="font-size:14px" text-anchor="middle">计算机基础</text><rect x="298" y="106.55999999999997" width="20" height="193.44000000000003" fill="#718d93" fill-opacity=".28"/><rect x="325" y="93.04000000000002" width="27" height="206.95999999999998" fill="url(#bar-mint)"/><text x="338.5" y="82.04000000000002" class="bar-value" style="font-size:14px" text-anchor="middle">79.6</text><text x="325" y="334" class="course-label" style="font-size:14px" text-anchor="middle">大学英语</text><rect x="410" y="121.12" width="20" height="178.88" fill="#718d93" fill-opacity=".28"/><rect x="437" y="114.88" width="27" height="185.12" fill="url(#bar-amber)"/><text x="450.5" y="103.88" class="bar-value" style="font-size:14px" text-anchor="middle">71.2</text><text x="437" y="334" class="course-label" style="font-size:14px" text-anchor="middle">程序设计</text><rect x="522" y="111.5" width="20" height="188.5" fill="#718d93" fill-opacity=".28"/><rect x="549" y="105.52000000000001" width="27" height="194.48" fill="url(#bar-mint)"/><text x="562.5" y="94.52000000000001" class="bar-value" style="font-size:14px" text-anchor="middle">74.8</text><text x="549" y="334" class="course-label" style="font-size:14px" text-anchor="middle">数据结构</text><rect x="634" y="102.14000000000001" width="20" height="197.85999999999999" fill="#718d93" fill-opacity=".28"/><rect x="661" y="91.47999999999999" width="27" height="208.52" fill="url(#bar-mint)"/><text x="674.5" y="80.47999999999999" class="bar-value" style="font-size:14px" text-anchor="middle">80.2</text><text x="661" y="334" class="course-label" style="font-size:14px" text-anchor="middle">统计学</text><rect x="746" y="100.32" width="20" height="199.68" fill="#718d93" fill-opacity=".28"/><rect x="773" y="98.75999999999999" width="27" height="201.24" fill="url(#bar-mint)"/><text x="786.5" y="87.75999999999999" class="bar-value" style="font-size:14px" text-anchor="middle">77.4</text><text x="773" y="334" class="course-label" style="font-size:14px" text-anchor="middle">数据库原理</text><rect x="858" y="90.95999999999998" width="20" height="209.04000000000002" fill="#718d93" fill-opacity=".28"/><rect x="885" y="81.07999999999998" width="27" height="218.92000000000002" fill="url(#bar-mint)"/><text x="898.5" y="70.07999999999998" class="bar-value" style="font-size:14px" text-anchor="middle">84.2</text><text x="885" y="334" class="course-label" style="font-size:14px" text-anchor="middle">软件工程</text></svg></div><p class="data-note"><span>本学期 / 上学期</span><span>当前展示 8 / 18 门课程</span></p></section><section class="data-card glass" data-glass="0.45"><header class="data-card-header"><h2>学生综合成绩分布</h2><span>按学生学期均分</span></header><div class="distribution"><div class="ring"><svg viewBox="0 0 150 150" role="img" aria-label="演示学生均分达标率89.4%"><circle cx="75" cy="75" r="61" fill="none" stroke="#b5cfba" stroke-opacity=".22" stroke-width="1" stroke-dasharray="1 5"/><circle cx="75" cy="75" r="52" fill="none" stroke="#c6ddbc" stroke-opacity=".08" stroke-width="6"/><g transform="rotate(-90 75 75)" fill="none" stroke-width="4"><circle cx="75" cy="75" r="52" stroke="#c7d9ba" stroke-dasharray="289 38"/><circle cx="75" cy="75" r="52" stroke="#ce9d79" stroke-dasharray="29 298" stroke-dashoffset="-294"/></g></svg><div class="ring-center"><strong>89.4<small>%</small></strong><p>学期均分达标率</p></div></div><div class="distribution-list"><p style="--key:#d4e1c5"><i></i>90—100<span class="num">236</span><small>19.7%</small></p><p style="--key:#acc5a3"><i></i>80—89<span class="num">382</span><small>31.8%</small></p><p style="--key:#7ea17e"><i></i>70—79<span class="num">324</span><small>27.0%</small></p><p style="--key:#567a5e"><i></i>60—69<span class="num">131</span><small>10.9%</small></p><p style="--key:#c69a75"><i></i>低于60<span class="num">127</span><small>10.6%</small></p></div></div><p class="data-note"><span>1,200 人 · 区间标签取整数简写</span><span>达标人数 1,073</span></p></section></div>
+          <div class="data-charts"><section class="data-card glass" data-glass="0.35"><header class="data-card-header"><h2>学习节奏</h2><span>16 个教学周 · 活动次数</span></header><div class="rhythm-chart"><svg viewBox="0 0 670 110" role="img" aria-label="16周演示学习活动量趋势"><g stroke="#a2bf9e" stroke-opacity=".13" stroke-width=".6"><path d="M22 25H655M22 55H655M22 85H655"/></g><path d="M26 78L67 73L108 68L149 73L190 59L231 62L272 48L313 57L354 53L395 41L436 47L477 36L518 43L559 33L600 27L641 37V85H26Z" fill="url(#line-fill)"/><path d="M26 78L67 73L108 68L149 73L190 59L231 62L272 48L313 57L354 53L395 41L436 47L477 36L518 43L559 33L600 27L641 37" fill="none" stroke="#c6d9b5" stroke-width="1.3"/><circle cx="600" cy="27" r="2.5" fill="#e0eace"/><g class="axis-text" text-anchor="middle"><text x="26" y="105">W01</text><text x="149" y="105">W04</text><text x="313" y="105">W08</text><text x="477" y="105">W12</text><text x="641" y="105">W16</text></g></svg></div><p class="data-note"><span>峰值 8,240 次</span><span>活动量不代表出勤率</span></p></section><section class="data-card glass" data-glass="0.6"><header class="data-card-header"><h2>当前聚合明细</h2><span>示例课程</span></header><table class="detail-table"><thead><tr><th>课程</th><th>本学期</th><th>变化</th></tr></thead><tbody><tr><td>软件工程</td><td>84.2</td><td>+3.8</td></tr><tr><td>高等数学</td><td>82.4</td><td>+4.2</td></tr><tr><td>程序设计</td><td>71.2</td><td>+2.4</td></tr></tbody></table></section></div>
+        </section>
+      </div>
+      <footer class="footer"><div class="footer-left"><span>设计预览 · 全部内容为演示</span><i></i><span>仅展示匿名聚合数据</span><span class="mono">GLASS WORKSPACE / 04</span></div><div class="motion-control"><span id="motion-state" aria-live="polite">材质加载中</span><button id="motion-toggle" type="button" aria-pressed="false"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2v8M8 2v8" stroke="currentColor" stroke-width="1.4" fill="none"/></svg><span>暂停光效</span></button></div></footer>
+    </main>
+    <script>
+      const stage = document.querySelector('.canvas');
+      const params = new URLSearchParams(location.search);
+      stage.dataset.solid = String(params.get('reduced') === '1' || matchMedia('(prefers-reduced-transparency: reduce)').matches);
+      function setMode(mode) {
+        const selected = mode === 'data' ? 'data' : 'ai';
+        document.querySelectorAll('input[name="workspace-mode"]').forEach(input => { input.checked = input.value === selected; });
+        document.querySelectorAll('[data-panel]').forEach(panel => { panel.hidden = panel.dataset.panel !== selected; });
+        stage.dataset.mode = selected;
+        document.title = `学析台 · ${selected === 'ai' ? 'AI 对话' : '数据浏览'}玻璃工作台预览`;
+        const url = new URL(location.href); url.searchParams.set('mode', selected); history.replaceState(null, '', url);
+        document.dispatchEvent(new Event('preview:layoutchange'));
+      }
+      document.querySelectorAll('input[name="workspace-mode"]').forEach(input => input.addEventListener('change', () => setMode(input.value)));
+      document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
+        document.querySelectorAll('[data-view]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+        document.querySelectorAll('[data-result]').forEach(view => { view.hidden = view.dataset.result !== button.dataset.view; });
+        document.dispatchEvent(new Event('preview:layoutchange'));
+      }));
+      matchMedia('(prefers-reduced-transparency: reduce)').addEventListener('change', event => { stage.dataset.solid = String(event.matches || params.get('reduced') === '1'); });
+      setMode(params.get('mode'));
+    </script>
+    <script>
+/* Procedural light + chromatic glass. No images, dependencies, or data requests. */
+(() => {
+  'use strict';
+
+  const canvas = document.getElementById('optics-canvas');
+  const stage = document.querySelector('.canvas');
+  const toggle = document.getElementById('motion-toggle');
+  const label = toggle.querySelector('span');
+  const icon = toggle.querySelector('path');
+  const status = document.getElementById('motion-state');
+  const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const WIDTH = 1600;
+  const HEIGHT = 1000;
+  // Only the softly colored backdrop is downsampled; glass and DOM text stay sharp.
+  const LIGHT_WIDTH = 960;
+  const LIGHT_HEIGHT = 600;
+  const FRAME_INTERVAL = 1000 / 30;
+  let animationId = 0;
+  let previousPaint = 0;
+  const freezeTime = new URLSearchParams(location.search).get('t');
+  let frozen = freezeTime !== null && Number.isFinite(Number(freezeTime)) && Number(freezeTime) >= 0;
+  let phase = frozen ? Number(freezeTime) : 2.4;
+  let paneCount = 0;
+  let frames = 0;
+  let paused = false;
+  let ready = false;
+
+  const vertexSource = `
+    attribute vec2 a_position;
+    varying vec2 v_uv;
+    void main() {
+      v_uv = a_position * 0.5 + 0.5;
+      gl_Position = vec4(a_position, 0.0, 1.0);
+    }
+  `;
+
+  const lightSource = `
+    precision highp float;
+    varying vec2 v_uv;
+    uniform float u_time;
+
+    float band(float d, float width) {
+      float v = d / width;
+      return exp(-v * v);
+    }
+
+    void main() {
+      vec2 uv = vec2(v_uv.x, 1.0 - v_uv.y);
+      float t = u_time;
+      vec2 p = (uv - 0.5) * vec2(1.45, 1.0);
+      p.x += 0.065 * sin(p.y * 5.0 + t * 0.18);
+      p.y += 0.025 * cos(p.x * 6.0 - t * 0.17);
+
+      // Light travels behind the workspace; the reading surface remains quiet.
+      float bend = 0.17 * sin(p.x * 3.8 + t * 0.18)
+                 + 0.025 * sin(p.x * 8.0 - t * 0.12);
+      float d = p.y - bend + 0.34;
+      float lower = p.y - 0.49 + 0.12 * cos(p.x * 4.3 - t * 0.15);
+      float vertical = p.x - 0.58 + 0.22 * sin(p.y * 3.4 + t * 0.16);
+      vec3 color = mix(vec3(0.047, 0.085, 0.105), vec3(0.082, 0.112, 0.125), uv.y);
+      vec2 glow = (uv - vec2(0.88, 0.20)) * vec2(1.2, 1.0);
+      color += vec3(0.075, 0.10, 0.105) * exp(-dot(glow, glow) * 4.0);
+      float readingMask = mix(0.38, 1.0, smoothstep(0.48, 0.96, uv.x));
+      color += vec3(0.15, 0.12, 0.24) * band(d + 0.04, 0.095) * readingMask;
+      color += vec3(0.34, 0.25, 0.20) * band(d, 0.025) * readingMask;
+      color += vec3(0.32, 0.40, 0.42) * band(d - 0.018, 0.009) * readingMask;
+      color += vec3(0.11, 0.17, 0.25) * band(d - 0.04, 0.04) * readingMask;
+      color += vec3(0.15, 0.12, 0.24) * band(lower + 0.03, 0.075);
+      color += vec3(0.34, 0.25, 0.19) * band(lower, 0.022);
+      color += vec3(0.25, 0.37, 0.38) * band(lower - 0.015, 0.008);
+      color += vec3(0.10, 0.18, 0.22) * band(vertical, 0.11);
+      color += vec3(0.28, 0.33, 0.34) * band(vertical + 0.017, 0.008);
+      color += vec3(0.13, 0.09, 0.20) * band(vertical - 0.02, 0.024);
+      gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+    }
+  `;
+
+  const glassSource = `
+    precision highp float;
+    varying vec2 v_uv;
+    uniform sampler2D u_light;
+    uniform vec2 u_resolution;
+    uniform float u_time;
+    uniform vec4 u_rects[12];
+    uniform vec2 u_materials[12];
+
+    float roundedRect(vec2 p, vec4 rect, float radius) {
+      vec2 halfSize = rect.zw * 0.5;
+      vec2 q = abs(p - rect.xy - halfSize) - halfSize + radius;
+      return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - radius;
+    }
+
+    vec3 lightAt(vec2 pixel) {
+      vec2 uv = pixel / u_resolution;
+      return texture2D(u_light, vec2(uv.x, 1.0 - uv.y)).rgb;
+    }
+
+    void main() {
+      vec2 p = vec2(v_uv.x, 1.0 - v_uv.y) * u_resolution;
+      float distanceToGlass = 10000.0;
+      vec4 pane = vec4(0.0);
+      vec2 material = vec2(18.0, 0.0);
+      for (int i = 0; i < 12; i++) {
+        float distance = roundedRect(p, u_rects[i], u_materials[i].x);
+        if (u_rects[i].z > 0.0 && distance < 0.0) {
+          distanceToGlass = distance;
+          pane = u_rects[i];
+          material = u_materials[i];
+        }
+      }
+
+      vec3 color = lightAt(p);
+      if (distanceToGlass < 0.0) {
+        vec2 local = p - pane.xy;
+        float radius = material.x;
+        float frost = material.y;
+        float edge = 1.0 - smoothstep(1.0, 22.0, -distanceToGlass);
+        vec2 normal = normalize(vec2(
+          roundedRect(p + vec2(0.7, 0.0), pane, radius)
+            - roundedRect(p - vec2(0.7, 0.0), pane, radius),
+          roundedRect(p + vec2(0.0, 0.7), pane, radius)
+            - roundedRect(p - vec2(0.0, 0.7), pane, radius)
+        ) + vec2(0.0001));
+
+        // Fine flutes and a small engraved lattice bend only the transmitted light.
+        float flute = sin(local.x * 0.137 + sin(local.y * 0.014) * 0.6);
+        float fineX = sin(local.x * 1.35);
+        float fineY = sin(local.y * 1.35);
+        vec2 textureNormal = vec2(cos(local.x * 0.137) * 2.1, flute * 0.45);
+        textureNormal += vec2(fineX * fineY, cos(local.x * 1.35) * fineY) * 0.3;
+        vec2 drift = vec2(2.2 * sin(u_time * 0.31 + local.y * 0.009),
+                          1.4 * cos(u_time * 0.27 + local.x * 0.008));
+        vec2 bend = -normal * edge * edge * 18.0
+                  + textureNormal * (1.0 - frost * 0.6) + drift;
+        float spectralWidth = 1.1 + edge * 4.8;
+        vec2 spectralDirection = normalize(normal * edge + vec2(0.7, 0.4));
+        vec2 refracted = p + bend;
+
+        color = vec3(
+          lightAt(refracted + spectralDirection * spectralWidth).r,
+          lightAt(refracted).g,
+          lightAt(refracted - spectralDirection * spectralWidth).b
+        );
+        if (frost > 0.2) {
+          vec3 softened = lightAt(refracted) * 0.24
+            + lightAt(refracted + vec2(11.0, 7.0)) * 0.19
+            + lightAt(refracted + vec2(-11.0, -7.0)) * 0.19
+            + lightAt(refracted + vec2(8.0, -12.0)) * 0.19
+            + lightAt(refracted + vec2(-8.0, 12.0)) * 0.19;
+          color = mix(color, softened, frost);
+        }
+
+        color = mix(color, vec3(0.055, 0.095, 0.12), 0.26 + frost * 0.25);
+        float lightLevel = dot(color, vec3(0.21, 0.72, 0.07));
+        float engraving = pow(0.5 + 0.5 * fineX * fineY, 4.0);
+        color += engraving * vec3(0.048, 0.040, 0.064) * (0.25 + lightLevel);
+        color += (flute * 0.5 + 0.5) * vec3(0.005, 0.005, 0.012);
+
+        float polished = exp(-abs(distanceToGlass + 1.7) * 1.4);
+        float movingGlint = 0.5 + 0.5 * sin(local.x * 0.008 + local.y * 0.012 - u_time * 0.45);
+        vec3 edgeColor = mix(vec3(0.49, 0.66, 1.0), vec3(1.0, 0.76, 0.59), movingGlint);
+        color += polished * edgeColor * (0.16 + movingGlint * 0.22);
+        color += edge * edge * vec3(0.027, 0.020, 0.045);
+      }
+
+      // Subtle stationary dither prevents broad dark gradients from banding.
+      float noise = fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+      color += (noise - 0.5) / 255.0;
+      gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+    }
+  `;
+
+  function showFallback() {
+    ready = false;
+    cancelAnimationFrame(animationId);
+    canvas.hidden = true;
+    stage.dataset.optics = 'fallback';
+    stage.dataset.motion = 'static';
+    status.textContent = '静态玻璃材质';
+    label.textContent = '静态预览';
+    toggle.disabled = true;
+    window.__ready = true;
+  }
+
+  const gl = canvas.getContext('webgl', {
+    alpha: false,
+    antialias: false,
+    depth: false,
+    stencil: false,
+    preserveDrawingBuffer: false,
+    powerPreference: 'low-power',
+  });
+  if (!gl) {
+    showFallback();
+    return;
+  }
+
+  function compile(type, source) {
+    const shader = gl.createShader(type);
+    if (!shader) throw new Error('Could not allocate optical shader');
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      const message = gl.getShaderInfoLog(shader);
+      gl.deleteShader(shader);
+      throw new Error(message || 'Optical shader did not compile');
+    }
+    return shader;
+  }
+
+  function program(fragmentSource) {
+    const vertex = compile(gl.VERTEX_SHADER, vertexSource);
+    const fragment = compile(gl.FRAGMENT_SHADER, fragmentSource);
+    const handle = gl.createProgram();
+    if (!handle) throw new Error('Could not allocate optical program');
+    gl.attachShader(handle, vertex);
+    gl.attachShader(handle, fragment);
+    gl.linkProgram(handle);
+    gl.deleteShader(vertex);
+    gl.deleteShader(fragment);
+    if (!gl.getProgramParameter(handle, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(handle) || 'Optical program did not link');
+    }
+    return {
+      handle,
+      position: gl.getAttribLocation(handle, 'a_position'),
+      time: gl.getUniformLocation(handle, 'u_time'),
+    };
+  }
+
+  try {
+    const light = program(lightSource);
+    const glass = program(glassSource);
+    const quad = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1,
+    ]), gl.STATIC_DRAW);
+
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, LIGHT_WIDTH, LIGHT_HEIGHT, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    const framebuffer = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+      throw new Error('The optical light buffer is unavailable');
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    const rects = new Float32Array(48);
+    const materials = new Float32Array(24);
+    function updateGlassGeometry() {
+      rects.fill(0); materials.fill(0);
+      const stageBounds = stage.getBoundingClientRect();
+      const panes = [...document.querySelectorAll('[data-glass]')].filter(element => {
+        const rect = element.getBoundingClientRect(); return rect.width > 0 && rect.height > 0;
+      }).slice(0, 12);
+      paneCount = panes.length;
+      panes.forEach((element, index) => {
+        const bounds = element.getBoundingClientRect();
+        rects.set([bounds.left - stageBounds.left, bounds.top - stageBounds.top, bounds.width, bounds.height], index * 4);
+        materials.set([parseFloat(getComputedStyle(element).borderTopLeftRadius), Number(element.dataset.glass)], index * 2);
+      });
+      gl.useProgram(glass.handle);
+      gl.uniform4fv(gl.getUniformLocation(glass.handle, 'u_rects[0]'), rects);
+      gl.uniform2fv(gl.getUniformLocation(glass.handle, 'u_materials[0]'), materials);
+    }
+    updateGlassGeometry();
+    gl.uniform2f(gl.getUniformLocation(glass.handle, 'u_resolution'), WIDTH, HEIGHT);
+    gl.uniform1i(gl.getUniformLocation(glass.handle, 'u_light'), 0);
+    gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.BLEND);
+
+    function bindPass(pass) {
+      gl.useProgram(pass.handle);
+      gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+      gl.enableVertexAttribArray(pass.position);
+      gl.vertexAttribPointer(pass.position, 2, gl.FLOAT, false, 0, 0);
+      gl.uniform1f(pass.time, phase);
+    }
+
+    function draw() {
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+      gl.viewport(0, 0, LIGHT_WIDTH, LIGHT_HEIGHT);
+      bindPass(light);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.viewport(0, 0, WIDTH, HEIGHT);
+      bindPass(glass);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      frames += 1;
+    }
+
+    const shouldRun = () => ready && !frozen && !paused && !preference.matches && !document.hidden;
+
+    function frame(timestamp) {
+      if (!shouldRun()) return;
+      animationId = requestAnimationFrame(frame);
+      if (previousPaint && timestamp - previousPaint < FRAME_INTERVAL - 1) return;
+      if (previousPaint) phase += Math.min((timestamp - previousPaint) / 1000, 0.12);
+      previousPaint = timestamp;
+      draw();
+    }
+
+    function syncPlayback() {
+      if (!ready) return;
+      cancelAnimationFrame(animationId);
+      previousPaint = 0;
+      toggle.disabled = preference.matches;
+      toggle.setAttribute('aria-pressed', String(paused || frozen));
+      icon.setAttribute('d', paused || frozen ? 'M4 2l6 4-6 4z' : 'M4 2v8M8 2v8');
+      if (preference.matches) {
+        stage.dataset.motion = 'reduced';
+        label.textContent = '减少动态效果';
+        status.textContent = '静态折射 · 跟随系统偏好';
+      } else if (frozen) {
+        stage.dataset.motion = 'frozen';
+        label.textContent = '播放光效';
+        status.textContent = '折射定帧预览';
+      } else {
+        stage.dataset.motion = paused ? 'paused' : 'running';
+        label.textContent = paused ? '继续光流' : '暂停光流';
+        status.textContent = paused ? '流光折射 · 已暂停' : '流光折射 · 缓慢流动';
+      }
+      if (!document.hidden) draw();
+      if (shouldRun()) animationId = requestAnimationFrame(frame);
+    }
+
+    ready = true;
+    stage.dataset.optics = 'webgl';
+    window.__glassPreview = Object.freeze({
+      getState: () => ({ renderer: 'webgl', frames, phase, paused, frozen, paneCount, reducedMotion: preference.matches,
+        state: stage.dataset.motion, resolution: [WIDTH, HEIGHT], lightBuffer: [LIGHT_WIDTH, LIGHT_HEIGHT] }),
+    });
+    toggle.addEventListener('click', () => {
+      if (frozen) { frozen = false; const url = new URL(location.href); url.searchParams.delete('t'); history.replaceState(null, '', url); }
+      else paused = !paused;
+      syncPlayback();
+    });
+    document.addEventListener('preview:layoutchange', () => { updateGlassGeometry(); syncPlayback(); });
+    document.querySelector('.chat-scroll').addEventListener('scroll', () => { updateGlassGeometry(); if (ready) draw(); }, { passive: true });
+    preference.addEventListener('change', syncPlayback);
+    document.addEventListener('visibilitychange', syncPlayback);
+    canvas.addEventListener('webglcontextlost', (event) => { event.preventDefault(); showFallback(); });
+    window.addEventListener('pagehide', () => cancelAnimationFrame(animationId));
+    window.addEventListener('pageshow', syncPlayback);
+    syncPlayback();
+    window.__ready = true;
+  } catch (error) {
+    console.warn('Optical preview switched to its static material:', error);
+    showFallback();
+  }
+})();
+
+    </script>
+  </body>
+</html>

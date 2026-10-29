@@ -1,3 +1,4 @@
+import { studioComparisonLines } from "./studio-comparison-facts";
 import { requestedTool, type ChatTool } from "./chart-capabilities";
 import type { ChatArtifact, ChatInput, ChatIntent } from "./chat-types";
 import type { ChartViewType } from "../analysis/visualization";
@@ -142,7 +143,7 @@ export function resultNarrative(
     if (artifact.tool === "boxplot")
       return `用箱线图比较 ${artifact.table.rows.length} 门课程的成绩分布，可同时观察中位数、分布区间与离散程度。`;
     if (artifact.tool === "dumbbell")
-      return `已比较两个学期的课程均分，连线呈现变化方向，数值表包含后期减前期的差值；两期选课群体可能不同。`;
+      return [...studioComparisonLines(artifact), "两期选课群体可能不同，不能据此判断同一批学生的个人变化或原因。"].join("\n");
     if (artifact.tool === "rhythm")
       return "用热力图呈现各课程逐周的人均活动次数，颜色越深表示该周活动越多；没有记录的组合留空。";
     return "用桑基图呈现出勤、作业完成和成绩档位的群体分布，连接带宽度表示选课人次，不能据此判断因果。";

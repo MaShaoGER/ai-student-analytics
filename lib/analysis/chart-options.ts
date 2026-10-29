@@ -37,6 +37,7 @@ export function buildChartOption({
   fontFamily,
   compact = false,
   comparison,
+  barOrientation = "vertical",
 }: {
   rows: AnalysisRow[];
   chartType: ChartViewType;
@@ -47,6 +48,8 @@ export function buildChartOption({
   fontFamily: string;
   compact?: boolean;
   comparison?: ChartComparison;
+  /** Category bars default to vertical; course lists may use horizontal bars. */
+  barOrientation?: "horizontal" | "vertical";
 }): EChartsOption {
   const view = resolveChartView(chartType, unit, rows);
   const total = rows.reduce((sum, row) => sum + row.value, 0);
@@ -174,8 +177,14 @@ export function buildChartOption({
           itemStyle: { borderWidth: 3, gapWidth: 4, borderColor: colors.surface, borderRadius: 0 },
           label: {
             show: true,
-            color: colors.surface,
-            fontSize: compact ? 10 : 12,
+            // The treemap palette is pastel in both themes, so a fixed dark film
+            // with light type keeps every tile readable without leaning on theme
+            // colors (near-white text measured 1.6–2.2:1 on the light tiles).
+            color: "#f8fbf9",
+            backgroundColor: "rgba(18, 28, 24, 0.66)",
+            padding: [2, 4],
+            borderRadius: 3,
+            fontSize: compact ? 11 : 12,
             overflow: "truncate",
             formatter: (params) =>
               `${params.name}\n${number((Number(params.value) / total) * 100)}%`,
@@ -227,13 +236,14 @@ export function buildChartOption({
     return option;
   }
 
-  option.grid = {
+  const grid = {
     top: view === "scatter" ? 42 : 38,
     right: 20,
     bottom: view === "scatter" ? 42 : 20,
     left: 8,
     containLabel: true,
   };
+  option.grid = grid;
   const axisStyle = {
     axisLabel: { color: colors.muted, fontSize: 11 },
     axisLine: { lineStyle: { color: colors.grid } },
@@ -300,6 +310,53 @@ export function buildChartOption({
     value: row.value,
     itemStyle: { color: selected(row) ? colors.primary : colors.neutral },
   }));
+  if (view === "bar" && barOrientation === "horizontal") {
+    // Horizontal bars keep long course names readable. Row order is preserved;
+    // the yAxis is inverted so the first result appears at the top.
+    option.grid = { top: 42, right: 34, bottom: 20, left: 12, containLabel: true };
+    option.xAxis = {
+      type: "value",
+      ...axisStyle,
+      max: unit === "%" ? 100 : undefined,
+      name: `${metricLabel}（${unit}）`,
+      nameLocation: "middle",
+      nameGap: 30,
+      nameTextStyle: { color: colors.muted, fontSize: 11 },
+    };
+    option.yAxis = {
+      type: "category",
+      ...axisStyle,
+      inverse: true,
+      data: rows.map((row) => row.dimension),
+      splitLine: { show: false },
+      axisLabel: {
+        color: colors.text,
+        fontSize: compact ? 11 : 12,
+        width: compact ? 88 : 140,
+        overflow: "truncate",
+        interval: 0,
+        rotate: 0,
+      },
+    };
+    option.series = [
+      {
+        type: "bar",
+        data,
+        barMaxWidth: 30,
+        itemStyle: { borderRadius: 0 },
+        label: {
+          show: rows.length <= (compact ? 6 : 16),
+          position: "right",
+          color: colors.text,
+          fontSize: 12,
+          distance: 8,
+          formatter: (params) => number(rows[params.dataIndex]?.value ?? 0),
+        },
+        emphasis: { disabled: true },
+      },
+    ];
+    return option;
+  }
   option.xAxis = {
     type: "category",
     ...axisStyle,
@@ -329,6 +386,14 @@ export function buildChartOption({
             : 0,
     },
   };
+  if (compact && rows.length > 8) {
+    // Tilted labels extend left of the first tick; extra side/bottom padding keeps
+    // the first and last course names inside the canvas instead of clipping them.
+    // 32° labels at 11px need ~34–40px of bottom room, not the 20px grid default.
+    grid.left = 34;
+    grid.right = 30;
+    grid.bottom = 40;
+  }
   const series: SeriesOption =
     view === "line"
       ? {

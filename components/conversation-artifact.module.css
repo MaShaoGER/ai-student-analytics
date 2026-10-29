@@ -1,0 +1,290 @@
+.wrapper {
+  --artifact-rule: color-mix(in srgb, var(--line) 78%, transparent);
+  --artifact-inset: color-mix(in srgb, var(--surface-inset) 70%, var(--paper));
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--artifact-rule);
+  background: color-mix(in srgb, var(--paper) 94%, var(--surface-inset));
+  color: var(--ink);
+}
+
+.wrapper *,
+.wrapper *::before,
+.wrapper *::after {
+  box-sizing: border-box;
+}
+
+.header {
+  min-width: 0;
+  padding: 13px 14px 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--artifact-rule);
+  background: var(--artifact-inset);
+}
+
+.heading {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.kicker {
+  color: var(--accent-ink);
+  font:
+    700 9px/1.35 "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    monospace;
+  letter-spacing: 0.08em;
+}
+
+.heading h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.identity {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font:
+    10px/1.45 "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.controls {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.controls button {
+  min-height: 32px;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid transparent;
+  border-radius: var(--corner-radius);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.controls button:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+}
+
+.controls button[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.controls button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.body {
+  min-width: 0;
+  padding: 4px;
+}
+
+.footer {
+  padding: 9px 14px 11px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--artifact-rule);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.footer p {
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.footer svg {
+  flex: 0 0 13px;
+  margin-top: 2px;
+}
+
+.notice {
+  color: var(--accent-ink);
+}
+
+.factIds {
+  flex: 0 0 auto;
+  max-width: 45%;
+  overflow: hidden;
+  font:
+    9px/1.55 "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .controls button:hover {
+    transition:
+      color 160ms var(--ease-out),
+      background-color 160ms var(--ease-out);
+  }
+}
+
+@media (max-width: 600px) {
+  .header {
+    flex-direction: column;
+  }
+
+  .controls {
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .controls::-webkit-scrollbar {
+    display: none;
+  }
+
+  .controls button {
+    flex: 0 0 auto;
+  }
+
+  .footer {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .factIds {
+    max-width: 100%;
+  }
+}
+
+@media (pointer: coarse) {
+  .controls button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 600px) {
+  .header {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+  .heading {
+    flex: 1;
+  }
+  .controls {
+    flex: 0 0 auto;
+    width: auto;
+    flex-wrap: nowrap;
+  }
+  .controls button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px;
+    justify-content: center;
+  }
+  .controls button > span {
+    display: none;
+  }
+}
+
+:global(html[data-motion="off"]) .controls button {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wrapper *,
+  .wrapper *::before,
+  .wrapper *::after {
+    animation-duration: 0ms !important;
+    transition-duration: 0ms !important;
+  }
+}
+
+:global(.glass-workspace) .wrapper {
+  border: 0;
+  background: transparent;
+}
+:global(.glass-workspace) .header {
+  background: transparent;
+  padding: 12px 16px;
+}
+:global(.glass-workspace) .heading h3 {
+  font-size: 13px;
+  font-weight: 500;
+}
+:global(.glass-workspace) .controls {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 3px;
+}
+:global(.glass-workspace) .controls button {
+  border-radius: 5px;
+}
+:global(.glass-workspace) .controls button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--sage) 16%, transparent);
+  border-color: transparent;
+}
+:global(.glass-workspace) .footer {
+  padding: 12px 16px;
+}
+
+/* An attachment is part of the message, not another full glass workspace. */
+:global(.glass-workspace) .body :global(.analysis-result) {
+  border: 0;
+}
+:global(.glass-workspace) .wrapper .body :global(.result-focus) {
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 12%, transparent);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:global(.glass-workspace) .body :global(.result-focus)::after {
+  display: none;
+}
+
+:global(.glass-workspace) .controls {
+  gap: 4px;
+}
+:global(.glass-workspace) .controls button {
+  min-height: var(--ui-control-height);
+  border-radius: var(--ui-control-radius);
+  padding: 6px 10px;
+  background: var(--ui-control-bg);
+  border-color: var(--ui-control-border);
+  font-size: 12px;
+}
+:global(.glass-workspace) .controls button[aria-pressed="true"] {
+  background: var(--ui-selected-bg);
+  color: var(--ui-selected-ink);
+}

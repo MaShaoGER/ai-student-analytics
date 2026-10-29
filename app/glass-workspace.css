@@ -1,0 +1,954 @@
+/* Workspace layout and materials. Every colour, material and type value is a
+   token from app/tokens.css; this file only arranges and applies them.
+   4px rhythm, 14px reading text, 224px supporting navigation. */
+.glass-workspace {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: 224px minmax(0, 1fr);
+  grid-template-rows: 64px minmax(0, 1fr);
+  align-content: start;
+  gap: 20px;
+  max-width: none;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 24px 28px;
+  background: var(--field-ground);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+/* Frame: regular frosted glass refracting the light field. No dispersion rim. */
+.glass-workspace .glass-data-sidebar,
+.glass-workspace .glass-mode-switch,
+.glass-workspace .glass-tools {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  background: var(--glass-fill);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.glass-workspace .glass-data-sidebar {
+  background: var(--glass-fill-dim);
+}
+/* Reading surface: a diffused veil, so the field arrives only as a tint. */
+.glass-workspace .workbench-main {
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse 60% 40% at 88% 0%, var(--surface-glint), transparent 70%),
+    linear-gradient(180deg, var(--surface-sheen) 0, transparent 1px) top / 100% 1px no-repeat,
+    var(--surface-veil);
+  box-shadow: var(--surface-shadow);
+  -webkit-backdrop-filter: var(--surface-blur);
+  backdrop-filter: var(--surface-blur);
+}
+.glass-workspace .workbench-main {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  overflow: clip;
+}
+/* One fixed viewport shell for every mode: switching views never jumps and
+   the optical backdrop keeps a continuous stage. */
+.glass-workspace.workbench-shell {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+.glass-workspace.workbench-shell .workbench-main {
+  overflow-y: auto;
+}
+.glass-workspace .workbench-content {
+  padding: 28px;
+}
+.glass-workspace .workbench-header.glass-topbar {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  align-self: stretch;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  gap: 16px;
+  flex-wrap: nowrap;
+  background: transparent;
+}
+/* Topbar chips: whisper-thin rims so glass reads as material, not outline. */
+.glass-workspace .glass-mode-switch,
+.glass-workspace .glass-tools {
+  border-color: color-mix(in srgb, var(--glass-border) 45%, transparent);
+  border-top-color: color-mix(in srgb, var(--glass-rim) 55%, transparent);
+}
+.glass-workspace .glass-mode-switch::after,
+.glass-workspace .glass-tools::after {
+  opacity: 0.55;
+}
+.glass-entry,
+.glass-tools,
+.glass-brand,
+.glass-account {
+  display: flex;
+  align-items: center;
+}
+.glass-entry {
+  gap: 28px;
+  min-width: 0;
+}
+.glass-brand {
+  gap: 12px;
+  border: 0;
+  padding: 8px 4px;
+  background: transparent;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.glass-brand strong {
+  font-size: 21px;
+  font-weight: 550;
+  letter-spacing: 3px;
+}
+.glass-workspace .glass-mode-switch {
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  --glass-radius: 14px;
+  flex-shrink: 0;
+}
+.glass-mode-switch button {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 18px;
+  border: 0;
+  border-radius: 9px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.glass-mode-switch button {
+  position: relative;
+}
+.glass-mode-switch button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  color: var(--ink);
+  font-weight: 600;
+}
+.glass-mode-switch button[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  width: 14px;
+  height: 2px;
+  margin-left: -7px;
+  background: var(--accent);
+}
+.glass-workspace .glass-tools {
+  gap: 8px;
+  padding: 4px 8px;
+  --glass-radius: 14px;
+  flex-shrink: 0;
+}
+.glass-workspace .icon-button {
+  border-radius: 9px;
+  color: var(--muted);
+  background: transparent;
+}
+.glass-tools .icon-button {
+  border: 0;
+  min-width: 36px;
+  width: 36px;
+  min-height: 40px;
+}
+.glass-demo-tag {
+  font-size: 10px;
+  color: var(--muted);
+  border-right: 1px solid var(--line);
+  padding: 0 12px 0 6px;
+}
+.glass-account {
+  gap: 8px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  font-size: 12px;
+}
+.glass-avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font: 600 13px/1 var(--font-serif);
+}
+/* Account menu: identity, appearance and session actions in one place. */
+.glass-workspace .account-menu {
+  position: fixed;
+  inset: 96px 28px auto auto;
+  width: 252px;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  background: var(--glass-fill-dense);
+  color: var(--ink);
+  box-shadow:
+    var(--glass-shadow),
+    0 18px 48px #0000002e;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.glass-workspace .account-menu:popover-open {
+  display: grid;
+  gap: 2px;
+  animation: account-menu-in 160ms var(--ease-out);
+}
+@keyframes account-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.account-menu-head {
+  display: grid;
+  gap: 3px;
+  padding: 10px 10px 12px;
+}
+.account-menu-head strong {
+  font: 600 14px/1.4 var(--font-serif);
+}
+.account-menu-head span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.glass-workspace .account-menu > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  text-align: left;
+}
+.glass-workspace .account-menu > button:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+.glass-workspace .account-menu > button:disabled {
+  color: var(--faint);
+}
+.account-menu hr {
+  margin: 4px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+.account-menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 4px 4px 10px;
+  font-size: 13px;
+}
+@media (max-width: 760px) {
+  .glass-workspace .account-menu {
+    /* The top bar wraps to two rows here; open below the tools row. */
+    inset: 124px 12px auto auto;
+  }
+}
+.glass-user-name {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.glass-data-sidebar {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: start;
+  position: sticky;
+  top: 20px;
+  min-height: calc(100dvh - 132px);
+  padding: 24px 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.glass-sidebar-label {
+  display: grid;
+  gap: 8px;
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--ink);
+}
+.glass-workspace .workspace-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  background: transparent;
+}
+.glass-workspace .workspace-nav button {
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  color: var(--muted);
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  font-size: 12px;
+}
+.glass-workspace .workspace-nav button {
+  position: relative;
+}
+.glass-workspace .workspace-nav button:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+}
+.glass-workspace .workspace-nav .nav-index {
+  min-width: 18px;
+  font: 11px/1 var(--font-mono);
+  color: var(--faint);
+}
+.glass-workspace .workspace-nav button small {
+  margin-left: auto;
+  font: 11px/1 var(--font-mono);
+  color: var(--faint);
+}
+.glass-workspace .workspace-nav button[aria-current="page"] {
+  color: var(--ink);
+  font-weight: 600;
+  border-left: 1px solid transparent;
+  background: transparent;
+}
+.glass-workspace .workspace-nav button[aria-current="page"] .nav-index {
+  color: var(--accent);
+}
+.glass-workspace .workspace-nav button[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  background: var(--accent);
+}
+.glass-workspace .workspace-nav .navigation-indicator {
+  display: none;
+}
+.glass-sidebar-source {
+  padding: 20px 8px;
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
+}
+.glass-workspace .glass-sidebar-source .workbench-source {
+  min-width: 0;
+  width: 100%;
+}
+.glass-sidebar-bottom {
+  margin-top: auto;
+  display: flex;
+  gap: 8px;
+  padding: 20px 8px 0;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.8;
+}
+.glass-sidebar-bottom small {
+  display: block;
+  font-size: 10px;
+}
+.glass-workspace .workbench-source select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 28px 10px 10px;
+  background-color: var(--surface-inset);
+  font-size: 12px;
+  width: 100%;
+  min-width: 0;
+}
+.glass-workspace select option {
+  background: var(--surface-raised);
+  color: var(--ink);
+}
+.glass-workspace input,
+.glass-workspace textarea {
+  background-color: var(--surface-inset);
+}
+.glass-workspace .workbench-page-heading {
+  padding: 0 0 24px;
+  margin-bottom: 24px;
+}
+.glass-workspace .page-introduction h1 {
+  font-family: var(--font-serif);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin: 10px 0 8px;
+}
+.glass-workspace .page-introduction p {
+  font-size: 12px;
+}
+.glass-workspace .page-eyebrow {
+  font: 11px/1.5 var(--font-mono);
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.glass-workspace .page-eyebrow::before {
+  display: none;
+}
+.glass-workspace .panel {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ink) 2%, transparent);
+  box-shadow: none;
+}
+.glass-workspace .overview-hero {
+  display: block;
+}
+.glass-workspace .overview-introduction {
+  padding: 0 0 24px;
+  background: transparent;
+}
+.glass-workspace .overview-introduction .page-eyebrow {
+  padding: 0;
+  border: 0;
+}
+.glass-workspace .overview-introduction h1 {
+  font-family: var(--font-serif);
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+}
+.glass-workspace .overview-toolbar {
+  margin: 0;
+  padding-top: 8px;
+}
+/* Readout band: one row of instruments split by hairlines, not three cards. */
+.glass-workspace .overview-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.glass-workspace .overview-metric,
+.glass-workspace .overview-metric:first-child,
+.glass-workspace .overview-metric:last-child {
+  grid-column: auto;
+  gap: 8px;
+  padding: 22px 24px 20px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.glass-workspace .overview-metric + .overview-metric {
+  border-left: 1px solid var(--line);
+}
+.glass-workspace .overview-metric:first-child {
+  padding-left: 4px;
+}
+.glass-workspace .overview-metric:hover {
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+}
+.glass-workspace .overview-metric.is-selected {
+  background: linear-gradient(var(--accent), var(--accent)) top left / 28px 2px no-repeat;
+}
+.glass-workspace .overview-metric-label {
+  font-family: var(--font-serif);
+  font-size: 15px;
+}
+.glass-workspace .overview-metric-value {
+  font-family: var(--font-mono);
+  font-size: clamp(28px, 2.8vw, 40px);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.glass-workspace .overview-metric:first-child .overview-metric-value {
+  font-size: clamp(28px, 2.8vw, 40px);
+}
+.glass-workspace .overview-metric-note {
+  color: var(--muted);
+}
+.glass-workspace .metric-index {
+  color: var(--muted);
+}
+.glass-workspace .overview-section-bar {
+  margin: 32px 0 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.glass-workspace .overview-section-bar > span {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 600;
+}
+.glass-workspace .overview-section-bar small {
+  color: var(--muted);
+}
+.glass-workspace .overview-columns {
+  gap: 16px;
+}
+.glass-workspace .overview-primary,
+.glass-workspace .overview-secondary {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 16px;
+}
+.glass-workspace .overview-chart-panel {
+  border-radius: 14px;
+}
+.glass-workspace .overview-chart-panel .overview-panel-heading,
+.glass-workspace .overview-chart-toolbar {
+  background: transparent;
+}
+.glass-workspace .overview-panel-heading h2 {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 600;
+}
+.glass-workspace .overview-ask-card {
+  border-radius: 14px;
+  background: var(--surface-inset);
+  color: var(--ink);
+}
+.glass-workspace .overview-ask-card textarea {
+  color: var(--ink);
+}
+.glass-workspace .overview-source-card {
+  background-image: none;
+  border-radius: 14px;
+}
+.glass-workspace .overview-primary {
+  border: 0;
+}
+.glass-workspace .overview-secondary {
+  border: 0;
+}
+/* The legacy single-grid layout pinned these cards to column 2; inside the
+   secondary column they flow in its own grid. */
+.glass-workspace .overview-secondary > * {
+  grid-column: auto;
+  grid-row: auto;
+}
+.glass-workspace .primary-button {
+  color: var(--button-ink);
+  background: var(--ink);
+  border-color: var(--ink);
+  border-radius: 8px;
+}
+.glass-workspace .secondary-button {
+  color: var(--ink);
+  background: var(--glass-fill);
+  border-color: var(--line);
+  border-radius: 8px;
+}
+.glass-workspace .workbench-footer {
+  margin-top: 24px;
+  padding: 16px 0 0;
+  font-size: 10px;
+  color: var(--muted);
+}
+.glass-workspace .workbench-footer > span:first-child::before {
+  display: none;
+}
+.glass-workspace button:focus-visible,
+.glass-workspace a:focus-visible,
+.glass-workspace select:focus-visible,
+.glass-workspace textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.glass-workspace .workbench-drawer {
+  left: 28px;
+  top: 104px;
+  background: var(--surface-raised);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px #07152233;
+}
+.glass-workspace .logout-confirmation {
+  color: var(--ink);
+  background: var(--surface-raised);
+  border-radius: 18px;
+  border: 1px solid var(--line);
+}
+/* Conversation owns its history sidebar; data navigation does not duplicate it. */
+.glass-workspace.workbench-shell[data-conversation="true"] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 64px minmax(0, 1fr);
+  gap: 20px;
+  height: var(--conversation-viewport-height, 100dvh);
+  padding: 24px 28px;
+}
+.glass-workspace[data-conversation="true"] .workbench-main {
+  grid-column: 1 / -1;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  overflow: clip;
+}
+.glass-workspace[data-conversation="true"] .workbench-content {
+  padding: 0;
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .glass-workspace .workbench-main,
+  .glass-workspace .glass-data-sidebar {
+    background: var(--paper);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass-workspace .workbench-main,
+  .glass-workspace .glass-data-sidebar,
+  .glass-workspace .glass-tools,
+  .glass-workspace .glass-mode-switch {
+    background: var(--paper);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+/* Keep every existing function reachable below the desktop composition. */
+@media (max-width: 1200px) {
+  .glass-user-name {
+    display: none;
+  }
+  .glass-workspace {
+    grid-template-columns: 196px minmax(0, 1fr);
+    padding: 20px;
+    gap: 16px;
+  }
+  .glass-workspace .workbench-content {
+    padding: 24px;
+  }
+  .glass-entry {
+    gap: 20px;
+  }
+  .glass-workspace .overview-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .glass-workspace .overview-secondary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .glass-workspace,
+  .glass-workspace.workbench-shell[data-conversation="true"] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    padding: 12px;
+    gap: 12px;
+  }
+  .glass-workspace .workbench-header.glass-topbar {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .glass-entry {
+    gap: 16px;
+    width: 100%;
+  }
+  .glass-brand {
+    gap: 8px;
+  }
+  .glass-brand strong {
+    font-size: 18px;
+    letter-spacing: 1px;
+  }
+  .glass-workspace .glass-mode-switch {
+    margin-left: auto;
+    padding: 3px;
+    --glass-radius: 11px;
+  }
+  .glass-mode-switch button {
+    padding: 8px 10px;
+    gap: 6px;
+    font-size: 11px;
+  }
+  .glass-workspace .glass-tools {
+    margin-left: auto;
+    padding: 0 4px;
+    gap: 4px;
+    --glass-radius: 10px;
+  }
+  .glass-demo-tag {
+    font-size: 9px;
+    padding: 0 8px;
+  }
+  .glass-workspace .glass-data-sidebar {
+    display: none;
+  }
+  .glass-workspace .workbench-main {
+    grid-column: 1;
+  }
+  .glass-workspace .workbench-content {
+    padding: 20px 16px;
+  }
+  .glass-workspace .overview-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .glass-workspace .overview-metric,
+  .glass-workspace .overview-metric:first-child {
+    padding: 18px 4px;
+  }
+  .glass-workspace .overview-metric + .overview-metric {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+  .glass-workspace .overview-secondary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .glass-workspace .workbench-drawer {
+    left: 12px;
+    top: 128px;
+    max-width: calc(100vw - 24px);
+  }
+}
+
+.glass-workspace .workbench-drawer > .workbench-source {
+  margin: 20px 0;
+  max-width: none;
+}
+@media (max-width: 760px) {
+  .glass-workspace.workbench-shell[data-conversation="true"][data-view="analysis"] {
+    grid-template-rows: 112px minmax(0, 1fr);
+  }
+  .glass-workspace .glass-topbar {
+    align-content: start;
+  }
+}
+.glass-workspace .overview-metric:first-child .overview-metric-value {
+  letter-spacing: -0.8px;
+  font-weight: 500;
+}
+.glass-workspace .workbench-drawer {
+  height: auto;
+  max-height: calc(100dvh - 128px);
+  bottom: auto;
+  overflow-y: auto;
+}
+
+/* Inside the reading surface everything is flat: hairlines, no glass. */
+.glass-workspace :is([data-glass-pane], .panel) {
+  position: relative;
+}
+.glass-workspace .workbench-main :is([data-glass-pane], .panel) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.glass-workspace .glass-data-sidebar[data-glass-pane] {
+  position: sticky;
+}
+@media (max-width: 380px) {
+  .glass-workspace .glass-demo-tag {
+    display: none;
+  }
+}
+
+/* Production views share the same material; dense reading surfaces stay quiet. */
+.glass-workspace .admin-panel,
+.glass-workspace .account-grid {
+  padding: 0;
+}
+.glass-workspace .analysis-workspace {
+  overflow: visible;
+}
+.glass-workspace .analysis-workspace-controls {
+  padding: 20px;
+  border-radius: 14px 14px 0 0;
+  background: color-mix(in srgb, var(--surface-inset) 48%, transparent);
+}
+.glass-workspace .analysis-result {
+  margin-top: 0;
+  background: transparent;
+  color: var(--ink);
+}
+.glass-workspace .result-visual {
+  background: transparent;
+}
+.glass-workspace .result-section-heading h2 {
+  font-size: 18px;
+  font-weight: 500;
+}
+.result-period-details {
+  display: none;
+}
+@media (max-width: 600px) {
+  .glass-workspace .result-section-heading {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .glass-workspace .result-section-heading > div:first-child {
+    min-width: 0;
+    flex: 1;
+  }
+  .glass-workspace .result-period {
+    display: none;
+  }
+  .glass-workspace .result-period-details {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .result-period-details > summary {
+    min-height: 36px;
+    padding-block: 8px;
+    cursor: pointer;
+  }
+  .glass-workspace .result-heading-actions {
+    width: auto;
+    flex: 0 0 auto;
+  }
+  .glass-workspace .result-report-button {
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  .result-report-button > span {
+    display: none;
+  }
+}
+.glass-workspace .result-focus {
+  background: var(--glass-fill);
+}
+.glass-workspace .result-conclusion {
+  background: transparent;
+}
+.glass-workspace .dataset-scope {
+  border-radius: 10px;
+  background: var(--glass-fill);
+}
+.glass-workspace .source-tables > article {
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-inset) 55%, transparent);
+}
+.glass-workspace .account-card,
+.glass-workspace .password-panel {
+  padding: 24px;
+}
+.glass-workspace .panel-header {
+  background: transparent;
+}
+.glass-workspace .admin-config-main,
+.glass-workspace .admin-settings-side {
+  min-width: 0;
+}
+.glass-workspace .admin-tabs {
+  margin-bottom: 24px;
+}
+.glass-workspace .admin-tabs [role="group"] {
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-inset) 55%, transparent);
+}
+.glass-workspace .admin-tabs button {
+  border-radius: 8px;
+}
+.glass-workspace .table-wrap {
+  border-radius: 10px;
+}
+.glass-workspace table {
+  background: transparent;
+}
+.glass-workspace th {
+  background: color-mix(in srgb, var(--surface-inset) 78%, transparent);
+}
+.glass-workspace .report-frame {
+  border-radius: 10px;
+  background: var(--surface-raised);
+}
+@media (max-width: 760px) {
+  .glass-workspace .account-card,
+  .glass-workspace .password-panel,
+  .glass-workspace .dataset-workspace,
+  .glass-workspace .report-workspace {
+    padding: 20px 16px;
+  }
+  .glass-workspace .analysis-workspace-controls {
+    padding: 16px;
+  }
+}
+
+/* Drawer reads as a modal layer: dim + frost behind it, and the page beneath
+   stops scrolling while it is open. */
+.workbench-drawer:popover-open::backdrop {
+  background: color-mix(in srgb, var(--ink) 26%, transparent);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+.glass-workspace[data-drawer-open="true"] .workbench-main,
+.glass-workspace[data-drawer-open="true"] .workbench-content {
+  overflow: hidden;
+}
+/* A disabled control must look disabled, especially in the forced-password
+   state where the mode switch is intentionally unreachable. */
+.glass-mode-switch button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+/* Password fields reuse the login reveal affordance on the account screen. */
+.password-input-wrap {
+  position: relative;
+  display: block;
+}
+.password-input-wrap input {
+  width: 100%;
+  padding-right: 46px;
+}
+.account-password-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.account-password-toggle:hover:not(:disabled) {
+  background: var(--surface-inset);
+  color: var(--ink);
+}
+.account-password-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Sticky result headers need an opaque fill; the graphite rule paints a 3%
+   tint that lets rows show through once the header is pinned. */
+.glass-workspace .result-table thead th {
+  background: var(--surface-inset);
+}

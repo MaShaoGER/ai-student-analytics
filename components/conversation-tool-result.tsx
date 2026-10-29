@@ -40,7 +40,9 @@ type ToolArtifact = Exclude<ChatArtifact, { kind: "analysis" | "distribution" }>
 export function ConversationToolResult({
   artifact,
   onViewChange,
+  showViewPicker = true,
 }: {
+  showViewPicker?: boolean;
   artifact: ToolArtifact;
   onViewChange: (view: ChatDisplayView) => void;
 }) {
@@ -48,8 +50,8 @@ export function ConversationToolResult({
   const [selection, setSelection] = useState("");
   const label =
     artifact.kind === "studio"
-      ? artifact.tool === "density" && artifact.densityMode === "scatter"
-        ? "关系散点图"
+      ? artifact.tool === "density"
+        ? "联合分档密度图"
         : toolLabel(artifact.tool)
       : artifact.kind === "relations"
         ? "学科关联弦图"
@@ -93,15 +95,17 @@ export function ConversationToolResult({
           <span className="section-kicker">DATA CHART</span>
           <h2>{label}</h2>
         </div>
-        <SegmentedControl
-          value={artifact.view}
-          options={[
-            { value: "chart", label: "图表" },
-            { value: "table", label: "数值表" },
-          ]}
-          onChange={onViewChange}
-          label="高级图表展示方式"
-        />
+        {showViewPicker ? (
+          <SegmentedControl
+            value={artifact.view}
+            options={[
+              { value: "chart", label: "图表" },
+              { value: "table", label: "数值表" },
+            ]}
+            onChange={onViewChange}
+            label="高级图表展示方式"
+          />
+        ) : null}
       </div>
       {!rows.length ? (
         <p className="notice" role="status" data-enter="fade">

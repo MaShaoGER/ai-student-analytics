@@ -1,3 +1,4 @@
+import { studioComparisonLines } from "./studio-comparison-facts";
 import { assertCurrentAccess } from "../auth/access";
 import { chartStudioData, courseRelations, coursePanorama } from "../analysis/duckdb";
 import type { QueryExecutionOptions } from "../security/query-execution";
@@ -259,7 +260,8 @@ export async function executeChartTool(
     datasetId: input.datasetId,
     datasetVersion: project.datasetVersion,
     datasetName: project.datasetName,
-    ...(intent.tool === "density" ? { densityMode: intent.densityMode ?? "scatter" } : {}),
+    // The current query returns joint bin counts, never individual paired records.
+    ...(intent.tool === "density" ? { densityMode: "density" as const } : {}),
   };
 }
 export function toolFacts(artifact: Exclude<ChatArtifact, { kind: "analysis" | "distribution" }>) {
@@ -268,7 +270,10 @@ export function toolFacts(artifact: Exclude<ChatArtifact, { kind: "analysis" | "
       artifact.table.description,
       `返回 ${artifact.table.rows.length} 个聚合数据行；下方图表和数值表使用同一份真实统计。`,
       ...(artifact.tool === "dumbbell"
-        ? ["变化为后期均分减前期均分，单位为分；两期选课群体可能不同，不能据此判断个体进步。"]
+        ? [
+            ...studioComparisonLines(artifact),
+            "变化为后期均分减前期均分，单位为分；两期选课群体可能不同，不能据此判断个体进步。",
+          ]
         : []),
     ];
   const { data } = artifact;

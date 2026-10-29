@@ -6,6 +6,11 @@ import "./motion.css";
 import "./motion-analysis.css";
 import "./motion-conversation.css";
 import "./motion-auth.css";
+import "./glass-workspace.css";
+import "./glass-auth.css";
+import "./glass-controls.css";
+import "./glass-hierarchy.css";
+import "./tokens.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 
 export const metadata: Metadata = {
@@ -20,15 +25,15 @@ export const metadata: Metadata = {
   },
 };
 
-// Browser chrome follows the page paper. Values mirror --background from app/theme.css
+// Browser chrome follows the light-field ground. Values mirror --field-ground from app/tokens.css
 // for each color scheme; the in-app theme toggle only changes the page itself.
 // viewportFit: "cover" is what makes env(safe-area-inset-*) resolve on notched
 // phones, so the floating chat composer clears the home indicator.
 export const viewport: Viewport = {
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#e1e3d8" },
-    { media: "(prefers-color-scheme: dark)", color: "#101b21" },
+    { media: "(prefers-color-scheme: light)", color: "#e9e7e1" },
+    { media: "(prefers-color-scheme: dark)", color: "#08090a" },
   ],
 };
 

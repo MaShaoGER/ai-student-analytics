@@ -1,0 +1,354 @@
+/* Shared component contract for the smoke-silver interface. Chart geometry,
+   semantic status colors and the paper report live in their own systems. */
+.glass-workspace {
+  --ui-control-height: 36px;
+  --ui-segment-inset: 3px;
+  --ui-segment-radius: 7px;
+  --ui-segment-button-height: calc(var(--ui-control-height) - 8px);
+  --ui-segment-button-padding: 4px;
+  --ui-segment-inline-padding: 12px;
+  --ui-control-radius: 10px;
+  --ui-panel-radius: 16px;
+  --ui-control-bg: color-mix(in srgb, var(--surface-raised) 52%, transparent);
+  --ui-control-border: var(--line);
+  --ui-control-hover: color-mix(in srgb, var(--ink) 7%, transparent);
+  --ui-selected-bg: color-mix(in srgb, var(--sage) 19%, var(--surface-inset));
+  --ui-selected-ink: var(--ink);
+  --ui-inset: color-mix(in srgb, var(--surface-inset) 82%, transparent);
+  --ui-surface: color-mix(in srgb, var(--paper) 88%, transparent);
+  --ui-focus: var(--accent-ink);
+}
+.glass-workspace :is(.primary-button, .secondary-button, .text-button) {
+  min-height: var(--ui-control-height);
+  border-radius: var(--ui-control-radius);
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.glass-workspace .secondary-button {
+  border-color: var(--ui-control-border);
+  background: var(--ui-control-bg);
+  box-shadow: inset 0 1px 0 #ffffff0a;
+}
+.glass-workspace .primary-button {
+  background: var(--accent);
+  color: var(--button-ink);
+  border-color: color-mix(in srgb, var(--accent) 72%, var(--ink));
+  box-shadow:
+    inset 0 1px 0 #ffffff26,
+    0 1px 2px #0715221f;
+}
+@media (hover: hover) and (pointer: fine) {
+  .glass-workspace .primary-button:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--accent) 86%, var(--ink));
+    color: var(--button-ink);
+  }
+}
+.glass-workspace .primary-button:disabled {
+  background: color-mix(in srgb, var(--accent) 42%, var(--paper));
+  color: color-mix(in srgb, var(--button-ink) 55%, var(--accent));
+}
+.glass-workspace .text-button {
+  padding-inline: 8px;
+}
+.glass-workspace .icon-button {
+  width: var(--ui-control-height);
+  height: var(--ui-control-height);
+  min-width: var(--ui-control-height);
+  min-height: var(--ui-control-height);
+  border-radius: var(--ui-control-radius);
+}
+.glass-workspace
+  :is(.form-field, .control-field, .result-filter, .result-filter-fields, .workbench-source)
+  :is(
+    select,
+    textarea,
+    input:not(
+      [type="checkbox"],
+      [type="radio"],
+      [type="file"],
+      [type="hidden"],
+      [type="range"],
+      [type="color"]
+    )
+  ) {
+  min-height: var(--ui-control-height);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  padding: 7px 12px;
+  background-color: var(--ui-inset);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  box-shadow: inset 0 1px 2px #0000000a;
+}
+.glass-workspace
+  :is(.form-field, .control-field, .result-filter, .result-filter-fields, .workbench-source)
+  select {
+  padding-right: 32px;
+}
+.glass-workspace :is(.form-field, .control-field) > :is(label, span) {
+  font-size: 12px;
+  font-weight: 500;
+}
+.glass-workspace input::placeholder,
+.glass-workspace textarea::placeholder {
+  color: var(--muted);
+  opacity: 0.8;
+}
+.glass-workspace :is(input[type="checkbox"], input[type="radio"]) {
+  accent-color: var(--accent-ink);
+}
+.glass-workspace :is(button, a, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 3px;
+}
+.glass-workspace .badge {
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 8px;
+}
+.glass-workspace .notice {
+  border-radius: 12px;
+}
+.glass-workspace :is(.feature-icon, .avatar, .admin-user-avatar, .admin-future-icon) {
+  border-radius: 10px;
+}
+.glass-workspace :is(.panel, .overview-chart-panel, .overview-ask-card, .overview-source-card) {
+  border-radius: var(--ui-panel-radius);
+}
+.glass-workspace .overview-metrics .overview-metric {
+  border-radius: var(--ui-panel-radius);
+}
+.glass-workspace .analysis-workspace-controls {
+  border-radius: var(--ui-panel-radius) var(--ui-panel-radius) 0 0;
+  border-color: var(--line);
+  background: var(--ui-inset);
+}
+.glass-workspace .analysis-refresh {
+  min-height: var(--ui-control-height);
+}
+.glass-workspace .workbench-source {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+.glass-workspace .page-introduction h1 {
+  font-size: 28px;
+  font-weight: 500;
+}
+.glass-workspace :is(.section-heading, .result-section-heading, .panel-header) h2 {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+.glass-workspace :is(.section-kicker, .page-eyebrow, .source-card-label) {
+  font-weight: 400;
+}
+.glass-workspace .overview-section-bar > span::before {
+  display: none;
+}
+.glass-workspace :is(.overview-introduction, .dataset-workspace)::after {
+  background-image: none;
+}
+.glass-workspace .result-focus {
+  border-radius: 12px;
+}
+.glass-workspace .result-filter-fields {
+  flex-wrap: wrap;
+  padding: 12px;
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--ui-inset);
+}
+.glass-workspace .result-disclosure > summary,
+.glass-workspace .result-export > summary {
+  border-radius: 10px;
+}
+.glass-workspace :is(.table-wrap, .field-details, .source-table) {
+  border-radius: 12px;
+}
+.glass-workspace :is(.result-table, .field-table) :is(th, td) {
+  padding: 11px 14px;
+  font-size: 12px;
+}
+.glass-workspace :is(.result-table, .field-table) th {
+  color: var(--muted);
+  font-weight: 500;
+}
+.glass-workspace :is(.result-table, .field-table) tbody tr:hover {
+  background: var(--ui-control-hover);
+}
+.glass-workspace .report-controls {
+  border-radius: 12px;
+  background: var(--ui-inset);
+}
+.glass-workspace .report-empty {
+  border-radius: var(--ui-panel-radius);
+}
+.glass-workspace :is(.dataset-heading, .report-controls, .account-grid) h2 {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+.glass-workspace .overview-metric-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  width: fit-content;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-inset);
+}
+.glass-workspace .overview-metric-tabs button {
+  min-height: var(--ui-segment-button-height);
+  padding: 4px 10px;
+  border: 0;
+  border-radius: var(--ui-segment-radius);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.glass-workspace .overview-metric-tabs button[aria-pressed="true"] {
+  background: var(--ui-selected-bg);
+  color: var(--ui-selected-ink);
+  box-shadow: none;
+}
+.glass-workspace .chart-view-options {
+  gap: 4px;
+}
+.glass-workspace .chart-view-options button {
+  min-height: var(--ui-control-height);
+  padding: 7px 10px;
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.glass-workspace .chart-view-options button[aria-pressed="true"],
+.glass-workspace .chart-key button[aria-pressed="true"] {
+  background: var(--ui-selected-bg);
+  color: var(--ui-selected-ink);
+  border-color: var(--glass-rim);
+}
+.glass-workspace .export-options {
+  border-radius: 12px;
+  background: var(--surface-raised);
+  box-shadow: 0 12px 30px #00000026;
+}
+.glass-workspace .logout-confirmation,
+.glass-workspace .workbench-drawer {
+  border-radius: var(--ui-panel-radius);
+  background: var(--surface-raised);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 #ffffff19,
+    0 20px 70px #00000040;
+}
+.glass-workspace .logout-confirmation h2 {
+  font-size: 22px;
+  font-weight: 500;
+}
+.glass-workspace .logout-confirmation::backdrop {
+  background: #05090f80;
+  backdrop-filter: blur(6px);
+}
+.glass-workspace .product-brand-mark,
+.glass-workspace .workbench-header .product-brand-mark {
+  display: block;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--ink);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.glass-workspace .product-brand-mark circle {
+  fill: var(--accent);
+  stroke: none;
+}
+.glass-workspace .product-brand-wordmark {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+.glass-workspace .glass-brand .product-brand-wordmark small {
+  display: none;
+}
+.glass-workspace .theme-toggle {
+  border: 1px solid var(--line);
+  padding: 3px;
+  gap: 3px;
+  border-radius: 12px;
+  background: var(--ui-inset);
+}
+.glass-workspace .theme-toggle button {
+  min-height: 30px;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+}
+.glass-workspace .theme-toggle button[aria-pressed="true"] {
+  background: var(--ui-selected-bg);
+  color: var(--ui-selected-ink);
+}
+/* Preserve the larger primary action and readable fields at sign-in. */
+.glass-workspace.glass-auth .login-form .primary-button {
+  min-height: 48px;
+}
+.glass-workspace.glass-auth .login-form input:not([type="checkbox"]) {
+  min-height: 46px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .glass-workspace :is(.secondary-button, .text-button, .icon-button):hover:not(:disabled) {
+    background: var(--ui-control-hover);
+    color: var(--ink);
+  }
+}
+@media (max-width: 760px) {
+  .glass-workspace {
+    --ui-control-height: 40px;
+  }
+  .glass-workspace .page-introduction h1 {
+    font-size: 24px;
+  }
+  .glass-workspace :is(.section-heading, .result-section-heading, .panel-header) h2 {
+    font-size: 18px;
+  }
+  .glass-workspace .glass-brand .product-brand-wordmark {
+    font-size: 18px;
+  }
+  .glass-workspace .product-brand-mark {
+    width: 22px;
+    height: 22px;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass-workspace {
+    --ui-control-bg: var(--surface-raised);
+    --ui-inset: var(--surface-inset);
+    --ui-surface: var(--paper);
+  }
+  .glass-workspace .logout-confirmation::backdrop {
+    backdrop-filter: none;
+  }
+}
