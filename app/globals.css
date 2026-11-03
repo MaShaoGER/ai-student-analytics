@@ -1,19 +1,19 @@
 /* Shared primitives. The signed-in workbench supplies its own surface tokens. */
 :root {
-  --ink: #1c304b;
-  --muted: #718096;
-  --navy: #142c4f;
-  --accent: #138b82;
-  --teal: #138b82;
-  --teal-dark: #08776f;
-  --teal-soft: #eaf7f4;
-  --line: #e6ebf1;
-  --paper: #fff;
-  --surface: #fff;
-  --surface-inset: #f5f7fa;
-  --surface-raised: #edf2f7;
-  --background: #f5f7fa;
-  --button-ink: #fff;
+  --ink: #232329;
+  --muted: #6b6b76;
+  --navy: #232329;
+  --accent: #7666cc;
+  --teal: #7666cc;
+  --teal-dark: #57489f;
+  --teal-soft: #e6e1f4;
+  --line: #24243615;
+  --paper: #f5f5f2;
+  --surface: #f5f5f2;
+  --surface-inset: #ecece7;
+  --surface-raised: #fbfbf8;
+  --background: #f5f5f2;
+  --button-ink: #ffffff;
   --success: #187653;
   --warning: #916329;
   --danger: #a3392d;
@@ -77,6 +77,8 @@ select:focus-visible,
 textarea:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
+  box-shadow: var(--focus-glow, 0 0 0 3px rgba(118, 102, 204, 0.15));
+  transition: outline-color var(--transition-focus, 200ms ease-out);
 }
 input:focus,
 select:focus,
@@ -90,11 +92,66 @@ textarea:disabled {
   color: var(--muted);
   cursor: not-allowed;
 }
+/* Checkboxes keep native semantics; the drawn box is square and the tick is a
+   background layer so every engine renders the same shape. */
 input[type="checkbox"] {
-  accent-color: var(--accent);
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-block;
   width: 16px;
   height: 16px;
+  margin: 0;
   flex-shrink: 0;
+  border: 1px solid var(--line-strong, var(--line));
+  border-radius: 0;
+  background: var(--surface-raised);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast, 150ms ease),
+    background-color var(--transition-fast, 150ms ease);
+}
+input[type="checkbox"]:checked {
+  border-color: var(--accent);
+  background-color: var(--accent);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-6.5' fill='none' stroke='%23ffffff' stroke-width='2'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 14px 14px;
+}
+input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+/* Native radios keep their semantics, keyboard focus and group behaviour; only
+   the drawn shape changes to the square interface contract. */
+input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex-shrink: 0;
+  border: 1px solid var(--line-strong, var(--line));
+  border-radius: 0;
+  background: var(--surface-raised);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast, 150ms ease),
+    background-color var(--transition-fast, 150ms ease);
+}
+input[type="radio"]:checked {
+  border-color: var(--accent);
+  /* Square check mark drawn with a background layer, not a pseudo-element, so
+     it renders the same across engines. */
+  background-image: linear-gradient(var(--accent), var(--accent));
+  background-size: 8px 8px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+input[type="radio"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 input[type="number"] {
   min-width: 0;
@@ -133,6 +190,44 @@ table caption {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.7;
+}
+/* Numeric readouts: monospaced figures so changing digits do not shift layout. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+/* Optical edge fade for decorative overlays: a pointer-transparent layer that
+   blurs only the canvas beneath it, never the readable content itself. Put it
+   inside a positioned container; the centre stays sharp. */
+.edge-fade {
+  position: absolute;
+  inset: var(--edge-fade-inset, 0);
+  z-index: var(--edge-fade-layer, 1);
+  pointer-events: none;
+  border-radius: inherit;
+  -webkit-backdrop-filter: blur(var(--edge-fade-blur, 4px));
+  backdrop-filter: blur(var(--edge-fade-blur, 4px));
+  -webkit-mask-image: radial-gradient(
+    ellipse at center,
+    transparent var(--edge-fade-size, 60%),
+    #000 105%
+  );
+  mask-image: radial-gradient(
+    ellipse at center,
+    transparent var(--edge-fade-size, 60%),
+    #000 105%
+  );
+}
+@media (prefers-reduced-transparency: reduce) {
+  .edge-fade {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    display: none;
+  }
+  /* Modal scrims keep their dim but drop the frost behind them. */
+  ::backdrop {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
 }
 .primary-button,
 .secondary-button,
@@ -320,7 +415,8 @@ table caption {
   display: inline-block;
   width: 6px;
   height: 6px;
-  border-radius: var(--corner-radius, 0);
+  /* Status dots stay round: they are marks, not interface containers. */
+  border-radius: 50%;
   background: var(--success);
 }
 .avatar,
@@ -378,7 +474,7 @@ table caption {
   height: 24px;
   border: 2px solid var(--line);
   border-top-color: var(--accent);
-  border-radius: var(--corner-radius, 0);
+  border-radius: 50%;
   animation: spin 700ms linear infinite;
 }
 @keyframes spin {
@@ -402,7 +498,7 @@ table caption {
   align-items: flex-start;
   min-width: 0;
   padding: 48px clamp(40px, 5vw, 80px);
-  background: #1e221c;
+  background: var(--background);
   border-right: 1px solid var(--line);
 }
 .login-brand {
@@ -418,7 +514,7 @@ table caption {
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  color: #b7c4a1;
+  color: var(--muted);
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 1.8px;
@@ -442,7 +538,7 @@ table caption {
 }
 .login-story-copy p {
   margin-top: 22px;
-  color: #b0b5a8;
+  color: var(--muted);
   font-size: 12px;
   line-height: 2;
 }
@@ -451,7 +547,7 @@ table caption {
   max-width: 640px;
   margin-top: 46px;
   padding-top: 20px;
-  border-top: 1px solid #ffffff10;
+  border-top: 1px solid var(--line);
   color: var(--accent);
 }
 .login-signals-heading {
@@ -459,7 +555,7 @@ table caption {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  color: #b0b9a3;
+  color: var(--muted);
   font-size: 9px;
   letter-spacing: 1.7px;
 }
@@ -469,7 +565,7 @@ table caption {
   gap: 9px;
   font-size: 10px;
   letter-spacing: 0;
-  color: #a5af98;
+  color: var(--faint);
 }
 .login-signal-map {
   display: block;
@@ -486,21 +582,21 @@ table caption {
   stroke-width: 2.5;
 }
 .signal-path-secondary {
-  stroke: #7d8d69;
+  stroke: var(--muted);
 }
 .signal-path-muted {
-  stroke: #4b5743;
+  stroke: var(--line-strong, var(--line));
 }
 .signal-point {
   fill: var(--accent);
-  stroke: #1e221c;
+  stroke: var(--paper);
   stroke-width: 3;
 }
 .login-signal-labels {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  color: #a5af98;
+  color: var(--muted);
   font-size: 10px;
 }
 .login-story-features {
@@ -508,7 +604,7 @@ table caption {
   flex-wrap: wrap;
   gap: 24px;
   margin-top: 42px;
-  color: #aeb7a2;
+  color: var(--muted);
   font-size: 11px;
 }
 .login-story-features > span {
@@ -517,7 +613,7 @@ table caption {
   gap: 8px;
 }
 .login-story-features .app-icon {
-  color: #aabd8d;
+  color: var(--accent);
 }
 .login-form-area {
   position: relative;
@@ -549,7 +645,7 @@ table caption {
 .login-heading .login-eyebrow {
   font-size: 11px;
   letter-spacing: 1.8px;
-  color: #b3c098;
+  color: var(--muted);
 }
 .login-heading h2 {
   margin: 14px 0 10px;
@@ -586,7 +682,7 @@ table caption {
   width: 100%;
   min-height: 52px;
   padding: 13px 15px;
-  border: 1px solid #ffffff1c;
+  border: 1px solid var(--line);
   border-radius: var(--corner-radius, 0);
   background: var(--surface-inset);
   color: var(--ink);
@@ -636,7 +732,7 @@ table caption {
   align-items: center;
   min-height: 28px;
   gap: 8px;
-  color: #bec2b7;
+  color: var(--muted-on-sage, var(--muted));
   cursor: pointer;
 }
 .login-form-options input {
@@ -649,7 +745,7 @@ table caption {
   margin-top: 2px;
   justify-content: space-between;
   padding: 13px 17px;
-  border: 1px solid #d5e7aa;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
   border-radius: var(--corner-radius, 0);
   background: var(--accent);
   color: var(--button-ink);
@@ -663,7 +759,7 @@ table caption {
   align-items: flex-start;
   gap: 7px;
   margin-top: 24px;
-  color: #9ba28f;
+  color: var(--muted);
   font-size: 11px;
   line-height: 1.8;
 }
@@ -678,7 +774,7 @@ table caption {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  color: #8c9481;
+  color: var(--muted);
   font-size: 10px;
 }
 .login-footer > span:last-child {
@@ -701,11 +797,11 @@ table caption {
 }
 @media (hover: hover) and (pointer: fine) {
   .login-form .primary-button:hover:not(:disabled) {
-    background: #e0edc2;
+    background: color-mix(in srgb, var(--accent) 86%, var(--ink));
   }
   .login-password-toggle:hover:not(:disabled) {
     color: var(--accent);
-    background: #ffffff05;
+    background: var(--surface-inset);
   }
 }
 @media (max-width: 1100px) {
@@ -1245,6 +1341,7 @@ table caption {
 }
 .admin-toggle input:checked {
   background: var(--accent);
+  background-image: none;
   border-color: var(--accent);
 }
 .admin-toggle input::before {
@@ -1541,6 +1638,14 @@ html[data-input-modality="pointer"] .source-details > summary > .app-icon {
     animation: none;
     opacity: 0.7;
     border-style: dashed;
+  }
+  button:focus-visible,
+  a:focus-visible,
+  summary:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    transition: none;
   }
 }
 

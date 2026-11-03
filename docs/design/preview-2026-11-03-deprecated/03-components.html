@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>组件库预览（新风格）</title>
+  <style>
+    :root {
+      --bg: #f5f5f2;
+      --ink: #232329;
+      --muted: #8a8a94;
+      --accent: #7666cc;
+      --accent-light: #dcd6ee;
+      --line: rgba(36, 36, 54, 0.08);
+      --glass-fill: linear-gradient(125deg, rgba(255,255,255,0.8), rgba(255,255,255,0.3));
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px clamp(20px, 5vw, 60px);
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 450;
+      letter-spacing: -0.02em;
+      margin: 0 0 40px;
+    }
+
+    h2 {
+      font-size: 18px;
+      font-weight: 500;
+      margin: 40px 0 24px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    /* 组件网格 */
+    .component-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .component {
+      padding: 24px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(250,250,248,0.4) 100%);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .component-label {
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .component-content {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100px;
+    }
+
+    /* 按钮样式 */
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      background: var(--accent);
+      color: white;
+      border-radius: 999px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease-out;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(118, 102, 204, 0.3);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 4px rgba(118, 102, 204, 0.15);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--line);
+      color: var(--ink);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(118, 102, 204, 0.05);
+      border-color: var(--accent);
+    }
+
+    .btn-disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* 输入框 */
+    input[type="text"],
+    input[type="email"],
+    select {
+      padding: 10px 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 20px;
+      font: inherit;
+      color: var(--ink);
+      width: 100%;
+      transition: all 0.15s ease-out;
+    }
+
+    input[type="text"]:hover,
+    input[type="email"]:hover,
+    select:hover {
+      background: rgba(255, 255, 255, 0.7);
+      border-color: var(--accent);
+    }
+
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    select:focus {
+      outline: none;
+      background: rgba(255, 255, 255, 0.9);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(118, 102, 204, 0.1);
+    }
+
+    input::placeholder {
+      color: var(--muted);
+    }
+
+    /* 玻璃容器 */
+    .glass-panel {
+      padding: 20px 24px;
+      background: var(--glass-fill);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08), inset 0 1px 2px rgba(255,255,255,0.8);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      font-size: 12px;
+      color: var(--ink);
+    }
+
+    /* 标签 */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: rgba(118, 102, 204, 0.1);
+      border: 1px solid rgba(118, 102, 204, 0.2);
+      border-radius: 999px;
+      font-size: 11px;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .badge-light {
+      background: var(--accent-light);
+      border-color: var(--accent-light);
+      color: var(--ink);
+    }
+
+    /* 加载动画 */
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(118, 102, 204, 0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* 进度条 */
+    .progress {
+      width: 100%;
+      height: 4px;
+      background: rgba(118, 102, 204, 0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), rgba(118, 102, 204, 0.8));
+      width: 65%;
+      border-radius: 2px;
+    }
+
+    /* 分隔线示例 */
+    .divider {
+      height: 1px;
+      background: var(--line);
+      margin: 16px 0;
+    }
+
+    .divider-strong {
+      background: var(--line);
+      opacity: 0.3;
+    }
+
+    /* 状态指示 */
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .status-active {
+      background: #2f8a5b;
+    }
+
+    .status-loading {
+      background: var(--accent);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .status-warning {
+      background: #d97706;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* 消息卡片 */
+    .message {
+      padding: 12px 16px;
+      background: rgba(118, 102, 204, 0.05);
+      border-left: 3px solid var(--accent);
+      border-radius: 4px;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .message-info {
+      border-left-color: var(--accent);
+    }
+
+    .message-success {
+      border-left-color: #2f8a5b;
+      background: rgba(47, 138, 91, 0.05);
+    }
+
+    .message-warning {
+      border-left-color: #d97706;
+      background: rgba(217, 119, 6, 0.05);
+    }
+
+    /* 响응 */
+    @media (prefers-reduced-transparency: reduce) {
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.95);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>💜 组件库预览 - 新风格设计系统</h1>
+
+    <h2>按钮样式</h2>
+    <div class="component-grid">
+      <div class="component">
+        <div class="component-label">主按钮（胶囊）</div>
+        <div class="component-content">
+          <button class="btn">确认操作</button>
+        </div>
+      </div>
+
+      <div class="component">
+        <div class="component-label">次按钮（带边）</div>
+        <div class="component-content">
+          <button class="btn btn-secondary">取消</button>
+        </div>
+      </div>
+
+      <div class="component">
+        <div class="component-label">禁用状态</div>
+        <div class="component-content">
+          <button class="btn btn-disabled">不可用</button>
+        </div>
+      </div>
+    </div>
+
+    <h2>输入框与表单</h2>
+    <div class="component-grid">
+      <div class="component">
+        <div class="component-label">文本输入</div>
+        <div class="component-content" style="padding: 0;">
+          <input type="text" placeholder="输入课程名称...">
+        </div>
+      </div>
+
+      <div class="component">
+        <div class="component-label">下拉选择</div>
+        <div class="component-content" style="padding: 0;">
+          <select>
+            <option>选择学期...</option>
+            <option>2025 春</option>
+            <option>2025 秋</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="component">
+        <div class="component-label">焦点状态示例</div>
+        <div class="component-content" style="padding: 0;">
+          <input type="email" placeholder="邮箱地址" autofocus>
+        </div>
+      </div>
+    </div>
+
+    <h2>玻璃与浮层</h2>
+    <div class="component-grid">
+      <div class="component">
+        <div class="component-label">玻璃面板</div>
+        <div class="glass-panel">
+          <p style="margin: 0;">
+            ✨ 背景模糊 15px<br>
+            ✨ 渐变填充<br>
+            ✨ 顶部白光 + 底部紫边<br>
+            ✨ 柔和阴影
+          </p>
+        </div>
+      </div>
+
+      <div class="component">
+        <div class="component-label">标签与徽章</div>
+        <div class="component-content" style="flex-direction: column; gap: 8px;">
+          <div class="badge">📊 200 学生</div>
+          <div class="badge badge-light">✓ 完成</div>
+        </div>
+      </div>
+    </div>
+
+    <h2>加载与进度</h2>
+    <div class="component-grid">
+      <div class="component">
+        <div class="component-label">加载动画</div>
+        <div class="component-content">
+          <div class="spinner"></div>
+        </div>
+      </div>
+
+      <div class="component">
+        <div class="component-label">进度条</div>
+        <div class="component-content" style="width: 100%; padding-left: 24px; padding-right: 24px;">
+          <div class="progress">
+            <div class="progress-bar"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="component">
+        <div class="component-label">加载状态指示</div>
+        <div class="component-content">
+          <div class="status">
+            <div class="status-dot status-loading"></div>
+            <span>数据加载中...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h2>状态与消息</h2>
+    <div class="component-grid">
+      <div class="component">
+        <div class="component-label">成功状态</div>
+        <div class="component-content">
+          <div class="status">
+            <div class="status-dot status-active"></div>
+            <span>导入成功</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="component">
+        <div class="component-label">警告状态</div>
+        <div class="component-content">
+          <div class="status">
+            <div class="status-dot status-warning"></div>
+            <span>样本过小</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="component">
+        <div class="component-label">信息消息</div>
+        <div class="message message-info">
+          📌 这是一条信息提示，带左边紫色竖线
+        </div>
+      </div>
+    </div>
+
+    <h2>分隔与层级</h2>
+    <div class="component-grid">
+      <div class="component">
+        <div class="component-label">细分隔线</div>
+        <div style="width: 100%;">
+          <p style="margin: 0 0 8px; font-size: 12px;">上方内容</p>
+          <div class="divider"></div>
+          <p style="margin: 8px 0; font-size: 12px;">下方内容</p>
+        </div>
+      </div>
+
+      <div class="component">
+        <div class="component-label">信息层级示例</div>
+        <div style="font-size: 12px; line-height: 1.8;">
+          <div style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">标题</div>
+          <div style="color: var(--muted); font-size: 11px;">辅助说明文字，降低对比度</div>
+        </div>
+      </div>
+    </div>
+
+    <h2>键盘焦点效果示例</h2>
+    <div style="padding: 24px; background: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(250,250,248,0.4) 100%); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 40px;">
+      <p style="margin-top: 0; font-size: 12px; color: var(--muted);">
+        💡 尝试使用 Tab 键导航下面的按钮，你会看到紫色发光焦点效果
+      </p>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <button class="btn">按钮 A</button>
+        <button class="btn btn-secondary">按钮 B</button>
+        <button class="btn">按钮 C</button>
+        <button class="btn btn-secondary">按钮 D</button>
+      </div>
+      <p style="margin-bottom: 0; font-size: 10px; color: var(--muted); margin-top: 16px;">
+        ✓ 焦点边框：2px 紫色 #7666cc<br>
+        ✓ 发光光晕：4px rgba(118, 102, 204, 0.15)<br>
+        ✓ 过渡时间：0.2s ease-out（柔和，不生硬）
+      </p>
+    </div>
+
+    <div style="padding: 24px; background: linear-gradient(180deg, rgba(118, 102, 204, 0.05) 0%, transparent 100%); border-left: 3px solid var(--accent); border-radius: 4px; margin-bottom: 40px;">
+      <h3 style="margin-top: 0; font-size: 14px;">设计系统特点总结</h3>
+      <ul style="margin: 0; padding-left: 20px; font-size: 12px; line-height: 2; color: var(--muted);">
+        <li>🎨 暖白底色 #f5f5f2 + 近黑文字 #232329</li>
+        <li>💜 淡紫强调 #7666cc（少量点缀，非主色）</li>
+        <li>🔄 混合圆角：按钮/标签 999px，容器 0-12px</li>
+        <li>✨ 玻璃浮层：背景模糊 12-15px + 渐变 + 高光边</li>
+        <li>👁️ 边缘虚化：径向渐变 + 轻 blur 呈现空间感</li>
+        <li>⌨️ 焦点反馈：紫色边框 + 微发光 + 平滑过渡</li>
+        <li>📊 等宽数字：font-variant-numeric: tabular-nums</li>
+        <li>🎯 状态清晰：小样本灰化、加载脉动、成功绿色</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

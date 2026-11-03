@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>知序 · 连成一幅画的数据</title>
+<style>
+:root{--ink:#252a25;--muted:#7b8077;--line:#e6e9e0;--purple:#8b76c5;--green:#a4be78;--orange:#e5a17c}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#fdfefb;color:var(--ink);font-family:"PingFang SC","Hiragino Sans GB",sans-serif}header{height:86px;margin:0 5%;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:14px;font-weight:500;font-size:23px}.logo{width:22px;height:22px;background:var(--ink);clip-path:polygon(0 0,33% 0,33% 33%,66% 33%,66% 0,100% 0,100% 66%,66% 66%,66% 100%,33% 100%,33% 66%,0 66%)}.micro{font:10px Menlo,monospace;letter-spacing:1.5px;color:var(--muted)}nav{display:flex;gap:30px;align-items:center}a{color:inherit;text-decoration:none}button{font:inherit;border:1px solid #dadfd2;background:transparent;padding:10px 16px;cursor:pointer;color:var(--ink)}button:hover,a:hover{color:#7560b1}a:focus-visible,button:focus-visible{outline:2px solid #8b76c5;outline-offset:5px}.intro{padding:72px 7% 16px;display:flex;justify-content:space-between;gap:20px;align-items:end}.intro h1{font-size:clamp(32px,4.2vw,65px);font-weight:400;letter-spacing:1px;margin:20px 0}.intro p{line-height:1.9;font-size:15px;color:var(--muted);max-width:330px}.intro .serif{font:italic 28px Georgia,serif;color:#8b76c5}.scene{position:relative;margin:0 auto;max-width:1800px}svg{display:block;width:100%;height:auto;overflow:visible}svg text{font-family:"PingFang SC",sans-serif;fill:var(--ink)}svg .small{font-size:15px;fill:var(--muted)}svg .tag{font:11px Menlo,monospace;letter-spacing:1.4px;fill:var(--muted)}svg .chapter{font-size:40px;font-weight:400}svg .note{font-size:18px;fill:#7b8077}svg .num{font:60px "Arial Narrow",Arial,sans-serif;letter-spacing:-2px}svg .grid{stroke:#e3e7dd;stroke-width:.8}svg .trace{fill:none;stroke-linecap:round;stroke-linejoin:round}svg .traveller{fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;filter:url(#glow);pointer-events:none}.progress{position:fixed;top:0;height:3px;background:linear-gradient(90deg,#b2cc85,#9d85d4,#edbca2);transform-origin:left;width:100%;transform:scaleX(0);z-index:10}.chapter-nav{position:fixed;right:18px;top:45%;display:grid;gap:18px;z-index:4}.chapter-nav a{font:10px Menlo,monospace;color:#a0a694;display:flex;gap:8px;align-items:center}.chapter-nav i{width:5px;height:5px;display:block;background:currentColor}.chapter-nav a.active{color:#7d64b6}.foot{padding:0 7% 55px}.foot-inner{border-top:1px solid var(--line);padding:36px 0;display:flex;justify-content:space-between;align-items:center}.foot h2{font-size:35px;font-weight:400;margin:10px 0}.foot p{color:var(--muted);font-size:14px}.back{padding:15px 24px;border:1px solid var(--line)}.badge{padding-bottom:20px}.hint{font-size:12px;color:#929887}body.still .traveller{display:none}body.still .ambient{animation:none}.ambient{animation:breathe 12s ease-in-out infinite alternate;transform-origin:center}@keyframes breathe{from{opacity:.65}to{opacity:1}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.ambient{animation:none}.traveller{display:none}}@media(max-width:700px){header{height:70px}.brand{font-size:19px}.brand .micro,nav>a,.chapter-nav{display:none}button{font-size:12px;padding:8px 10px}.intro{padding:36px 6% 5px;display:block}.intro h1{font-size:34px}.intro p{max-width:none;font-size:13px}.intro .serif{font-size:22px}.scene{width:100%}svg .small{font-size:20px}svg .note{font-size:22px}.foot-inner{align-items:start;gap:20px}.foot h2{font-size:23px}.back{font-size:12px;white-space:nowrap;padding:12px}.hint{line-height:1.8}}
+</style>
+</head>
+<body>
+<div class="progress" aria-hidden="true"></div>
+<header><a class="brand" href="#"><span class="logo"></span>知序<span class="micro">ZHIXU / CONNECTED INSIGHTS</span></a><nav><a href="#compare">看差异</a><a href="#rhythm">看节奏</a><a href="#relations">看联系</a><button id="motion" aria-pressed="false">减少动效</button></nav></header>
+<section class="intro"><div><div class="micro">SCROLL STUDY 01 / 连续图表实验</div><h1>让发现，连成一幅画。</h1><div class="serif">One canvas. Many perspectives.</div></div><p>从一根柱子，到一条曲线，再到一片网格。<br>沿着图形向下滚动，看看它们如何相连。<br><span class="hint">形态连接样例 · 固定示意数据 · 正常滚动 ↓</span></p></section>
+<nav class="chapter-nav" aria-label="跳转到图表"><a href="#compare"><i></i>01</a><a href="#trend"><i></i>02</a><a href="#rhythm"><i></i>03</a><a href="#relations"><i></i>04</a></nav>
+<div class="scene">
+<svg id="canvas" viewBox="0 0 1440 3050" role="img" aria-labelledby="sceneTitle sceneDesc">
+<title id="sceneTitle">柱状图、趋势曲线、热力网格和课程关系网络连成一幅长画面</title><desc id="sceneDesc">四门课程的柱状图向下弯曲成趋势线，趋势线落入热力图的四行，热力图的行向下延展，接入课程关系网络。连接路径只表示视觉叙事，不代表统计推导。</desc>
+<defs>
+<radialGradient id="lav"><stop stop-color="#c8b9f1" stop-opacity=".7"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<radialGradient id="mint"><stop stop-color="#d1e8b5" stop-opacity=".66"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<radialGradient id="peach"><stop stop-color="#f7cdb5" stop-opacity=".6"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<linearGradient id="beam"><stop stop-color="#cedeb4"/><stop offset=".5" stop-color="#bda8e3"/><stop offset="1" stop-color="#edc2aa"/></linearGradient>
+<filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<!-- One shared coordinate system. The diagrams touch at actual endpoints. -->
+<g aria-hidden="true" opacity=".6" id="background-grid"></g>
+<g class="ambient" aria-hidden="true"><ellipse cx="1000" cy="450" rx="350" ry="330" fill="url(#lav)"/><ellipse cx="700" cy="1130" rx="470" ry="330" fill="url(#mint)"/><ellipse cx="1070" cy="1840" rx="350" ry="380" fill="url(#peach)"/><ellipse cx="650" cy="2510" rx="440" ry="350" fill="url(#lav)"/></g>
+<g id="compare" data-chapter="0"><text x="102" y="130" class="tag">01 / COMPARE</text><text x="102" y="194" class="chapter">从差异开始。</text><text x="102" y="235" class="note">同一学期，四门课程的平均成绩。</text><text x="102" y="325" class="num">86<tspan class="small" dx="12">分 / 课程 A</tspan></text><text x="102" y="368" class="small">一根柱子，留下一条继续探索的线。</text></g>
+<g id="bars"></g>
+<g id="connections"></g>
+<g id="trend" data-chapter="1"><text x="102" y="870" class="tag">02 / OVER TIME</text><text x="102" y="934" class="chapter">差异，沿时间展开。</text><text x="102" y="978" class="note">柱子向下延展，成为同一课程的趋势线。</text><text x="102" y="1011" class="small">三学期均分 · 右侧终点承接开头的本学期</text></g>
+<g id="trend-detail"></g>
+<g id="rhythm" data-chapter="2"><text x="102" y="1530" class="tag">03 / LEARNING RHYTHM</text><text x="102" y="1594" class="chapter">曲线，落入日常的节奏。</text><text x="102" y="1640" class="note">每条线接入一行，铺开一学期的学习活动。</text><text x="102" y="1673" class="small">指标切换：均分 → 每周活动量 / 人</text></g>
+<g id="heatmap"></g>
+<g id="relations" data-chapter="3"><text x="102" y="2280" class="tag">04 / CONNECTIONS</text><text x="102" y="2344" class="chapter">每一门课，都有联系。</text><text x="102" y="2390" class="note">网格的行继续生长，接入课程之间的关系。</text><text x="102" y="2423" class="small">连线示意：共同薄弱的人群 / 非因果关系</text></g>
+<g id="network"></g>
+<path d="M 850 2770 C 850 2870 540 2830 540 2945" class="trace" stroke="url(#beam)" stroke-width="3" data-flow/>
+<text x="566" y="2951" class="small">每一种形态，都是继续理解的入口。</text>
+</svg>
+</div>
+<footer class="foot"><div class="foot-inner"><div><div class="micro">A CONTINUOUS DATA LANDSCAPE</div><h2>图表相连，发现继续。</h2><p>这是一份布局与滚动效果样例，图形之间的连接不表示统计推导。</p></div><a class="back" href="#">回到开头 ↗</a></div><div class="micro badge">知序 / CONCEPT PROTOTYPE — 01</div></footer>
+<script>
+(()=>{'use strict';const NS='http://www.w3.org/2000/svg',svg=document.querySelector('svg');
+const el=(tag,attrs,parent)=>{const n=document.createElementNS(NS,tag);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,v));parent.append(n);return n};
+const txt=(x,y,s,cls,parent)=>{const n=el('text',{x,y,class:cls},parent);n.textContent=s;return n};
+const grid=document.querySelector('#background-grid');for(let x=100;x<=1340;x+=155)el('path',{d:`M${x} 70V2940`,class:'grid'},grid);for(let y=70;y<3000;y+=155)el('path',{d:`M100 ${y}H1340`,class:'grid'},grid);
+const courses=[{n:'A',v:86,c:'#8b76c5',x:700,top:326,ys:[1200,1160,1090],row:1790,node:[990,2450]},{n:'B',v:82,c:'#a6bb7e',x:840,top:342,ys:[1270,1210,1140],row:1850,node:[1140,2620]},{n:'C',v:78,c:'#dda382',x:980,top:358,ys:[1160,1220,1190],row:1910,node:[850,2770]},{n:'D',v:74,c:'#b7a5d5',x:1120,top:374,ys:[1290,1250,1240],row:1970,node:[660,2570]}];
+const bars=document.querySelector('#bars'),connections=document.querySelector('#connections'),td=document.querySelector('#trend-detail'),heat=document.querySelector('#heatmap'),net=document.querySelector('#network');
+[60,70,80,90].forEach(v=>{const y=600-v*3.2;el('path',{d:`M646 ${y}H1220`,stroke:'#dce1d4','stroke-width':1},bars);txt(615,y+5,v,'tag',bars)});
+el('path',{d:'M646 600H1220',stroke:'#b3bca7'},bars);
+courses.forEach((d,i)=>{const actualTop=600-d.v*3.2;d.top=actualTop;
+ el('rect',{x:d.x-22,y:actualTop,width:44,height:600-actualTop,fill:d.c,opacity:.86},bars);txt(d.x-12,actualTop-16,d.v,'small',bars);txt(d.x-23,645,`课程 ${d.n}`,'small',bars);
+ // Bars physically continue as curved filaments, into three-term trend lines.
+ const y0=d.ys[0],y1=d.ys[1],y2=d.ys[2];
+ const path=`M ${d.x} 600 C ${d.x} 745 530 ${740+i*45} 530 ${y0} C 650 ${y0} 690 ${y1} 820 ${y1} S 1000 ${y2} 1140 ${y2} C 1290 ${y2} 1270 ${d.row-150} 640 ${d.row}`;
+ el('path',{d:path,class:'trace',stroke:d.c,'stroke-width':3.5,'data-flow':''},connections);
+ [530,820,1140].forEach((x,j)=>{el('rect',{x:x-5,y:d.ys[j]-5,width:10,height:10,fill:d.c},td)});
+ txt(1170,y2+5,`课程 ${d.n}`,'small',td);
+ // Learning-activity grid sits on the continuation of that same physical line.
+ el('path',{d:`M640 ${d.row}H1248`,class:'trace',stroke:d.c,'stroke-width':2,opacity:.4},heat);
+ txt(557,d.row+6,`课程 ${d.n}`,'small',heat);
+ for(let j=0;j<12;j++){const value=2+((j*3+i*5+j*i)%11);el('rect',{x:650+j*49,y:d.row-19,width:41,height:38,fill:d.c,opacity:.18+value/17},heat);const cell=heat.lastChild;const title=el('title',{},cell);title.textContent=`课程 ${d.n} · 第 ${j+1} 周 · 人均活动 ${value} 次`;}
+ const [nx,ny]=d.node;el('path',{d:`M1248 ${d.row} C 1430 ${d.row} 1330 ${ny-230} ${nx} ${ny}`,class:'trace',stroke:d.c,'stroke-width':3.5,'data-flow':''},connections);
+});
+[530,820,1140].forEach((x,i)=>txt(x-30,1340,['前二学期','上一学期','本学期'][i],'tag',td));
+for(let j=0;j<12;j++)txt(657+j*49,1745,String(j+1).padStart(2,'0'),'tag',heat);txt(1030,2055,'周次 / 01 — 12','tag',heat);
+const edges=[[0,1,18],[0,2,12],[0,3,8],[1,2,15],[1,3,6],[2,3,10]];edges.forEach(([a,b,v])=>{const [x,y]=courses[a].node,[xx,yy]=courses[b].node;const path=el('path',{d:`M${x} ${y} Q860 2540 ${xx} ${yy}`,stroke:courses[a].c,'stroke-width':v*.85,opacity:.24,fill:'none'},net);const title=el('title',{},path);title.textContent=`课程 ${courses[a].n} 与 ${courses[b].n}：共同薄弱 ${v} 人（示意）`;});
+courses.forEach(d=>{const [x,y]=d.node;el('circle',{cx:x,cy:y,r:24,fill:'#fdfefb',stroke:d.c,'stroke-width':5},net);el('rect',{x:x-6,y:y-6,width:12,height:12,fill:d.c},net);txt(x+34,y+6,`课程 ${d.n}`,'small',net)});
+// A short luminous segment follows each existing connection. The complete base paths remain visible.
+const flows=[...svg.querySelectorAll('[data-flow]')].map(base=>{const n=base.cloneNode();n.removeAttribute('data-flow');n.setAttribute('class','traveller');base.after(n);const len=base.getTotalLength();n.style.strokeDasharray=`90 ${len+100}`;return {base,n,len}});
+const progress=document.querySelector('.progress'),chapters=[...svg.querySelectorAll('[data-chapter]')],links=[...document.querySelectorAll('.chapter-nav a')];let queued=false;
+const update=()=>{queued=false;const max=document.documentElement.scrollHeight-innerHeight;progress.style.transform=`scaleX(${max>0?scrollY/max:0})`;const vh=innerHeight;
+ flows.forEach(({base,n,len})=>{const r=base.getBoundingClientRect();const phase=Math.max(0,Math.min(1,(vh*.72-r.top)/(r.height+vh*.3)));n.style.strokeDashoffset=String(90-phase*(len+90));n.style.opacity=phase>0&&phase<1?1:0});let idx=0;chapters.forEach((s,i)=>{if(s.getBoundingClientRect().top<vh*.65)idx=i});links.forEach((l,i)=>l.classList.toggle('active',i===idx));};
+const schedule=()=>{if(!queued){queued=true;requestAnimationFrame(update)}};addEventListener('scroll',schedule,{passive:true});addEventListener('resize',schedule);update();
+const btn=document.querySelector('#motion');let still=matchMedia('(prefers-reduced-motion: reduce)').matches;const apply=()=>{document.body.classList.toggle('still',still);btn.setAttribute('aria-pressed',String(still));btn.textContent=still?'启用动效':'减少动效'};btn.addEventListener('click',()=>{still=!still;apply()});apply();
+})();
+</script>
+</body></html>

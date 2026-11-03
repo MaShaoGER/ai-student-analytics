@@ -68,7 +68,7 @@
 .cohortName {
   max-width: 100%;
   padding: 6px 10px;
-  border-radius: var(--corner-radius);
+  border-radius: 0;
   background: var(--accent);
   color: var(--button-ink);
   font-weight: 500;
@@ -146,7 +146,7 @@
   display: inline-block;
   width: 12px;
   height: 5px;
-  border-radius: var(--corner-radius);
+  border-radius: 0;
   background: var(--score);
 }
 .legend .referenceSwatch {
@@ -187,7 +187,7 @@
   text-align: left;
   padding: 10px;
   border: 0;
-  border-radius: var(--corner-radius);
+  border-radius: 0;
   background: transparent;
   color: var(--ink);
   box-shadow: none;
@@ -226,13 +226,13 @@
   display: block;
   height: 3px;
   margin-top: 8px;
-  border-radius: var(--corner-radius);
-  background: var(--line);
+  border-radius: 0;
+  background: var(--surface-inset);
 }
 .pathTrack > span {
   display: block;
   height: 100%;
-  border-radius: var(--corner-radius);
+  border-radius: 0;
   background: var(--score);
 }
 .detail {
@@ -503,7 +503,7 @@ html[data-motion="on"] .entering .threshold {
 
 :global(.glass-workspace) .path {
   border: 1px solid transparent;
-  border-radius: var(--ui-control-radius);
+  border-radius: 0;
 }
 :global(.glass-workspace) .path[aria-pressed="true"] {
   background: var(--ui-selected-bg);
@@ -513,7 +513,7 @@ html[data-motion="on"] .entering .threshold {
   background: var(--ui-selected-bg);
   color: var(--ink);
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: 0;
 }
 
 @media (max-width: 760px) {

@@ -1,31 +1,35 @@
-/* Approved industrial workbench: paper, sage, charcoal and signal orange. */
+/* Shared light contract: warm-white canvas, near-black type and a lavender
+   accent. Data-encoding and status colours below keep their meaning. */
 :root {
   --corner-radius: 0px;
   --rail-width: 56px;
   --rail-start: max(0px, calc((100vw - 1680px) / 2));
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --panel-radius: var(--corner-radius);
-  --ink: #242923;
-  --muted: #5c665a;
-  /* Sage surfaces (sign-in form, overview metric strip) need a darker muted ink
-     so 8–12px explanatory text still reaches 4.5:1; --muted stays for paper. */
-  --muted-on-sage: #3f4a3f;
+  --ink: #232329;
+  --muted: #6b6b76;
+  /* Raised/selected fills need a darker muted ink so 8-12px explanatory text
+     still reaches 4.5:1; --muted stays for the canvas. */
+  --muted-on-sage: #55555f;
   --navy: var(--ink);
-  --accent: #f56837;
-  /* Selected-state text on light sage/metric fills: the fill and border keep the
-     accent signal while the label itself reaches 4.5:1. */
-  --accent-ink: #8a3a12;
-  --button-ink: #242923;
+  --accent: #7666cc;
+  --accent-light: #dcd6ee;
+  --accent-transparent: rgba(118, 102, 204, 0.15);
+  /* Selected-state text keeps the accent signal while reaching 4.5:1. */
+  --accent-ink: #57489f;
+  --button-ink: #ffffff;
   --teal: var(--accent);
-  --teal-dark: #70412b;
-  --teal-soft: #e9ded0;
-  --paper: #f0f0e7;
+  --teal-dark: #57489f;
+  --teal-soft: #e6e1f4;
+  --accent-soft: #e6e1f4;
+  --paper: #f5f5f2;
   --surface: var(--paper);
-  --surface-inset: #e5e7dc;
-  --surface-raised: #f8f8ef;
-  --background: #e1e3d8;
-  --line: #a5aca0;
-  --control-group: #e4e7db;
+  --surface-inset: #ecece7;
+  --surface-raised: #fbfbf8;
+  --background: #f5f5f2;
+  --line: #24243615;
+  --line-strong: #24243638;
+  --control-group: #ecece7;
   --sage: #c2d3bf;
   --sage-surface: #c2d3bf;
   --sage-soft: #dbe4d4;
@@ -1683,8 +1687,10 @@ html[data-motion="on"][data-input-modality="pointer"] button:enabled:active {
     transform: translate(3px, -3px);
   }
 }
+/* Spatial navigation keeps continuity for arrow keys and Escape as well as the
+   pointer. The app/system reduced-motion gates still apply to the entire tree. */
 html:not([data-motion="on"]) *,
-html:not([data-input-modality="pointer"]) * {
+html:not([data-input-modality="pointer"]) *:not([data-navigation-motion], [data-navigation-motion] *) {
   animation-duration: 0ms !important;
   transition-duration: 0ms !important;
 }

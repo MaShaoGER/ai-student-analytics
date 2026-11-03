@@ -25,15 +25,14 @@ export const metadata: Metadata = {
   },
 };
 
-// Browser chrome follows the light-field ground. Values mirror --field-ground from app/tokens.css
-// for each color scheme; the in-app theme toggle only changes the page itself.
+// Browser chrome mirrors the shared light/dark workspace ground.
 // viewportFit: "cover" is what makes env(safe-area-inset-*) resolve on notched
 // phones, so the floating chat composer clears the home indicator.
 export const viewport: Viewport = {
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#e9e7e1" },
-    { media: "(prefers-color-scheme: dark)", color: "#08090a" },
+    { media: "(prefers-color-scheme: light)", color: "#f5f5f2" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1220" },
   ],
 };
 

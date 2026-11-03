@@ -3,7 +3,7 @@ import { getGradeSnapshot } from "../datasets/grade-store";
 import { AuthError } from "../auth/service";
 import { assertCurrentAccess } from "../auth/access";
 import { createHash } from "node:crypto";
-import { existsSync, statSync } from "node:fs";
+import { closeSync, existsSync, openSync, readSync, statSync } from "node:fs";
 import path from "node:path";
 import { API_QUERY_LIMITS } from "../security/query-limits";
 import {
@@ -11,6 +11,7 @@ import {
   QueryExecutionError,
   withBoundedQueryConnection,
   type QueryExecutionOptions,
+  type QueryExecutor,
 } from "../security/query-execution";
 import {
   analysisPlanSchema,
@@ -18,6 +19,7 @@ import {
   type AnalysisResult,
   type DatasetProfile,
   type DataSource,
+  type Metric,
 } from "./types";
 import { DIMENSIONS, METRICS } from "./metrics";
 import type { ScoreDistributionData, DistributionScope } from "./score-distribution";
@@ -41,6 +43,12 @@ import {
   type CoursePanoramaData,
   type CoursePanoramaStats,
 } from "./course-panorama";
+import { cohortPredicate, createFocusCohort, type CohortSources } from "../exploration/cohort";
+import {
+  explorationFocusSchema,
+  type ExplorationFocus,
+  type ChartCoverage,
+} from "../exploration/selection";
 
 const PROJECT_ROOT = process.cwd();
 // Server-only override lets regression tests retain their tiny, stable fixtures.
@@ -206,8 +214,8 @@ function analysisSource(plan: AnalysisPlan): { source: string; aggregate: string
   };
 }
 
-function analysisQueries(plan: AnalysisPlan) {
-  const { source, aggregate } = analysisSource(plan);
+function analysisQueries(plan: AnalysisPlan, prepared?: { source: string; aggregate: string }) {
+  const { source, aggregate } = prepared ?? analysisSource(plan);
   const dimension = dimensionExpression(plan);
   return {
     query: `WITH analysis_source AS (${source})
@@ -413,6 +421,222 @@ function studentScoreSource(datasetId: DataSource) {
        GROUP BY ALL`;
 }
 
+function csvHeader(filePath: string): Set<string> {
+  let descriptor: number | undefined;
+  try {
+    descriptor = openSync(filePath, "r");
+    const buffer = Buffer.alloc(4096);
+    const bytes = readSync(descriptor, buffer, 0, buffer.length, 0);
+    const line =
+      buffer
+        .subarray(0, bytes)
+        .toString("utf8")
+        .replace(/^\uFEFF/, "")
+        .split(/\r?\n/, 1)[0] ?? "";
+    return new Set(
+      line.split(",").map((name) => name.trim().replace(/^"(.*)"$/, "$1")),
+    );
+  } catch {
+    return new Set();
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+  }
+}
+
+export type ConceptExplorerSource = {
+  datasetId: DataSource;
+  datasetName: string;
+  datasetVersion?: string;
+  synthetic: boolean;
+  capabilities: { attendance: boolean; homework: boolean; completion: boolean };
+  score: string;
+  completion: string | null;
+  attendance: string | null;
+  weeklyAttendance: string | null;
+  homework: string | null;
+};
+
+/**
+ * Dataset-specific source shapes for the concept explorer. All aggregation
+ * lives in concept-query.ts; this adapter only reuses the existing readers and
+ * declares which real fields each source exposes. OULAD has no campus
+ * attendance or homework submission records, and imported grade sheets may
+ * omit the completion marker, so those capabilities stay false instead of
+ * falling back to demo data or inventing activity-based substitutes.
+ */
+export function conceptExplorerSource(datasetId: DataSource): ConceptExplorerSource {
+  assertCurrentAccess(datasetId);
+  const demo = datasetId === "demo";
+  const imported = isGradeDataset(datasetId);
+  const snapshot = imported ? getGradeSnapshot(datasetId) : null;
+  const weeklyPath = path.join(DEMO_ROOT, "attendance_weekly.csv");
+  if (!validateFiles(datasetId))
+    throw new QueryExecutionError("DATA_SOURCE_UNAVAILABLE", "数据源不可用，请检查本地数据文件。");
+  const demoOutcomeColumns = demo ? csvHeader(DEMO_OUTCOMES) : new Set<string>();
+  const demoWeeklyColumns =
+    demo && fileExists(weeklyPath) ? csvHeader(weeklyPath) : new Set<string>();
+  const attendanceColumns = [
+    "scheduled_sessions",
+    "present_sessions",
+    "late_sessions",
+    "early_leave_sessions",
+  ];
+  const homeworkColumns = [
+    "assignment_count",
+    "submitted_assignments",
+    "on_time_assignments",
+    "late_assignments",
+    "missing_assignments",
+  ];
+  const attendanceSupported =
+    demo && attendanceColumns.every((column) => demoOutcomeColumns.has(column));
+  const weeklySupported =
+    attendanceSupported &&
+    ["week", ...attendanceColumns].every((column) => demoWeeklyColumns.has(column));
+  const homeworkSupported =
+    demo && homeworkColumns.every((column) => demoOutcomeColumns.has(column));
+
+  let completion: string | null = null;
+  if (demo && demoOutcomeColumns.has("completed"))
+    completion = `SELECT code_module, code_presentation, id_student, completed FROM (
+      SELECT code_module, code_presentation, id_student, TRY_CAST(completed AS DOUBLE) AS completed
+      FROM ${csv(DEMO_OUTCOMES)}) WHERE completed IN (0, 1)`;
+  else if (imported && snapshot?.hasCompletion)
+    completion = `SELECT code_module, code_presentation, id_student, completed
+      FROM ${gradeSource(datasetId)} WHERE completed IN (0, 1)`;
+  else if (datasetId === "oulad")
+    completion = `SELECT code_module, code_presentation, id_student,
+      CASE WHEN final_result IN ('Pass', 'Distinction') THEN 1 ELSE 0 END AS completed
+      FROM ${csv(OULAD.studentInfo)}
+      WHERE final_result IN ('Pass', 'Distinction', 'Fail', 'Withdrawn')`;
+
+  const attendance = attendanceSupported
+    ? `SELECT code_module, code_presentation, id_student,
+        TRY_CAST(scheduled_sessions AS DOUBLE) AS scheduled,
+        TRY_CAST(present_sessions AS DOUBLE) + TRY_CAST(late_sessions AS DOUBLE)
+          + TRY_CAST(early_leave_sessions AS DOUBLE) AS attended
+      FROM ${csv(DEMO_OUTCOMES)}
+      WHERE TRY_CAST(scheduled_sessions AS DOUBLE) > 0
+        AND TRY_CAST(present_sessions AS DOUBLE) >= 0
+        AND TRY_CAST(late_sessions AS DOUBLE) >= 0
+        AND TRY_CAST(early_leave_sessions AS DOUBLE) >= 0
+        AND TRY_CAST(present_sessions AS DOUBLE) + TRY_CAST(late_sessions AS DOUBLE)
+          + TRY_CAST(early_leave_sessions AS DOUBLE) <= TRY_CAST(scheduled_sessions AS DOUBLE)`
+    : null;
+
+  const weeklyAttendance = weeklySupported
+    ? `SELECT code_module, code_presentation, id_student, TRY_CAST(week AS INTEGER) AS week,
+        TRY_CAST(scheduled_sessions AS DOUBLE) AS scheduled,
+        TRY_CAST(present_sessions AS DOUBLE) + TRY_CAST(late_sessions AS DOUBLE)
+          + TRY_CAST(early_leave_sessions AS DOUBLE) AS attended
+      FROM ${csv(weeklyPath)}
+      WHERE TRY_CAST(week AS INTEGER) IS NOT NULL
+        AND TRY_CAST(scheduled_sessions AS DOUBLE) > 0
+        AND TRY_CAST(present_sessions AS DOUBLE) >= 0
+        AND TRY_CAST(late_sessions AS DOUBLE) >= 0
+        AND TRY_CAST(early_leave_sessions AS DOUBLE) >= 0
+        AND TRY_CAST(present_sessions AS DOUBLE) + TRY_CAST(late_sessions AS DOUBLE)
+          + TRY_CAST(early_leave_sessions AS DOUBLE) <= TRY_CAST(scheduled_sessions AS DOUBLE)`
+    : null;
+
+  const homework = homeworkSupported
+    ? `SELECT code_module, code_presentation, id_student,
+        TRY_CAST(assignment_count AS DOUBLE) AS scheduled,
+        TRY_CAST(submitted_assignments AS DOUBLE) AS submitted,
+        TRY_CAST(on_time_assignments AS DOUBLE) AS on_time,
+        TRY_CAST(late_assignments AS DOUBLE) AS late,
+        TRY_CAST(missing_assignments AS DOUBLE) AS missing_count
+      FROM ${csv(DEMO_OUTCOMES)}
+      WHERE TRY_CAST(assignment_count AS DOUBLE) > 0
+        AND TRY_CAST(submitted_assignments AS DOUBLE) >= 0
+        AND TRY_CAST(submitted_assignments AS DOUBLE) <= TRY_CAST(assignment_count AS DOUBLE)
+        AND TRY_CAST(on_time_assignments AS DOUBLE) >= 0
+        AND TRY_CAST(late_assignments AS DOUBLE) >= 0
+        AND TRY_CAST(missing_assignments AS DOUBLE) >= 0
+        AND TRY_CAST(on_time_assignments AS DOUBLE) + TRY_CAST(late_assignments AS DOUBLE)
+          + TRY_CAST(missing_assignments AS DOUBLE) <= TRY_CAST(assignment_count AS DOUBLE)`
+    : null;
+
+  return {
+    datasetId,
+    datasetName: datasetName(datasetId),
+    ...importedMetadata(datasetId),
+    synthetic: demo,
+    capabilities: {
+      attendance: attendanceSupported,
+      homework: homeworkSupported,
+      completion: completion !== null,
+    },
+    score: studentScoreSource(datasetId),
+    completion,
+    attendance,
+    weeklyAttendance,
+    homework,
+  };
+}
+
+/** Lazy request-local sources: the large VLE CSV is scanned at most once per connection. */
+function explorationSources(
+  sql: QueryExecutor,
+  datasetId: DataSource,
+  scores: string,
+): CohortSources {
+  let activity: Promise<string | null> | undefined;
+  let attributes: Promise<string | null> | undefined;
+  let completion: Promise<string | null> | undefined;
+  return {
+    scores,
+    activity: () =>
+      (activity ??= (async () => {
+        if (isGradeDataset(datasetId)) return null;
+        await sql(
+          `CREATE TEMP TABLE exploration_activity AS ${
+            datasetId === "demo"
+              ? `SELECT code_module, code_presentation, id_student, TRY_CAST(week AS INTEGER) AS week,
+             SUM(TRY_CAST(activity_count AS DOUBLE)) AS activity FROM ${csv(DEMO_ACTIVITY)}
+             WHERE TRY_CAST(activity_count AS DOUBLE) >= 0 GROUP BY ALL`
+              : `SELECT code_module, code_presentation, id_student, FLOOR(TRY_CAST(date AS DOUBLE) / 7)::INTEGER + 1 AS week,
+             SUM(TRY_CAST(sum_click AS DOUBLE)) AS activity FROM ${csv(OULAD.studentVle)}
+             WHERE TRY_CAST(sum_click AS DOUBLE) >= 0 GROUP BY ALL`
+          }`,
+        );
+        return "exploration_activity";
+      })()),
+    attributes: () =>
+      (attributes ??= (async () => {
+        if (datasetId !== "demo") return null;
+        await sql(`CREATE TEMP TABLE exploration_attributes AS
+        SELECT code_module, code_presentation, id_student,
+          AVG(CASE WHEN TRY_CAST(attendance_rate AS DOUBLE) BETWEEN 0 AND 100 THEN TRY_CAST(attendance_rate AS DOUBLE) END) AS attendance,
+          AVG(CASE WHEN TRY_CAST(homework_completion_rate AS DOUBLE) BETWEEN 0 AND 100 THEN TRY_CAST(homework_completion_rate AS DOUBLE) END) AS homework,
+          AVG(CASE WHEN TRY_CAST(absent_sessions AS DOUBLE) BETWEEN 0 AND TRY_CAST(scheduled_sessions AS DOUBLE)
+            AND TRY_CAST(excused_sessions AS DOUBLE) BETWEEN 0 AND TRY_CAST(scheduled_sessions AS DOUBLE)
+            AND TRY_CAST(absent_sessions AS DOUBLE) + TRY_CAST(excused_sessions AS DOUBLE) <= TRY_CAST(scheduled_sessions AS DOUBLE)
+            THEN TRY_CAST(absent_sessions AS DOUBLE) + TRY_CAST(excused_sessions AS DOUBLE) END) AS absence,
+          AVG(CASE WHEN TRY_CAST(absent_sessions AS DOUBLE) BETWEEN 0 AND TRY_CAST(scheduled_sessions AS DOUBLE)
+            THEN TRY_CAST(absent_sessions AS DOUBLE) END) AS unexcused
+        FROM ${csv(DEMO_OUTCOMES)} GROUP BY ALL`);
+        return "exploration_attributes";
+      })()),
+    completion: () =>
+      (completion ??= (async () => {
+        if (isGradeDataset(datasetId) && !getGradeSnapshot(datasetId).hasCompletion) return null;
+        await sql(
+          `CREATE TEMP TABLE exploration_completion AS ${
+            datasetId === "oulad"
+              ? `SELECT code_module, code_presentation, id_student,
+             CASE WHEN final_result IN ('Pass', 'Distinction') THEN 1 ELSE 0 END AS completed
+             FROM ${csv(OULAD.studentInfo)} WHERE final_result IN ('Pass', 'Distinction', 'Fail', 'Withdrawn')`
+              : `SELECT code_module, code_presentation, id_student, TRY_CAST(completed AS DOUBLE) AS completed
+             FROM ${isGradeDataset(datasetId) ? gradeSource(datasetId) : csv(DEMO_OUTCOMES)}
+             WHERE TRY_CAST(completed AS DOUBLE) IN (0, 1)`
+          }`,
+        );
+        return "exploration_completion";
+      })()),
+  };
+}
+
 export async function scoreDistribution(
   datasetId: DataSource,
   options: QueryExecutionOptions = {},
@@ -497,6 +721,7 @@ export async function courseRelations(
     term,
     threshold,
     courses: requestedCourses = [],
+    focus,
   } = courseRelationRequestSchema.parse(input);
   assertCurrentAccess(datasetId);
   if (!validateFiles(datasetId))
@@ -508,7 +733,8 @@ export async function courseRelations(
   const courseLimit = 12;
   return withBoundedQueryConnection(
     async (sql) => {
-      await sql(`CREATE TEMP TABLE student_scores AS ${studentScoreSource(datasetId)}`);
+      await sql(`CREATE TEMP TABLE relation_all_scores AS ${studentScoreSource(datasetId)}`);
+      await sql("CREATE TEMP VIEW student_scores AS SELECT * FROM relation_all_scores");
       const termRows = await sql(`SELECT DISTINCT code_presentation FROM student_scores
       GROUP BY code_presentation, code_module HAVING COUNT(*) >= ${minSampleSize}
       ORDER BY code_presentation DESC`);
@@ -526,6 +752,16 @@ export async function courseRelations(
         courses: [],
         relations: [],
       };
+      if (focus) {
+        empty.focusSummary = await createFocusCohort(
+          sql,
+          focus,
+          explorationSources(sql, datasetId, "relation_all_scores"),
+        );
+        if (empty.focusSummary.suppressed) return empty;
+        await sql(`CREATE OR REPLACE TEMP VIEW student_scores AS
+          SELECT * FROM relation_all_scores WHERE ${cohortPredicate()}`);
+      }
       if (!activeTerm || !terms.includes(activeTerm)) return empty;
       const literal = `'${activeTerm.replaceAll("'", "''")}'`;
       await sql(`CREATE TEMP TABLE eligible_courses AS
@@ -588,6 +824,7 @@ export async function coursePanorama(
     source,
     target,
     courses: requestedCourses = [],
+    focus,
   } = coursePanoramaRequestSchema.parse(input);
   assertCurrentAccess(datasetId);
   if (!validateFiles(datasetId))
@@ -600,7 +837,8 @@ export async function coursePanorama(
   const literal = (value: string) => `'${value.replaceAll("'", "''")}'`;
   return withBoundedQueryConnection(
     async (sql) => {
-      await sql(`CREATE TEMP TABLE student_scores AS ${studentScoreSource(datasetId)}`);
+      await sql(`CREATE TEMP TABLE relation_all_scores AS ${studentScoreSource(datasetId)}`);
+      await sql("CREATE TEMP VIEW student_scores AS SELECT * FROM relation_all_scores");
       const termRows = await sql(`SELECT DISTINCT code_presentation FROM student_scores
       GROUP BY code_presentation, code_module HAVING COUNT(*) >= ${minSampleSize}
       ORDER BY code_presentation DESC`);
@@ -621,6 +859,16 @@ export async function coursePanorama(
         selection: null,
         columns: [],
       };
+      if (focus) {
+        empty.focusSummary = await createFocusCohort(
+          sql,
+          focus,
+          explorationSources(sql, datasetId, "relation_all_scores"),
+        );
+        if (empty.focusSummary.suppressed) return empty;
+        await sql(`CREATE OR REPLACE TEMP VIEW student_scores AS
+          SELECT * FROM relation_all_scores WHERE ${cohortPredicate()}`);
+      }
       if (!activeTerm || !terms.includes(activeTerm)) {
         if (source) throw new PanoramaSelectionError();
         return empty;
@@ -730,6 +978,176 @@ export async function coursePanorama(
   );
 }
 
+/** Run focused aggregates through the same grouping, limits and privacy metadata as /api/analysis. */
+async function focusedStudioResults(
+  sql: QueryExecutor,
+  datasetId: DataSource,
+  studio: StudioProjectData,
+  sources: CohortSources,
+  requestedCourses?: string[],
+): Promise<Partial<Record<Metric, AnalysisResult>>> {
+  const results: Partial<Record<Metric, AnalysisResult>> = {};
+  const metrics: Metric[] = isGradeDataset(datasetId)
+    ? getGradeSnapshot(datasetId).hasCompletion
+      ? ["score", "completion_rate"]
+      : ["score"]
+    : ["score", "activity", "completion_rate"];
+  const chosen = requestedCourses?.length ? requestedCourses : studio.course ? [studio.course] : [];
+  const runnable =
+    !studio.focusSummary?.suppressed && !!studio.term && studio.terms.includes(studio.term);
+  for (const metric of metrics) {
+    const startedAt = performance.now();
+    const plan = analysisPlanSchema.parse({
+      version: 1,
+      datasetId,
+      metric,
+      aggregation: metric === "activity" ? "sum" : metric === "completion_rate" ? "rate" : "avg",
+      dimensions: ["course"],
+      chartType: METRICS[metric].defaultChart,
+      filters: [
+        ...(studio.term ? [{ field: "term", op: "eq", value: studio.term }] : []),
+        ...(chosen.length ? [{ field: "course", op: "in", value: chosen }] : []),
+      ],
+    });
+    let prepared: { source: string; aggregate: string };
+    if (runnable) {
+      const source =
+        metric === "score"
+          ? sources.scores
+          : metric === "activity"
+            ? await sources.activity()
+            : await sources.completion();
+      if (!source) continue;
+      prepared = {
+        source: `SELECT * FROM ${source} ${whereClause(plan)} AND ${cohortPredicate()} AND id_student IS NOT NULL`,
+        aggregate:
+          metric === "score"
+            ? "AVG(score)"
+            : metric === "activity"
+              ? "SUM(activity)"
+              : "AVG(completed) * 100",
+      };
+    } else {
+      const original = analysisSource(plan);
+      prepared = {
+        source: `SELECT * FROM (${original.source}) WHERE ${cohortPredicate()}`,
+        aggregate: original.aggregate,
+      };
+    }
+    const { query, metadata } = analysisQueries(plan, prepared);
+    const rows = runnable ? await sql(query) : [];
+    const [scope] = runnable ? await sql(metadata) : [];
+    const terms = scope && Array.isArray(scope.terms) ? scope.terms.map(String) : [];
+    results[metric] = {
+      datasetId,
+      ...importedMetadata(datasetId),
+      dimension: "course",
+      dimensions: ["course"],
+      chartType: plan.chartType,
+      rows: rows.map((row) => ({
+        dimension: String(row.dimension),
+        value: Number(row.value),
+        sampleSize: Number(row.sample_size),
+      })),
+      unit: METRICS[metric].unit,
+      metricLabel: METRICS[metric].label,
+      period: `${analysisPeriod(plan, terms)} · 所选群体：${studio.focusSummary!.label}`,
+      query: queryForDisplay(
+        isGradeDataset(datasetId)
+          ? query.replaceAll(sqlPath(getGradeSnapshot(datasetId).path), "'[私有成绩版本]'")
+          : query,
+      ),
+      durationMs: Math.round(performance.now() - startedAt),
+      minSampleSize: 3,
+      filteredOutGroupCount: studio.focusSummary?.suppressed
+        ? null
+        : scope
+          ? Number(scope.filtered_out_group_count)
+          : 0,
+    };
+  }
+  return results;
+}
+
+/** All eight destinations are reported, including real empty/unsupported states. */
+async function studioCoverage(
+  sql: QueryExecutor,
+  studio: StudioProjectData,
+  requestedCourses?: string[],
+): Promise<ChartCoverage[]> {
+  const suppressed = studio.focusSummary?.suppressed;
+  const validTerm = !!studio.term && studio.terms.includes(studio.term);
+  let panorama = false;
+  let relations = false;
+  if (!suppressed && validTerm) {
+    const preferred = requestedCourses?.length
+      ? requestedCourses
+      : studio.course
+        ? [studio.course]
+        : [];
+    const priority = preferred.length
+      ? `CASE WHEN code_module IN (${preferred.map(quoteLiteral).join(", ")}) THEN 0 ELSE 1 END,`
+      : "";
+    const [counts] = await sql(`WITH eligible AS (
+      SELECT code_module, COUNT(*) AS sample_size FROM all_scores
+      WHERE code_presentation = ${quoteLiteral(studio.term!)} AND ${cohortPredicate()}
+      GROUP BY code_module HAVING COUNT(*) >= 3
+    ), selected AS (
+      SELECT * FROM eligible ORDER BY ${priority} sample_size DESC, code_module ASC LIMIT 12
+    ), scores AS (
+      SELECT s.* FROM all_scores s JOIN selected USING (code_module)
+      WHERE code_presentation = ${quoteLiteral(studio.term!)} AND ${cohortPredicate()}
+    ), pairs AS (
+      SELECT a.code_module, b.code_module FROM scores a JOIN scores b
+        ON a.id_student = b.id_student AND a.code_presentation = b.code_presentation AND a.code_module < b.code_module
+      GROUP BY a.code_module, b.code_module
+      HAVING COUNT(*) >= 3 AND COUNT(*) FILTER (WHERE a.score < 60 AND b.score < 60) >= 3
+    ) SELECT (SELECT COUNT(*) FROM selected) AS courses, (SELECT COUNT(*) FROM pairs) AS pairs`);
+    panorama = Number(counts.courses) > 0;
+    relations = Number(counts.pairs) > 0;
+  }
+  const available: Record<ChartCoverage["scene"], boolean> = {
+    aggregate: Object.values(studio.focusedResults ?? {}).some((result) => result.rows.length > 0),
+    sankey: !!studio.tables.sankey?.rows.length,
+    boxplot: !!studio.tables.boxplot?.rows.length,
+    heatmap: !!studio.tables.heatmap?.rows.length,
+    density: !!studio.tables.density?.rows.length,
+    dumbbell: !!studio.tables.dumbbell?.rows.length,
+    relations,
+    panorama,
+  };
+  const reasons: Record<ChartCoverage["scene"], string> = {
+    aggregate: "当前范围没有达到至少3人的有效指标分组。",
+    sankey:
+      studio.datasetId === "demo"
+        ? "当前群体没有至少3人的完整出勤、作业与成绩路径。"
+        : "此数据源不含出勤与作业完成率原始记录。",
+    boxplot: "当前范围没有至少3人的有效成绩课程。",
+    heatmap: isGradeDataset(studio.datasetId)
+      ? "此成绩数据源不含每周学习活动记录。"
+      : "当前群体没有至少3名有记录学生的课程周次。",
+    density: isGradeDataset(studio.datasetId)
+      ? "此成绩数据源不含行为原始记录。"
+      : "当前群体没有频数至少3的行为与成绩原始分箱。",
+    dumbbell: studio.comparisonTerm
+      ? "两学期没有同一课程在所选群体内均达到至少3人的有效成绩。"
+      : "当前学期之前没有可比较的学期。",
+    relations: "当前学期优先12门课程内，没有两科均低于60分且共同样本至少3人的关联。",
+    panorama: "当前学期优先12门课程内，没有至少3人的有效成绩课程。",
+  };
+  return (Object.keys(available) as ChartCoverage["scene"][]).map((scene) => ({
+    scene,
+    available: !suppressed && available[scene],
+    reason: suppressed
+      ? "所选群体不足3人，已隐藏人数与全部图表。"
+      : !validTerm
+        ? "当前学期不在数据目录中。"
+        : available[scene]
+          ? "所选群体在当前范围有满足隐私门槛的真实数据。"
+          : reasons[scene],
+  }));
+}
+
 export async function chartStudioData(
   datasetId: DataSource,
   term?: string,
@@ -739,9 +1157,11 @@ export async function chartStudioData(
     courses?: string[];
     beforeTerm?: string;
     densityMetric?: StudioRelationshipMetric;
+    focus?: ExplorationFocus;
   } = {},
 ): Promise<StudioProjectData> {
   assertCurrentAccess(datasetId);
+  const focus = selection.focus ? explorationFocusSchema.parse(selection.focus) : undefined;
   if (!validateFiles(datasetId))
     throw new QueryExecutionError("DATA_SOURCE_UNAVAILABLE", "数据源不可用，请检查本地数据文件。");
   const literal = (value: string) => `'${value.replaceAll("'", "''")}'`;
@@ -749,14 +1169,17 @@ export async function chartStudioData(
     rows: Record<string, unknown>[],
     columns: string[],
     description: string,
+    meta: StudioTable["meta"] = {},
   ): StudioTable => ({
     columns,
     rows: rows as StudioRow[],
     description,
+    meta: { project: true, ...meta },
   });
   return withBoundedQueryConnection(
     async (sql) => {
       await sql(`CREATE TEMP TABLE all_scores AS ${studentScoreSource(datasetId)}`);
+      const sources = explorationSources(sql, datasetId, "all_scores");
       const termRows = await sql(`SELECT DISTINCT code_presentation FROM all_scores
       GROUP BY code_module, code_presentation HAVING COUNT(*) >= 3 ORDER BY code_presentation DESC`);
       const terms = termRows.map((row) => String(row.code_presentation));
@@ -770,7 +1193,22 @@ export async function chartStudioData(
         courses: [],
         tables: {},
       };
-      if (!activeTerm || !terms.includes(activeTerm)) return result;
+      if (focus) result.focusSummary = await createFocusCohort(sql, focus, sources);
+      const focused = focus ? ` AND ${cohortPredicate()}` : "";
+      const finish = async () => {
+        if (focus) {
+          result.focusedResults = await focusedStudioResults(
+            sql,
+            datasetId,
+            result,
+            sources,
+            selection.courses,
+          );
+          result.coverage = await studioCoverage(sql, result, selection.courses);
+        }
+        return result;
+      };
+      if (!activeTerm || !terms.includes(activeTerm)) return finish();
       const whereTerm = `code_presentation = ${literal(activeTerm)}`;
       const chosen = selection.courses?.length ? selection.courses : course ? [course] : [];
       const whereCourse = chosen.length
@@ -779,8 +1217,9 @@ export async function chartStudioData(
       const courses = await sql(`SELECT code_module FROM all_scores WHERE ${whereTerm}
       GROUP BY code_module HAVING COUNT(*) >= 3 ORDER BY code_module ASC`);
       result.courses = courses.map((row) => String(row.code_module));
+      if (result.focusSummary?.suppressed) return finish();
       await sql(`CREATE TEMP TABLE studio_scores AS SELECT * FROM all_scores
-      WHERE ${whereTerm}${whereCourse}`);
+      WHERE ${whereTerm}${whereCourse}${focused}`);
       const box = await sql(`SELECT code_module AS "课程", MIN(score) AS "最小值",
       QUANTILE_CONT(score, 0.25) AS "下四分位数", MEDIAN(score) AS "中位数",
       QUANTILE_CONT(score, 0.75) AS "上四分位数", MAX(score) AS "最大值", COUNT(*) AS "样本数"
@@ -793,10 +1232,11 @@ export async function chartStudioData(
       const index = terms.indexOf(activeTerm);
       const previous = selection.beforeTerm ?? terms[index + 1];
       if (previous && !terms.includes(previous)) throw new Error("对比学期不在当前数据中。");
+      result.comparisonTerm = previous ?? null;
       const comparison = previous
         ? await sql(`
       WITH before AS (SELECT code_module, AVG(score) AS mean, COUNT(*) AS n FROM all_scores
-        WHERE code_presentation = ${literal(previous)}${whereCourse} GROUP BY code_module HAVING COUNT(*) >= 3),
+        WHERE code_presentation = ${literal(previous)}${whereCourse}${focused} GROUP BY code_module HAVING COUNT(*) >= 3),
       after AS (SELECT code_module, AVG(score) AS mean, COUNT(*) AS n FROM studio_scores
         GROUP BY code_module HAVING COUNT(*) >= 3)
       SELECT code_module AS "课程", ROUND(b.mean, 2) AS "前期均分", ROUND(a.mean, 2) AS "后期均分",
@@ -809,19 +1249,14 @@ export async function chartStudioData(
         previous
           ? `${previous} → ${activeTerm} · 两学期各自选课样本的课程均分比较，不等同于同一批学生的个人进步。`
           : "当前学期之前没有可比较的学期，可导入自己的前后对比数据。",
+        { beforeTerm: previous, afterTerm: activeTerm },
       );
 
-      if (isGradeDataset(datasetId)) return result;
+      if (isGradeDataset(datasetId)) return finish();
 
-      const activitySource =
-        datasetId === "demo"
-          ? `SELECT code_module, code_presentation, id_student, TRY_CAST(week AS INTEGER) AS week,
-           SUM(TRY_CAST(activity_count AS DOUBLE)) AS activity
-         FROM ${csv(DEMO_ACTIVITY)} WHERE TRY_CAST(activity_count AS DOUBLE) >= 0 GROUP BY ALL`
-          : `SELECT code_module, code_presentation, id_student, FLOOR(TRY_CAST(date AS DOUBLE) / 7)::INTEGER + 1 AS week,
-           SUM(TRY_CAST(sum_click AS DOUBLE)) AS activity
-         FROM ${csv(OULAD.studentVle)} WHERE TRY_CAST(sum_click AS DOUBLE) >= 0 GROUP BY ALL`;
-      await sql(`CREATE TEMP TABLE studio_activity AS ${activitySource}`);
+      const activitySource = await sources.activity();
+      await sql(`CREATE TEMP VIEW studio_activity AS SELECT * FROM ${activitySource}
+        WHERE ${focus ? cohortPredicate() : "TRUE"}`);
       const rhythm = await sql(`SELECT week AS "周次", code_module AS "课程",
         ROUND(AVG(activity), 2) AS "人均访问次数", COUNT(DISTINCT id_student) AS "当周有记录人数"
       FROM studio_activity WHERE ${whereTerm}${whereCourse} AND week IS NOT NULL AND id_student IS NOT NULL
@@ -832,17 +1267,9 @@ export async function chartStudioData(
         `${activeTerm} · 按学生-课程-周汇总访问次数，再计算当周有记录学生的人均值；缺失组合留空，不当作零。`,
       );
       if (datasetId === "demo") {
-        await sql(`CREATE TEMP TABLE studio_attributes AS
-        SELECT code_module, code_presentation, id_student,
-          AVG(CASE WHEN TRY_CAST(attendance_rate AS DOUBLE) BETWEEN 0 AND 100 THEN TRY_CAST(attendance_rate AS DOUBLE) END) AS attendance,
-          AVG(CASE WHEN TRY_CAST(homework_completion_rate AS DOUBLE) BETWEEN 0 AND 100 THEN TRY_CAST(homework_completion_rate AS DOUBLE) END) AS homework,
-          AVG(CASE WHEN TRY_CAST(absent_sessions AS DOUBLE) BETWEEN 0 AND TRY_CAST(scheduled_sessions AS DOUBLE)
-            AND TRY_CAST(excused_sessions AS DOUBLE) BETWEEN 0 AND TRY_CAST(scheduled_sessions AS DOUBLE)
-            AND TRY_CAST(absent_sessions AS DOUBLE) + TRY_CAST(excused_sessions AS DOUBLE) <= TRY_CAST(scheduled_sessions AS DOUBLE)
-            THEN TRY_CAST(absent_sessions AS DOUBLE) + TRY_CAST(excused_sessions AS DOUBLE) END) AS absence,
-          AVG(CASE WHEN TRY_CAST(absent_sessions AS DOUBLE) BETWEEN 0 AND TRY_CAST(scheduled_sessions AS DOUBLE)
-            THEN TRY_CAST(absent_sessions AS DOUBLE) END) AS unexcused
-        FROM ${csv(DEMO_OUTCOMES)} WHERE ${whereTerm}${whereCourse} GROUP BY ALL`);
+        const attributeSource = await sources.attributes();
+        await sql(`CREATE TEMP VIEW studio_attributes AS SELECT * FROM ${attributeSource}
+          WHERE ${whereTerm}${whereCourse}${focused}`);
         const paths = await sql(`SELECT
           CASE WHEN attendance < 80 THEN '出勤低于80%' WHEN attendance < 95 THEN '出勤80–95%' ELSE '出勤至少95%' END AS "出勤档位",
           CASE WHEN homework < 60 THEN '作业完成低于60%' WHEN homework < 90 THEN '作业完成60–90%' ELSE '作业完成至少90%' END AS "作业档位",
@@ -864,6 +1291,7 @@ export async function chartStudioData(
           density,
           ["出勤率区间中心", "成绩区间中心", "频数"],
           `${activeTerm} · 按出勤率 10 个百分点、成绩 5 分聚合；坐标为区间中心，频数少于 3 人不展示。`,
+          { density: { metric: "attendance", xWidth: 10, yWidth: 5 } },
         );
       }
       if (
@@ -894,9 +1322,10 @@ export async function chartStudioData(
           density,
           ["活动量区间中心", "成绩区间中心", "频数"],
           `${activeTerm} · 活动量按 100 次、成绩按 5 分汇总，频数少于 3 人不展示；${datasetId === "oulad" ? "OULAD 不含校园出勤和作业完成率。" : "演示数据，活动量与成绩不代表因果关系。"}`,
+          { density: { metric: "activity", xWidth: 100, yWidth: 5 } },
         );
       }
-      return result;
+      return finish();
     },
     { ...API_QUERY_LIMITS.analysis, maxResultRows: 2500 },
     options,

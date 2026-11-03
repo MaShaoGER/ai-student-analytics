@@ -1,6 +1,6 @@
 # 玻璃表面纹理落实规格：点阵微透镜
 
-2026-10-22。用户确认以「点阵微透镜（halftone microlens）」作为全站表面纹理语言，并要求在后续对话中落实到整个项目。本文是可执行的规格；配套的[新对话提示词](glass-texture-build-prompt.md)用于启动实施。
+2026-10-22。用户确认以「点阵微透镜（halftone microlens）」作为全站表面纹理语言。本文保留当时规格及文末实施记录；原[新对话提示词](archive/prompts/glass-texture-build-prompt.md)已归档，不能根据旧行号直接重跑实施。
 
 视觉基准是 `public/previews/motion-refine.html` 第 06 节「界面仿真」视图（可交互调参）。实现完成后该预览页可作为验收对照。
 

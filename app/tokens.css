@@ -1,58 +1,73 @@
-/* Single source of colour, material and type tokens for the workspace and the
-   sign-in screen (direction A, route 1, confirmed 2026-10-29). Component and
-   layout files only read these names; they never declare palette values.
+/* Shared visual contract: one warm-white open canvas, black/grey type and a
+   lavender accent used sparingly for the current selection and focus. Chart
+   categories and status colours keep their own meaning; components consume
+   these tokens instead of inventing palettes. Interface shapes are square:
+   every radius token resolves to 0. Glass belongs to floating surfaces only —
+   reading surfaces stay flat and are separated by hairlines and whitespace. */
+:root {
+  --exploration-background: #f5f5f2;
+}
+/* The document canvas is exposed during elastic scrolling. Match the fixed-light
+   exploration surface without changing the user's theme in other workspaces. */
+:root:has(.glass-workspace[data-exploration="true"]),
+:root:has(.glass-workspace[data-exploration="true"]) body {
+  background-color: var(--exploration-background);
+}
 
-   One flat world lit by a soft light field: frosted glass on the frame (top bar,
-   sidebar, menus), a diffused veil on the reading surface, hairlines inside it.
-   Neutral marks, one vermilion accent for selection and the focused value. */
 .glass-workspace {
   --font-sans: -apple-system, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
   --font-serif: "Songti SC", "STSong", "Noto Serif SC", "Source Han Serif SC", serif;
   --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+  --font-weight-body: 400;
+  --font-weight-title: 450;
+  --font-weight-bold: 600;
 
-  --corner-radius: 10px;
-  --panel-radius: 16px;
-  --glass-radius: 16px;
+  /* Square interface shapes: containers, controls, menus and dialogs. */
+  --corner-radius: 0px;
+  --panel-radius: 0px;
+  --glass-radius: 0px;
+  --ui-control-radius: 0px;
+  --ui-panel-radius: 0px;
+  --ui-segment-radius: 0px;
 
-  /* Ground and reading surfaces */
-  --background: #e9e7e1;
-  --paper: #f4f2ed;
-  --surface: #f1efe9;
-  --surface-inset: #e9e7e0;
-  --surface-raised: #fbfaf7;
-  --control-group: #e7e5de;
+  --background: var(--exploration-background);
+  --paper: #f5f5f2;
+  --surface: #f5f5f2;
+  --surface-inset: #ecece7;
+  --surface-raised: #fbfbf8;
+  --control-group: #ecece7;
 
-  /* Ink */
-  --ink: #1b1d1e;
-  --muted: #5f6264;
-  --muted-on-sage: #54585a;
-  --faint: #8f9295;
-  --line: #1b1d1e1a;
-  --line-strong: #1b1d1e38;
+  --ink: #232329;
+  --muted: #6b6b76;
+  --muted-on-sage: #55555f;
+  --faint: #6b6b76;
+  --line: #24243615;
+  --line-strong: #24243638;
 
-  /* Accent: selection, focus and the single highlighted value */
-  --accent: #d24619;
-  --accent-ink: #a8380f;
-  --accent-soft: #d246191a;
-  --button-ink: #fbfaf7;
+  --accent: #7666cc;
+  --accent-ink: #57489f;
+  --accent-light: #dcd6ee;
+  --accent-transparent: rgba(118, 102, 204, 0.15);
+  --accent-soft: #e6e1f4;
+  --button-ink: #ffffff;
   --teal: var(--accent);
   --teal-dark: var(--accent-ink);
   --teal-soft: var(--accent-soft);
-  --sage: #b9b5ab;
-  --sage-surface: #e4e1d9;
-  --sage-soft: #ebe8e1;
+  --sage: #94a3b8;
+  --sage-surface: #ecece7;
+  --sage-soft: #f0f0ec;
   --live: #2f8a5b;
 
-  /* Metric marks stay neutral; hue differences only separate the three units */
-  --score: #2b2e30;
-  --score-soft: #e6e3dc;
-  --score-bar: #c4c0b6;
-  --activity: #4a3f35;
-  --activity-soft: #ebe5dc;
-  --activity-bar: #c9bfb1;
-  --completion: #2f3a3d;
-  --completion-soft: #e1e5e4;
-  --completion-bar: #b9c2c1;
+  /* Data-encoding colours keep their established meaning. */
+  --score: #4f6956;
+  --score-soft: #edf3ee;
+  --score-bar: #7c9580;
+  --activity: #455b75;
+  --activity-soft: #edf2f8;
+  --activity-bar: #8ba2be;
+  --completion: #42676a;
+  --completion-soft: #edf5f5;
+  --completion-bar: #83a7aa;
 
   --instrument-bg: transparent;
   --instrument-ink: var(--ink);
@@ -61,7 +76,7 @@
   --instrument-raised: var(--surface-raised);
   --instrument-line: var(--line);
   --instrument-soft: var(--accent-soft);
-  --instrument-grid: #1b1d1e14;
+  --instrument-grid: #24243614;
   --instrument-tooltip: var(--surface-raised);
   --instrument-tooltip-line: var(--line-strong);
 
@@ -69,7 +84,7 @@
   --chart-secondary: var(--score-bar);
   --chart-text: var(--ink);
   --chart-muted: var(--muted);
-  --chart-grid: #1b1d1e14;
+  --chart-grid: #24243614;
   --chart-tooltip-bg: var(--surface-raised);
   --chart-tooltip-border: var(--line-strong);
 
@@ -77,98 +92,173 @@
   --warning: #825623;
   --success: #2f6b4a;
 
-  /* Frame material: regular frosted glass, a hairline and one top highlight */
-  --glass-fill: #f4f2ed9e;
-  --glass-fill-dim: #eeece694;
-  --glass-fill-dense: #f7f5f0d9;
-  --glass-border: #1b1d1e1a;
-  --glass-rim: #ffffffa6;
-  --glass-shadow: inset 0 1px 0 #ffffffa6;
-  --glass-blur: blur(24px) saturate(160%);
+  /* Material belongs to floating surfaces (menus, drawers, dialogs), never to
+     the reading canvas. */
+  --glass-fill: linear-gradient(125deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.3));
+  --glass-fill-dim: rgba(255, 255, 255, 0.55);
+  --glass-fill-dense: linear-gradient(125deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.72));
+  --glass-border: rgba(118, 102, 204, 0.2);
+  --glass-rim: rgba(118, 102, 204, 0.2);
+  --glass-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.8);
+  --glass-blur: blur(15px);
+  --glass-inner-glow: inset 0 1px 2px rgba(255, 255, 255, 0.8);
   --glass-relief: none;
 
-  /* Reading surface: heavily diffused veil, the light field arrives as a tint */
-  --surface-veil: color-mix(in srgb, var(--paper) 78%, transparent);
-  --surface-sheen: #ffffffb8;
-  --surface-glint: #ff7a4a14;
-  --surface-blur: blur(56px) saturate(150%);
-  --surface-shadow: 0 0 0 1px #1b1d1e0f, 0 1px 2px #1b1d1e0d, 0 12px 32px #1b1d1e0f;
+  --surface-veil: var(--paper);
+  --surface-sheen: transparent;
+  --surface-glint: rgba(118, 102, 204, 0.08);
+  --surface-blur: none;
+  --surface-shadow: 0 1px 2px #24243612;
 
-  /* Light field behind everything */
-  --field-ground: #e9e7e1;
-  --field-warm: #ff7a4a2e;
-  --field-cool: #8fa3b847;
-  --field-light: #ffffffb3;
-  --field-grain: 0.22;
+  --field-ground: #f5f5f2;
+  --field-warm: #f0ebf814;
+  --field-cool: #7666cc12;
+  --field-light: #7666cc0a;
+  --field-grain: 0;
 
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-focus: 200ms ease-out;
+  --focus-ring: 2px solid var(--accent);
+  --focus-glow: 0 0 0 3px var(--accent-transparent);
+  --edge-fade-blur: 4px;
+  --edge-fade-size: 60%;
+
+  color-scheme: light;
   font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
 }
-:root[data-theme="dark"] .glass-workspace {
-  --background: #08090a;
-  --paper: #0f1214;
-  --surface: #121517;
-  --surface-inset: #0b0d0f;
-  --surface-raised: #171b1e;
-  --control-group: #0c0e10;
+/* Dark workspaces keep their existing palette until the dark theme ships. */
+:root[data-theme="dark"] .glass-workspace:not([data-exploration="true"]) {
+  --background: #0b1220;
+  --paper: #101a2b;
+  --surface: #101a2b;
+  --surface-inset: #152238;
+  --surface-raised: #19273d;
+  --control-group: #152238;
 
-  --ink: #ecebe6;
-  --muted: #9c9fa1;
-  --muted-on-sage: #a8abad;
-  --faint: #686d70;
-  --line: #ecebe617;
-  --line-strong: #ecebe633;
+  --ink: #edf2fb;
+  --muted: #a3b1c8;
+  --muted-on-sage: #a3b1c8;
+  --faint: #a3b1c8;
+  --line: #2b3b53;
+  --line-strong: #617797;
 
-  --accent: #ff6b3d;
-  --accent-ink: #ff9a78;
-  --accent-soft: #ff6b3d24;
-  --button-ink: #0f1214;
-  --sage: #4b5155;
-  --sage-surface: #1c2124;
-  --sage-soft: #171b1e;
+  --accent: #8ab4ff;
+  --accent-ink: #b5cfff;
+  --accent-light: #203a60;
+  --accent-transparent: rgba(138, 180, 255, 0.15);
+  --accent-soft: #203a60;
+  --button-ink: #0b1220;
+  --sage: #617797;
+  --sage-surface: #19273d;
+  --sage-soft: #152238;
   --live: #6fcf97;
 
-  --score: #e4e3de;
-  --score-soft: #1c2023;
-  --score-bar: #3b4145;
-  --activity: #e6d9c9;
-  --activity-soft: #221e1a;
-  --activity-bar: #4a433c;
-  --completion: #d5dfde;
-  --completion-soft: #1a2021;
-  --completion-bar: #3c4648;
+  --score: #bdd5c4;
+  --score-soft: #182d26;
+  --score-bar: #83a98f;
+  --activity: #c3d5ee;
+  --activity-soft: #192b43;
+  --activity-bar: #8ba9cd;
+  --completion: #bddbdb;
+  --completion-soft: #173136;
+  --completion-bar: #84b5b8;
 
-  --instrument-grid: #ecebe612;
-  --chart-grid: #ecebe612;
-
+  --instrument-grid: #edf2fb14;
+  --chart-grid: #edf2fb14;
   --danger: #ffab9f;
   --warning: #f3c689;
   --success: #8fd6ad;
 
-  --glass-fill: #121517a3;
-  --glass-fill-dim: #0e1012b3;
-  --glass-fill-dense: #15191ce0;
-  --glass-border: #ecebe617;
-  --glass-rim: #ffffff14;
+  --glass-fill: #101a2bed;
+  --glass-fill-dim: #101a2bed;
+  --glass-fill-dense: #19273dfa;
+  --glass-border: var(--line);
+  --glass-rim: #edf2fb12;
   --glass-shadow: inset 0 1px 0 #ffffff14;
+  --glass-relief: none;
+  --surface-veil: var(--paper);
+  --surface-sheen: transparent;
+  --surface-glint: #8ab4ff08;
+  --surface-blur: none;
+  --surface-shadow: 0 1px 3px #0000001a;
 
-  --surface-veil: color-mix(in srgb, var(--paper) 80%, transparent);
-  --surface-sheen: #ffffff12;
-  --surface-glint: #ff6b3d12;
-  --surface-shadow: 0 0 0 1px #ffffff0f, 0 16px 40px #0000004d;
-
-  --field-ground: #08090a;
-  --field-warm: #ff6b3d3d;
-  --field-cool: #4f6a8a4d;
-  --field-light: #c9d3dc14;
-  --field-grain: 0.1;
+  --field-ground: #0b1220;
+  --field-warm: #06b6d40d;
+  --field-cool: #7c3aed12;
+  --field-light: #2563eb0d;
+  color-scheme: dark;
 }
+
+/* The exploration canvas keeps the warm-white light contract in both themes,
+   as it did before: the light tokens above already apply, the dark block skips
+   this surface. */
+:root[data-theme="dark"] .glass-workspace[data-exploration="true"] {
+  color-scheme: light;
+}
+
 @media (prefers-reduced-transparency: reduce) {
-  .glass-workspace {
+  .glass-workspace,
+  :root[data-theme="dark"] .glass-workspace:not([data-exploration="true"]) {
     --glass-fill: var(--surface-raised);
     --glass-fill-dim: var(--surface-raised);
     --glass-fill-dense: var(--surface-raised);
+    --glass-shadow: 0 0 #0000;
+    --glass-relief: none;
+    --glass-blur: none;
     --surface-veil: var(--paper);
+    --surface-blur: none;
+    --surface-glint: transparent;
+  }
+}
+
+/* No backdrop-filter: floating surfaces fall back to a solid raised fill so
+   menus and drawers stay legible. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-workspace,
+  :root[data-theme="dark"] .glass-workspace:not([data-exploration="true"]) {
+    --glass-fill: var(--surface-raised);
+    --glass-fill-dim: var(--surface-raised);
+    --glass-fill-dense: var(--surface-raised);
     --glass-blur: none;
     --surface-blur: none;
+  }
+}
+
+/* Print: solid paper, no frost or glow, readable hairlines. */
+@media print {
+  .glass-workspace,
+  :root[data-theme="dark"] .glass-workspace:not([data-exploration="true"]) {
+    --background: #ffffff;
+    --paper: #ffffff;
+    --surface: #ffffff;
+    --surface-inset: #f2f2ef;
+    --surface-raised: #ffffff;
+    --ink: #1a1a1f;
+    --muted: #55555f;
+    --faint: #55555f;
+    --line: #b8b8b0;
+    --line-strong: #8a8a94;
+    --glass-fill: #ffffff;
+    --glass-fill-dim: #ffffff;
+    --glass-fill-dense: #ffffff;
+    --glass-shadow: 0 0 #0000;
+    --glass-relief: none;
+    --glass-blur: none;
+    --surface-shadow: none;
+    --surface-glint: transparent;
+    background: #ffffff;
+    color: #1a1a1f;
+  }
+  .glass-workspace *,
+  .glass-workspace *::before,
+  .glass-workspace *::after {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    animation: none !important;
+    transition: none !important;
   }
 }

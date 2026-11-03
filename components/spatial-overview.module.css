@@ -1,0 +1,366 @@
+/* Spatial overview: one real perspective space. A single camera (perspective on
+   .stage, rotation + dolly on .space) looks obliquely down on large translucent
+   chart planes. Planes live at their own translateZ, so depth, occlusion and
+   parallax are geometric, not faked per-card tilts. */
+
+.overview {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 60% at 62% 52%, rgba(255, 255, 255, 0.9), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 80% 20%, rgba(118, 102, 204, 0.08), transparent 70%),
+    #f2f2ee;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+.overview::backdrop {
+  background: rgba(245, 245, 242, 0.6);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+.overview *,
+.overview *::before,
+.overview *::after { border-radius: 0; }
+
+/* Progressive edge blur over the whole space: crisp centre, softened rim. */
+.fog {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  -webkit-mask-image: radial-gradient(ellipse 70% 64% at 62% 56%, transparent 62%, #000 100%);
+  mask-image: radial-gradient(ellipse 70% 64% at 62% 56%, transparent 62%, #000 100%);
+}
+
+.head {
+  position: absolute;
+  top: clamp(72px, 13vh, 140px);
+  left: clamp(20px, 4.5vw, 64px);
+  z-index: 5;
+  max-width: 380px;
+}
+.eyebrow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+}
+.eyebrow::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+}
+.title {
+  margin: 0;
+  font-size: clamp(36px, 4.4vw, 60px);
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+}
+.title span {
+  display: block;
+  font-family: var(--font-serif, serif);
+  font-weight: 400;
+}
+.lede {
+  margin: 20px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.9;
+}
+.link {
+  margin-top: 16px;
+  padding: 6px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.link:hover { border-color: var(--accent); color: var(--accent-ink); }
+
+.close {
+  position: absolute;
+  top: 28px;
+  right: clamp(16px, 3vw, 48px);
+  z-index: 6;
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.7);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.close:hover { color: var(--accent-ink); border-color: var(--accent); }
+
+/* Camera. */
+.stage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  perspective: 1500px;
+  perspective-origin: 62% 30%;
+}
+.space {
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+  position: absolute;
+  top: 56%;
+  left: 63%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+  /* Oblique, slightly top-down view, pulled back. Scale precedes translate so the
+     (opposite-world) camera offset is scaled with the world and the focus lands exactly on centre. */
+  transform:
+    rotateX(calc(14deg + var(--tilt-x)))
+    rotateY(calc(-30deg + var(--tilt-y)))
+    scale(0.72)
+    translate3d(var(--cam-x), 0, var(--cam-z));
+  transition: transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.space:not([data-arrived]) {
+  transform:
+    rotateX(22deg)
+    rotateY(-38deg)
+    scale(0.72)
+    translate3d(var(--cam-x), 60px, calc(var(--cam-z) - 360px));
+}
+.world {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+/* A plane is a large translucent coordinate sheet. */
+.plane {
+  isolation: isolate;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 560px;
+  height: 400px;
+  margin: -200px 0 0 -280px;
+  transform: translate3d(var(--x), 0, var(--z));
+  transform-style: preserve-3d;
+  transition: opacity 360ms ease, filter 360ms ease;
+  opacity: max(0.4, calc(1 - var(--dist) * 0.14));
+  filter: blur(min(3px, calc(var(--dist) * 0.8px))) saturate(max(0.55, calc(1 - var(--dist) * 0.15)));
+  pointer-events: none;
+  z-index: var(--k);
+}
+.face { pointer-events: auto; }
+/* The current camera focus is the sole plane raised above the shared stack. */
+.plane[data-focused] { z-index: 1000; }
+.plane[data-focused] { opacity: 1; filter: none; }
+
+.face {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 26px 30px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.66), rgba(255, 255, 255, 0.28)),
+    repeating-linear-gradient(0deg, transparent 0 39px, rgba(36, 36, 54, 0.05) 39px 40px),
+    repeating-linear-gradient(90deg, transparent 0 39px, rgba(36, 36, 54, 0.05) 39px 40px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(118, 102, 204, 0.22),
+    0 40px 80px -30px rgba(40, 36, 70, 0.25);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  /* Stop the global pointer :active scale and transition from fighting 3D transforms. */
+  transform: none !important;
+  transition: border-color 300ms ease, box-shadow 500ms ease !important;
+}
+/* Prismatic hairline along the top edge. */
+.face::before {
+  content: "";
+  position: absolute;
+  inset: -1px -1px auto;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 170, 210, 0.7), rgba(150, 200, 255, 0.7), rgba(118, 102, 204, 0.8), transparent);
+  opacity: 0.5;
+}
+.plane[data-focused] .face {
+  border-color: rgba(118, 102, 204, 0.6);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.6)),
+    repeating-linear-gradient(0deg, transparent 0 39px, rgba(36, 36, 54, 0.06) 39px 40px),
+    repeating-linear-gradient(90deg, transparent 0 39px, rgba(36, 36, 54, 0.06) 39px 40px);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    inset 0 -1px 0 rgba(118, 102, 204, 0.4),
+    0 0 0 1px rgba(118, 102, 204, 0.15),
+    0 0 60px rgba(118, 102, 204, 0.22),
+    0 50px 90px -30px rgba(40, 36, 70, 0.32);
+}
+.plane[data-focused] .face::before { opacity: 1; }
+.face:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; }
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+}
+.planeTitle {
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+.planeCentre { color: var(--muted); font-size: 12px; letter-spacing: 0.06em; }
+.chart {
+  display: flex;
+  align-items: flex-end;
+  min-height: 0;
+  padding-top: 10px;
+  pointer-events: none;
+}
+.chart > * { width: 100%; max-height: 100%; }
+.wait { color: var(--muted); font-size: 13px; }
+.here {
+  position: absolute;
+  top: -12px;
+  right: 24px;
+  padding: 4px 10px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  box-shadow: 0 0 20px rgba(118, 102, 204, 0.5);
+}
+
+/* Bottom dock. */
+.dock {
+  position: absolute;
+  bottom: clamp(56px, 9vh, 92px);
+  left: 50%;
+  z-index: 6;
+  display: flex;
+  gap: 4px;
+  align-items: stretch;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: linear-gradient(125deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.5));
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  box-shadow: inset 0 1px 1px #fff, inset 0 -1px 2px rgba(118, 102, 204, 0.2), 0 12px 40px rgba(0, 0, 0, 0.08);
+  transform: translateX(-50%);
+}
+.dock button {
+  padding: 10px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.dock button:hover:not(:disabled) { color: var(--accent-ink); }
+.dock button:disabled { color: var(--muted); opacity: 0.5; cursor: default; }
+.dock button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dock .enter { background: var(--ink); color: #fff; }
+.dock .enter:hover { background: var(--accent-ink); color: #fff; }
+.dock p {
+  display: grid;
+  gap: 2px;
+  min-width: 200px;
+  margin: 0;
+  padding: 4px 18px;
+  border-inline: 1px solid var(--line);
+  font-size: 13px;
+}
+.dock p strong { overflow: hidden; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+.dock p span { color: var(--muted); font-size: 11px; }
+.keys {
+  position: absolute;
+  bottom: clamp(24px, 4vh, 44px);
+  left: 50%;
+  z-index: 6;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+/* Arrival choreography. */
+.overview[data-motion="on"][open] { animation: overviewIn 320ms cubic-bezier(0.16, 1, 0.3, 1); }
+.overview[data-motion="on"] .head > * { animation: rise 320ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.overview[data-motion="on"] .head > :nth-child(2) { animation-delay: 30ms; }
+.overview[data-motion="on"] .head > :nth-child(3) { animation-delay: 60ms; }
+.overview[data-motion="on"] .head > :nth-child(4) { animation-delay: 80ms; }
+/* --order is a small sequence index (never the z-stack --k); capped so the last plane lands by ~420ms. */
+.overview[data-motion="on"] .plane .face { animation: planeIn 300ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(min(var(--order, 0), 6) * 20ms + 40ms); }
+.overview[data-motion="on"] .dock,
+.overview[data-motion="on"] .keys { animation: rise 300ms cubic-bezier(0.16, 1, 0.3, 1) 100ms both; }
+@keyframes overviewIn { from { opacity: 0; filter: blur(6px); } }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); filter: blur(4px); } }
+@keyframes planeIn { from { opacity: 0; filter: blur(5px); } }
+.dock { animation-name: none; }
+.overview[data-motion="on"] .dock { animation-name: dockIn; }
+@keyframes dockIn { from { opacity: 0; transform: translate(-50%, 8px); filter: blur(4px); } }
+/* Exit: DS keeps the dialog mounted for 240ms with data-phase="closing". */
+.overview[data-motion="on"][data-phase="closing"] { animation: overviewOut 240ms cubic-bezier(0.4, 0, 1, 1) forwards; pointer-events: none; }
+.overview[data-motion="on"][data-phase="closing"]::backdrop { opacity: 0; transition: opacity 240ms ease-in; }
+@keyframes overviewOut { to { opacity: 0; filter: blur(6px); transform: scale(0.985); } }
+
+.overview[data-motion="off"] *,
+.overview[data-motion="off"] { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .overview, .overview * { animation: none !important; transition: none !important; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .fog { display: none; }
+  .dock, .close { background: var(--surface-raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .face { background: rgba(255, 255, 255, 0.94); }
+}
+
+@media (max-width: 900px) {
+  .head { top: 72px; max-width: none; right: 20px; }
+  .title { font-size: 32px; }
+  .lede { display: none; }
+  .stage { perspective: 1100px; perspective-origin: 50% 46%; }
+  .space { top: 52%; left: 50%; transform: rotateX(14deg) rotateY(-24deg) scale(0.5) translate3d(var(--cam-x), 0, var(--cam-z)); }
+  .space:not([data-arrived]) { transform: rotateX(22deg) rotateY(-32deg) scale(0.5) translate3d(var(--cam-x), 40px, calc(var(--cam-z) - 260px)); }
+  .dock { left: 12px; right: 12px; flex-wrap: wrap; transform: none; }
+  .overview[data-motion="on"] .dock { animation-name: rise; }
+  .dock p { flex: 1 1 100%; order: -1; min-width: 0; border: 0; border-bottom: 1px solid var(--line); }
+  .dock button { flex: 1; padding: 10px 8px; }
+  .keys { display: none; }
+}
+
+@media print { .overview { display: none; } }

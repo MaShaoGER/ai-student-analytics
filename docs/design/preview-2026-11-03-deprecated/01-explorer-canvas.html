@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学析台 - 数据浏览（新风格预览）</title>
+  <style>
+    :root {
+      --bg: #f5f5f2;
+      --ink: #232329;
+      --muted: #8a8a94;
+      --accent: #7666cc;
+      --accent-light: #dcd6ee;
+      --accent-transparent: rgba(118, 102, 204, 0.15);
+      --line: rgba(36, 36, 54, 0.08);
+      --line-strong: rgba(36, 36, 54, 0.15);
+      --glass-fill: linear-gradient(125deg, rgba(255,255,255,0.8), rgba(255,255,255,0.3));
+      --glass-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 40px clamp(20px, 5vw, 80px) 80px;
+    }
+
+    /* 页面头部 - 开放式，无背景卡片 */
+    .header {
+      margin-bottom: 60px;
+      position: relative;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+
+    .logo {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      color: var(--ink);
+    }
+
+    .logo-mark {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, rgba(118, 102, 204, 0.2), rgba(118, 102, 204, 0.05));
+      border: 1px solid rgba(118, 102, 204, 0.3);
+      border-radius: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .title {
+      font-size: clamp(28px, 5vw, 42px);
+      font-weight: 450;
+      letter-spacing: -0.02em;
+      margin: 0 0 12px;
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    /* 操作区 - 玻璃浮层 */
+    .controls-glass {
+      display: inline-flex;
+      gap: 20px;
+      padding: 14px 22px;
+      background: var(--glass-fill);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 999px;
+      box-shadow: var(--glass-shadow), inset 0 1px 2px rgba(255,255,255,0.8);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .controls-glass label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+    }
+
+    .controls-glass select {
+      border: none;
+      background: rgba(255, 255, 255, 0.5);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font: inherit;
+      color: var(--ink);
+      cursor: pointer;
+      min-width: 140px;
+    }
+
+    .controls-glass select:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    /* 内容区 - 两列布局，细线分隔 */
+    .content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      margin-bottom: 80px;
+    }
+
+    .section {
+      min-width: 0;
+    }
+
+    .section-label {
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 500;
+      margin: 0 0 8px;
+      letter-spacing: -0.01em;
+    }
+
+    .section-desc {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0 0 24px;
+      line-height: 1.8;
+    }
+
+    /* 图表容器 - 开放式，边缘虚化效果 */
+    .chart-container {
+      position: relative;
+      min-height: 320px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(245,245,245,0.4) 100%);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 32px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .chart-container::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 30%, rgba(118, 102, 204, 0.03) 100%);
+      pointer-events: none;
+    }
+
+    .chart-container::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      -webkit-mask-image: radial-gradient(ellipse at center 40%, #000 20%, transparent 80%);
+      mask-image: radial-gradient(ellipse at center 40%, #000 20%, transparent 80%);
+      background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.02));
+      -webkit-backdrop-filter: blur(2px);
+      backdrop-filter: blur(2px);
+      pointer-events: none;
+    }
+
+    .chart-placeholder {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .chart-placeholder-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 12px;
+      background: linear-gradient(135deg, rgba(118, 102, 204, 0.1), rgba(118, 102, 204, 0.05));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    /* 图例与注释 */
+    .legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-swatch {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .legend-swatch.primary {
+      background: var(--accent);
+    }
+
+    .legend-swatch.secondary {
+      background: var(--accent-light);
+    }
+
+    .caption {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 12px;
+      line-height: 1.8;
+    }
+
+    /* 右下角信息与 AI 入口 */
+    .bottom-info {
+      position: fixed;
+      bottom: 32px;
+      left: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      max-width: 200px;
+    }
+
+    .bottom-info p {
+      margin: 0;
+      line-height: 1.6;
+    }
+
+    /* AI 入口 - 右下圆形按钮 */
+    .ai-entry {
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      width: 56px;
+      height: 56px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 24px rgba(118, 102, 204, 0.3);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .ai-entry:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(118, 102, 204, 0.4);
+    }
+
+    .ai-entry:active {
+      transform: translateY(0);
+    }
+
+    /* 响应式 */
+    @media (max-width: 1024px) {
+      .content {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+      .controls-glass {
+        background: rgba(255, 255, 255, 0.95);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+      }
+      .chart-container::after {
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-top">
+        <div class="logo">
+          <div class="logo-mark">学</div>
+          <span>学析台</span>
+        </div>
+        <span>学生学习数据分析</span>
+      </div>
+      <h1 class="title">选择课程开始探索</h1>
+      <p class="subtitle">查看成绩、学习过程、知识掌握情况</p>
+    </div>
+
+    <div style="margin-bottom: 40px;">
+      <div class="controls-glass">
+        <label>当前课程</label>
+        <select>
+          <option>数据结构（2025J）</option>
+          <option>程序设计基础</option>
+          <option>数据库原理</option>
+        </select>
+        <span style="color: var(--accent); font-weight: 500;">↗</span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="section">
+        <div class="section-label">左侧关联内容</div>
+        <h2 class="section-title">课程指标</h2>
+        <p class="section-desc">该课程的关键表现指标概览</p>
+        
+        <div class="chart-container">
+          <div class="chart-placeholder">
+            <div class="chart-placeholder-icon">📊</div>
+            <div>6 个指标聚合表</div>
+          </div>
+        </div>
+        
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-swatch primary"></div>
+            <span>当前选中</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-swatch secondary"></div>
+            <span>背景参考</span>
+          </div>
+        </div>
+        <p class="caption">200 名学生；均分 66.91；及格率 75.50%</p>
+      </div>
+
+      <div class="section">
+        <div class="section-label">右侧同数据不同画法</div>
+        <h2 class="section-title">成绩分布</h2>
+        <p class="section-desc">点击左侧指标，这里切换画法</p>
+        
+        <div class="chart-container">
+          <div class="chart-placeholder">
+            <div class="chart-placeholder-icon">📈</div>
+            <div>柱图 / 点图 / 雷达图</div>
+          </div>
+        </div>
+        
+        <p class="caption">同一数据集，交互改变可视化方式，不改查询范围</p>
+      </div>
+    </div>
+
+    <div style="padding-top: 40px; border-top: 1px solid var(--line); margin-top: 40px;">
+      <p style="font-size: 11px; color: var(--muted); margin: 0; letter-spacing: 0.08em;">
+        📌 设计特点：开放画布 · 暖白底色 · 淡紫强调 · 细线分隔 · 轻玻璃浮层 · 边缘虚化
+      </p>
+    </div>
+  </div>
+
+  <div class="bottom-info">
+    <p>200 名学生</p>
+    <p>18 门课程</p>
+    <p>3600 条记录</p>
+  </div>
+
+  <button class="ai-entry" title="打开 AI 助手">💬</button>
+</body>
+</html>

@@ -1,48 +1,46 @@
-/* Workspace layout and materials. Every colour, material and type value is a
-   token from app/tokens.css; this file only arranges and applies them.
-   4px rhythm, 14px reading text, 224px supporting navigation. */
+/* Shared workspace layout, using the data browser's open reading surface.
+   Supporting navigation stays task-specific; type, controls and colour do not. */
 .glass-workspace {
   position: relative;
   isolation: isolate;
   display: grid;
   grid-template-columns: 224px minmax(0, 1fr);
-  grid-template-rows: 64px minmax(0, 1fr);
+  grid-template-rows: 76px minmax(0, 1fr);
   align-content: start;
-  gap: 20px;
+  gap: 0;
   max-width: none;
   min-height: 100dvh;
   margin: 0;
-  padding: 24px 28px;
-  background: var(--field-ground);
+  padding: 0;
+  background: var(--paper);
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
 }
-/* Frame: regular frosted glass refracting the light field. No dispersion rim. */
-.glass-workspace .glass-data-sidebar,
+/* Navigation is quiet and flat; only floating menus use translucent material. */
+.glass-workspace .glass-data-sidebar {
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--paper);
+}
 .glass-workspace .glass-mode-switch,
 .glass-workspace .glass-tools {
-  border: 1px solid var(--glass-border);
-  border-radius: var(--glass-radius);
-  background: var(--glass-fill);
-  box-shadow: var(--glass-shadow);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
-.glass-workspace .glass-data-sidebar {
-  background: var(--glass-fill-dim);
-}
-/* Reading surface: a diffused veil, so the field arrives only as a tint. */
+/* Keep charts, tables and long-form reading on a sharp document surface. */
 .glass-workspace .workbench-main {
-  border-radius: 18px;
-  background:
-    radial-gradient(ellipse 60% 40% at 88% 0%, var(--surface-glint), transparent 70%),
-    linear-gradient(180deg, var(--surface-sheen) 0, transparent 1px) top / 100% 1px no-repeat,
-    var(--surface-veil);
-  box-shadow: var(--surface-shadow);
-  -webkit-backdrop-filter: var(--surface-blur);
-  backdrop-filter: var(--surface-blur);
+  border-radius: 0;
+  background: var(--paper);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 .glass-workspace .workbench-main {
   grid-column: 2;
@@ -50,8 +48,7 @@
   min-width: 0;
   overflow: clip;
 }
-/* One fixed viewport shell for every mode: switching views never jumps and
-   the optical backdrop keeps a continuous stage. */
+/* Tools keep a bounded scroll area; exploration remains a continuous document. */
 .glass-workspace.workbench-shell {
   height: 100dvh;
   min-height: 0;
@@ -68,21 +65,17 @@
   grid-row: 1;
   align-self: stretch;
   min-height: 0;
-  padding: 0;
+  padding: 12px clamp(20px, 4vw, 64px);
   border: 0;
+  border-bottom: 1px solid var(--line);
   gap: 16px;
   flex-wrap: nowrap;
-  background: transparent;
+  background: var(--paper);
 }
-/* Topbar chips: whisper-thin rims so glass reads as material, not outline. */
-.glass-workspace .glass-mode-switch,
-.glass-workspace .glass-tools {
-  border-color: color-mix(in srgb, var(--glass-border) 45%, transparent);
-  border-top-color: color-mix(in srgb, var(--glass-rim) 55%, transparent);
-}
+/* Use the same unboxed top-bar controls as data exploration. */
 .glass-workspace .glass-mode-switch::after,
 .glass-workspace .glass-tools::after {
-  opacity: 0.55;
+  display: none;
 }
 .glass-entry,
 .glass-tools,
@@ -112,7 +105,7 @@
   display: flex;
   gap: 4px;
   padding: 5px;
-  --glass-radius: 14px;
+  --glass-radius: 0px;
   flex-shrink: 0;
 }
 .glass-mode-switch button {
@@ -123,7 +116,7 @@
   min-height: 40px;
   padding: 8px 18px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 0;
   color: var(--muted);
   background: transparent;
   font-size: 12px;
@@ -133,28 +126,21 @@
   position: relative;
 }
 .glass-mode-switch button[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--ink) 6%, transparent);
-  color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
   font-weight: 600;
 }
 .glass-mode-switch button[aria-pressed="true"]::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 3px;
-  width: 14px;
-  height: 2px;
-  margin-left: -7px;
-  background: var(--accent);
+  display: none;
 }
 .glass-workspace .glass-tools {
   gap: 8px;
   padding: 4px 8px;
-  --glass-radius: 14px;
+  --glass-radius: 0px;
   flex-shrink: 0;
 }
 .glass-workspace .icon-button {
-  border-radius: 9px;
+  border-radius: 0;
   color: var(--muted);
   background: transparent;
 }
@@ -183,10 +169,11 @@
   place-items: center;
   width: 30px;
   height: 30px;
-  border-radius: 50%;
+  /* Identity container, not a data mark: square like every other UI shape. */
+  border-radius: 0;
   background: var(--ink);
   color: var(--paper);
-  font: 600 13px/1 var(--font-serif);
+  font: 600 13px/1 var(--font-sans);
 }
 /* Account menu: identity, appearance and session actions in one place. */
 .glass-workspace .account-menu {
@@ -196,12 +183,12 @@
   margin: 0;
   padding: 6px;
   border: 1px solid var(--glass-border);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--glass-fill-dense);
   color: var(--ink);
   box-shadow:
     var(--glass-shadow),
-    0 18px 48px #0000002e;
+    0 18px 48px color-mix(in srgb, var(--ink) 18%, transparent);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
 }
@@ -222,7 +209,7 @@
   padding: 10px 10px 12px;
 }
 .account-menu-head strong {
-  font: 600 14px/1.4 var(--font-serif);
+  font: 600 14px/1.4 var(--font-sans);
 }
 .account-menu-head span {
   font-size: 11px;
@@ -236,7 +223,7 @@
   min-height: 36px;
   padding: 0 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 0;
   background: transparent;
   color: var(--ink);
   font-size: 13px;
@@ -279,7 +266,7 @@
   align-self: start;
   position: sticky;
   top: 20px;
-  min-height: calc(100dvh - 132px);
+  min-height: calc(100dvh - 76px);
   padding: 24px 14px 20px;
   display: flex;
   flex-direction: column;
@@ -307,7 +294,7 @@
   padding: 10px 14px;
   color: var(--muted);
   border: 1px solid transparent;
-  border-radius: 9px;
+  border-radius: 0;
   background: transparent;
   font-size: 12px;
 }
@@ -374,7 +361,7 @@
 }
 .glass-workspace .workbench-source select {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   padding: 10px 28px 10px 10px;
   background-color: var(--surface-inset);
   font-size: 12px;
@@ -394,10 +381,10 @@
   margin-bottom: 24px;
 }
 .glass-workspace .page-introduction h1 {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 30px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: -0.02em;
   margin: 10px 0 8px;
 }
 .glass-workspace .page-introduction p {
@@ -413,8 +400,8 @@
 }
 .glass-workspace .panel {
   border: 1px solid var(--line);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--ink) 2%, transparent);
+  border-radius: 0;
+  background: var(--paper);
   box-shadow: none;
 }
 .glass-workspace .overview-hero {
@@ -429,7 +416,7 @@
   border: 0;
 }
 .glass-workspace .overview-introduction h1 {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 40px;
   font-weight: 600;
   line-height: 1.15;
@@ -472,7 +459,7 @@
   background: linear-gradient(var(--accent), var(--accent)) top left / 28px 2px no-repeat;
 }
 .glass-workspace .overview-metric-label {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 15px;
 }
 .glass-workspace .overview-metric-value {
@@ -498,7 +485,7 @@
   background: transparent;
 }
 .glass-workspace .overview-section-bar > span {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 22px;
   font-weight: 600;
 }
@@ -516,19 +503,19 @@
   gap: 16px;
 }
 .glass-workspace .overview-chart-panel {
-  border-radius: 14px;
+  border-radius: 0;
 }
 .glass-workspace .overview-chart-panel .overview-panel-heading,
 .glass-workspace .overview-chart-toolbar {
   background: transparent;
 }
 .glass-workspace .overview-panel-heading h2 {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 20px;
   font-weight: 600;
 }
 .glass-workspace .overview-ask-card {
-  border-radius: 14px;
+  border-radius: 0;
   background: var(--surface-inset);
   color: var(--ink);
 }
@@ -537,7 +524,7 @@
 }
 .glass-workspace .overview-source-card {
   background-image: none;
-  border-radius: 14px;
+  border-radius: 0;
 }
 .glass-workspace .overview-primary {
   border: 0;
@@ -555,13 +542,13 @@
   color: var(--button-ink);
   background: var(--ink);
   border-color: var(--ink);
-  border-radius: 8px;
+  border-radius: 0;
 }
 .glass-workspace .secondary-button {
   color: var(--ink);
-  background: var(--glass-fill);
+  background: var(--surface-raised);
   border-color: var(--line);
-  border-radius: 8px;
+  border-radius: 0;
 }
 .glass-workspace .workbench-footer {
   margin-top: 24px;
@@ -585,22 +572,22 @@
   background: var(--surface-raised);
   color: var(--ink);
   border: 1px solid var(--line);
-  border-radius: 14px;
-  box-shadow: 0 16px 40px #07152233;
+  border-radius: 0;
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--ink) 20%, transparent);
 }
 .glass-workspace .logout-confirmation {
   color: var(--ink);
   background: var(--surface-raised);
-  border-radius: 18px;
+  border-radius: 0;
   border: 1px solid var(--line);
 }
 /* Conversation owns its history sidebar; data navigation does not duplicate it. */
 .glass-workspace.workbench-shell[data-conversation="true"] {
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: 64px minmax(0, 1fr);
-  gap: 20px;
+  grid-template-rows: 76px minmax(0, 1fr);
+  gap: 0;
   height: var(--conversation-viewport-height, 100dvh);
-  padding: 24px 28px;
+  padding: 0;
 }
 .glass-workspace[data-conversation="true"] .workbench-main {
   grid-column: 1 / -1;
@@ -638,8 +625,8 @@
   }
   .glass-workspace {
     grid-template-columns: 196px minmax(0, 1fr);
-    padding: 20px;
-    gap: 16px;
+    padding: 0;
+    gap: 0;
   }
   .glass-workspace .workbench-content {
     padding: 24px;
@@ -660,12 +647,13 @@
   .glass-workspace.workbench-shell[data-conversation="true"] {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
-    padding: 12px;
-    gap: 12px;
+    padding: 0;
+    gap: 0;
   }
   .glass-workspace .workbench-header.glass-topbar {
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 8px;
+    padding: 10px 16px;
   }
   .glass-entry {
     gap: 16px;
@@ -681,7 +669,7 @@
   .glass-workspace .glass-mode-switch {
     margin-left: auto;
     padding: 3px;
-    --glass-radius: 11px;
+    --glass-radius: 0px;
   }
   .glass-mode-switch button {
     padding: 8px 10px;
@@ -692,7 +680,7 @@
     margin-left: auto;
     padding: 0 4px;
     gap: 4px;
-    --glass-radius: 10px;
+    --glass-radius: 0px;
   }
   .glass-demo-tag {
     font-size: 9px;
@@ -778,7 +766,7 @@
 }
 .glass-workspace .analysis-workspace-controls {
   padding: 20px;
-  border-radius: 14px 14px 0 0;
+  border-radius: 0;
   background: color-mix(in srgb, var(--surface-inset) 48%, transparent);
 }
 .glass-workspace .analysis-result {
@@ -835,17 +823,17 @@
   }
 }
 .glass-workspace .result-focus {
-  background: var(--glass-fill);
+  background: var(--surface-inset);
 }
 .glass-workspace .result-conclusion {
   background: transparent;
 }
 .glass-workspace .dataset-scope {
-  border-radius: 10px;
-  background: var(--glass-fill);
+  border-radius: 0;
+  background: var(--surface-inset);
 }
 .glass-workspace .source-tables > article {
-  border-radius: 10px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--surface-inset) 55%, transparent);
 }
 .glass-workspace .account-card,
@@ -865,14 +853,14 @@
 .glass-workspace .admin-tabs [role="group"] {
   padding: 4px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--surface-inset) 55%, transparent);
 }
 .glass-workspace .admin-tabs button {
-  border-radius: 8px;
+  border-radius: 0;
 }
 .glass-workspace .table-wrap {
-  border-radius: 10px;
+  border-radius: 0;
 }
 .glass-workspace table {
   background: transparent;
@@ -881,7 +869,7 @@
   background: color-mix(in srgb, var(--surface-inset) 78%, transparent);
 }
 .glass-workspace .report-frame {
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--surface-raised);
 }
 @media (max-width: 760px) {
@@ -933,7 +921,7 @@
   height: 34px;
   padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: 0;
   background: transparent;
   color: var(--muted);
   cursor: pointer;
@@ -951,4 +939,144 @@
    tint that lets rows show through once the header is pinned. */
 .glass-workspace .result-table thead th {
   background: var(--surface-inset);
+}
+
+/* Data exploration is a continuous document; other workspace modes retain their shell. */
+.glass-workspace.workbench-shell[data-exploration="true"] {
+  display: block;
+  height: auto;
+  min-height: 100dvh;
+  padding: 0;
+  overflow: clip;
+  background: var(--background);
+  color: var(--ink);
+  color-scheme: light;
+}
+.glass-workspace[data-exploration="true"] .workbench-header.glass-topbar {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 40;
+  height: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  pointer-events: none;
+}
+.glass-workspace[data-exploration="true"] .glass-entry {
+  position: fixed;
+  top: 24px;
+  left: clamp(24px, 3vw, 48px);
+}
+.glass-workspace[data-exploration="true"] .glass-tools {
+  position: fixed;
+  top: 24px;
+  right: clamp(24px, 3vw, 48px);
+  pointer-events: auto;
+}
+.glass-workspace[data-exploration="true"] .glass-brand {
+  pointer-events: auto;
+  padding: 8px;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+}
+.glass-workspace[data-exploration="true"] .glass-mode-switch,
+.glass-workspace[data-exploration="true"] .glass-account,
+.glass-workspace[data-exploration="true"] .glass-demo-tag {
+  display: none;
+}
+.glass-workspace[data-exploration="true"] .workbench-main {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: visible;
+  backdrop-filter: none;
+}
+.glass-workspace[data-exploration="true"] .workbench-content {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+.glass-workspace[data-exploration="true"] .view-surface {
+  animation: none;
+}
+.glass-workspace[data-exploration="true"] .glass-mode-switch,
+.glass-workspace[data-exploration="true"] .glass-tools {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.glass-workspace[data-exploration="true"] .glass-mode-switch::after,
+.glass-workspace[data-exploration="true"] .glass-tools::after {
+  display: none;
+}
+.glass-workspace[data-exploration="true"] .glass-menu {
+  display: inline-grid;
+}
+.glass-workspace[data-exploration="true"] .glass-brand strong {
+  font-size: 19px;
+  letter-spacing: 1px;
+}
+.glass-workspace[data-exploration="true"] .workbench-source > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.glass-workspace[data-exploration="true"] .workbench-source select {
+  max-width: min(300px, 65vw);
+  min-height: 40px;
+  padding: 8px 28px 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  color: var(--ink);
+  background: var(--paper);
+}
+.glass-workspace[data-exploration="true"] .text-button {
+  min-height: 40px;
+  color: var(--muted);
+}
+.glass-workspace[data-exploration="true"] .exploration-state {
+  max-width: 1208px;
+  min-height: 70svh;
+  margin: 0 auto;
+  padding: 140px 24px 64px;
+}
+.glass-workspace[data-exploration="true"] .workbench-footer {
+  display: none;
+}
+.glass-workspace[data-exploration="true"] .workbench-drawer {
+  inset: 84px clamp(16px, 3vw, 48px) auto auto;
+  width: min(340px, calc(100vw - 32px));
+  max-height: calc(100svh - 108px);
+  margin: 0;
+  overflow-y: auto;
+}
+.glass-workspace[data-exploration="true"] .workbench-drawer::backdrop {
+  background: transparent;
+  backdrop-filter: none;
+}
+.canvas-menu-settings {
+  display: grid;
+  gap: 12px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.canvas-menu-settings p { margin: 0; font-size: 12px; color: var(--muted); }
+.canvas-menu-settings > button { text-align: left; justify-content: flex-start; }
+.canvas-menu-preferences { display: flex; align-items: center; justify-content: space-between; }
+@media (max-width: 760px) {
+  .glass-workspace[data-exploration="true"] .glass-entry {
+    top: 16px;
+    left: 14px;
+  }
+  .glass-workspace[data-exploration="true"] .glass-tools {
+    top: 18px;
+    right: 16px;
+    padding: 0;
+  }
 }

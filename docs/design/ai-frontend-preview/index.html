@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="黑白、光感玻璃、色散与边缘模糊的学生数据浏览设计预览。">
+  <title>观数 · 光与数据之间</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <svg class="svg-definitions" aria-hidden="true"><defs>
+    <filter id="soft-glow"><feGaussianBlur stdDeviation="4"/></filter>
+    <linearGradient id="spectrum" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#b9c6ff"/><stop offset=".35" stop-color="#f3c4dc"/><stop offset=".68" stop-color="#e5e7c3"/><stop offset="1" stop-color="#bce3f4"/></linearGradient>
+  </defs></svg>
+  <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
+
+  <header class="site-header">
+    <a class="brand" href="#" aria-label="观数，返回数据总览"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>观数<span class="brand-caption">LEARNING, IN FOCUS.</span></span></a>
+    <nav class="mode-switch glass" aria-label="浏览模式">
+      <button class="mode active" data-mode="canvas" aria-pressed="true"><span class="mode-icon">◉</span>数据浏览</button>
+      <button class="mode" data-mode="overview" aria-pressed="false"><span class="mode-icon">▱</span>空间全览</button>
+    </nav>
+    <div class="header-actions"><span class="preview-label"><i></i>风格预览 · 示意数据</span><button id="theme-toggle" class="round-button glass" aria-label="切换到深色主题" title="切换明暗">◐</button></div>
+  </header>
+
+  <main>
+    <section id="canvas-view" class="view canvas-view" aria-labelledby="main-title">
+      <div class="intro">
+        <p class="eyebrow"><span class="status-dot"></span> 数据浏览 <span class="slash">/</span> 课程全景</p>
+        <h1 id="main-title">在关联之间，<br>看见<span class="serif-word">学习。</span></h1>
+        <p class="intro-description">让分散的数据汇成线索。<br>从一门课程开始，探索更远的关联。</p>
+        <button id="explore-button" class="text-action">探索数据结构 <span>↗</span></button>
+        <div class="context"><span class="context-line"></span><span>2025 — 2026<span>秋季学期 · 演示课程</span></span></div>
+      </div>
+
+      <div class="data-stage" aria-label="可交互课程关系图">
+        <div class="stage-watermark" aria-hidden="true">relationships</div>
+        <div class="diagram-wrap" id="diagram-wrap">
+          <svg id="network" viewBox="0 0 900 710" role="group" aria-label="课程关系示意图，线条表示本预览设定的关联，不代表真实统计相关性"></svg>
+          <div class="stage-defocus" aria-hidden="true"></div>
+        </div>
+        <span class="stage-index">01 — 06 <i></i> SUBJECTS</span>
+        <span class="stage-instruction">点选课程，展开它的学习轮廓 <span>↗</span></span>
+      </div>
+
+      <aside class="insight glass" aria-label="当前课程概览">
+        <div class="insight-top"><span class="eyebrow">当前焦点 <span class="tiny-line"></span> <span id="course-index">01</span></span><span class="insight-glyph" aria-hidden="true">↗</span></div>
+        <div class="insight-heading"><h2 id="course-name">数据结构</h2><span id="course-code">CS · 202</span></div>
+        <div class="metrics"><div><span>课程均分</span><strong id="mean-score">76.8<small>分</small></strong></div><div><span>课程通过率</span><strong id="pass-rate">88<small>%</small></strong></div><div class="metric-spark"><svg id="sparkline" viewBox="0 0 120 45" aria-label="六周学习活动示意趋势"></svg><span>近六周活动</span></div></div>
+        <div class="insight-bottom"><span>示意样本 <b id="sample-count">186</b> 人</span><button id="open-detail" class="plain-action">查看课程 <span>→</span></button></div>
+      </aside>
+    </section>
+
+    <section id="overview-view" class="view overview-view" aria-labelledby="overview-title" hidden>
+      <div class="overview-intro"><p class="eyebrow"><span class="status-dot"></span> EXPLORATION AT A GLANCE</p><h1 id="overview-title">走过的路径，<br><span class="serif-word">在此交汇。</span></h1><p>前后是探索的经过。<br>清晰的那一层，是此刻的焦点。</p></div>
+      <div class="stack-viewport" aria-label="斜侧叠层课程预览"><div class="stack-scene" id="stack-scene"></div><div class="stack-edge" aria-hidden="true"></div></div>
+      <div class="stack-controller glass"><button id="previous-card" class="round-button" aria-label="上一主题">←</button><div><span id="stack-title">数据结构</span><span id="stack-position">01 / 06</span></div><button id="next-card" class="round-button" aria-label="下一主题">→</button></div>
+      <p class="overview-hint">点选任意一层聚焦，再次点选进入课程 <span>·</span> 支持方向键</p>
+    </section>
+
+    <section id="detail-view" class="detail-view" aria-labelledby="detail-title" hidden>
+      <button id="back-button" class="text-action"><span>←</span> 返回课程全景</button>
+      <div class="detail-layout"><div class="detail-intro"><p class="eyebrow">COURSE PROFILE <span class="slash">/</span> 示意数据</p><h1 id="detail-title">数据结构</h1><p id="detail-description"></p><div class="detail-number"><span id="detail-score">76.8</span><small>课程均分 / 100</small></div></div><div class="detail-chart"><div class="detail-chart-head"><h2>学习轮廓</h2><span>六项指标 · 演示</span></div><div id="detail-bars" class="detail-bars"></div><div class="bar-edge" aria-hidden="true"></div><p>均分以分计，其余指标以百分比计。<br>此处仅演示视觉与交互，数值未连接项目数据库。</p></div></div>
+    </section>
+  </main>
+
+  <footer class="site-footer"><div class="footer-note"><span class="crosshair">⊕</span><span>让信息清晰，让边界柔和。</span></div><div class="footer-right"><button id="settings-toggle" class="footer-control" aria-expanded="false" aria-controls="appearance-panel">调整光感 <span>⌘</span></button><button id="motion-toggle" class="footer-control" aria-pressed="false">动态 <span class="motion-indicator"></span></button><span class="footer-edition">DESIGN STUDY / 001</span></div></footer>
+
+  <section class="appearance-panel glass" id="appearance-panel" aria-labelledby="appearance-title" hidden>
+    <header><div><p class="eyebrow">APPEARANCE</p><h2 id="appearance-title">光与边界</h2></div><button id="settings-close" class="round-button" aria-label="关闭外观设置">×</button></header>
+    <label class="range-label" for="blur-range"><span>边缘模糊</span><output id="blur-value" for="blur-range">60%</output></label><input id="blur-range" type="range" min="0" max="100" value="60">
+    <label class="range-label" for="light-range"><span>光感与色散</span><output id="light-value" for="light-range">65%</output></label><input id="light-range" type="range" min="0" max="100" value="65">
+    <fieldset><legend>主题色点缀</legend><div class="swatches"><button class="swatch selected" data-color="#635bff" data-rgb="99,91,255" style="--swatch:#635bff" aria-label="鸢尾紫" aria-pressed="true"></button><button class="swatch" data-color="#197b72" data-rgb="25,123,114" style="--swatch:#197b72" aria-label="冷玉绿" aria-pressed="false"></button><button class="swatch" data-color="#d2643b" data-rgb="210,100,59" style="--swatch:#d2643b" aria-label="琥珀橙" aria-pressed="false"></button><button class="swatch" data-color="#526a87" data-rgb="82,106,135" style="--swatch:#526a87" aria-label="雾蓝灰" aria-pressed="false"></button></div></fieldset>
+    <p>尝试移动滑块，观察画面边缘与玻璃光线的变化。</p>
+  </section>
+  <div id="announcer" class="sr-only" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>

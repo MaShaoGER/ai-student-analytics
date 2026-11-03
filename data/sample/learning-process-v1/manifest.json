@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "fictional": true,
+  "seed": 20261103,
+  "scope": {
+    "term": "2025J",
+    "students": 1200,
+    "courses": 18,
+    "enrollments": 3600,
+    "weeks": 16
+  },
+  "sources": {
+    "student_outcomes.csv": "3c4acd967afbaacdb1bf1d190e2370be3ccc610327c254c2b9474870836390be",
+    "learning_activity.csv": "bbc7e5e11b5f87b4cdba338151e49e28ee3d1bb9852afc7efc933009de4ab1bc",
+    "summary.json": "70162dc7f6a32dad250e2d38808217de7a566fd986fd907421f34ef04f3aa539"
+  },
+  "tables": {
+    "knowledge_points": 108,
+    "knowledge_links": 90,
+    "assessments": 72,
+    "assessment_items": 216,
+    "learning_resources": 432,
+    "stage_scores": 14400,
+    "item_attempts": 50497,
+    "daily_activity": 434463
+  },
+  "files": {
+    "knowledge_points.csv": "62660f2dc3ef8f5d76190c79b3eb5a8da8ac7abed6dbea1d088ce52db3851e4e",
+    "knowledge_links.csv": "f7c73a4eeb47623c5f0ada1b8bf7dd2c443541aae3b8a3d453a8fa8ee0531584",
+    "assessments.csv": "c8f3b0a7b99621f10ebf24ed9384fb9f7e947fd2cfd2ac5e97cf70d206a30cfa",
+    "assessment_items.csv": "f76fe9ad416c8c65bca98ab1e2d5b5c3007c9898a9801267db42ea1767a551e7",
+    "learning_resources.csv": "ca2552ff92b6d2c77a1d818d6106f1c42e3d71c47582ee6df450939288fbb92d",
+    "stage_scores.csv": "6e6b693b4de8b9ba0df03cbf4675ad76df19dee4dcd6d78477a66c7454e408c6",
+    "item_attempts.csv": "cffc56a3c6128a329d25584b3e2786ebf5fb0263ba6bc7405b69ed004f0d8c50",
+    "daily_activity.csv": "6148e68f5d3bbda3680a283cd9f10ed9c44e9609d1a5fd73d1f4206e7ba87187"
+  },
+  "rules": {
+    "scoreScale": "integer cents; 0..100",
+    "stageWeights": "25% each; normalize over observed stages only",
+    "calibration": "observed stage mean equals existing course score; stages are synthesized from the anchor, not real historical evidence",
+    "itemScoring": "stage score equals mean of 3 latest item scores; first and retry records retained",
+    "missing": "not_observed is null, never zero; no inferred score for absent assessments",
+    "dailyActivity": "sum of event_count exactly equals original learning_activity count per student/course/term/week",
+    "duration": "explicit fictional duration; not a real inference from clicks",
+    "graphEdges": "explicit fictional teaching sequence and question membership, not statistical correlation",
+    "smallGroups": "preview hides nonempty aggregates with fewer than 3 students",
+    "integration": "extension files and offline aggregate preview; production APIs and AI tools not changed"
+  }
+}

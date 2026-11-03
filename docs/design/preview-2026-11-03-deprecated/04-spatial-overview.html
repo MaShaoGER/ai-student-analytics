@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>探索历史全览 - 空间透视</title>
+  <style>
+    :root {
+      --bg: #f5f5f2;
+      --ink: #232329;
+      --muted: #8a8a94;
+      --accent: #7666cc;
+      --accent-light: #dcd6ee;
+      --line: rgba(36, 36, 54, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .scene {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      perspective: 2000px;
+    }
+
+    .space {
+      position: absolute;
+      inset: 0;
+      transform-style: preserve-3d;
+      transform: rotateX(6deg) translateZ(0);
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* 历史页面层叠 */
+    .layer {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 800px;
+      max-width: 90vw;
+      height: 480px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(250,250,248,0.7) 100%);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 32px;
+      transform-style: preserve-3d;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+      overflow: hidden;
+    }
+
+    .layer::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, transparent, rgba(245, 245, 242, 0.4));
+      pointer-events: none;
+    }
+
+    /* 深度层远处虚化 */
+    .layer::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      -webkit-backdrop-filter: blur(0px);
+      backdrop-filter: blur(0px);
+      transition: backdrop-filter 0.3s;
+    }
+
+    .layer:nth-child(1) {
+      transform: translate(-50%, -50%) translateZ(0px) scale(1);
+      z-index: 3;
+      opacity: 1;
+    }
+
+    .layer:nth-child(1)::after {
+      -webkit-backdrop-filter: blur(0);
+      backdrop-filter: blur(0);
+    }
+
+    .layer:nth-child(2) {
+      transform: translate(-50%, -50%) translateZ(-100px) scale(0.95);
+      z-index: 2;
+      opacity: 0.85;
+    }
+
+    .layer:nth-child(2)::after {
+      -webkit-backdrop-filter: blur(1px);
+      backdrop-filter: blur(1px);
+      background: rgba(245, 245, 242, 0.3);
+    }
+
+    .layer:nth-child(3) {
+      transform: translate(-50%, -50%) translateZ(-200px) scale(0.9);
+      z-index: 1;
+      opacity: 0.6;
+    }
+
+    .layer:nth-child(3)::after {
+      -webkit-backdrop-filter: blur(2px);
+      backdrop-filter: blur(2px);
+      background: rgba(245, 245, 242, 0.5);
+    }
+
+    .layer:hover {
+      transform: translate(-50%, -50%) translateZ(20px) scale(1.02);
+      box-shadow: 0 16px 48px rgba(118, 102, 204, 0.2);
+    }
+
+    .layer:nth-child(1):hover {
+      transform: translate(-50%, -50%) translateZ(20px) scale(1.02);
+    }
+
+    .layer:nth-child(2):hover {
+      transform: translate(-50%, -50%) translateZ(-80px) scale(0.96);
+    }
+
+    .layer:nth-child(3):hover {
+      transform: translate(-50%, -50%) translateZ(-180px) scale(0.91);
+    }
+
+    /* 页面内容 */
+    .layer-label {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .layer-title {
+      font-size: 24px;
+      font-weight: 500;
+      margin: 0 0 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .layer-desc {
+      font-size: 13px;
+      color: var(--muted);
+      margin: 0 0 24px;
+      line-height: 1.6;
+    }
+
+    .layer-chart {
+      width: 100%;
+      height: 200px;
+      background: linear-gradient(135deg, rgba(118, 102, 204, 0.05), rgba(118, 102, 204, 0.02));
+      border: 1px solid rgba(118, 102, 204, 0.15);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      color: var(--accent);
+      opacity: 0.6;
+    }
+
+    .layer-meta {
+      position: absolute;
+      bottom: 24px;
+      left: 32px;
+      right: 32px;
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* 信息提示 */
+    .hint {
+      position: fixed;
+      top: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 24px;
+      background: linear-gradient(125deg, rgba(255,255,255,0.9), rgba(255,255,255,0.5));
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 999px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      font-size: 12px;
+      color: var(--muted);
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .close-btn {
+      position: fixed;
+      top: 40px;
+      right: 40px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--line);
+      color: var(--ink);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      z-index: 10;
+    }
+
+    .close-btn:hover {
+      background: white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transform: scale(1.05);
+    }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
+      .layer {
+        width: 90vw;
+        height: 400px;
+        padding: 24px;
+      }
+
+      .layer-title {
+        font-size: 20px;
+      }
+
+      .layer-chart {
+        height: 150px;
+      }
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+      .hint,
+      .layer::after {
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+      }
+      .hint {
+        background: rgba(255, 255, 255, 0.98);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="hint">💡 鼠标移动看轻微位移效果 · 点击页面进入浏览</div>
+  <button class="close-btn" onclick="alert('关闭全览，返回数据浏览')">✕</button>
+
+  <div class="scene" id="scene">
+    <div class="space" id="space">
+      <!-- 第一层：当前页 -->
+      <div class="layer" onclick="alert('进入：数据结构 - 成绩分布')">
+        <div class="layer-label">当前浏览</div>
+        <h2 class="layer-title">数据结构 - 成绩分布</h2>
+        <p class="layer-desc">200 名学生 · 柱状图</p>
+        <div class="layer-chart">📊</div>
+        <div class="layer-meta">
+          <span>2 分钟前</span>
+          <span>均分 66.91</span>
+        </div>
+      </div>
+
+      <!-- 第二层：上一页 -->
+      <div class="layer" onclick="alert('进入：程序设计基础 - 学习活动')">
+        <div class="layer-label">探索历史</div>
+        <h2 class="layer-title">程序设计基础 - 学习活动</h2>
+        <p class="layer-desc">134 名学生 · 地形图</p>
+        <div class="layer-chart">🗻</div>
+        <div class="layer-meta">
+          <span>5 分钟前</span>
+          <span>16 周活动</span>
+        </div>
+      </div>
+
+      <!-- 第三层：更早页面 -->
+      <div class="layer" onclick="alert('进入：数据库原理 - 知识点关系')">
+        <div class="layer-label">探索历史</div>
+        <h2 class="layer-title">数据库原理 - 知识点关系</h2>
+        <p class="layer-desc">180 名学生 · 星图</p>
+        <div class="layer-chart">⭐</div>
+        <div class="layer-meta">
+          <span>10 分钟前</span>
+          <span>8 个知识点</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const scene = document.getElementById('scene');
+    const space = document.getElementById('space');
+
+    // 鼠标移动轻微位移效果
+    scene.addEventListener('mousemove', (e) => {
+      const x = (e.clientX / window.innerWidth - 0.5) * 2;
+      const y = (e.clientY / window.innerHeight - 0.5) * 2;
+
+      // 轻微位移：最多 ±2px
+      const offsetX = x * 2;
+      const offsetY = y * 2;
+
+      space.style.transform = `rotateX(${6 + y * 0.5}deg) translateX(${offsetX}px) translateY(${offsetY}px)`;
+    });
+
+    // 鼠标离开恢复
+    scene.addEventListener('mouseleave', () => {
+      space.style.transform = 'rotateX(6deg) translateZ(0)';
+    });
+  </script>
+</body>
+</html>

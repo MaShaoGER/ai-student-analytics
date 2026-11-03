@@ -6,6 +6,7 @@ import { useTheme } from "@/components/ui/theme-provider";
 import * as echarts from "echarts";
 import type { AnalysisRow } from "@/lib/analysis/types";
 import { buildChartOption, type ChartColors } from "@/lib/analysis/chart-options";
+import type { PickAnchor } from "@/lib/exploration/selection";
 import {
   chartColorIndex,
   formatChartNumber,
@@ -32,7 +33,7 @@ export function AnalysisChart({
   metricLabel: string;
   dimensionLabel: string;
   selectedDimension?: string;
-  onSelectDimension?: (dimension: string) => void;
+  onSelectDimension?: (dimension: string, anchor?: PickAnchor) => void;
   comparison?: ChartComparison;
   entrance?: boolean;
   barOrientation?: "horizontal" | "vertical";
@@ -169,7 +170,16 @@ export function AnalysisChart({
         // groups. Resolve names instead of treating every dataIndex as a row.
         if (view === "radar" && params.componentType === "series") return;
         const row = rows.find((row) => row.dimension === params.name);
-        if (row) onSelectDimension(row.dimension);
+        if (row) {
+          const nativeEvent = params.event?.event as MouseEvent | undefined;
+          const rect = root.getBoundingClientRect();
+          const anchor = nativeEvent && Number.isFinite(nativeEvent.clientX) && Number.isFinite(nativeEvent.clientY)
+            ? { x: nativeEvent.clientX, y: nativeEvent.clientY }
+            : params.event
+              ? { x: rect.left + params.event.offsetX, y: rect.top + params.event.offsetY }
+              : undefined;
+          onSelectDimension(row.dimension, anchor);
+        }
       });
     }
     return () => layoutObserver.disconnect();
@@ -262,7 +272,8 @@ export function AnalysisChart({
               return;
           }
           event.preventDefault();
-          onSelectDimension(rows[next].dimension);
+          const rect = event.currentTarget.getBoundingClientRect();
+          onSelectDimension(rows[next].dimension, { x: rect.left + rect.width / 2, y: rect.bottom });
         }}
       />
       {showKey && (
@@ -273,7 +284,12 @@ export function AnalysisChart({
               key={row.dimension}
               disabled={!onSelectDimension}
               aria-pressed={row.dimension === selected?.dimension}
-              onClick={() => onSelectDimension?.(row.dimension)}
+              onClick={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                onSelectDimension?.(row.dimension, event.detail === 0
+                  ? { x: rect.left + rect.width / 2, y: rect.bottom }
+                  : { x: event.clientX, y: event.clientY });
+              }}
             >
               <i
                 aria-hidden="true"

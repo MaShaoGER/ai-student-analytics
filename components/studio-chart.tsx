@@ -6,10 +6,12 @@ import { useMotionPreferences } from "@/components/ui/motion-preferences";
 import { useTheme } from "@/components/ui/theme-provider";
 import {
   buildStudioChart,
+  chartPickKey,
   type StudioColors,
   type StudioDetail,
 } from "@/lib/analysis/studio-chart-options";
 import type { StudioChartType, StudioFields, StudioTable } from "@/lib/analysis/chart-studio";
+import type { ChartPick, PickAnchor } from "@/lib/exploration/selection";
 import styles from "./chart-studio.module.css";
 
 export function StudioChart({
@@ -18,15 +20,27 @@ export function StudioChart({
   fields,
   densityMode,
   aggregate,
+  onPick,
+  selectedPick,
+  compactDetails = false,
 }: {
   type: StudioChartType;
   table: StudioTable;
   fields: StudioFields;
   densityMode: "density" | "scatter";
   aggregate: "sum" | "mean";
+  onPick?: (pick: ChartPick, anchor?: PickAnchor) => void;
+  selectedPick?: ChartPick;
+  compactDetails?: boolean;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const instance = useRef<echarts.ECharts | null>(null);
+  // ECharts binds the click handler once; a ref keeps the latest parent callback.
+  const onPickRef = useRef(onPick);
+  onPickRef.current = onPick;
+  const selectedPickKey = selectedPick ? chartPickKey(selectedPick) : "";
+  const selectedPickRef = useRef(selectedPick);
+  selectedPickRef.current = selectedPick;
   // ECharts' heatmap view paints cells without an enter animation, so that series
   // gets a canvas-level reveal; the handle lets a new entrance replace the old one.
   const canvasReveal = useRef<Animation | null>(null);
@@ -57,8 +71,24 @@ export function StudioChart({
     const chart = echarts.init(root.current);
     instance.current = chart;
     chart.on("click", (params) => {
-      const data = params.data as { detail?: string } | undefined;
+      const data = params.data as { detail?: string; pick?: ChartPick } | undefined;
       if (data?.detail) setSelected(data.detail);
+      root.current?.focus({ preventScroll: true });
+      if (data?.pick) {
+        // Viewport coordinates for the shared menu. ECharts' offset values are
+        // canvas-relative, so the native pointer wins when the browser provides it.
+        const nativeEvent = params.event?.event as MouseEvent | undefined;
+        const rect = root.current?.getBoundingClientRect();
+        const anchor =
+          nativeEvent &&
+          Number.isFinite(nativeEvent.clientX) &&
+          Number.isFinite(nativeEvent.clientY)
+            ? { x: nativeEvent.clientX, y: nativeEvent.clientY }
+            : rect && params.event
+              ? { x: rect.left + params.event.offsetX, y: rect.top + params.event.offsetY }
+              : undefined;
+        onPickRef.current?.(data.pick, anchor);
+      }
     });
     return () => {
       chart.dispose();
@@ -97,15 +127,14 @@ export function StudioChart({
     // Data landing and a new chart type/view are entrances: rebuild the whole series
     // and let it draw in with the shared stagger instead of morphing unrelated shapes.
     const previous = previousDraw.current;
-    const entrance =
-      motionEnabled &&
-      !reducedMotion &&
-      (previous === undefined ||
-        previous.type !== type ||
-        previous.table !== table ||
-        previous.fields !== fields ||
-        previous.densityMode !== densityMode ||
-        previous.aggregate !== aggregate);
+    const dataChanged =
+      previous === undefined ||
+      previous.type !== type ||
+      previous.table !== table ||
+      previous.fields !== fields ||
+      previous.densityMode !== densityMode ||
+      previous.aggregate !== aggregate;
+    const entrance = motionEnabled && !reducedMotion && dataChanged;
     // Pasted datasets above this size skip the item stagger; the canvas still eases
     // in, but thousands of delayed symbols would blow the frame budget.
     const heavy = table.rows.length > 1500;
@@ -116,6 +145,7 @@ export function StudioChart({
           compact: element.clientWidth < 500,
           densityMode,
           aggregate,
+          selectedPick: selectedPickRef.current,
         });
         setStatus({
           summary: built.summary,
@@ -175,7 +205,7 @@ export function StudioChart({
         });
       }
     };
-    setSelected("");
+    if (dataChanged) setSelected("");
     draw(entrance);
     previousDraw.current = { type, table, fields, densityMode, aggregate };
     let width = element.clientWidth,
@@ -189,43 +219,53 @@ export function StudioChart({
     });
     observer.observe(element);
     return () => observer.disconnect();
-  }, [type, table, fields, densityMode, aggregate, theme, motionEnabled, reducedMotion]);
+  }, [
+    type,
+    table,
+    fields,
+    densityMode,
+    aggregate,
+    theme,
+    motionEnabled,
+    reducedMotion,
+    selectedPickKey,
+  ]);
 
-  const active = selected || status.details[0]?.detail || "";
-  const selectedIndex = status.details.findIndex((item) => item.detail === active);
-  return (
-    <div className={styles.rendered}>
-      <div className={styles.chartSummary} role="status">
-        {status.summary}
-        {status.omitted > 0 && ` · 已忽略 ${status.omitted} 行缺失或无效输入`}
-      </div>
-      <div className={styles.chartWrap}>
-        <div
-          ref={root}
-          className={styles.chart}
-          role="img"
-          aria-label={`${status.summary}。悬停或点选图形查看详情，也可使用下方数据选择器。`}
-        />
-        {status.error && (
-          <div className={styles.chartError} role="status" data-enter="fade">
-            {status.error}
-          </div>
-        )}
-      </div>
-      {status.details.length > 0 && (
+  const pickedIndex = selectedPick
+    ? status.details.findIndex(
+        (item) => item.pick && chartPickKey(item.pick) === chartPickKey(selectedPick),
+      )
+    : -1;
+  const active =
+    selected ||
+    (pickedIndex >= 0 ? status.details[pickedIndex].detail : "") ||
+    status.details[0]?.detail ||
+    "";
+  const selectedIndex =
+    pickedIndex >= 0 ? pickedIndex : status.details.findIndex((item) => item.detail === active);
+  const readout = status.details.length > 0 && (
         <div
           className={styles.selection}
-          data-enter="rise-sm"
-          style={{ "--enter-delay": "560ms" } as CSSProperties}
+          data-enter={compactDetails ? undefined : "rise-sm"}
+          style={compactDetails ? undefined : { "--enter-delay": "560ms" } as CSSProperties}
         >
+          {/* A focused closed select can consume the wheel in some browsers and
+              silently replace the chart's data pick; blur hands the wheel back
+              to page scrolling. */}
           <label className="control-field">
             <span>查看图中数据</span>
             <select
               aria-label="图表数据详情"
               value={selectedIndex}
-              onChange={(event) =>
-                setSelected(status.details[Number(event.target.value)]?.detail ?? "")
-              }
+              onWheel={(event) => event.currentTarget.blur()}
+              onChange={(event) => {
+                const item = status.details[Number(event.target.value)];
+                setSelected(item?.detail ?? "");
+                if (item?.pick) {
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  onPickRef.current?.(item.pick, { x: rect.left + rect.width / 2, y: rect.bottom });
+                }
+              }}
             >
               {selectedIndex < 0 && <option value={-1}>图中选择</option>}
               {status.details.slice(0, 300).map((item, i) => (
@@ -237,7 +277,33 @@ export function StudioChart({
           </label>
           <output aria-live="polite">{active}</output>
         </div>
-      )}
+  );
+  return (
+    <div className={styles.rendered}>
+      <div className={styles.chartSummary} role="status">
+        {status.summary}
+        {status.omitted > 0 && ` · 已忽略 ${status.omitted} 行缺失或无效输入`}
+      </div>
+      <div className={styles.chartWrap}>
+        <div
+          ref={root}
+          className={styles.chart}
+          role="img"
+          tabIndex={onPick ? -1 : undefined}
+          aria-label={`${status.summary}。悬停或点选图形查看详情，也可使用下方数据选择器。`}
+        />
+        {status.error && (
+          <div className={styles.chartError} role="status" data-enter="fade">
+            {status.error}
+          </div>
+        )}
+      </div>
+      {compactDetails && readout ? (
+        <details className={styles.compactDetails}>
+          <summary>读数</summary>
+          {readout}
+        </details>
+      ) : readout}
     </div>
   );
 }

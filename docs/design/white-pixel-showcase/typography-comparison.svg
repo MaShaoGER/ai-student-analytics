@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1440" viewBox="0 0 1440 1440">
+<rect x="0" y="0" width="1440" height="1440" fill="white"/>
+<text x="64" y="62" fill="#20231F" font-family="Menlo, monospace" font-size="13" font-weight="400" letter-spacing="1">TYPE STUDY / CHINESE</text>
+<text x="64" y="121" fill="#20231F" font-family="PingFang SC, Arial, sans-serif" font-size="32" font-weight="400" letter-spacing="0">三种中文字体方向</text>
+<text x="64" y="160" fill="#74796F" font-family="PingFang SC, Arial, sans-serif" font-size="17" font-weight="400" letter-spacing="0">保持字号与文案一致，比较字形气质。正文建议统一用苹方。</text>
+<path d="M64 230L1376 230" stroke="#DDDFD7" stroke-width="1"/>
+<text x="64" y="272" fill="#F46942" font-family="Menlo, monospace" font-size="16" font-weight="400" letter-spacing="1">A</text>
+<text x="112" y="273" fill="#20231F" font-family="PingFang SC, Arial, sans-serif" font-size="21" font-weight="400" letter-spacing="0">苹方 · 常规</text>
+<text x="112" y="382" fill="#20231F" font-family="PingFang SC" font-size="74" font-weight="400" letter-spacing="1">让数据，开口说话。</text>
+<text x="115" y="451" fill="#74796F" font-family="PingFang SC" font-size="23" font-weight="400" letter-spacing="0">从一个问题开始，看见学习的另一面。</text>
+<text x="115" y="516" fill="#74796F" font-family="PingFang SC, Arial, sans-serif" font-size="16" font-weight="400" letter-spacing="0">均衡、轻盈，适合主方案。</text>
+<path d="M64 620L1376 620" stroke="#DDDFD7" stroke-width="1"/>
+<text x="64" y="662" fill="#F46942" font-family="Menlo, monospace" font-size="16" font-weight="400" letter-spacing="1">B</text>
+<text x="112" y="663" fill="#20231F" font-family="PingFang SC, Arial, sans-serif" font-size="21" font-weight="400" letter-spacing="0">冬青黑体 · 常规</text>
+<text x="112" y="772" fill="#20231F" font-family="Hiragino Sans GB" font-size="74" font-weight="400" letter-spacing="1">让数据，开口说话。</text>
+<text x="115" y="841" fill="#74796F" font-family="Hiragino Sans GB" font-size="23" font-weight="400" letter-spacing="0">从一个问题开始，看见学习的另一面。</text>
+<text x="115" y="906" fill="#74796F" font-family="PingFang SC, Arial, sans-serif" font-size="16" font-weight="400" letter-spacing="0">更有骨架感，较前版粗体明显收敛。</text>
+<path d="M64 1010L1376 1010" stroke="#DDDFD7" stroke-width="1"/>
+<text x="64" y="1052" fill="#F46942" font-family="Menlo, monospace" font-size="16" font-weight="400" letter-spacing="1">C</text>
+<text x="112" y="1053" fill="#20231F" font-family="PingFang SC, Arial, sans-serif" font-size="21" font-weight="400" letter-spacing="0">宋体 · 常规</text>
+<text x="112" y="1162" fill="#20231F" font-family="Songti SC" font-size="74" font-weight="400" letter-spacing="1">让数据，开口说话。</text>
+<text x="115" y="1231" fill="#74796F" font-family="Songti SC" font-size="23" font-weight="400" letter-spacing="0">从一个问题开始，看见学习的另一面。</text>
+<text x="115" y="1296" fill="#74796F" font-family="PingFang SC, Arial, sans-serif" font-size="16" font-weight="400" letter-spacing="0">更像编辑设计，适合少量重点标题。</text>
+</svg>

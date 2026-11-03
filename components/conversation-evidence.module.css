@@ -107,7 +107,7 @@
   height: 27px;
   position: relative;
   z-index: 1;
-  border-radius: 50%;
+  border-radius: 0;
   border: 1px solid var(--line);
   background: var(--surface-inset);
   color: var(--muted);

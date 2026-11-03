@@ -136,7 +136,7 @@ describe("conversation claim, save and identity", () => {
     });
     expect(replay.claim.replayed).toBe(true);
     expect(replay.claim.revision).toBe(first.claim.revision);
-    expect(getConversation(OWNER, created.id).messages).toHaveLength(1);
+    expect(getConversation(OWNER, created.id, { now: at(1000) }).messages).toHaveLength(1);
   });
 
   it("does not resurrect history or context across an explicit reset", () => {
@@ -385,7 +385,7 @@ describe("revisions, concurrency and late results", () => {
     });
     expect(first.replayed).toBe(false);
     expect(again.replayed).toBe(true);
-    expect(getConversation(OWNER, created.id).messages).toHaveLength(2);
+    expect(getConversation(OWNER, created.id, { now: at(2000) }).messages).toHaveLength(2);
 
     const second = createConversation(OWNER, { datasetId: "demo", now: T0 });
     const failed = claim(second.id, "cccccccc-cccc-4ccc-8ccc-cccccccccccc");

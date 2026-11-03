@@ -70,7 +70,7 @@
 
 4. **按数据语义选择图表／表格。** 同时接入现有表格系统，根据问题意图、指标单位、时间顺序、样本和分母等选择默认形式。图、表、文字与数字依据共用真实结果；不合适的形式明确回退，纯展示切换不重新调用 AI。
 
-本节状态：已记录并完成正式接入规划，尚未实施功能。分期、展示规则、账号历史和验收见 [AI 对话体验正式接入规划](ai-conversation-experience-roadmap.md)，另一窗口可使用 [开工指令](ai-conversation-experience-build-prompt.md)。
+本节记录于正式接入前，当时已完成规划、尚未实施功能。后续正式接入与验收见 [AI 对话体验规格与实施记录](ai-conversation-experience-roadmap.md)，原[开工指令](archive/prompts/ai-conversation-experience-build-prompt.md)已归档，当前使用见[正式体验说明](ai-conversation-experience.md)。
 
 ## 已执行验证
 

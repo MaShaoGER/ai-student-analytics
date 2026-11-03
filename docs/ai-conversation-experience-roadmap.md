@@ -2,7 +2,7 @@
 
 日期：2026-10-20。状态：P1–P6 已在正式工作台实施并完成本地验收（2026-10-21）；真实模型语义、手机软键盘真机和远程发布不在已验证范围。使用与实现见 [正式体验说明](ai-conversation-experience.md)，存储与运维见 [历史存储说明](ai-conversation-storage.md)。
 
-本规划承接 `/preview/ai-experience` 的用户体验确认，把现有 AI 分析、图表、表格和账号能力接入同一个对话流程。预览说明见 [ai-experience-preview.md](ai-experience-preview.md)，下一窗口开工指令见 [ai-conversation-experience-build-prompt.md](ai-conversation-experience-build-prompt.md)。
+本规划承接 `/preview/ai-experience` 的用户体验确认，把现有 AI 分析、图表、表格和账号能力接入同一个对话流程。预览说明见 [ai-experience-preview.md](ai-experience-preview.md)，当时的[开工指令](archive/prompts/ai-conversation-experience-build-prompt.md)已归档，不作为当前待办。
 
 ## 1. 已确认的产品要求
 

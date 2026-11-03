@@ -1,35 +1,24 @@
+/* Versioned grade import on the data-browser surface: white panels, hairline
+   separations, one blue interaction colour and regular sans type. Tokens come
+   from app/tokens.css and app/glass-controls.css; this file never declares its
+   own palette. Status colour is always paired with words or icons. */
+
 .importLedger {
   min-width: 0;
   margin: 0 0 18px;
   border: 1px solid var(--line);
-  background: var(--paper);
+  border-radius: 0;
+  background: var(--surface-raised);
   overflow: hidden;
 }
 
 .importHeader {
-  position: relative;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  padding: 18px 20px;
+  padding: 20px;
   border-bottom: 1px solid var(--line);
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--accent) 9%, transparent), transparent 44%),
-    var(--surface-raised);
-}
-
-.importHeader::after {
-  position: absolute;
-  inset: 0 0 auto auto;
-  width: 72px;
-  height: 5px;
-  background: repeating-linear-gradient(
-    -45deg,
-    transparent 0 5px,
-    color-mix(in srgb, var(--ink) 28%, transparent) 5px 7px
-  );
-  content: "";
 }
 
 .importHeader > div {
@@ -37,34 +26,35 @@
 }
 
 .importHeader h3 {
-  margin: 4px 0 6px;
+  margin: 5px 0 7px;
   color: var(--ink);
-  font-size: clamp(18px, 2vw, 24px);
-  line-height: 1.2;
-  letter-spacing: -0.025em;
+  font-size: clamp(19px, 1.8vw, 22px);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
 .importHeader p {
   max-width: 72ch;
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.65;
 }
 
 .eyebrow {
   color: var(--accent-ink);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
 }
 
 .inlineNotice {
   margin: 0;
   border-right: 0;
   border-left: 0;
+  border-radius: 0;
 }
 
 /* "校验已失效" keeps its reason on one flexible line and the retry at the end. */
@@ -84,18 +74,19 @@
 .publishedReceipt {
   display: flex;
   align-items: center;
-  gap: 13px;
-  padding: 12px 20px;
-  border-bottom: 1px solid color-mix(in srgb, var(--success) 38%, var(--line));
-  background: color-mix(in srgb, var(--success) 8%, var(--paper));
+  gap: 14px;
+  padding: 13px 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--success) 30%, var(--line));
+  background: color-mix(in srgb, var(--success) 8%, var(--surface-raised));
   color: var(--success);
 }
 
 .receiptIndex {
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
+  color: var(--success);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
 }
 
 .publishedReceipt > div {
@@ -107,19 +98,21 @@
 
 .publishedReceipt strong {
   color: var(--ink);
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .publishedReceipt p {
   margin: 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .publishedReceipt code,
 .issueTable code {
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 10px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
 }
 
 .ledgerGrid {
@@ -160,12 +153,13 @@
   height: 30px;
   flex: 0 0 30px;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--accent) 48%, var(--line));
-  background: var(--teal-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-radius: 0;
+  background: var(--accent-soft);
   color: var(--accent-ink);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .stepHeading > div {
@@ -173,41 +167,45 @@
 }
 
 .stepHeading h4 {
-  margin: 1px 0 3px;
+  margin: 2px 0 4px;
   color: var(--ink);
-  font-size: 13px;
-  line-height: 1.3;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
 }
 
 .stepHeading p {
   margin: 0;
   color: var(--muted);
-  font-size: 10px;
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .dropZone {
   position: relative;
   display: flex;
-  min-height: 112px;
+  min-height: 116px;
   align-items: center;
   gap: 12px;
   padding: 16px;
-  border: 1px dashed color-mix(in srgb, var(--accent) 52%, var(--line));
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--accent) 5%, transparent), transparent),
-    var(--surface-inset);
+  border: 1px dashed color-mix(in srgb, var(--accent) 42%, var(--line));
+  border-radius: 0;
+  background: var(--surface-inset);
   cursor: pointer;
   transition:
-    border-color var(--motion-fast) ease,
-    background var(--motion-fast) ease;
+    border-color var(--motion-fast, 120ms) ease,
+    background-color var(--motion-fast, 120ms) ease;
 }
 
 .dropZone:hover,
 .dropZone:focus-within,
 .dropZone[data-dragging="true"] {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--paper));
+  background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface-inset));
+}
+
+.dropZone:focus-within {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .dropZone[data-has-file="true"] {
@@ -233,7 +231,8 @@
   flex: 0 0 42px;
   place-items: center;
   border: 1px solid var(--line);
-  background: var(--paper);
+  border-radius: 0;
+  background: var(--surface-raised);
   color: var(--accent-ink);
 }
 
@@ -247,7 +246,8 @@
 .dropCopy strong {
   overflow: hidden;
   color: var(--ink);
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
   line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -255,30 +255,35 @@
 
 .dropCopy small {
   color: var(--muted);
-  font-size: 10px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
-.fileAction {
-  padding: 5px 8px;
-  border: 1px solid var(--line);
-  background: var(--paper);
+:global(.glass-workspace) .fileAction {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--ui-control-border, var(--line));
+  border-radius: 0;
+  background: var(--ui-control-bg, var(--surface-raised));
   color: var(--ink);
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  transition: background-color var(--motion-fast, 120ms) ease;
 }
 
 .progressLine {
   display: flex;
   align-items: center;
   gap: 9px;
-  min-height: 34px;
-  padding: 8px 10px;
-  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--line));
-  background: var(--teal-soft);
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line));
+  border-radius: 0;
+  background: var(--accent-soft);
   color: var(--accent-ink);
-  font-size: 10px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .progressLine > span {
@@ -295,7 +300,9 @@
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(80px, 0.65fr) auto;
   align-items: center;
+  overflow: hidden;
   border: 1px solid var(--line);
+  border-radius: 0;
   background: var(--surface-inset);
 }
 
@@ -303,28 +310,28 @@
   display: grid;
   gap: 2px;
   min-width: 0;
-  padding: 9px 10px;
+  padding: 9px 12px;
   border-right: 1px solid var(--line);
 }
 
 .draftStrip span,
 .draftStrip small {
   color: var(--muted);
-  font-size: 9px;
-  line-height: 1.35;
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .draftStrip strong {
   color: var(--ink);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 14px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.draftStrip > .text-button {
+:global(.glass-workspace) .draftStrip > :global(.text-button) {
   min-height: 42px;
   color: var(--danger);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .selectionControls {
@@ -335,7 +342,7 @@
 
 .selectionControls :global(.form-help) {
   margin: 4px 0 0;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .previewTableWrap,
@@ -343,14 +350,15 @@
   max-width: 100%;
   overflow: auto;
   border: 1px solid var(--line);
-  background: var(--paper);
+  border-radius: 0;
+  background: var(--surface-raised);
 }
 
 .previewTable,
 .issueTable {
   width: 100%;
   border-collapse: collapse;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -366,9 +374,9 @@
 .previewTable td,
 .issueTable th,
 .issueTable td {
-  padding: 7px 9px;
-  border-right: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  padding: 7px 10px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
   text-align: left;
   vertical-align: top;
 }
@@ -383,12 +391,11 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--surface-raised);
+  background: var(--surface-inset);
   color: var(--muted);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.035em;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 
@@ -400,7 +407,8 @@
   display: block;
   margin-bottom: 2px;
   color: var(--accent-ink);
-  font-size: 8px;
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .previewTable td {
@@ -436,16 +444,17 @@
 .publishFieldset {
   min-width: 0;
   margin: 0;
-  padding: 11px;
+  padding: 12px;
   border: 1px solid var(--line);
+  border-radius: 0;
 }
 
 .mappingFieldset legend,
 .publishFieldset legend {
-  padding: 0 5px;
+  padding: 0 6px;
   color: var(--ink);
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .mappingGrid {
@@ -459,41 +468,44 @@
 }
 
 .mappingGrid label > span {
-  font-size: 10px;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .mappingGrid small {
   display: block;
   margin-top: 3px;
   color: var(--muted);
-  font-size: 9px;
-  line-height: 1.4;
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .mappingGrid select[aria-invalid="true"] {
-  border-color: color-mix(in srgb, var(--warning) 58%, var(--line));
+  border-color: color-mix(in srgb, var(--warning) 55%, var(--line));
 }
 
 .mappingErrors {
   display: grid;
   gap: 3px;
   margin-top: 10px;
-  padding: 8px 9px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--danger) 24%, var(--line));
   border-left: 3px solid var(--danger);
-  background: color-mix(in srgb, var(--danger) 7%, var(--paper));
+  border-radius: 0;
+  background: color-mix(in srgb, var(--danger) 7%, var(--surface-raised));
   color: var(--danger);
-  font-size: 9px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .mappingReady {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   margin: 9px 0 0;
   color: var(--success);
-  font-size: 9px;
-  line-height: 1.4;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .validateBar,
@@ -502,35 +514,37 @@
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 11px 12px;
+  padding: 12px;
   border: 1px solid var(--line);
+  border-radius: 0;
   background: var(--surface-inset);
 }
 
 .validateBar > div {
   display: grid;
   min-width: 0;
-  gap: 2px;
+  gap: 3px;
 }
 
 .validateBar span {
   color: var(--ink);
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .validateBar small {
   color: var(--muted);
-  font-size: 9px;
-  line-height: 1.4;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
-.validateBar button,
-.publishGate > button {
+:global(.glass-workspace) .validateBar button,
+:global(.glass-workspace) .publishGate > button {
   flex: 0 0 auto;
-  min-height: 36px;
-  padding: 7px 11px;
-  font-size: 11px;
+  min-height: var(--ui-control-height, 36px);
+  padding: 7px 12px;
+  border-radius: 0;
+  font-size: 13px;
 }
 
 .stepEmpty {
@@ -540,30 +554,33 @@
   justify-content: center;
   gap: 10px;
   padding: 18px;
-  border: 1px dashed var(--line);
+  border: 1px dashed var(--line-strong);
+  border-radius: 0;
   background: var(--surface-inset);
   color: var(--muted);
-  font-size: 10px;
-  line-height: 1.55;
+  font-size: 13px;
+  line-height: 1.6;
   text-align: center;
 }
 
-.stepEmpty .app-icon {
+.stepEmpty :global(.app-icon) {
   opacity: 0.6;
 }
 
 .validationSummary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
   border: 1px solid var(--line);
+  border-radius: 0;
   background: var(--surface-inset);
 }
 
 .validationSummary > div {
   display: grid;
   min-width: 0;
-  gap: 2px;
-  padding: 10px;
+  gap: 3px;
+  padding: 10px 12px;
   border-right: 1px solid var(--line);
 }
 
@@ -574,16 +591,16 @@
 .validationSummary span,
 .validationSummary small {
   color: var(--muted);
-  font-size: 8px;
-  line-height: 1.35;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .validationSummary strong {
   color: var(--warning);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 18px;
+  font-size: 20px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  line-height: 1.15;
+  line-height: 1.2;
 }
 
 .validationSummary[data-valid="true"] strong {
@@ -612,20 +629,22 @@
 .issuesToolbar strong,
 .subheading strong {
   color: var(--ink);
-  font-size: 10px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .issuesToolbar span,
 .subheading span {
   margin-left: 7px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 12px;
 }
 
-.issuesToolbar button {
-  min-height: 32px;
-  padding: 5px 9px;
-  font-size: 10px;
+:global(.glass-workspace) .issuesToolbar button {
+  min-height: var(--ui-control-height, 36px);
+  padding: 6px 12px;
+  border-radius: 0;
+  font-size: 13px;
 }
 
 .issueTableWrap {
@@ -657,19 +676,21 @@
   align-items: flex-start;
   gap: 8px;
   min-width: 0;
-  padding: 10px;
+  padding: 10px 12px;
   border: 1px solid var(--line);
-  background: var(--paper);
+  border-radius: 0;
+  background: var(--surface-raised);
   cursor: pointer;
 }
 
 .modeOptions label[data-checked="true"] {
-  border-color: color-mix(in srgb, var(--accent) 62%, var(--line));
-  background: var(--teal-soft);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  background: var(--accent-soft);
 }
 
 .modeOptions input {
   margin: 2px 0 0;
+  accent-color: var(--accent);
 }
 
 .modeOptions span {
@@ -680,13 +701,14 @@
 
 .modeOptions strong {
   color: var(--ink);
-  font-size: 10px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .modeOptions small {
   color: var(--muted);
-  font-size: 9px;
-  line-height: 1.35;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .publishGate > div {
@@ -708,18 +730,31 @@
 
 .publishGate strong {
   color: var(--ink);
-  font-size: 10px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .publishGate small {
   color: var(--muted);
-  font-size: 9px;
-  line-height: 1.4;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :global(.glass-workspace) .fileAction:hover:not(:disabled) {
+    background: var(--ui-control-hover, var(--surface-inset));
+    color: var(--ink);
+  }
+
+  :global(.glass-workspace) .previewTable tbody tr:hover,
+  :global(.glass-workspace) .issueTable tbody tr:hover {
+    background: color-mix(in srgb, var(--surface-inset) 70%, transparent);
   }
 }
 
@@ -748,8 +783,9 @@
     padding: 16px;
   }
 
-  .importHeader > button {
+  :global(.glass-workspace) .importHeader > button {
     width: 100%;
+    min-height: 44px;
   }
 
   .publishedReceipt {
@@ -774,8 +810,10 @@
     flex-basis: calc(100% - 60px);
   }
 
-  .fileAction {
+  :global(.glass-workspace) .fileAction {
     margin-left: 54px;
+    min-height: 40px;
+    padding: 9px 12px;
   }
 
   .draftStrip {
@@ -788,8 +826,9 @@
     border-bottom: 1px solid var(--line);
   }
 
-  .draftStrip > .text-button {
+  :global(.glass-workspace) .draftStrip > :global(.text-button) {
     padding-inline: 12px;
+    min-height: 40px;
   }
 
   .selectionControls,
@@ -805,11 +844,11 @@
     flex-direction: column;
   }
 
-  .validateBar button,
-  .publishGate > button,
-  .issuesToolbar button {
+  :global(.glass-workspace) .validateBar button,
+  :global(.glass-workspace) .publishGate > button,
+  :global(.glass-workspace) .issuesToolbar button {
     width: 100%;
-    min-height: 40px;
+    min-height: 44px;
   }
 
   .validationSummary {
@@ -839,177 +878,8 @@
     animation: none;
   }
 
-  .dropZone {
+  .dropZone,
+  :global(.glass-workspace) .fileAction {
     transition: none;
-  }
-}
-
-/* Accepted frosted workbench material. Ledger panels, upload controls, option
-   cards and dense preview tables follow the --ui-* contract supplied by
-   app/glass-controls.css; literal fallbacks repeat those values. Panels stay 16px,
-   boxes that hold text or controls 12px, and single controls 10px. */
-
-:global(.glass-workspace) .eyebrow {
-  font-size: 9px;
-  font-weight: 400;
-  letter-spacing: 1.2px;
-  color: var(--muted);
-}
-
-:global(.glass-workspace) .importLedger {
-  border: 0;
-  border-radius: var(--ui-panel-radius, 16px);
-  background: transparent;
-  overflow: visible;
-}
-
-:global(.glass-workspace) .importHeader {
-  border: 0;
-  padding: 0 0 20px;
-  background: transparent;
-}
-
-:global(.glass-workspace) .importHeader::after {
-  display: none;
-}
-
-:global(.glass-workspace) .importHeader h3 {
-  font-size: 20px;
-  font-weight: 500;
-  letter-spacing: -0.3px;
-}
-
-:global(.glass-workspace) .ledgerGrid {
-  gap: 16px;
-}
-
-:global(.glass-workspace) .stepPanel {
-  border: 1px solid var(--glass-border);
-  border-top-color: var(--glass-rim);
-  border-radius: var(--ui-panel-radius, 16px);
-}
-
-:global(.glass-workspace) .stepPanel:nth-child(2n) {
-  border-right: 1px solid var(--glass-border);
-}
-
-:global(.glass-workspace) .stepHeading > span {
-  border-color: var(--ui-control-border, var(--line));
-  border-radius: var(--ui-control-radius, 10px);
-  color: var(--ui-selected-ink, var(--ink));
-}
-
-:global(.glass-workspace) .dropZone {
-  border-color: color-mix(in srgb, var(--ui-focus, var(--accent-ink)) 52%, var(--line));
-  border-radius: 12px;
-}
-
-:global(.glass-workspace) .dropZone:hover,
-:global(.glass-workspace) .dropZone:focus-within,
-:global(.glass-workspace) .dropZone[data-dragging="true"] {
-  border-color: var(--ui-focus, var(--accent-ink));
-  background: color-mix(in srgb, var(--accent) 9%, var(--surface-inset));
-}
-
-:global(.glass-workspace) .dropIcon {
-  border-color: var(--ui-control-border, var(--line));
-  border-radius: var(--ui-control-radius, 10px);
-  background: var(--ui-control-bg, color-mix(in srgb, var(--surface-raised) 52%, transparent));
-}
-
-:global(.glass-workspace) .fileAction {
-  min-height: var(--ui-control-height, 36px);
-  padding: 7px 10px;
-  border-color: var(--ui-control-border, var(--line));
-  border-radius: var(--ui-control-radius, 10px);
-  background: var(--ui-control-bg, color-mix(in srgb, var(--surface-raised) 52%, transparent));
-  font-size: 13px;
-  font-weight: 500;
-}
-
-:global(.glass-workspace) .progressLine {
-  border-radius: var(--ui-control-radius, 10px);
-}
-
-:global(.glass-workspace) .draftStrip,
-:global(.glass-workspace) .validateBar,
-:global(.glass-workspace) .publishGate,
-:global(.glass-workspace) .validationSummary,
-:global(.glass-workspace) .stepEmpty {
-  border-color: var(--ui-control-border, var(--line));
-  border-radius: 12px;
-  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
-}
-
-:global(.glass-workspace) .validateBar button,
-:global(.glass-workspace) .publishGate > button,
-:global(.glass-workspace) .issuesToolbar button {
-  min-height: var(--ui-control-height, 36px);
-  border-radius: var(--ui-control-radius, 10px);
-}
-
-:global(.glass-workspace) .previewTableWrap,
-:global(.glass-workspace) .issueTableWrap {
-  border-color: var(--ui-control-border, var(--line));
-  border-radius: 12px;
-  background: transparent;
-}
-
-/* Spreadsheet previews keep their dense 7px/9px grid but share header typography. */
-:global(.glass-workspace) .previewTable,
-:global(.glass-workspace) .issueTable {
-  font-size: 11px;
-}
-
-:global(.glass-workspace) .previewTable th,
-:global(.glass-workspace) .issueTable th {
-  background: var(--ui-inset, color-mix(in srgb, var(--surface-inset) 82%, transparent));
-  color: var(--muted);
-  font-family: inherit;
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-:global(.glass-workspace) .mappingFieldset,
-:global(.glass-workspace) .publishFieldset {
-  border-color: var(--ui-control-border, var(--line));
-  border-radius: 12px;
-}
-
-:global(.glass-workspace) .mappingFieldset legend,
-:global(.glass-workspace) .publishFieldset legend {
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0;
-}
-
-:global(.glass-workspace) .modeOptions label {
-  border-color: var(--ui-control-border, var(--line));
-  border-radius: var(--ui-control-radius, 10px);
-  background: var(--ui-control-bg, color-mix(in srgb, var(--surface-raised) 52%, transparent));
-}
-
-:global(.glass-workspace) .modeOptions label[data-checked="true"] {
-  border-color: var(--accent);
-  background: var(--ui-selected-bg, color-mix(in srgb, var(--sage) 19%, var(--surface-inset)));
-}
-
-:global(.glass-workspace) .publishedReceipt {
-  margin-bottom: 16px;
-  border: 1px solid color-mix(in srgb, var(--success) 38%, var(--line));
-  border-radius: 12px;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  :global(.glass-workspace) .previewTable tbody tr:hover,
-  :global(.glass-workspace) .issueTable tbody tr:hover {
-    background: var(--ui-control-hover, color-mix(in srgb, var(--ink) 7%, transparent));
-  }
-
-  :global(.glass-workspace) .fileAction:hover:not(:disabled) {
-    background: var(--ui-control-hover, color-mix(in srgb, var(--ink) 7%, transparent));
-    color: var(--ink);
   }
 }

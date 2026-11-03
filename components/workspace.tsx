@@ -9,7 +9,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { AnalysisResultView } from "@/components/analysis-result";
 import { Icon } from "@/components/app-icons";
-import { LearningOverview, type OverviewResults } from "@/components/learning-overview";
+import { conceptHref, parseConceptLocation, type ConceptLocation } from "@/lib/exploration/concepts";
 import { LoginScreen } from "@/components/login-screen";
 import { ThemeToggle, useTheme } from "@/components/ui/theme-provider";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -99,6 +99,10 @@ const AdminPanel = dynamic(
       </div>
     ),
   },
+);
+const DataExplorer = dynamic(
+  () => import("@/components/data-explorer").then((module) => module.DataExplorer),
+  { loading: () => <p role="status">正在打开数据浏览…</p> },
 );
 type View = "overview" | "analysis" | "data" | "reports" | "admin" | "account";
 type AnalysisMode = "metrics" | "question";
@@ -286,54 +290,6 @@ function sourceStatusLabel(profile: DatasetProfile): string {
   if (profile.enabled === false) return "（已停用）";
   if (!profile.available) return "（源文件不可用）";
   return "";
-}
-
-function ReadonlyOverview({
-  heading,
-  sourceControl,
-  profile,
-  profilesLoading,
-  profilesError,
-  onAnalyze,
-  onData,
-}: {
-  heading: React.ReactNode;
-  sourceControl: React.ReactNode;
-  profile?: DatasetProfile;
-  profilesLoading: boolean;
-  profilesError: string | null;
-  onAnalyze: () => void;
-  onData: () => void;
-}) {
-  const eligible = Boolean(profile && isDatasetEligible(profile));
-  return (
-    <section className="panel analysis-empty readonly-overview" data-enter="rise">
-      <Icon name="shield" size={28} />
-      <h2>只读分析工作台</h2>
-      {heading}
-      <p>
-        {profilesLoading
-          ? "正在读取账号的数据授权和源文件状态。"
-          : profilesError
-            ? profilesError
-            : !profile
-              ? "当前账号尚未授权任何数据集，请联系管理员分配数据范围。"
-              : eligible
-                ? `已授权 ${profile.name}。可以查看确定性指标、标准图表和报告预览；AI 对话与浏览器导出已关闭。`
-                : `${profile.name}${sourceStatusLabel(profile)}，当前不能发起数据查询。`}
-      </p>
-      {sourceControl}
-      <div className="account-actions">
-        <button className="primary-button" type="button" disabled={!eligible} onClick={onAnalyze}>
-          查看指标分析
-          <Icon name="arrow" size={16} />
-        </button>
-        <button className="secondary-button" type="button" onClick={onData}>
-          查看数据权限
-        </button>
-      </div>
-    </section>
-  );
 }
 
 function sameSessionPresentation(left: SessionUser, right: SessionUser): boolean {
@@ -674,10 +630,14 @@ function ReportCenter({
 }
 
 export function Workspace({ initialConversation = false }: { initialConversation?: boolean } = {}) {
-  const initialEntryApplied = useRef(false);
   const [glassPaused, setGlassPaused] = useState(false);
   const motionPreference = useMotionPreferences();
   const lastDataView = useRef<View>("overview");
+  const explorationLocation = useRef("/?workspace=overview");
+  const [workspaceRouteError, setWorkspaceRouteError] = useState("");
+  const rememberExplorationLocation = useCallback((href: string) => {
+    explorationLocation.current = href;
+  }, []);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [bootLoading, setBootLoading] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
@@ -713,8 +673,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
   const [analysisView, setAnalysisView] = useState<"standard" | "studio">("standard");
   const [dimension, setDimension] = useState<"course" | "term">("course");
   const [chartType, setChartType] = useState<ChartViewType>("bar");
-  const [overview, setOverview] = useState<OverviewResults>({});
-  const [overviewLoading, setOverviewLoading] = useState(true);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [browseLoading, setBrowseLoading] = useState(false);
   const [question, setQuestion] = useState("");
@@ -739,6 +697,12 @@ export function Workspace({ initialConversation = false }: { initialConversation
     resetContext: boolean;
   } | null>(null);
   const [chatContext, setChatContext] = useState<ChatIntent | null>(null);
+  const [browseContext, setBrowseContext] = useState<{
+    label: string;
+    location: ConceptLocation;
+    href: string;
+    datasetId: DataSource;
+  } | null>(null);
   const [expandedChartId, setExpandedChartId] = useState<string | null>(null);
   const [pendingQuestion, setPendingQuestion] = useState("");
   const [askLoading, setAskLoading] = useState(false);
@@ -774,7 +738,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
     "completion_rate",
   ];
   const metricCapabilityKey = availableMetrics.join(",");
-  const selectedDatasetVersion = selectedProfile?.datasetVersion;
   useEffect(() => {
     if (!(metricCapabilityKey.split(",") as Metric[]).includes(metric)) setMetric("score");
   }, [metricCapabilityKey, metric]);
@@ -795,6 +758,8 @@ export function Workspace({ initialConversation = false }: { initialConversation
 
   const expire = useCallback((notice: string | null = null) => {
     lastDataView.current = "overview";
+    explorationLocation.current = "/?workspace=overview";
+    setWorkspaceRouteError("");
     generation.current++;
     sessionSyncPending.current?.controller.abort();
     sessionSyncPending.current = null;
@@ -812,8 +777,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
     setProfilesError(null);
     setDatasetId(null);
     profileAccessKey.current = "";
-    setOverview({});
-    setOverviewLoading(false);
     setAnalysis(null);
     setAskResult(null);
     setSessionAnalyses([]);
@@ -828,6 +791,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
     setPendingQuestion("");
     setPendingSteps([]);
     setChatContext(null);
+    setBrowseContext(null);
     setExpandedChartId(null);
     setQuestion("");
     setError(null);
@@ -845,6 +809,8 @@ export function Workspace({ initialConversation = false }: { initialConversation
   const clearScopedState = useCallback(
     (nextView: View = "overview", notice: string | null = null) => {
       lastDataView.current = "overview";
+      explorationLocation.current = "/?workspace=overview";
+      setWorkspaceRouteError("");
       generation.current++;
       askPending.current?.abort();
       askPending.current = null;
@@ -857,8 +823,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
       setProfilesError(null);
       setDatasetId(null);
       profileAccessKey.current = "";
-      setOverview({});
-      setOverviewLoading(false);
       setAIStatus({ configured: false, enabled: false, model: null });
       setAnalysis(null);
       setAskResult(null);
@@ -874,6 +838,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
       setPendingQuestion("");
       setPendingSteps([]);
       setChatContext(null);
+      setBrowseContext(null);
       setExpandedChartId(null);
       setQuestion("");
       setError(null);
@@ -971,7 +936,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
     [],
   );
   useEffect(() => {
-    if (!user) return;
+    if (!user || view === "overview") return;
     pageHeading.current?.focus({ preventScroll: true });
     window.scrollTo(0, 0);
   }, [view, mode, user]);
@@ -997,15 +962,45 @@ export function Workspace({ initialConversation = false }: { initialConversation
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [user, syncAccess]);
-  // The preview uses this same authenticated workspace and real conversation.
-  // Apply its entry point once, after session and password checks have settled.
   useEffect(() => {
-    if (!initialConversation || initialEntryApplied.current || bootLoading || !user) return;
-    initialEntryApplied.current = true;
-    if (user.mustChangePassword || !capabilities.canUseAI) return;
-    setMode("question");
-    setView("analysis");
-  }, [initialConversation, bootLoading, user, capabilities.canUseAI]);
+    if (bootLoading || !user || passwordChangeRequired) return;
+    const restoreLocation = () => {
+      const params = new URLSearchParams(window.location.search);
+      const requested = params.get("workspace");
+      const views: View[] = ["overview", "analysis", "data", "reports", "admin", "account"];
+      if (
+        params.getAll("workspace").length > 1 ||
+        (requested !== null && !views.includes(requested as View))
+      ) {
+        setWorkspaceRouteError("页面地址无效，请使用数据总览重新开始。");
+        setView("overview");
+        return;
+      }
+      setWorkspaceRouteError("");
+      const next =
+        (requested as View | null) ??
+        (params.has("browse") || !initialConversation ? "overview" : "analysis");
+      const nextMode =
+        next === "analysis" &&
+        (params.get("mode") === "question" || (!requested && initialConversation))
+          ? "question"
+          : "metrics";
+      if (next !== "analysis" || nextMode !== "question") {
+        askPending.current?.abort();
+        askPending.current = null;
+        setAskLoading(false);
+      }
+      setMode(nextMode === "question" && !capabilities.canUseAI ? "metrics" : nextMode);
+      setView(next);
+      if (next === "overview") {
+        const route = parseConceptLocation(window.location.href);
+        if (route.status === "valid" && route.datasetId) setDatasetId(route.datasetId);
+      }
+    };
+    restoreLocation();
+    window.addEventListener("popstate", restoreLocation);
+    return () => window.removeEventListener("popstate", restoreLocation);
+  }, [initialConversation, bootLoading, user?.id, passwordChangeRequired, capabilities.canUseAI]);
 
   const api = useCallback(
     async (url: string, options?: RequestInit, onStep?: (step: AnalysisStep) => void) => {
@@ -1146,6 +1141,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
     );
     const response = [...detail.messages].reverse().find((message) => message.response)?.response;
     setChatContext(response?.context ?? null);
+    setBrowseContext(null);
     resetConversationContext.current = false;
     setPendingSteps([]);
     setPendingQuestion("");
@@ -1191,6 +1187,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
     }
   }
   function newConversation() {
+    setBrowseContext(null);
     // Repeated clicks on the same empty draft are display-only no-ops. In
     // particular, don't invalidate or reload the already visible history list.
     if (
@@ -1249,7 +1246,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
         if (profileAccessKey.current !== "" && profileAccessKey.current !== nextKey) {
           generation.current++;
           setRefreshCount((count) => count + 1);
-          setOverview({});
           setAnalysis(null);
           setAskResult(null);
           setSessionAnalyses([]);
@@ -1264,6 +1260,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
           setPendingQuestion("");
           setPendingSteps([]);
           setChatContext(null);
+          setBrowseContext(null);
           setExpandedChartId(null);
           setQuestion("");
           setError(null);
@@ -1276,6 +1273,14 @@ export function Workspace({ initialConversation = false }: { initialConversation
         profilesLoaded.current = true;
         setProfiles(nextProfiles);
         setDatasetId((previous) => {
+          const route = parseConceptLocation(window.location.href);
+          if (
+            route.status === "valid" &&
+            route.datasetId &&
+            new URLSearchParams(window.location.search).get("workspace") !== "analysis"
+          ) {
+            return route.datasetId;
+          }
           const previousProfile = nextProfiles.find((profile) => profile.id === previous);
           if (previousProfile && isDatasetEligible(previousProfile)) return previous;
           return nextProfiles.find(isDatasetEligible)?.id ?? nextProfiles[0]?.id ?? null;
@@ -1327,58 +1332,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
       setProfileRefreshCount((count) => count + 1);
     }
   }, [view]);
-  useEffect(() => {
-    if (!user || !eligibleDatasetId || passwordChangeRequired) return;
-    const currentDatasetId = eligibleDatasetId;
-    const controller = new AbortController();
-    const current = generation.current;
-    setOverviewLoading(true);
-    const metrics = metricCapabilityKey.split(",") as Metric[];
-    Promise.allSettled(
-      metrics.map(async (value) => {
-        const plan = createPlan({
-          datasetId: currentDatasetId,
-          metric: value,
-          dimension: "course",
-          chartType: "bar",
-        });
-        plan.limit = 100;
-        const payload = await api("/api/analysis", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(plan),
-          signal: controller.signal,
-        });
-        return { metric: value, result: payload.result as AnalysisResult };
-      }),
-    ).then((responses) => {
-      if (controller.signal.aborted || current !== generation.current) return;
-      const next: OverviewResults = {};
-      for (const response of responses) {
-        if (response.status === "fulfilled") {
-          next[response.value.metric] = response.value.result;
-          rememberResult(response.value.result);
-        }
-      }
-      setOverview(next);
-      setOverviewLoading(false);
-      const failure = responses.find((response) => response.status === "rejected");
-      if (failure?.status === "rejected")
-        setError(
-          `部分概览暂时无法显示：${requestMessage(failure.reason, "请稍后重试。") || "请稍后重试。"}`,
-        );
-    });
-    return () => controller.abort();
-  }, [
-    user,
-    eligibleDatasetId,
-    selectedDatasetVersion,
-    refreshCount,
-    metricCapabilityKey,
-    passwordChangeRequired,
-    api,
-    rememberResult,
-  ]);
   useEffect(() => {
     if (
       !user ||
@@ -1438,13 +1391,21 @@ export function Workspace({ initialConversation = false }: { initialConversation
   ]);
 
   function changeSource(value: DataSource) {
+    if (view === "overview") window.dispatchEvent(new Event("exploration:leave"));
     generation.current++;
     askPending.current?.abort();
     askPending.current = null;
     setDatasetId(value);
+    if (view === "overview") {
+      const href = conceptHref({ scene: "home", drawing: "rank" }, value);
+      explorationLocation.current = href;
+      const state = { ...window.history.state, explorationScroll: 0 };
+      delete state.explorationHistory;
+      delete state.concept;
+      window.history.pushState(state, "", href);
+      setWorkspaceRouteError("");
+    }
     setMetric("score");
-    setOverview({});
-    setOverviewLoading(true);
     setAnalysis(null);
     setAskResult(null);
     conversationRef.current = null;
@@ -1456,6 +1417,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
     setChatMessages([]);
     setPendingSteps([]);
     setChatContext(null);
+    setBrowseContext(null);
     setExpandedChartId(null);
     setAskLoading(false);
     setBrowseLoading(false);
@@ -1463,8 +1425,24 @@ export function Workspace({ initialConversation = false }: { initialConversation
     setInputError(null);
     setFailedAsk(null);
   }
-  function navigate(next: View) {
+  function navigate(next: View, nextMode: AnalysisMode = mode) {
     if (passwordChangeRequired && next !== "account") return;
+    if (view === "overview" && next !== "overview") {
+      window.dispatchEvent(new Event("exploration:leave"));
+    }
+    const href =
+      next === "overview"
+        ? explorationLocation.current
+        : `/?${new URLSearchParams({
+            workspace: next,
+            ...(next === "analysis" ? { mode: nextMode } : {}),
+          })}`;
+    if (window.location.pathname + window.location.search !== href) {
+      const state = { ...window.history.state };
+      delete state.explorationHistory;
+      delete state.explorationScroll;
+      window.history.pushState(state, "", href);
+    }
     delete document.documentElement.dataset.motionReplayGuard;
     if (next !== "analysis") {
       askPending.current?.abort();
@@ -1517,9 +1495,14 @@ export function Workspace({ initialConversation = false }: { initialConversation
     )
       return;
     const currentDatasetId = eligibleDatasetId;
-    const trimmed = nextQuestion.trim();
-    if (trimmed.length < 2 || trimmed.length > 500) {
-      const message = "请写下 2–500 字的分析问题。";
+    const inputQuestion = nextQuestion.trim();
+    const activeBrowseContext = !options.fresh && browseContext?.datasetId === currentDatasetId ? browseContext : null;
+    const prefix = activeBrowseContext ? `当前浏览：${activeBrowseContext.label}。请按这个数据范围重新查询，不把关系视为因果。问题：` : "";
+    const trimmed = prefix + inputQuestion;
+    if (inputQuestion.length < 2 || trimmed.length > 500) {
+      const message = prefix
+        ? `请写下 2–${Math.max(2, 500 - prefix.length)} 字的问题，当前浏览范围会一同带入。`
+        : "请写下 2–500 字的分析问题。";
       setError(message);
       setInputError(message);
       return;
@@ -1543,6 +1526,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
       setHistorySelecting(false);
       setChatMessages([]);
       setChatContext(null);
+      setBrowseContext(null);
       setExpandedChartId(null);
       setPendingSteps([]);
       setAskResult(null);
@@ -1621,6 +1605,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
       if (!isCurrent()) return;
       setPendingSteps([]);
       setChatContext(payload.context);
+      if (activeBrowseContext) setBrowseContext(previous => previous === activeBrowseContext ? null : previous);
       const turnId = payload.conversation?.turnId ?? turn.id;
       if (payload.conversation) {
         const updated = { ...selectedConversation, revision: payload.conversation.revision };
@@ -1688,7 +1673,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
         previous.map((step) => (step.status === "running" ? { ...step, status: "failed" } : step)),
       );
       setFailedAsk({
-        question: trimmed,
+        question: inputQuestion,
         code: requestError instanceof ApiError ? requestError.code : null,
         retryable:
           requestError instanceof ApiError
@@ -1897,14 +1882,14 @@ export function Workspace({ initialConversation = false }: { initialConversation
             onClick={() => {
               if (key === "analysis") {
                 changeMode("metrics");
-                navigate("analysis");
+                navigate("analysis", "metrics");
               } else navigate(key);
             }}
           >
             <span className="nav-index" aria-hidden="true">
               {String(index + 1).padStart(2, "0")}
             </span>
-            <span>{label}</span>
+            <span>{view === "overview" && key === "analysis" ? "指标分析（全体数据）" : label}</span>
             {key === "reports" && sessionAnalyses.length > 0 && (
               <small>{sessionAnalyses.length}</small>
             )}
@@ -1981,20 +1966,23 @@ export function Workspace({ initialConversation = false }: { initialConversation
       className={`graphite-workspace workbench-shell glass-workspace ${experienceStyles.shell}`}
       data-view={view}
       data-conversation={(view === "analysis" && mode === "question") || undefined}
+      data-exploration={view === "overview" || undefined}
       data-drawer-open={sidebarOpen || undefined}
     >
       <a className="skip-link" href="#main-content">
         跳到主要内容
       </a>
-      <LightField
-        drifting={!glassPaused && motionPreference.enabled && !motionPreference.reduced}
-      />
+      {view !== "overview" && (
+        <LightField
+          drifting={!glassPaused && motionPreference.enabled && !motionPreference.reduced}
+        />
+      )}
       <header className="workbench-header glass-topbar">
         <div className="glass-entry">
           <button
             type="button"
             className="glass-brand"
-            aria-label="返回数据总览"
+            aria-label="返回数据浏览"
             onClick={() => {
               changeMode("metrics");
               navigate("overview");
@@ -2017,7 +2005,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
                   if (view === "analysis" && mode === "question") return;
                   lastDataView.current = view;
                   changeMode("question");
-                  navigate("analysis");
+                  navigate("analysis", "question");
                 }}
               >
                 <Icon name="sparkles" size={15} />
@@ -2036,7 +2024,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
                 navigate(lastDataView.current);
               }}
             >
-              <Icon name="dashboard" size={15} />
+              <Icon name="chart" size={15} />
               <span>数据浏览</span>
             </button>
           </div>
@@ -2141,7 +2129,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
           </div>
         </div>
       </header>
-      {!(view === "analysis" && mode === "question") && (
+      {view !== "overview" && !(view === "analysis" && mode === "question") && (
         <aside className="glass-data-sidebar" data-glass-pane="0.45" aria-label="数据浏览导航">
           <span className="glass-sidebar-label">学习工作台</span>
           {navigation}
@@ -2161,6 +2149,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
         popover="auto"
         onToggle={(event) => setSidebarOpen(event.newState === "open")}
         onKeyDown={(event) => {
+          if (view === "overview") return;
           if (event.key !== "Tab") return;
           const focusables = sidebar.current?.querySelectorAll<HTMLElement>(
             'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
@@ -2193,6 +2182,30 @@ export function Workspace({ initialConversation = false }: { initialConversation
         </div>
         {navigation}
         {!(view === "analysis" && mode === "question") && sourcePicker}
+        {view === "overview" && (
+          <div className="canvas-menu-settings">
+            <p>{user.displayName || user.username}</p>
+            <div className="canvas-menu-preferences">
+              <span>其它页面外观（浏览固定浅色）</span>
+              <ThemeToggle />
+            </div>
+            <MotionToggle />
+            <button type="button" className="text-button" onClick={() => navigate("account")}>
+              我的账号
+            </button>
+            {user.role === "admin" && (
+              <button type="button" className="text-button" onClick={() => {
+                setAdminInitialTab(undefined);
+                navigate("admin");
+              }}>
+                系统管理与数据导入
+              </button>
+            )}
+            <button type="button" className="text-button" onClick={requestLogout}>
+              退出登录
+            </button>
+          </div>
+        )}
         <div className="drawer-footnote">
           <Icon name="shield" size={14} />
           <span>学析台 · 学习数据分析</span>
@@ -2208,7 +2221,9 @@ export function Workspace({ initialConversation = false }: { initialConversation
           aria-labelledby={
             view === "analysis" && mode === "question"
               ? "conversation-heading"
-              : "workspace-heading"
+              : view === "overview"
+                ? undefined
+                : "workspace-heading"
           }
         >
           {view !== "overview" && (
@@ -2220,44 +2235,57 @@ export function Workspace({ initialConversation = false }: { initialConversation
           )}
           <div key={view} className="view-surface">
             {view !== "analysis" && notice}
-            {view === "overview" &&
-              (capabilities.canUseAI ? (
-                <LearningOverview
-                  heading={pageHeader}
-                  sourceControl={null}
-                  results={overview}
-                  loading={profilesLoading || (overviewLoading && canRun)}
-                  profile={selectedProfile}
-                  canRun={canRun}
-                  aiReady={aiReady}
-                  onExplore={(nextMetric) => {
-                    setAnalysisView("standard");
-                    setMetric(nextMetric);
-                    setScoreView("comparison");
-                    setDimension("course");
-                    setChartType("bar");
-                    changeMode("metrics");
-                    navigate("analysis");
-                  }}
-                  onQuestion={(nextQuestion) => {
-                    changeMode("question");
-                    navigate("analysis");
-                    if (nextQuestion) void ask(nextQuestion, { fresh: true });
-                  }}
-                  onData={() => navigate("data")}
-                  onReport={previewReport}
-                />
-              ) : (
-                <ReadonlyOverview
-                  heading={pageHeader}
-                  sourceControl={null}
-                  profile={selectedProfile}
-                  profilesLoading={profilesLoading}
-                  profilesError={profilesError}
-                  onAnalyze={() => navigate("analysis")}
-                  onData={() => navigate("data")}
-                />
-              ))}
+            {view === "overview" && (
+              <>
+                {workspaceRouteError ? (
+                  <div role="alert" className="exploration-state">
+                    <h1>找不到这个位置</h1>
+                    <p>{workspaceRouteError}</p>
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => {
+                        explorationLocation.current = "/?workspace=overview";
+                        setWorkspaceRouteError("");
+                        navigate("overview");
+                      }}
+                    >
+                      回到数据总览
+                    </button>
+                  </div>
+                ) : profilesLoading ? (
+                  <p className="exploration-state" role="status">
+                    正在读取授权数据源…
+                  </p>
+                ) : canRun && eligibleDatasetId && selectedProfile ? (
+                  <DataExplorer
+                    key={`${sessionScopeKey(user)}:${eligibleDatasetId}:${selectedProfile.datasetVersion ?? ""}`}
+                    datasetId={eligibleDatasetId}
+                    profile={selectedProfile}
+                    scopeKey={`${sessionScopeKey(user)}:${eligibleDatasetId}:${selectedProfile.datasetVersion ?? ""}`}
+                    api={api}
+                    onLocationChange={rememberExplorationLocation}
+                    canUseAI={capabilities.canUseAI}
+                    onAI={(context) => {
+                      setBrowseContext({ ...context, datasetId: eligibleDatasetId });
+                      lastDataView.current = "overview";
+                      changeMode("question");
+                      navigate("analysis", "question");
+                    }}
+                  />
+                ) : (
+                  <div role="status" className="exploration-state">
+                    <h1>暂时无法浏览这份数据</h1>
+                    <p>
+                      {profilesError ||
+                        (selectedProfile
+                          ? `${selectedProfile.name}${sourceStatusLabel(selectedProfile)}。请选择可用数据源。`
+                          : "这份数据不存在或当前账号没有访问权限。请选择已授权数据源。")}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
             {view === "analysis" &&
               (mode === "question" ? (
                 <ConversationWorkspace
@@ -2313,7 +2341,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
                   canRun={canRun}
                   canExport={capabilities.canExport}
                   model={aiStatus.model}
-                  contextLabel={describeChatContext(chatContext)}
+                  contextLabel={browseContext?.datasetId === eligibleDatasetId ? `当前浏览 · ${browseContext.label}` : describeChatContext(chatContext)}
                   inputError={inputError}
                   expandedChartId={expandedChartId}
                   onQuestionChange={(value) => {
@@ -2335,6 +2363,10 @@ export function Workspace({ initialConversation = false }: { initialConversation
                   notice={notice}
                   onStop={() => void stopConversation()}
                   onClearContext={() => {
+                    if (browseContext?.datasetId === eligibleDatasetId) {
+                      setBrowseContext(null);
+                      return;
+                    }
                     setChatContext(null);
                     resetConversationContext.current = true;
                   }}

@@ -6,6 +6,7 @@ import { useMotionPreferences } from "@/components/ui/motion-preferences";
 import { useTheme } from "@/components/ui/theme-provider";
 import { relationKey, type CourseRelationData } from "@/lib/analysis/course-relations";
 import { courseColorTokens } from "@/lib/analysis/course-colors";
+import type { PickAnchor } from "@/lib/exploration/selection";
 import styles from "./course-relations.module.css";
 
 export function CourseRelationChart({
@@ -18,8 +19,8 @@ export function CourseRelationChart({
   data: CourseRelationData;
   course: string;
   selectedKey?: string;
-  onCourse: (course: string) => void;
-  onRelation: (key: string) => void;
+  onCourse: (course: string, anchor?: PickAnchor) => void;
+  onRelation: (key: string, anchor?: PickAnchor) => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const chart = useRef<echarts.ECharts | null>(null);
@@ -41,10 +42,18 @@ export function CourseRelationChart({
     const instance = echarts.init(root.current, undefined, { renderer: "svg" });
     chart.current = instance;
     instance.on("click", (params) => {
+      root.current?.focus({ preventScroll: true });
+      const nativeEvent = params.event?.event as MouseEvent | undefined;
+      const rect = root.current?.getBoundingClientRect();
+      const anchor = nativeEvent && Number.isFinite(nativeEvent.clientX) && Number.isFinite(nativeEvent.clientY)
+        ? { x: nativeEvent.clientX, y: nativeEvent.clientY }
+        : rect && params.event
+          ? { x: rect.left + params.event.offsetX, y: rect.top + params.event.offsetY }
+          : undefined;
       if (params.dataType === "edge") {
         const item = params.data as { relationId: string };
-        callbacks.current.onRelation(item.relationId);
-      } else if (params.name) callbacks.current.onCourse(params.name);
+        callbacks.current.onRelation(item.relationId, anchor);
+      } else if (params.name) callbacks.current.onCourse(params.name, anchor);
     });
     instance.on("mouseover", (params) => {
       if (!matchMedia("(hover: hover) and (pointer: fine)").matches) return;
@@ -256,6 +265,7 @@ export function CourseRelationChart({
       className={styles.chart}
       data-enter="fade"
       role="img"
+      tabIndex={-1}
       aria-label={`${data.term}学科学习薄弱关联弦图，连带宽度表示两科都低于${data.threshold}分的人数。共${data.relations.length}组关系。可通过下方课程按钮和关联列表查看相同数据。`}
     />
   );

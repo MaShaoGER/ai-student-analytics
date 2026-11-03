@@ -80,7 +80,7 @@
   display: block;
   width: 16px;
   height: 12px;
-  border-radius: var(--corner-radius);
+  border-radius: 0;
 }
 .panel [data-level="0"] {
   --cell-color: var(--surface-inset);
@@ -249,7 +249,7 @@
   min-height: 64px;
   padding: 16px 20px;
   margin-top: 16px;
-  border-radius: var(--corner-radius);
+  border-radius: 0;
   background: var(--surface-inset);
   font-size: 12px;
   color: var(--muted);
@@ -347,7 +347,7 @@
 }
 :global(.glass-workspace) .detail {
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--ui-inset);
 }
 

@@ -6,12 +6,14 @@ import { dataSourceSchema } from "@/lib/analysis/types";
 import { queryExecutionHttpError } from "@/lib/analysis/http-errors";
 import { apiError, noStoreJson, requireUser } from "@/lib/auth/http";
 import { checkRateLimit, rateLimitConfigs } from "@/lib/security/rate-limit";
+import { explorationFocusSchema, parseExplorationFocus } from "@/lib/exploration/selection";
 
 export const runtime = "nodejs";
 const schema = z.object({
   datasetId: dataSourceSchema,
   term: z.string().trim().min(1).max(80).optional(),
   course: z.string().trim().max(120).default(""),
+  focus: explorationFocusSchema.optional(),
 });
 export async function GET(request: Request) {
   try {
@@ -33,10 +35,19 @@ export async function GET(request: Request) {
       datasetId: params.get("datasetId"),
       term: params.get("term") ?? undefined,
       course: params.get("course") ?? "",
+      focus: params.has("focus")
+        ? parseExplorationFocus(z.string().max(12000).trim().min(1).parse(params.get("focus")))
+        : undefined,
     });
     return noStoreJson(
       await withBusinessAccess(user, input.datasetId, "view", () =>
-        chartStudioData(input.datasetId, input.term, input.course, { signal: request.signal }),
+        chartStudioData(
+          input.datasetId,
+          input.term,
+          input.course,
+          { signal: request.signal },
+          { focus: input.focus },
+        ),
       ),
     );
   } catch (error) {

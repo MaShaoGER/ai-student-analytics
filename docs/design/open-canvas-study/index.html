@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>学析台 · 开放画布动态讨论稿</title>
+<link rel="stylesheet" href="study.css">
+<script defer src="data.js"></script><script defer src="relations-data.js"></script><script defer src="study.js"></script>
+</head>
+<body>
+<header class="corner brand"><button data-action="home" aria-label="返回首页"><span class="brand-mark" aria-hidden="true">✳</span> 学析台</button></header>
+<div class="preview-label">开放画布 / 概念循环 <span>Opus 交互改版 · 设计讨论稿</span></div>
+<button class="corner menu-button" id="menu-toggle" aria-label="样稿说明" aria-expanded="false" aria-controls="notes">☰</button>
+<aside id="notes" hidden aria-label="样稿说明">
+<h2>概念循环 · 设计讨论稿</h2>
+<p>点课程：左边是统一指标表，右边是这门课的画法。点指标：左边是围绕它的关联，右边只换同一份数据的画法。跨课范围只在选“– 学科”关系时扩大。</p>
+<p>本页由 Opus 做交互改版，属于设计讨论稿，不是正式应用实现；正式应用没有改动。</p>
+<p>数值由 data/sample 的合成校园数据聚合；无真实学生，无正式 API、账号或模型接入。</p>
+<label><input id="motion-toggle" type="checkbox"> 减少动态</label>
+<button data-action="close-notes">关闭说明</button>
+</aside>
+<main id="stage" aria-label="数据浏览画布"></main>
+<footer class="corner information">
+<div id="scope-info"></div>
+<nav aria-label="探索导航"><button data-action="home">首页</button><span>·</span><button data-action="overview" id="overview-button">探索全览</button><span>·</span><button data-action="back" id="back-button">返回</button></nav>
+<small>合成演示数据 · 设计候选，非正式业务</small>
+</footer>
+<button class="corner ai-switch" id="ai-switch" data-action="ai"><span aria-hidden="true">✧</span> <span id="ai-switch-label">与 AI 继续</span></button>
+<div class="sr-only" role="status" aria-live="polite" id="announcement"></div>
+</body></html>

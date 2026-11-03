@@ -6,6 +6,7 @@ import {
   type StudioFields,
   type StudioTable,
 } from "./chart-studio";
+import type { ChartPick } from "@/lib/exploration/selection";
 
 export type StudioColors = {
   text: string;
@@ -14,7 +15,46 @@ export type StudioColors = {
   surface: string;
   palette: string[];
 };
-export type StudioDetail = { label: string; detail: string };
+export type StudioDetail = { label: string; detail: string; pick?: ChartPick };
+
+type SelectedItemStyle = { borderColor: string; borderWidth: number };
+
+const PATH_BANDS: Record<"attendance" | "homework" | "score", string[]> = {
+  attendance: ["出勤低于80%", "出勤80–95%", "出勤至少95%"],
+  homework: ["作业完成低于60%", "作业完成60–90%", "作业完成至少90%"],
+  score: ["成绩低于60分", "成绩60–80分", "成绩至少80分"],
+};
+const PATH_COLUMNS: Record<string, "attendance" | "homework" | "score"> = {
+  出勤档位: "attendance",
+  作业档位: "homework",
+  成绩档位: "score",
+};
+function pathBandPick(
+  dimension: "attendance" | "homework" | "score",
+  band: number,
+): Extract<ChartPick, { kind: "path" }> {
+  if (dimension === "attendance") return { kind: "path", attendance: band };
+  if (dimension === "homework") return { kind: "path", homework: band };
+  return { kind: "path", score: band };
+}
+
+/** Stable identity for a pick: density centres are compared at display precision. */
+export function chartPickKey(pick: ChartPick): string {
+  switch (pick.kind) {
+    case "course":
+      return `course:${pick.course}`;
+    case "week":
+      return `week:${pick.course}:${pick.week}`;
+    case "comparison":
+      return `comparison:${pick.course}:${pick.side}`;
+    case "density":
+      return `density:${pick.metric}:${pick.x.toFixed(6)}:${pick.y.toFixed(6)}`;
+    case "path":
+      return `path:${pick.attendance ?? ""}:${pick.homework ?? ""}:${pick.score ?? ""}`;
+    case "score":
+      return `score:${pick.course}:${pick.min}:${pick.max}:${pick.includeMax ? 1 : 0}`;
+  }
+}
 export type BuiltStudioChart = {
   option: EChartsOption;
   details: StudioDetail[];
@@ -39,10 +79,19 @@ export function buildStudioChart(
     compact?: boolean;
     densityMode?: "density" | "scatter";
     aggregate?: "sum" | "mean";
+    selectedPick?: ChartPick;
   } = {},
 ): BuiltStudioChart {
   const details: StudioDetail[] = [];
   let omitted = 0;
+  const meta = table.meta;
+  const selectedKey = options.selectedPick ? chartPickKey(options.selectedPick) : "";
+  const isSelected = (pick: ChartPick | undefined) =>
+    Boolean(pick && selectedKey && chartPickKey(pick) === selectedKey);
+  const selectedItemStyle = (pick: ChartPick | undefined) =>
+    isSelected(pick) ? { borderColor: colors.text, borderWidth: 2 } : undefined;
+  // Deliberately no dataZoom/roam/inside zoom: the wheel must scroll the page and
+  // the underlying table, never pan or filter the plotted statistics.
   const option: EChartsOption = {
     animation: false,
     color: colors.palette,
@@ -107,10 +156,26 @@ export function buildStudioChart(
   if (type === "sankey") {
     const stages = [fields.stage1, fields.stage2, fields.stage3].filter(Boolean);
     if (new Set(stages).size !== stages.length) throw new Error("每一层请选择不同的分类字段。");
-    const nodes = new Map<string, { name: string; depth: number; detail: string }>();
+    const nodes = new Map<
+      string,
+      {
+        name: string;
+        depth: number;
+        detail: string;
+        pick?: ChartPick;
+        itemStyle?: SelectedItemStyle;
+      }
+    >();
     const links = new Map<
       string,
-      { source: string; target: string; value: number; detail: string }
+      {
+        source: string;
+        target: string;
+        value: number;
+        detail: string;
+        pick?: ChartPick;
+        lineStyle?: { color: string; opacity: number; curveness: number; width?: number };
+      }
     >();
     let total = 0;
     for (const row of table.rows) {
@@ -123,13 +188,38 @@ export function buildStudioChart(
       total += weight;
       labels.forEach((label, i) => {
         const id = `${i}::${label}`;
-        nodes.set(id, { name: id, depth: i, detail: `${stages[i]}\n${label}` });
+        const band = meta?.project ? PATH_COLUMNS[stages[i]] : undefined;
+        const bandIndex = band ? PATH_BANDS[band].indexOf(label) : -1;
+        const pick: ChartPick | undefined =
+          band && bandIndex >= 0 ? pathBandPick(band, bandIndex) : undefined;
+        nodes.set(id, {
+          name: id,
+          depth: i,
+          detail: `${stages[i]}\n${label}`,
+          pick,
+          itemStyle: selectedItemStyle(pick),
+        });
         if (!i) return;
         const source = `${i - 1}::${labels[i - 1]}`,
           key = JSON.stringify([source, id]);
         const link = links.get(key) ?? { source, target: id, value: 0, detail: "" };
         link.value += weight;
         link.detail = `${labels[i - 1]} → ${label}\n${fields.weight || "记录数"}：${fmt(link.value)}`;
+        const sourcePick = nodes.get(source)?.pick;
+        if (pick?.kind === "path" && sourcePick?.kind === "path") {
+          const merged: Extract<ChartPick, { kind: "path" }> = { kind: "path" };
+          for (const dimension of ["attendance", "homework", "score"] as const) {
+            const value = sourcePick[dimension] ?? pick[dimension];
+            if (value !== undefined) merged[dimension] = value;
+          }
+          link.pick = merged;
+        }
+        link.lineStyle = {
+          color: "gradient",
+          opacity: isSelected(link.pick) ? 0.9 : 0.36,
+          curveness: 0.5,
+          ...(isSelected(link.pick) ? { width: 5 } : {}),
+        };
         links.set(key, link);
       });
     }
@@ -169,6 +259,7 @@ export function buildStudioChart(
         .map((link) => ({
           label: `${link.source.split("::").slice(1).join("::")} → ${link.target.split("::").slice(1).join("::")}`,
           detail: link.detail,
+          pick: link.pick,
         })),
     );
     return {
@@ -184,7 +275,13 @@ export function buildStudioChart(
       table.columns.includes(key),
     );
     const groups = new Map<string, number[]>();
-    const boxes: { name: string; value: number[]; detail: string }[] = [];
+    const boxes: {
+      name: string;
+      value: number[];
+      detail: string;
+      pick?: ChartPick;
+      itemStyle?: SelectedItemStyle;
+    }[] = [];
     const outliers: { value: number[]; detail: string }[] = [];
     if (summary) {
       for (const row of table.rows) {
@@ -199,10 +296,15 @@ export function buildStudioChart(
         const v = values as number[];
         if (v.some((value, i) => i > 0 && value < v[i - 1]))
           throw new Error("五数概要需要满足：最小值 ≤ 下四分位数 ≤ 中位数 ≤ 上四分位数 ≤ 最大值。");
+        const pick: ChartPick | undefined = meta?.project
+          ? { kind: "course", course: name }
+          : undefined;
         boxes.push({
           name,
           value: v,
           detail: `${name}\n最小值 ${fmt(v[0])}\n下四分位数 ${fmt(v[1])}\n中位数 ${fmt(v[2])}\n上四分位数 ${fmt(v[3])}\n最大值 ${fmt(v[4])}${row["样本数"] != null ? `\n样本数 ${row["样本数"]}` : ""}`,
+          pick,
+          itemStyle: selectedItemStyle(pick),
         });
       }
     } else {
@@ -254,18 +356,7 @@ export function buildStudioChart(
         itemStyle: { color: colors.palette[1] },
       },
     ];
-    option.dataZoom = [
-      { type: "inside", xAxisIndex: 0 },
-      {
-        type: "slider",
-        xAxisIndex: 0,
-        height: 16,
-        bottom: 12,
-        start: 0,
-        end: Math.min(100, 1000 / Math.max(1, boxes.length)),
-      },
-    ];
-    details.push(...boxes.map((box) => ({ label: box.name, detail: box.detail })));
+    details.push(...boxes.map((box) => ({ label: box.name, detail: box.detail, pick: box.pick })));
     return {
       option,
       details,
@@ -294,11 +385,22 @@ export function buildStudioChart(
     const ys = sortLabels([...new Set([...cells.values()].map((cell) => cell.y))]);
     if (xs.length > 100 || ys.length > 60)
       throw new Error("热力图支持最多 100 列、60 行，请先汇总数据。");
+    const projectWeeks = Boolean(meta?.project) && fields.x === "周次" && fields.y === "课程";
     const points = [...cells.values()].map((cell) => {
       const value = options.aggregate === "sum" ? cell.sum : cell.sum / cell.n;
+      const week = projectWeeks ? numeric(cell.x) : null;
+      const pick: ChartPick | undefined =
+        week !== null && Number.isInteger(week)
+          ? { kind: "week", course: cell.y, week }
+          : undefined;
       const detail = `${fields.x}：${cell.x}\n${fields.y}：${cell.y}\n${fields.value}：${fmt(value)}`;
-      details.push({ label: `${cell.y} / ${cell.x}`, detail });
-      return { value: [xs.indexOf(cell.x), ys.indexOf(cell.y), value], detail };
+      details.push({ label: `${cell.y} / ${cell.x}`, detail, pick });
+      return {
+        value: [xs.indexOf(cell.x), ys.indexOf(cell.y), value],
+        detail,
+        pick,
+        itemStyle: selectedItemStyle(pick),
+      };
     });
     const values = points.map((point) => point.value[2]);
     const min = Math.min(0, ...values),
@@ -334,7 +436,16 @@ export function buildStudioChart(
   }
 
   if (type === "density") {
-    const points: { value: number[]; detail: string }[] = [];
+    const density =
+      meta?.density && meta.density.xWidth > 0 && meta.density.yWidth > 0
+        ? meta.density
+        : undefined;
+    const points: {
+      value: number[];
+      detail: string;
+      pick?: ChartPick;
+      itemStyle?: SelectedItemStyle;
+    }[] = [];
     for (const row of table.rows) {
       const x = numeric(row[fields.x]),
         y = numeric(row[fields.y]),
@@ -343,9 +454,17 @@ export function buildStudioChart(
         omitted++;
         continue;
       }
+      // Project tables arrive pre-aggregated on the backend's real bins: never re-bin them.
+      const pick: ChartPick | undefined = density
+        ? { kind: "density", metric: density.metric, x, y }
+        : undefined;
       points.push({
         value: [x, y, n],
-        detail: `${fields.x}：${fmt(x)}\n${fields.y}：${fmt(y)}\n频数：${fmt(n)}`,
+        detail: density
+          ? `${fields.x}：${fmt(x - density.xWidth / 2)}–${fmt(x + density.xWidth / 2)}\n${fields.y}：${fmt(y - density.yWidth / 2)}–${fmt(y + density.yWidth / 2)}\n频数：${fmt(n)}`
+          : `${fields.x}：${fmt(x)}\n${fields.y}：${fmt(y)}\n频数：${fmt(n)}`,
+        pick,
+        itemStyle: selectedItemStyle(pick),
       });
     }
     const total = points.reduce((sum, point) => sum + point.value[2], 0);
@@ -362,14 +481,62 @@ export function buildStudioChart(
           emphasis: { focus: "self" },
         },
       ];
-      option.dataZoom = [
-        { type: "inside", xAxisIndex: 0 },
-        { type: "inside", yAxisIndex: 0 },
-      ];
       details.push(
         ...points.slice(0, 300).map((point) => ({
           label: `${fmt(point.value[0])} / ${fmt(point.value[1])}`,
           detail: point.detail,
+          pick: point.pick,
+        })),
+      );
+    } else if (density) {
+      const centersX = [...new Set(points.map((point) => point.value[0]))].sort((a, b) => a - b);
+      const centersY = [...new Set(points.map((point) => point.value[1]))].sort((a, b) => a - b);
+      if (centersX.length > 100 || centersY.length > 60)
+        throw new Error("密度图支持最多 100 列、60 行原始分箱，请先筛选数据。");
+      const indexX = new Map(centersX.map((center, index) => [center, index]));
+      const indexY = new Map(centersY.map((center, index) => [center, index]));
+      const data = points.map((point) => ({
+        value: [indexX.get(point.value[0])!, indexY.get(point.value[1])!, point.value[2]],
+        detail: point.detail,
+        pick: point.pick,
+        itemStyle: point.itemStyle,
+      }));
+      option.xAxis = {
+        ...category(centersX.map((center) => fmt(center))),
+        name: fields.x,
+        nameLocation: "middle",
+        nameGap: 30,
+        axisLabel: { color: colors.muted, interval: Math.ceil(centersX.length / 4) - 1 },
+      };
+      option.yAxis = {
+        ...category(centersY.map((center) => fmt(center))),
+        name: fields.y,
+        axisLabel: { color: colors.muted, interval: Math.ceil(centersY.length / 4) - 1 },
+      };
+      option.visualMap = {
+        min: 0,
+        max: Math.max(1, ...data.map((point) => point.value[2])),
+        orient: "horizontal",
+        calculable: true,
+        left: "center",
+        bottom: 0,
+        itemWidth: 10,
+        itemHeight: 160,
+        inRange: { color: [colors.surface, colors.palette[0]] },
+        textStyle: { color: colors.muted },
+      };
+      option.series = [
+        {
+          type: "heatmap",
+          data,
+          emphasis: { itemStyle: { borderColor: colors.text, borderWidth: 1 } },
+        },
+      ];
+      details.push(
+        ...data.map((point) => ({
+          label: `${fmt(centersX[point.value[0]])} / ${fmt(centersY[point.value[1]])}`,
+          detail: point.detail,
+          pick: point.pick,
         })),
       );
     } else {
@@ -426,7 +593,7 @@ export function buildStudioChart(
       option,
       details,
       omitted,
-      summary: `${points.length} 条有效输入 · 频数合计 ${fmt(total)} · ${options.densityMode === "scatter" ? "点面积随频数变化，可滚轮缩放" : "颜色表示分箱内频数，空白表示没有有效记录"}`,
+      summary: `${points.length} 条有效输入 · 频数合计 ${fmt(total)} · ${options.densityMode === "scatter" ? "点面积随频数变化" : "颜色表示分箱内频数，空白表示没有有效记录"}`,
     };
   }
 
@@ -465,12 +632,34 @@ export function buildStudioChart(
     lineStyle: { color: colors.muted, width: 3, opacity: 0.35 },
     tooltip: { show: false },
   }));
+  const projectComparison = Boolean(meta?.project);
+  const comparisonPick = (course: string, side: "before" | "after"): ChartPick | undefined =>
+    projectComparison ? { kind: "comparison", course, side } : undefined;
+  const rowDetail = (row: (typeof rows)[number]) => {
+    const diff = row.after - row.before;
+    return `${row.name}\n${fields.before}：${fmt(row.before)}\n${fields.after}：${fmt(row.after)}\n差值：${diff > 0 ? "+" : ""}${fmt(diff)}`;
+  };
+  for (const row of rows) {
+    const detail = rowDetail(row);
+    const before = comparisonPick(row.name, "before");
+    if (before) {
+      details.push({ label: `${row.name} · 前期`, detail, pick: before });
+      details.push({
+        label: `${row.name} · 后期`,
+        detail,
+        pick: comparisonPick(row.name, "after"),
+      });
+    } else details.push({ label: row.name, detail });
+  }
   const makeData = (which: "before" | "after") =>
     rows.map((row) => {
-      const diff = row.after - row.before;
-      const detail = `${row.name}\n${fields.before}：${fmt(row.before)}\n${fields.after}：${fmt(row.after)}\n差值：${diff > 0 ? "+" : ""}${fmt(diff)}`;
-      if (which === "before") details.push({ label: row.name, detail });
-      return { value: [row[which], row.name], detail };
+      const pick = comparisonPick(row.name, which);
+      return {
+        value: [row[which], row.name],
+        detail: rowDetail(row),
+        pick,
+        itemStyle: selectedItemStyle(pick),
+      };
     });
   option.xAxis = axis("数值");
   option.yAxis = { ...category(rows.map((row) => row.name)), inverse: true };

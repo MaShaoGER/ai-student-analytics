@@ -1,6 +1,6 @@
 # 下一窗口开工指令：AI 对话体验正式接入
 
-可将下面内容直接发送给下一窗口。完整规格见 [ai-conversation-experience-roadmap.md](ai-conversation-experience-roadmap.md)。
+> 历史任务输入，2026-11-02 归档。正式对话已接入，不能直接重跑本任务。原规格见[对话体验路线与实施记录](../../ai-conversation-experience-roadmap.md)，当前操作见[正式体验说明](../../ai-conversation-experience.md)。下文提示词保留原任务的路径与边界，不是当前执行授权。
 
 ```text
 请在 /Users/mashao/Documents/chuanzhi_project 实施 AI 对话体验正式改版，按照 docs/ai-conversation-experience-roadmap.md 分期推进。不是继续写规划，也不是只做另一个演示页。

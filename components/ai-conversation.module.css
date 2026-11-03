@@ -96,8 +96,9 @@
   background: var(--surface-inset);
 }
 .avatar[data-role="assistant"] {
-  background: var(--glass-relief), var(--glass-fill-dense);
-  border-color: color-mix(in srgb, var(--glass-rim) 45%, transparent);
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent-ink);
 }
 .pending {
   scroll-margin-top: calc(var(--chat-header-height, 64px) + 20px);
@@ -133,7 +134,7 @@
   overflow-wrap: anywhere;
 }
 .chartToggle small {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
   white-space: nowrap;
 }
@@ -184,10 +185,10 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  min-height: 28px;
+  min-height: 32px;
   padding: 0;
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--instrument-ink);
   background: transparent;
   border: 0;
@@ -216,7 +217,7 @@
   min-height: 32px;
   padding: 4px 10px;
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.4;
   color: var(--instrument-ink);
   background: transparent;
@@ -283,23 +284,23 @@
   align-items: center;
   justify-content: flex-end;
   gap: 4px 8px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--instrument-muted);
 }
 .clearConfirm > button {
-  min-height: 28px;
+  min-height: 32px;
   padding: 4px 10px;
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--instrument-ink);
   background: transparent;
   border: 1px solid var(--instrument-line);
   cursor: pointer;
 }
 .clearConfirm > .clearConfirmAction {
-  background: var(--glass-relief), var(--glass-fill-dense);
-  border-color: color-mix(in srgb, var(--glass-rim) 45%, transparent);
-  color: var(--ink);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--accent-ink);
 }
 /* Follow-up scope chip above the textarea. Clearing it only affects the next
    questions, which the chip itself and the live status line make explicit. */
@@ -315,12 +316,13 @@
   align-items: center;
   gap: 6px;
   max-width: 100%;
-  min-height: 26px;
+  min-height: 28px;
   padding: 2px 4px 2px 8px;
   background: var(--instrument-inset);
   border: 1px solid var(--instrument-line);
+  border-radius: 0;
   color: var(--instrument-ink);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -332,10 +334,11 @@
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: 0;
+  border-radius: 0;
   background: transparent;
   color: var(--instrument-muted);
   cursor: pointer;
@@ -365,7 +368,7 @@
 }
 .composerActions > span {
   color: var(--instrument-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .send,
 .stop {
@@ -375,16 +378,30 @@
   min-width: 40px;
   min-height: 36px;
   padding: 8px;
-  border: 0;
-  background: var(--glass-relief), var(--glass-fill-dense);
-  color: var(--ink);
+  border: 1px solid transparent;
+  border-radius: 0;
+  font: inherit;
+  cursor: pointer;
+}
+.send {
+  background: var(--accent);
+  color: var(--button-ink);
+}
+.send:hover:not(:disabled) {
+  background: var(--accent-ink);
 }
 .send svg {
   transform: rotate(-90deg);
 }
 .stop {
   padding-inline: 12px;
+  border-color: var(--ui-control-border);
+  background: var(--ui-control-bg);
+  color: var(--ink);
   font-size: 12px;
+}
+.stop:hover:not(:disabled) {
+  border-color: var(--line-strong);
 }
 .composer button:disabled {
   opacity: 0.5;
@@ -405,8 +422,10 @@
 .facts {
   margin-top: 16px;
   padding: 12px 20px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--accent);
+  border-radius: 0;
   background: var(--surface-inset);
-  border-left: 3px solid var(--sage);
 }
 /* Collapsed by default (roadmap: "数字从哪来" 默认折叠) but always reachable. */
 .facts summary {
@@ -415,7 +434,8 @@
   display: flex;
   align-items: baseline;
   gap: 2px;
-  padding: 4px 0;
+  min-height: 36px;
+  padding: 6px 0;
   color: var(--ink);
 }
 .facts summary::-webkit-details-marker {
@@ -433,7 +453,7 @@
 .facts summary:focus-visible {
   outline: 2px solid var(--accent-ink);
   outline-offset: 3px;
-  border-radius: 4px;
+  border-radius: 0;
 }
 .facts strong {
   font-size: 13px;
@@ -489,7 +509,7 @@
   max-width: 68ch;
   margin: 16px 0 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.7;
 }
 .distribution {
@@ -523,8 +543,8 @@
   gap: 8px;
 }
 .actions button[aria-pressed="true"] {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
 }
 .search {
   display: grid;
@@ -538,7 +558,7 @@
   min-height: 40px;
   padding: 8px 12px;
   border: 1px solid var(--line);
-  border-radius: var(--corner-radius);
+  border-radius: 0;
   background: var(--surface-inset);
   color: var(--ink);
   font: inherit;
@@ -683,6 +703,14 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   .stop {
     min-height: 40px;
   }
+  .composerTools > button,
+  .clearConfirm > button {
+    min-height: 40px;
+  }
+  .contextChip > button {
+    width: 32px;
+    height: 32px;
+  }
   .chartToggle {
     flex-wrap: wrap;
     gap: 8px;
@@ -743,13 +771,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   display: none;
 }
 .workspaceHeading :global(.page-eyebrow) {
-  font-size: 9px;
-}
-.navBadge {
-  padding: 3px 5px;
-  background: var(--glass-relief), var(--glass-fill-dense);
-  color: var(--ink);
-  font: 9px monospace;
+  font-size: 12px;
 }
 .conversation {
   max-width: 1000px;
@@ -757,36 +779,18 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   padding-top: 4px;
 }
 .availability {
-  font-size: 10px;
+  font-size: 12px;
 }
 .empty {
   padding: 8px 0 32px;
   border: 0;
 }
-.welcomeMark {
-  width: 42px;
-  height: 42px;
-  display: inline-grid;
-  vertical-align: middle;
-  place-items: center;
-  background: var(--instrument-bg);
-  color: var(--accent);
-  margin-bottom: 0;
-}
-.welcomeEyebrow {
-  display: inline-block;
-  vertical-align: middle;
-  margin-left: 14px;
-  font: 10px monospace;
-  letter-spacing: 1.2px;
-  color: var(--accent-ink);
-}
 .empty h2 {
-  font-size: 40px;
+  font-size: clamp(26px, 2.8vw, 32px);
   font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: -1.5px;
-  margin: 18px 0;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  margin: 12px 0;
 }
 .empty h2 em {
   font-style: normal;
@@ -794,8 +798,8 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 }
 .empty > p {
   max-width: 56ch;
-  font-size: 13px;
-  line-height: 1.9;
+  font-size: 14px;
+  line-height: 1.8;
 }
 .welcomeSuggestions {
   display: grid;
@@ -811,7 +815,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   justify-content: space-between;
   gap: 16px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
   margin-bottom: 12px;
 }
 .suggestionHeading > span:last-child {
@@ -824,13 +828,13 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   align-items: center;
   gap: 12px;
   width: 100%;
-  min-height: 36px;
+  min-height: 44px;
   padding: 10px 8px;
   border: 0;
   background: transparent;
   color: var(--ink);
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   text-align: left;
   cursor: pointer;
 }
@@ -859,16 +863,16 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   display: flex;
   align-items: center;
   gap: 7px;
-  margin-top: 24px;
-  font-size: 10px;
+  margin-top: 20px;
+  font-size: 12px;
 }
 .composerDock {
   max-width: 944px;
   margin-inline: auto;
 }
 .composer {
-  border-top: 3px solid var(--accent);
-  box-shadow: 5px 5px 0 color-mix(in srgb, var(--ink) 15%, transparent);
+  border-top: 1px solid var(--line);
+  box-shadow: none;
 }
 .composerHeading > label {
   display: flex;
@@ -933,8 +937,9 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 }
 .formalHeader > div > span {
   color: var(--muted);
-  font: 700 9px/1.5 monospace;
-  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 .formalHeader h1 {
   font-size: 21px;
@@ -1007,9 +1012,12 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   min-height: 36px;
   padding: 0 2px;
   border: 0;
+  border-radius: 0;
   background: transparent;
   color: var(--muted);
-  font: 10px/1.5 monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
 .scrollRuler button::after {
@@ -1020,8 +1028,8 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 }
 .scrollRuler button[aria-current],
 .scrollRuler button[data-unread="true"] {
-  color: var(--ink);
-  background: var(--glass-fill);
+  color: var(--accent-ink);
+  background: var(--accent-soft);
 }
 .scrollRuler button[aria-current]::after {
   width: 13px;
@@ -1097,7 +1105,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 }
 .composer {
   box-shadow: none;
-  border-top: 2px solid var(--accent);
+  border-top: 1px solid var(--line);
   padding: 10px 16px;
 }
 .composer textarea {
@@ -1108,10 +1116,10 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   gap: 12px;
 }
 .composerTools > button {
-  min-height: 40px;
+  min-height: var(--ui-control-height);
 }
 .composer .collapseToggle {
-  min-height: 40px;
+  min-height: var(--ui-control-height);
 }
 .snapshotNote {
   display: flex;
@@ -1119,7 +1127,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   align-items: baseline;
   gap: 2px 10px;
   margin: 8px 0;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
 }
 /* Contract/version identifiers are for verification, not for reading first:
@@ -1129,10 +1137,10 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   color: inherit;
 }
 .technical > summary {
-  min-height: 24px;
-  padding-block: 2px;
+  min-height: 28px;
+  padding-block: 4px;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
 }
 .technical > summary:hover {
@@ -1140,7 +1148,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 }
 .technical p {
   margin: 4px 0 0;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.7;
 }
 .chartAttachment {
@@ -1157,7 +1165,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   }
   .formalHeader :global(.workbench-source) {
     max-width: 100%;
-    font-size: 11px;
+    font-size: 12px;
   }
   .formalHeader p {
     display: none;
@@ -1172,14 +1180,14 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   }
   .formalHeader :global(.workbench-source) select {
     max-width: 150px;
-    min-height: 32px;
+    min-height: var(--ui-control-height);
     font-size: 12px;
   }
   .messageText {
-    font-size: 13px;
+    font-size: 14px;
   }
   .empty h2 {
-    font-size: 28px;
+    font-size: 26px;
   }
   .welcomeSuggestions {
     grid-template-columns: minmax(0, 1fr);
@@ -1187,10 +1195,6 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   }
   .welcomeSuggestions button {
     min-height: 44px;
-  }
-  .welcomeEyebrow {
-    font-size: 8px;
-    margin-left: 8px;
   }
   .suggestionHeading > span:last-child {
     display: none;
@@ -1232,15 +1236,15 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   transform: none;
 }
 
-/* V4: a unified reading surface, with data embedded in the assistant reply.
-   14px reading text / 22px title, 4px rhythm, one frost layer per outer pane. */
+/* The conversation reads on the flat page surface: 14px reading text, a 22px
+   title and hairlines; the only raised element is the composer dock. */
 :global(.glass-workspace) .conversation {
   --conversation-inset: clamp(20px, 3vw, 48px);
   --history-offset: 0px;
   border: 0;
   border-radius: 0;
   padding: 20px var(--conversation-inset) 0;
-  background: transparent;
+  background: var(--paper);
   box-shadow: none;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
@@ -1251,24 +1255,24 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 }
 :global(.glass-workspace) .formalHeader h1 {
   font-size: 22px;
-  font-weight: 500;
-  letter-spacing: 0;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   margin: 6px 0;
 }
 :global(.glass-workspace) .formalHeader > div > span {
-  font-weight: 400;
-  font-size: 9px;
-  letter-spacing: 1.2px;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.02em;
 }
 :global(.glass-workspace) .formalHeader p {
-  font-size: 11px;
+  font-size: 12px;
 }
 :global(.glass-workspace) .availability {
-  font-size: 11px;
+  font-size: 12px;
 }
 :global(.glass-workspace) .transcript {
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--sage) 30%, transparent) transparent;
+  scrollbar-color: var(--line-strong) transparent;
   padding-bottom: 24px;
   scroll-padding-bottom: 24px;
 }
@@ -1281,22 +1285,12 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   padding: 28px 0;
   border: 0;
 }
-:global(.glass-workspace) .empty h2 {
-  font-size: clamp(28px, 3vw, 38px);
-  font-weight: 500;
-  letter-spacing: -1px;
-}
-:global(.glass-workspace) .welcomeMark {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--glass-fill);
-}
 :global(.glass-workspace) .welcomeSuggestions {
   gap: 10px 12px;
 }
 :global(.glass-workspace) .welcomeSuggestions button {
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 0;
   min-height: 48px;
   padding: 12px;
 }
@@ -1309,8 +1303,8 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   margin: 12px 0 16px auto;
   padding: 14px 18px;
   border: 1px solid var(--line);
-  border-radius: 12px 12px 3px 12px;
-  background: var(--glass-fill);
+  border-radius: 0;
+  background: var(--surface-inset);
 }
 :global(.glass-workspace) .message[data-role="user"] .speaker {
   justify-content: flex-end;
@@ -1326,20 +1320,20 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   font-weight: 500;
 }
 :global(.glass-workspace) .avatar {
-  border-radius: 8px;
-  background: var(--glass-relief), var(--glass-fill-dense);
-  color: var(--ink);
-  border-color: var(--line);
+  border-radius: 0;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-color: transparent;
 }
 :global(.glass-workspace) .messageText {
   line-height: 1.9;
 }
 :global(.glass-workspace) .snapshotNote {
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.7;
 }
 :global(.glass-workspace) .chartAttachment {
-  border-radius: 13px;
+  border-radius: 0;
   background: transparent;
   border: 1px solid var(--line);
   overflow: hidden;
@@ -1350,12 +1344,12 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   padding: 12px 16px;
 }
 :global(.glass-workspace) .chartToggle > span {
-  font-size: 12px;
+  font-size: 13px;
 }
 :global(.glass-workspace) .suggestions button {
-  border-radius: 7px;
-  font-size: 11px;
-  background: transparent;
+  border-radius: 0;
+  font-size: 12px;
+  background: var(--ui-control-bg);
 }
 :global(.glass-workspace) .scrollRuler {
   border-left-color: var(--line);
@@ -1376,37 +1370,19 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 }
 :global(.glass-workspace) .composerDock[data-collapsed="false"] {
   /* The dock floats over the transcript, so hint line, notices and input share
-     one near-opaque backing: at 70% paper the table behind ghosted through the
-     text box, and the bare hint line collided with course names and table rows.
-     Blur stays for the glass feel, but the text no longer sits on the content. */
-  border: 1px solid var(--glass-border);
-  border-radius: var(--ui-panel-radius, 14px);
-  background: color-mix(in srgb, var(--paper) 95%, transparent);
-  box-shadow: 0 8px 24px #02040726;
-  -webkit-backdrop-filter: blur(16px) saturate(110%);
-  backdrop-filter: blur(16px) saturate(110%);
+     one opaque backing: text must never sit on a table row behind it. */
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface-raised);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--ink) 8%, transparent);
   padding: 10px 16px max(10px, env(safe-area-inset-bottom, 0px));
   /* The panel is opaque, so it must also swallow clicks: without this the
      transcript underneath (now invisible) could still be clicked through the
      padding ring. */
   pointer-events: auto;
 }
-:global(.glass-workspace) .composerDock[data-collapsed="false"]::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 100%;
-  height: 18px;
-  pointer-events: none;
-  background: linear-gradient(
-    to top,
-    color-mix(in srgb, var(--paper) 90%, transparent),
-    transparent
-  );
-}
 :global(.glass-workspace) .composerDock[data-collapsed="false"]:focus-within {
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--glass-border));
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
 }
 /* The panel owns the surface; the form stays a bare layout container. */
 :global(.glass-workspace) .composerDock[data-collapsed="false"] .composer {
@@ -1420,7 +1396,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   background: transparent;
 }
 :global(.glass-workspace) .composerDock > :global(.notice) {
-  border-radius: calc(var(--ui-panel-radius, 14px) - 4px);
+  border-radius: 0;
 }
 :global(.glass-workspace) .composerDock .note {
   margin: 0 0 8px;
@@ -1453,13 +1429,10 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   line-height: 1.6;
 }
 :global(.glass-workspace) .composer {
-  border: 1px solid var(--glass-border);
-  border-top-color: color-mix(in srgb, var(--glass-rim) 55%, transparent);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--paper) 70%, transparent);
-  box-shadow:
-    inset 0 1px 0 #ffffff0c,
-    0 8px 24px #02040726;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface-raised);
+  box-shadow: none;
   padding: 10px 16px;
 }
 :global(.glass-workspace) .composer textarea {
@@ -1467,17 +1440,17 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   font-size: 14px;
 }
 :global(.glass-workspace) .composerHeading > label {
-  font-size: 11px;
+  font-size: 12px;
 }
 :global(.glass-workspace) .composerTools button {
-  font-size: 11px;
+  font-size: 12px;
 }
 :global(.glass-workspace) .collapseToggle,
 :global(.glass-workspace) .send {
-  border-radius: 8px;
+  border-radius: 0;
 }
 :global(.glass-workspace) .contextChip {
-  border-radius: 6px;
+  border-radius: 0;
 }
 :global(.glass-workspace) .composerDock[data-collapsed="true"] {
   /* The expanded panel's padding vanishes when folded; re-add the same bottom
@@ -1486,25 +1459,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 }
 :global(.glass-workspace) .composerDock[data-collapsed="true"] .composer {
   margin-right: 1px;
-  border-radius: 10px;
-  -webkit-backdrop-filter: blur(16px) saturate(110%);
-  backdrop-filter: blur(16px) saturate(110%);
-}
-@supports not (backdrop-filter: blur(1px)) {
-  :global(.glass-workspace) .composerDock[data-collapsed="false"] {
-    background: var(--paper);
-  }
-  :global(.glass-workspace) .composer {
-    background: var(--paper);
-  }
-}
-@media (prefers-reduced-transparency: reduce) {
-  :global(.glass-workspace) .composerDock[data-collapsed="false"],
-  :global(.glass-workspace) .composer {
-    background: var(--paper);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
+  border-radius: 0;
 }
 /* With history collapsed the transcript, header and composer centre as one
    reading column. Percentages resolve against the conversation width for both
@@ -1556,9 +1511,9 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 :global(.glass-workspace) .suggestions button {
   min-height: var(--ui-control-height);
   border: 1px solid var(--ui-control-border);
-  border-radius: var(--ui-control-radius);
+  border-radius: 0;
   background: var(--ui-control-bg);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
 }
 :global(.glass-workspace) .actions button[aria-pressed="true"] {
@@ -1566,34 +1521,26 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   color: var(--ui-selected-ink);
 }
 :global(.glass-workspace) .chartToggle {
-  border-radius: var(--ui-control-radius);
-  background: var(--ui-inset);
-}
-:global(.glass-workspace) .chartAttachment {
-  border-radius: var(--ui-panel-radius);
-}
-:global(.glass-workspace) .contextChip {
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--ui-inset);
 }
 :global(.glass-workspace) .welcomeSuggestions button {
-  border-radius: var(--ui-control-radius);
+  border-radius: 0;
   background: var(--ui-control-bg);
 }
 :global(.glass-workspace) .composer {
-  border-radius: var(--ui-panel-radius);
+  border-radius: 0;
 }
 :global(.glass-workspace) .collapseToggle,
 :global(.glass-workspace) .send {
-  border-radius: var(--ui-control-radius);
+  border-radius: 0;
 }
 
 /* ---- Phones: the empty state has to fit above the floating input -----------
    At 390×844 and 320×720 the hero, the explanation and all three recommended
    questions must be visible (and tappable) without scrolling or being covered
    by the dock. Each block below trims vertical rhythm rather than hiding the
-   questions; the decorative eyebrow and the privacy footnote go entirely. */
+   questions; the privacy footnote goes entirely. */
 @media (max-width: 600px) {
   :global(.glass-workspace) .formalHeader > div > span {
     display: none;
@@ -1607,17 +1554,10 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   :global(.glass-workspace) .empty {
     padding: 4px 0 12px;
   }
-  :global(.glass-workspace) .welcomeMark {
-    width: 32px;
-    height: 32px;
-  }
-  :global(.glass-workspace) .welcomeEyebrow {
-    display: none;
-  }
   :global(.glass-workspace) .empty h2 {
-    font-size: 28px;
-    line-height: 1.22;
-    letter-spacing: -0.5px;
+    font-size: 24px;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
     margin: 10px 0 8px;
   }
   :global(.glass-workspace) .empty > p {
@@ -1645,9 +1585,6 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   }
   :global(.glass-workspace) .composerDock[data-collapsed="false"] {
     padding: 8px 10px max(8px, env(safe-area-inset-bottom, 0px));
-  }
-  :global(.glass-workspace) .composerDock[data-collapsed="false"]::before {
-    height: 12px;
   }
   :global(.glass-workspace) .composerDock[data-collapsed="true"] {
     padding: 0 10px max(8px, env(safe-area-inset-bottom, 0px));
@@ -1682,9 +1619,6 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
-  }
-  :global(.glass-workspace) .welcomeMark {
-    display: none;
   }
   :global(.glass-workspace) .suggestionHeading {
     display: none;
@@ -1723,12 +1657,15 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   width: 46px;
   height: 46px;
   padding: 0;
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--paper) 95%, transparent);
-  box-shadow: 0 8px 24px #02040726;
-  -webkit-backdrop-filter: blur(16px) saturate(110%);
-  backdrop-filter: blur(16px) saturate(110%);
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface-raised);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 8%, transparent);
+}
+/* The collapsed-rail rule centres the expanded dock with a calculated width;
+   the folded handle stays a square anchored at the same right edge. */
+:global(.glass-workspace [data-history-collapsed="true"]) .composerDock[data-collapsed="true"] {
+  width: 46px;
 }
 :global(.glass-workspace) .composerDock[data-collapsed="true"]:focus-within {
   outline: 2px solid var(--accent);
@@ -1740,8 +1677,6 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   margin: 0;
   transform: none;
   background: transparent;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
 }
 :global(.glass-workspace) .composerDock[data-collapsed="true"] .composerCollapsed {
   width: 100%;
@@ -1750,6 +1685,12 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   justify-content: flex-end;
 }
 :global(.glass-workspace) .composerDock .collapseToggle {
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+}
+/* The folded square is the whole control, so its toggle fills the 46px frame. */
+:global(.glass-workspace) .composerDock[data-collapsed="true"] .collapseToggle {
   width: 44px;
   height: 44px;
   min-height: 44px;

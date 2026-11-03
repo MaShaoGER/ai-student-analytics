@@ -183,7 +183,7 @@ export function buildChartOption({
             color: "#f8fbf9",
             backgroundColor: "rgba(18, 28, 24, 0.66)",
             padding: [2, 4],
-            borderRadius: 3,
+            borderRadius: 0,
             fontSize: compact ? 11 : 12,
             overflow: "truncate",
             formatter: (params) =>

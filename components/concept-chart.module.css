@@ -1,0 +1,102 @@
+/* Concept chart: one large SVG with transient hover and keyboard focus. */
+
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.empty {
+  min-height: 280px;
+  margin: 0;
+  padding: 48px 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.datum { outline: none; }
+.datum[data-interactive] { cursor: pointer; }
+
+.track { fill: rgba(36, 36, 54, 0.04); transition: fill 150ms ease-out; }
+.track[data-void] { fill: rgba(208, 208, 216, 0.4); }
+.hit { fill: transparent; transition: fill 150ms ease-out; }
+
+.bar { fill: var(--accent); opacity: 0.82; transition: opacity 150ms ease-out; }
+.bar[data-tone="a"] { fill: var(--accent); }
+.bar[data-tone="b"] { fill: #b98a3c; }
+.bar[data-tone="c"] { fill: #a8a8b4; }
+
+.grid { stroke: var(--line); stroke-width: 1; }
+.tick,
+.axis { fill: var(--muted); font-size: 12px; }
+.axis { letter-spacing: 0.08em; }
+.label { fill: var(--ink); font-size: 13px; transition: fill 150ms ease-out; }
+.value { fill: var(--ink); font-size: 13px; font-weight: 500; transition: fill 150ms ease-out; }
+
+/* Suppressed or missing: grey translucent material, no interaction, crisp text. */
+.voidBox {
+  fill: rgba(208, 208, 216, 0.4);
+  stroke: rgba(36, 36, 54, 0.1);
+  stroke-width: 1;
+}
+.void { fill: var(--muted); font-size: 12px; }
+.voidDot {
+  fill: rgba(208, 208, 216, 0.4);
+  stroke: rgba(36, 36, 54, 0.18);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+}
+
+.glowLine { fill: none; stroke: var(--accent); stroke-width: 6; opacity: 0.14; filter: blur(4px); }
+.line { fill: none; stroke: var(--accent); stroke-width: 2; }
+.stem { stroke: var(--accent); stroke-width: 1; opacity: 0.3; }
+.dot { fill: #fff; stroke: var(--accent); stroke-width: 2; transition: fill 150ms ease-out, stroke-width 150ms ease-out; }
+.dot[data-tone="b"] { stroke: #b98a3c; }
+.dot[data-tone="c"] { stroke: #a8a8b4; }
+.area { fill: var(--accent); fill-opacity: 0.12; stroke: var(--accent); stroke-width: 1.5; }
+
+/* Hover and keyboard focus are transient feedback on the graphic itself only:
+   hit boxes stay invisible, text never gets a stroke. */
+.datum[data-interactive]:hover .track:not([data-void]),
+.datum[data-interactive]:focus-visible .track:not([data-void]) { fill: rgba(118, 102, 204, 0.07); }
+.datum[data-interactive]:hover .bar { opacity: 1; filter: drop-shadow(0 0 4px rgba(118, 102, 204, 0.35)); }
+.datum[data-interactive]:hover .dot { fill: rgba(118, 102, 204, 0.18); filter: drop-shadow(0 0 4px rgba(118, 102, 204, 0.4)); }
+.datum[data-interactive]:hover .label,
+.datum[data-interactive]:hover .value { fill: var(--accent-ink, var(--accent)); }
+/* Keyboard focus: unmistakable ink ring on the mark plus accent text. */
+.datum[data-interactive]:focus-visible .bar { opacity: 1; stroke: var(--ink); stroke-width: 1.5; }
+.datum[data-interactive]:focus-visible .dot { fill: var(--accent); stroke: var(--ink); stroke-width: 2; }
+.datum[data-interactive]:focus-visible .track:not([data-void]) { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 2; }
+.datum[data-interactive]:focus-visible .label,
+.datum[data-interactive]:focus-visible .value { fill: var(--accent-ink, var(--accent)); font-weight: 600; }
+
+/* Wide charts scroll inside their own region on narrow screens; the page never overflows. */
+.viewport {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.viewport > .chart { min-width: 640px; }
+.viewport:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.scrollHint { display: none; margin: 0 0 12px; color: var(--muted); font-size: 12px; }
+@media (max-width: 720px) {
+  .scrollHint { display: block; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track, .hit, .bar, .label, .value, .dot { transition: none; }
+}
+@media print {
+  .glowLine { display: none; }
+  .viewport { overflow: visible; }
+  .viewport > .chart { min-width: 0; }
+}

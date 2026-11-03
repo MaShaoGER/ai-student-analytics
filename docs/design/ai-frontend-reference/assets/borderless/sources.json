@@ -1,0 +1,134 @@
+[
+  {
+    "id": "REF-001",
+    "short_url": "https://pin.it/2XASXqvAo",
+    "pin_url": "https://www.pinterest.com/pin/835136324709673683/",
+    "reported_canonical": "https://uk.pinterest.com/pin/774478467216455734/",
+    "title": "Color gradient banner | Gradient motion graphic, Gradient banner animation, Web ui",
+    "description": "28 Sept 2026 — A website interface with a dark background and white text. The top section reads \"The Physical Data Platform.\" Below, there is a colorful abstract design in blue and orange tones. Portfolio web design, Motion graphics design, System",
+    "further_source": null,
+    "video_url": "https://v1.pinimg.com/videos/iht/expMp4/3a/79/6f/3a796f6f29706af8231f0364b307cc87_720w.mp4",
+    "captured_at": "2026-11-03",
+    "duration_seconds": 5.53,
+    "video_width": 720,
+    "video_height": 900,
+    "video_file": "ref-001.mp4",
+    "sha256": "0c95edf04766c31c81381e7626e524b1df7791a743b74b17ba874630241f532d",
+    "crop_box_xyxy": [
+      40,
+      222,
+      680,
+      678
+    ],
+    "frames": [
+      {
+        "time_seconds": 0.2,
+        "frame_file": "ref-001-01.jpg",
+        "operation": "Crop video presentation margins only; no content retouching.",
+        "full_frame_file": null
+      },
+      {
+        "time_seconds": 1.8,
+        "frame_file": "ref-001-02.jpg",
+        "operation": "Crop video presentation margins only; no content retouching.",
+        "full_frame_file": "ref-001-02-full.jpg"
+      },
+      {
+        "time_seconds": 3.2,
+        "frame_file": "ref-001-03.jpg",
+        "operation": "Crop video presentation margins only; no content retouching.",
+        "full_frame_file": null
+      }
+    ],
+    "evidence_scope": "Public Pinterest video clip; original website DOM, scroll input and implementation not inspected.",
+    "sequence_file": "ref-001-sequence.jpg"
+  },
+  {
+    "id": "REF-002",
+    "short_url": "https://pin.it/vBefOcTJc",
+    "pin_url": "https://www.pinterest.com/pin/1107181889670836129/",
+    "reported_canonical": "https://in.pinterest.com/pin/206743439140044475/",
+    "title": "Features Section Scroll animation [Video] | Web section, Our story section ui design, Horizontal scroll ui",
+    "description": "15-Sep-2026 — A dark features section pairs small, restrained copy with a wide split-screen image and oversized team messaging. The sparse layout structure leaves room for Scroll Animations design to shape the pacing, while the Features UI stays focused and editorial. Features section ui design, App interface",
+    "further_source": "https://www.details.so/inspo/unitedcarriers-070979?utm_source=pinterest&utm_medium=social&utm_campaign=inspo&utm_content=unitedcarriers-070979",
+    "video_url": "https://v1.pinimg.com/videos/iht/expMp4/22/6f/51/226f51251615544d5f792af3cea20aa3_720w.mp4",
+    "captured_at": "2026-11-03",
+    "duration_seconds": 8.98,
+    "video_width": 720,
+    "video_height": 1080,
+    "video_file": "ref-002.mp4",
+    "sha256": "7af71ec4aa0e74a4362b12cfa184b776befc355993b65f251977d2ef35c37e5c",
+    "crop_box_xyxy": [
+      39,
+      340,
+      681,
+      741
+    ],
+    "frames": [
+      {
+        "time_seconds": 0.2,
+        "frame_file": "ref-002-01.jpg",
+        "operation": "Crop video presentation margins only; no content retouching.",
+        "full_frame_file": null
+      },
+      {
+        "time_seconds": 3.0,
+        "frame_file": "ref-002-02.jpg",
+        "operation": "Crop video presentation margins only; no content retouching.",
+        "full_frame_file": "ref-002-02-full.jpg"
+      },
+      {
+        "time_seconds": 8.3,
+        "frame_file": "ref-002-03.jpg",
+        "operation": "Crop video presentation margins only; no content retouching.",
+        "full_frame_file": null
+      }
+    ],
+    "evidence_scope": "Public Pinterest video clip; original website DOM, scroll input and implementation not inspected.",
+    "sequence_file": "ref-002-sequence.jpg"
+  },
+  {
+    "id": "REF-003",
+    "short_url": "https://pin.it/11DSREDnV",
+    "pin_url": "https://www.pinterest.com/pin/1107181889673483924/",
+    "reported_canonical": "https://in.pinterest.com/pin/223209725277870945/",
+    "title": "Text Showcase Web Design [Video] | Web design animation with numbers, Animated web design, Motion graphics website ui layout",
+    "description": "13-Sep-2026 — United Carriers pairs animated typography with prominent figures in a dark, spacious text showcase. A useful web design reference for designers working on industrial sites, with a restrained stats UI that gives the numbers room and the story a sense of scale. Industrial website, Website ui inspiration",
+    "further_source": "https://www.details.so/inspo/unitedcarriers-9aa62e",
+    "video_url": "https://v1.pinimg.com/videos/iht/expMp4/3b/bb/d2/3bbbd2773f9a4588606756ab324ee1c7_720w.mp4",
+    "captured_at": "2026-11-03",
+    "duration_seconds": 4.89,
+    "video_width": 720,
+    "video_height": 1280,
+    "video_file": "ref-003.mp4",
+    "sha256": "f9fca83358a6d1a6b37a3828e63e21828aa53dffc41d81516a20c60f257866ac",
+    "crop_box_xyxy": [
+      39,
+      440,
+      681,
+      841
+    ],
+    "frames": [
+      {
+        "time_seconds": 0.3,
+        "frame_file": "ref-003-01.jpg",
+        "operation": "Crop video presentation margins only; no content retouching.",
+        "full_frame_file": null
+      },
+      {
+        "time_seconds": 2.6,
+        "frame_file": "ref-003-02.jpg",
+        "operation": "Crop video presentation margins only; no content retouching.",
+        "full_frame_file": "ref-003-02-full.jpg"
+      },
+      {
+        "time_seconds": 4.6,
+        "frame_file": "ref-003-03.jpg",
+        "operation": "Crop video presentation margins only; no content retouching.",
+        "full_frame_file": null
+      }
+    ],
+    "evidence_scope": "Public Pinterest video clip; original website DOM, scroll input and implementation not inspected.",
+    "sequence_file": "ref-003-sequence.jpg"
+  }
+]

@@ -1,10 +1,12 @@
 import { withBusinessAccess } from "@/lib/auth/access";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { courseRelations } from "@/lib/analysis/duckdb";
 import { courseRelationRequestSchema } from "@/lib/analysis/course-relations";
 import { queryExecutionHttpError } from "@/lib/analysis/http-errors";
 import { apiError, noStoreJson, requireUser } from "@/lib/auth/http";
 import { checkRateLimit, rateLimitConfigs } from "@/lib/security/rate-limit";
+import { parseExplorationFocus } from "@/lib/exploration/selection";
 
 export const runtime = "nodejs";
 
@@ -29,6 +31,10 @@ export async function GET(request: Request) {
       datasetId: params.get("datasetId"),
       term: params.get("term") ?? undefined,
       threshold: params.get("threshold") ?? undefined,
+      courses: params.has("course") ? params.getAll("course") : undefined,
+      focus: params.has("focus")
+        ? parseExplorationFocus(z.string().max(12000).trim().min(1).parse(params.get("focus")))
+        : undefined,
     });
     return noStoreJson(
       await withBusinessAccess(user, input.datasetId, "view", () =>

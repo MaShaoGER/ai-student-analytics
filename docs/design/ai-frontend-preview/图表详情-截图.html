@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="黑白、光感玻璃、色散与边缘模糊的学生数据浏览设计预览。">
+  <title>观数 · 光与数据之间</title>
+  <style>
+@charset "UTF-8";
+
+:root{--bg:#f5f5f2;--ink:#18191b;--muted:#838489;--quiet:#b1b1b5;--accent:#635bff;--accent-rgb:99,91,255;--glass:255,255,255;--edge-blur:10px;--far-blur:1.6px;--light:.65;--line:rgba(25,25,35,.12);--font:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;color-scheme:light}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;-webkit-font-smoothing:antialiased;overflow-x:hidden;isolation:isolate;transition:background .65s,color .65s}button,a,input{-webkit-tap-highlight-color:transparent}button,input{font:inherit}button{color:inherit;cursor:pointer}button,a{touch-action:manipulation}button{border:0}a{color:inherit;text-decoration:none}button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:6px}button:disabled{opacity:.25;cursor:default}[hidden]{display:none!important}.svg-definitions{position:absolute;width:0;height:0;pointer-events:none}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0)}
+.ambient{position:fixed;inset:0;overflow:hidden;z-index:-1;pointer-events:none}.ambient i{position:absolute;width:48vw;height:48vw;min-width:480px;min-height:480px;border-radius:50%;filter:blur(100px);opacity:calc(var(--light)*.19);background:radial-gradient(ellipse,#bcb8ee,transparent 65%);right:-16%;top:10%}.ambient i:nth-child(2){background:radial-gradient(ellipse,#cfdbc9,transparent 65%);right:7%;top:64%;width:35vw;height:35vw}.ambient i:nth-child(3){background:radial-gradient(ellipse,#e5c9d0,transparent 65%);right:35%;top:25%;width:25vw;height:25vw}
+.site-header{position:relative;z-index:30;display:flex;align-items:center;justify-content:space-between;padding:32px 4.2%;height:112px}.brand{display:flex;align-items:center;gap:15px;font-size:21px;font-weight:650;letter-spacing:.15em}.brand-caption{display:block;font-size:7px;letter-spacing:.19em;margin-top:5px;font-weight:450;color:var(--muted)}.brand-mark{display:block;position:relative;width:32px;height:35px;transform:rotate(-22deg)}.brand-mark i{position:absolute;width:23px;height:28px;left:0;top:4px;border:1px solid var(--ink);border-radius:6px;transform:skewY(-14deg);background:linear-gradient(130deg,rgba(var(--glass),.3),rgba(var(--accent-rgb),.12));backdrop-filter:blur(3px)}.brand-mark i:nth-child(2){left:6px;top:1px;opacity:.55}.brand-mark i:nth-child(3){left:12px;top:-2px;opacity:.28}.mode-switch{display:flex;gap:3px;padding:5px;position:absolute!important;left:50%;transform:translateX(-50%);border-radius:100px!important}.mode{background:transparent;border-radius:100px;padding:12px 23px;font-size:12px;color:var(--muted);white-space:nowrap;transition:background .3s,color .3s,box-shadow .3s}.mode.active{color:var(--ink);background:rgba(var(--glass),.78);box-shadow:0 2px 6px #00000008}.mode-icon{font-size:15px;vertical-align:-1px;margin-right:9px}.header-actions{display:flex;align-items:center;gap:24px}.preview-label{font-size:10px;letter-spacing:.02em;color:var(--muted)}.preview-label i,.status-dot{display:inline-block;height:5px;width:5px;border-radius:50%;background:var(--accent);margin-right:9px}.round-button{display:inline-grid;place-items:center;flex-shrink:0;width:38px;height:38px;border-radius:50%!important;font-size:21px;background:transparent;transition:background .2s,transform .2s}.round-button:hover{background:rgba(var(--glass),.65);transform:translateY(-1px)}
+.glass{position:relative;background:linear-gradient(128deg,rgba(var(--glass),.64),rgba(var(--glass),.12) 52%,rgba(var(--glass),.38));border:1px solid rgba(var(--glass),.7);border-radius:24px;box-shadow:0 12px 44px #16172608,0 2px 8px #16172603,inset 0 1px 0 rgba(255,255,255,.8),inset 0 -1px 0 rgba(var(--glass),.2);backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);isolation:isolate}.glass::before{content:'';position:absolute;inset:-1px;z-index:-1;pointer-events:none;border-radius:inherit;padding:1px;background:conic-gradient(from 125deg,transparent 0deg,rgba(139,170,255,.7) 35deg,rgba(255,177,217,.6) 60deg,rgba(247,222,172,.7) 80deg,transparent 120deg,transparent 240deg,rgba(170,215,244,.7) 280deg,rgba(255,255,255,.9) 320deg,transparent 360deg);mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude;-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;opacity:var(--light)}.glass::after{content:'';position:absolute;bottom:-5px;left:10%;width:80%;height:14px;z-index:-2;pointer-events:none;border-radius:100%;background:linear-gradient(90deg,transparent,#a3c7ff,#d6a5e0,#eed7a9,transparent);filter:blur(12px);opacity:calc(var(--light)*.45)}
+main{position:relative;min-height:calc(100svh - 202px)}.view{min-height:calc(100svh - 202px);position:relative}.canvas-view{padding:72px 4.2% 90px;min-height:750px;height:calc(100svh - 202px)}.intro{position:relative;z-index:3;width:45%;pointer-events:none}.intro button,.intro a{pointer-events:auto}.eyebrow{font-size:10px;font-weight:450;letter-spacing:.1em;color:var(--muted);margin:0 0 29px;display:flex;align-items:center;gap:3px}.slash{color:var(--quiet);padding:0 11px}.status-dot{box-shadow:0 0 12px rgba(var(--accent-rgb),.3)}h1{font-size:clamp(42px,4.3vw,75px);font-weight:450;letter-spacing:-.065em;line-height:1.33;margin:0;word-break:keep-all}.serif-word{font-family:'Noto Serif SC','Songti SC',serif;font-weight:400;letter-spacing:-.04em}.intro-description{font-size:12px;line-height:2.2;color:var(--muted);margin:24px 0 27px;letter-spacing:.025em}.text-action{padding:5px 0;background:transparent;display:flex;align-items:center;gap:28px;font-size:12px;letter-spacing:.02em}.text-action span{font-size:23px;transition:transform .2s}.text-action:hover span{transform:translate(3px,-3px)}.context{display:flex;align-items:flex-start;gap:15px;margin-top:57px;color:var(--muted);font-size:10px;letter-spacing:.04em}.context>span>span{display:block;color:var(--quiet);margin-top:7px}.context-line{width:22px;height:1px;background:var(--quiet);margin-top:7px}
+.data-stage{position:absolute;left:32%;right:0;top:-24px;bottom:15px;min-height:670px}.diagram-wrap{position:absolute;inset:0;overflow:hidden}.diagram-wrap svg{width:100%;height:100%;display:block;overflow:visible}.stage-watermark{position:absolute;left:8%;top:26%;font-size:clamp(85px,12.5vw,190px);color:var(--ink);opacity:.024;letter-spacing:-.08em;filter:blur(1.5px);white-space:nowrap;pointer-events:none}.stage-defocus{position:absolute;inset:-2px;backdrop-filter:blur(var(--edge-blur));-webkit-backdrop-filter:blur(var(--edge-blur));mask-image:radial-gradient(ellipse 44% 39% at 51% 48%,transparent 30%,rgba(0,0,0,.04) 48%,rgba(0,0,0,.7) 83%,#000 110%);-webkit-mask-image:radial-gradient(ellipse 44% 39% at 51% 48%,transparent 30%,rgba(0,0,0,.04) 48%,rgba(0,0,0,.7) 83%,#000 110%);pointer-events:none;z-index:2}.stage-index{position:absolute;right:9%;top:75px;color:var(--quiet);font-size:9px;letter-spacing:.14em;display:flex;align-items:center;gap:10px}.stage-index i{width:32px;height:1px;background:var(--line)}.stage-instruction{position:absolute;right:10%;bottom:64px;color:var(--muted);font-size:10px;letter-spacing:.02em}.stage-instruction span{margin-left:14px}.network-link{fill:none;stroke:var(--ink);stroke-opacity:.105;stroke-width:.8;transition:stroke .5s,stroke-opacity .5s}.network-link.related{stroke:var(--accent);stroke-opacity:.24;stroke-width:1.2}.orbit{fill:none;stroke:var(--ink);stroke-opacity:.06;stroke-width:.7;stroke-dasharray:2 8}.network-node{cursor:pointer;outline:none}.network-node .node-wash{fill:rgba(var(--accent-rgb),.04);stroke:var(--ink);stroke-opacity:.10;stroke-width:.7;transition:all .5s}.network-node .node-rim{fill:none;stroke:url(#spectrum);stroke-opacity:calc(var(--light)*.85);stroke-width:1.8}.network-node:hover .node-wash,.network-node:focus-visible .node-wash{fill:rgba(var(--accent-rgb),.11);stroke:var(--accent);stroke-opacity:.6}.network-node:focus-visible .node-rim{stroke:var(--accent);stroke-width:3;stroke-opacity:1}.network-node.active .node-wash{fill:rgba(var(--glass),.36);stroke:rgba(var(--accent-rgb),.4);stroke-width:1}.node-score{font-size:37px;letter-spacing:-2px;font-weight:450;fill:var(--ink);font-family:var(--font);text-anchor:middle}.node-label{font-size:11px;letter-spacing:.1em;fill:var(--muted);text-anchor:middle}.node-unit{font-size:8px;fill:var(--quiet);text-anchor:middle;letter-spacing:.12em}.satellite-dot{fill:var(--ink);opacity:.18}.satellite-label{fill:var(--muted);font-size:9px;letter-spacing:.1em}.selected-ring{fill:none;stroke:var(--accent);stroke-opacity:.14;stroke-width:.7;stroke-dasharray:2 5}.node-halo{fill:url(#spectrum);opacity:calc(var(--light)*.15);filter:url(#soft-glow)}
+.insight{position:absolute;z-index:5;bottom:64px;left:4.2%;width:490px;padding:21px 25px 17px;transform:translateZ(0)}.insight-top{display:flex;justify-content:space-between;align-items:center}.insight-top .eyebrow{font-size:8px;letter-spacing:.09em;margin:0}.tiny-line{height:1px;width:17px;background:var(--quiet);margin:0 9px}.insight-glyph{font-size:20px;color:var(--muted)}.insight-heading{display:flex;align-items:baseline;gap:15px;margin:4px 0 22px}.insight-heading h2{font-size:22px;font-weight:500;letter-spacing:-.02em;margin:0}.insight-heading>span{font-size:8px;color:var(--muted);letter-spacing:.12em}.metrics{display:flex;gap:37px;align-items:center}.metrics>div>span{display:block;font-size:9px;color:var(--muted);margin-bottom:7px}.metrics strong{font-size:28px;letter-spacing:-1px;font-weight:450;line-height:1}.metrics strong small{font-size:10px;letter-spacing:0;color:var(--muted);margin-left:5px}.metric-spark{margin-left:auto;width:105px}.metric-spark svg{width:100%;height:35px;overflow:visible}.metric-spark span{font-size:8px!important;text-align:right;margin:3px 0 0!important}.insight-bottom{border-top:1px solid var(--line);margin-top:20px;padding-top:13px;display:flex;justify-content:space-between;font-size:9px;color:var(--muted)}.insight-bottom b{font-weight:500;color:var(--ink);padding:0 3px}.plain-action{font-size:10px;display:flex;gap:16px;background:transparent;padding:0;color:var(--ink)}
+.site-footer{position:relative;z-index:12;display:flex;justify-content:space-between;align-items:center;gap:20px;padding:25px 4.2%;min-height:90px;font-size:10px;color:var(--muted)}.footer-note{display:flex;align-items:center;gap:12px;letter-spacing:.035em}.crosshair{font-size:22px;line-height:1;font-weight:300;opacity:.6}.footer-right{display:flex;align-items:center;gap:28px}.footer-control{background:transparent;font-size:10px;color:var(--muted);padding:7px 0;display:flex;gap:12px;align-items:center}.footer-control>span{font-size:14px}.motion-indicator{height:5px;width:5px;border-radius:50%;background:var(--accent)}.footer-edition{font-size:8px;letter-spacing:.1em;color:var(--quiet)}
+.overview-view{min-height:760px;height:calc(100svh - 202px);padding:53px 4.2% 50px;overflow:hidden}.overview-intro{position:relative;z-index:4;pointer-events:none}.overview-intro h1{font-size:clamp(34px,3.3vw,54px)}.overview-intro p:not(.eyebrow){font-size:11px;line-height:2.1;color:var(--muted);margin-top:20px}.stack-viewport{position:absolute;left:27%;right:0;top:4%;bottom:10%;overflow:hidden;perspective:1700px}.stack-scene{position:absolute;left:43%;top:50%;width:0;height:0;transform-style:preserve-3d;transform:rotateX(-11deg) rotateY(-31deg) rotateZ(7deg)}.stack-card{position:absolute;width:300px;height:380px;left:-150px;top:-190px;text-align:left;border-radius:16px;padding:24px;color:var(--ink);background:linear-gradient(145deg,rgba(var(--glass),.87),rgba(var(--glass),.62));border:1px solid rgba(var(--glass),.9);box-shadow:1px 0 0 var(--line),10px 18px 50px #0000000b,inset 1px 0 0 #ffffffad;transform-style:preserve-3d;transition:transform .8s cubic-bezier(.2,.75,.2,1),filter .8s,opacity .8s,background .8s;overflow:hidden;backdrop-filter:blur(14px)}.stack-card::before{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(125deg,#fff8,transparent 40%,rgba(157,183,255,.07) 65%,rgba(241,182,211,.12));opacity:var(--light)}.stack-card::after{content:'';position:absolute;left:0;bottom:0;height:30%;width:100%;backdrop-filter:blur(var(--far-blur));mask-image:linear-gradient(transparent,#000);pointer-events:none}.stack-card.current{border-color:rgba(var(--accent-rgb),.27);background:linear-gradient(145deg,rgba(var(--glass),.98),rgba(var(--glass),.72));box-shadow:12px 25px 55px #00000012,inset 0 1px #fff}.stack-card .card-no{font-size:9px;letter-spacing:.14em;color:var(--muted)}.stack-card h2{font-size:23px;font-weight:500;margin-top:23px;letter-spacing:-.04em}.stack-card .card-code{font-size:8px;color:var(--muted);letter-spacing:.12em}.stack-card svg{display:block;width:100%;height:135px;margin:32px 0 15px}.stack-card .card-value{font-size:33px;letter-spacing:-1.4px}.stack-card .card-value small{font-size:10px;margin-left:6px;color:var(--muted)}.stack-card .card-bottom{font-size:8px;color:var(--muted);display:flex;justify-content:space-between;margin-top:15px}.stack-edge{position:absolute;inset:0;backdrop-filter:blur(var(--edge-blur));mask-image:linear-gradient(90deg,#000,transparent 18%,transparent 76%,#000);pointer-events:none;z-index:3}.stack-controller{position:absolute;z-index:10;bottom:64px;left:50%;transform:translateX(-50%);padding:7px 10px;display:flex;gap:20px;align-items:center;border-radius:60px}.stack-controller>div{min-width:140px;display:flex;justify-content:space-between;align-items:center;gap:20px;font-size:11px}.stack-controller #stack-position{font-size:8px;color:var(--muted);white-space:nowrap}.overview-hint{position:absolute;bottom:20px;left:0;width:100%;text-align:center;font-size:9px;color:var(--muted)}.overview-hint span{padding:0 7px}
+.detail-view{padding:40px 8% 80px;min-height:750px}.detail-layout{display:grid;grid-template-columns:1fr 1.25fr;gap:10%;margin-top:68px;align-items:center}.detail-intro h1{font-size:clamp(40px,5vw,72px);margin-bottom:28px}.detail-intro>p:not(.eyebrow){font-size:12px;color:var(--muted);line-height:2.2;max-width:300px}.detail-number{margin-top:58px}.detail-number>span{display:block;font-size:90px;font-weight:400;letter-spacing:-.07em;line-height:1.2}.detail-number small{font-size:10px;color:var(--muted);letter-spacing:.08em}.detail-chart{position:relative;padding:20px 0;isolation:isolate}.detail-chart-head{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:36px}.detail-chart h2{font-size:18px;font-weight:500}.detail-chart-head>span{font-size:9px;color:var(--muted)}.detail-bars{display:flex;flex-direction:column;gap:27px}.bar-row{display:grid;grid-template-columns:70px 1fr 56px;gap:20px;align-items:center;font-size:11px}.bar-track{height:7px;border-radius:20px;background:var(--line)}.bar-fill{height:100%;width:var(--value);border-radius:20px;background:linear-gradient(90deg,rgba(var(--accent-rgb),.15),rgba(var(--accent-rgb),.7));box-shadow:0 0 16px rgba(var(--accent-rgb),.13);transform-origin:left;animation:bar-in .8s cubic-bezier(.2,.75,.2,1) both;animation-delay:var(--delay)}.bar-row>span:last-child{text-align:right;font-size:10px;color:var(--muted)}.detail-chart>p{font-size:9px;color:var(--muted);line-height:2;margin-top:30px}.bar-edge{position:absolute;right:-20px;top:15%;width:17%;height:75%;backdrop-filter:blur(calc(var(--edge-blur)*.28));mask-image:linear-gradient(90deg,transparent,#000);pointer-events:none}
+.appearance-panel{position:fixed;z-index:50;right:4.2%;bottom:85px;width:290px;padding:23px;border-radius:24px;background:linear-gradient(130deg,rgba(var(--glass),.93),rgba(var(--glass),.7))}.appearance-panel header{display:flex;align-items:center;justify-content:space-between;margin-bottom:25px}.appearance-panel h2{margin:5px 0 0;font-size:19px;font-weight:500}.appearance-panel .eyebrow{font-size:8px;margin:0}.range-label{font-size:10px;color:var(--muted);display:flex;justify-content:space-between;align-items:center}.range-label output{font-size:9px;font-variant-numeric:tabular-nums}.appearance-panel input{width:100%;height:3px;margin:18px 0 27px;accent-color:var(--accent);cursor:pointer}.appearance-panel fieldset{padding:0;border:0;margin:0}.appearance-panel legend{font-size:10px;color:var(--muted);margin-bottom:15px}.swatches{display:flex;gap:15px}.swatch{position:relative;width:20px;height:20px;border-radius:50%;background:var(--swatch)}.swatch.selected::after{content:'';position:absolute;inset:-4px;border:1px solid var(--swatch);border-radius:50%}.appearance-panel>p{font-size:9px;color:var(--muted);line-height:1.8;margin:24px 0 0}
+.view-enter{animation:focus-in .75s cubic-bezier(.2,.75,.2,1) both}@keyframes focus-in{from{opacity:0;filter:blur(12px);transform:translateY(8px)}to{opacity:1;filter:blur(0);transform:translateY(0)}}@keyframes bar-in{from{transform:scaleX(0)}to{transform:scaleX(1)}}@keyframes light-drift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-3%,2%) scale(1.05)}}body:not(.reduced-motion) .ambient i{animation:light-drift 16s ease-in-out infinite}body:not(.reduced-motion) .ambient i:nth-child(2){animation-delay:-6s}
+html[data-theme="dark"]{--bg:#101113;--ink:#eeeff2;--muted:#8d8e98;--quiet:#555761;--glass:39,41,48;--line:rgba(225,225,240,.12);color-scheme:dark}html[data-theme="dark"] .glass{border-color:#ffffff17;box-shadow:0 12px 44px #0002,inset 0 1px 0 #ffffff12}html[data-theme="dark"] .glass::before{opacity:calc(var(--light)*.75)}html[data-theme="dark"] .ambient i{opacity:calc(var(--light)*.13)}html[data-theme="dark"] .network-node.active .node-wash{fill:rgba(70,71,86,.2)}html[data-theme="dark"] .stack-card{border-color:#ffffff1c;box-shadow:10px 20px 55px #0006,inset 1px 0 #ffffff17}html[data-theme="dark"] .stack-card::before{background:linear-gradient(125deg,#ffffff10,transparent 40%,rgba(157,183,255,.04) 65%,rgba(241,182,211,.07))}html[data-theme="dark"] .stack-card.current{border-color:rgba(var(--accent-rgb),.4)}html[data-theme="dark"] .mode.active{background:#ffffff0b}html[data-theme="dark"] .brand-mark i{background:#ffffff05}
+.reduced-motion *,.reduced-motion *::before,.reduced-motion *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media(min-width:1600px){.canvas-view{padding-top:105px}.data-stage{top:-5px;left:35%;right:4%}.insight{bottom:95px}.intro-description{margin-top:35px}}
+@media(max-width:1100px){.site-header{padding:25px 4%;height:100px}.preview-label{display:none}.canvas-view{padding-top:65px;height:800px}.intro{width:55%}.intro h1{font-size:52px}.data-stage{left:27%;top:70px;bottom:110px;min-height:580px}.insight{width:430px;bottom:35px}.stage-instruction{bottom:0}.stage-index{top:40px}.overview-view{height:790px}.stack-viewport{left:20%;top:16%;bottom:14%}.overview-intro h1{font-size:39px}.detail-layout{gap:7%}.detail-view{padding:35px 6% 70px}.footer-edition{display:none}}
+@media(max-width:760px){.site-header{height:135px;align-items:flex-start;padding:24px 24px}.brand{font-size:18px;gap:12px}.brand-mark{transform:rotate(-22deg) scale(.85)}.brand-caption{font-size:6px}.mode-switch{top:90px;padding:4px}.mode{padding:10px 23px;font-size:11px}.header-actions{gap:0}.round-button{width:33px;height:33px}.canvas-view{padding:45px 25px 30px;height:auto;min-height:1070px}.intro{width:100%}.intro h1{font-size:49px;line-height:1.3}.eyebrow{font-size:9px;margin-bottom:23px}.intro-description{font-size:11px;line-height:2;margin-top:20px}.text-action{font-size:11px}.context{display:none}.data-stage{left:-9%;right:-9%;top:305px;bottom:auto;height:510px;min-height:0}.stage-index{right:12%;top:18px;font-size:7px}.stage-instruction{bottom:13px;right:12%;font-size:9px}.stage-watermark{top:37%;font-size:92px}.stage-defocus{mask-image:radial-gradient(ellipse 45% 42% at 51% 48%,transparent 28%,rgba(0,0,0,.03) 48%,rgba(0,0,0,.7) 87%,#000 110%)}.insight{left:24px;right:24px;bottom:45px;width:auto;padding:19px 22px 16px}.insight-heading{margin-bottom:19px}.insight-heading h2{font-size:20px}.metrics{gap:28px}.metrics strong{font-size:26px}.metric-spark{width:82px}.site-footer{padding:10px 25px 28px;align-items:flex-start;flex-wrap:wrap;gap:20px}.footer-note{font-size:9px}.footer-right{gap:25px}.footer-control{font-size:9px}.crosshair{font-size:19px}.overview-view{padding:48px 25px 40px;min-height:950px;height:auto}.overview-intro h1{font-size:40px}.overview-intro .eyebrow{font-size:8px}.overview-intro p:not(.eyebrow){font-size:10px;margin-top:17px}.stack-viewport{left:-15%;right:-12%;top:290px;bottom:115px;perspective:1200px}.stack-scene{left:47%;transform:rotateX(-9deg) rotateY(-29deg) rotateZ(7deg) scale(.78)}.stack-card{width:260px;height:350px;left:-130px;top:-175px}.stack-card svg{margin-top:23px}.stack-controller{bottom:65px}.overview-hint{padding:0 24px;bottom:25px;font-size:8px}.overview-hint span{padding:0 3px}.appearance-panel{right:20px;bottom:80px;max-width:calc(100vw - 40px)}.detail-view{padding:35px 25px 60px;min-height:1050px}.detail-layout{grid-template-columns:1fr;gap:48px;margin-top:50px}.detail-intro h1{font-size:46px}.detail-intro>p:not(.eyebrow){max-width:100%;font-size:11px}.detail-number{margin-top:28px}.detail-number>span{font-size:70px}.detail-chart{padding-top:0}.detail-chart-head{margin-bottom:28px}.bar-row{gap:12px;grid-template-columns:65px 1fr 50px}.detail-chart>p{font-size:8px}.brand-caption{letter-spacing:.13em}}
+@media(max-width:380px){.canvas-view{min-height:1040px}.intro h1{font-size:43px}.insight{left:18px;right:18px;padding-left:18px;padding-right:18px}.metrics{gap:20px}.metric-spark{width:67px}.metrics strong{font-size:24px}.footer-right{gap:20px}.mode{padding-left:19px;padding-right:19px}.overview-intro h1{font-size:35px}}
+
+</style>
+</head>
+<body>
+  <svg class="svg-definitions" aria-hidden="true"><defs>
+    <filter id="soft-glow"><feGaussianBlur stdDeviation="4"/></filter>
+    <linearGradient id="spectrum" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#b9c6ff"/><stop offset=".35" stop-color="#f3c4dc"/><stop offset=".68" stop-color="#e5e7c3"/><stop offset="1" stop-color="#bce3f4"/></linearGradient>
+  </defs></svg>
+  <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
+
+  <header class="site-header">
+    <a class="brand" href="#" aria-label="观数，返回数据总览"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>观数<span class="brand-caption">LEARNING, IN FOCUS.</span></span></a>
+    <nav class="mode-switch glass" aria-label="浏览模式">
+      <button class="mode active" data-mode="canvas" aria-pressed="true"><span class="mode-icon">◉</span>数据浏览</button>
+      <button class="mode" data-mode="overview" aria-pressed="false"><span class="mode-icon">▱</span>空间全览</button>
+    </nav>
+    <div class="header-actions"><span class="preview-label"><i></i>风格预览 · 示意数据</span><button id="theme-toggle" class="round-button glass" aria-label="切换到深色主题" title="切换明暗">◐</button></div>
+  </header>
+
+  <main>
+    <section id="canvas-view" class="view canvas-view" aria-labelledby="main-title">
+      <div class="intro">
+        <p class="eyebrow"><span class="status-dot"></span> 数据浏览 <span class="slash">/</span> 课程全景</p>
+        <h1 id="main-title">在关联之间，<br>看见<span class="serif-word">学习。</span></h1>
+        <p class="intro-description">让分散的数据汇成线索。<br>从一门课程开始，探索更远的关联。</p>
+        <button id="explore-button" class="text-action">探索数据结构 <span>↗</span></button>
+        <div class="context"><span class="context-line"></span><span>2025 — 2026<span>秋季学期 · 演示课程</span></span></div>
+      </div>
+
+      <div class="data-stage" aria-label="可交互课程关系图">
+        <div class="stage-watermark" aria-hidden="true">relationships</div>
+        <div class="diagram-wrap" id="diagram-wrap">
+          <svg id="network" viewBox="0 0 900 710" role="group" aria-label="课程关系示意图，线条表示本预览设定的关联，不代表真实统计相关性"></svg>
+          <div class="stage-defocus" aria-hidden="true"></div>
+        </div>
+        <span class="stage-index">01 — 06 <i></i> SUBJECTS</span>
+        <span class="stage-instruction">点选课程，展开它的学习轮廓 <span>↗</span></span>
+      </div>
+
+      <aside class="insight glass" aria-label="当前课程概览">
+        <div class="insight-top"><span class="eyebrow">当前焦点 <span class="tiny-line"></span> <span id="course-index">01</span></span><span class="insight-glyph" aria-hidden="true">↗</span></div>
+        <div class="insight-heading"><h2 id="course-name">数据结构</h2><span id="course-code">CS · 202</span></div>
+        <div class="metrics"><div><span>课程均分</span><strong id="mean-score">76.8<small>分</small></strong></div><div><span>课程通过率</span><strong id="pass-rate">88<small>%</small></strong></div><div class="metric-spark"><svg id="sparkline" viewBox="0 0 120 45" aria-label="六周学习活动示意趋势"></svg><span>近六周活动</span></div></div>
+        <div class="insight-bottom"><span>示意样本 <b id="sample-count">186</b> 人</span><button id="open-detail" class="plain-action">查看课程 <span>→</span></button></div>
+      </aside>
+    </section>
+
+    <section id="overview-view" class="view overview-view" aria-labelledby="overview-title" hidden>
+      <div class="overview-intro"><p class="eyebrow"><span class="status-dot"></span> EXPLORATION AT A GLANCE</p><h1 id="overview-title">走过的路径，<br><span class="serif-word">在此交汇。</span></h1><p>前后是探索的经过。<br>清晰的那一层，是此刻的焦点。</p></div>
+      <div class="stack-viewport" aria-label="斜侧叠层课程预览"><div class="stack-scene" id="stack-scene"></div><div class="stack-edge" aria-hidden="true"></div></div>
+      <div class="stack-controller glass"><button id="previous-card" class="round-button" aria-label="上一主题">←</button><div><span id="stack-title">数据结构</span><span id="stack-position">01 / 06</span></div><button id="next-card" class="round-button" aria-label="下一主题">→</button></div>
+      <p class="overview-hint">点选任意一层聚焦，再次点选进入课程 <span>·</span> 支持方向键</p>
+    </section>
+
+    <section id="detail-view" class="detail-view" aria-labelledby="detail-title" hidden>
+      <button id="back-button" class="text-action"><span>←</span> 返回课程全景</button>
+      <div class="detail-layout"><div class="detail-intro"><p class="eyebrow">COURSE PROFILE <span class="slash">/</span> 示意数据</p><h1 id="detail-title">数据结构</h1><p id="detail-description"></p><div class="detail-number"><span id="detail-score">76.8</span><small>课程均分 / 100</small></div></div><div class="detail-chart"><div class="detail-chart-head"><h2>学习轮廓</h2><span>六项指标 · 演示</span></div><div id="detail-bars" class="detail-bars"></div><div class="bar-edge" aria-hidden="true"></div><p>均分以分计，其余指标以百分比计。<br>此处仅演示视觉与交互，数值未连接项目数据库。</p></div></div>
+    </section>
+  </main>
+
+  <footer class="site-footer"><div class="footer-note"><span class="crosshair">⊕</span><span>让信息清晰，让边界柔和。</span></div><div class="footer-right"><button id="settings-toggle" class="footer-control" aria-expanded="false" aria-controls="appearance-panel">调整光感 <span>⌘</span></button><button id="motion-toggle" class="footer-control" aria-pressed="false">动态 <span class="motion-indicator"></span></button><span class="footer-edition">DESIGN STUDY / 001</span></div></footer>
+
+  <section class="appearance-panel glass" id="appearance-panel" aria-labelledby="appearance-title" hidden>
+    <header><div><p class="eyebrow">APPEARANCE</p><h2 id="appearance-title">光与边界</h2></div><button id="settings-close" class="round-button" aria-label="关闭外观设置">×</button></header>
+    <label class="range-label" for="blur-range"><span>边缘模糊</span><output id="blur-value" for="blur-range">60%</output></label><input id="blur-range" type="range" min="0" max="100" value="60">
+    <label class="range-label" for="light-range"><span>光感与色散</span><output id="light-value" for="light-range">65%</output></label><input id="light-range" type="range" min="0" max="100" value="65">
+    <fieldset><legend>主题色点缀</legend><div class="swatches"><button class="swatch selected" data-color="#635bff" data-rgb="99,91,255" style="--swatch:#635bff" aria-label="鸢尾紫" aria-pressed="true"></button><button class="swatch" data-color="#197b72" data-rgb="25,123,114" style="--swatch:#197b72" aria-label="冷玉绿" aria-pressed="false"></button><button class="swatch" data-color="#d2643b" data-rgb="210,100,59" style="--swatch:#d2643b" aria-label="琥珀橙" aria-pressed="false"></button><button class="swatch" data-color="#526a87" data-rgb="82,106,135" style="--swatch:#526a87" aria-label="雾蓝灰" aria-pressed="false"></button></div></fieldset>
+    <p>尝试移动滑块，观察画面边缘与玻璃光线的变化。</p>
+  </section>
+  <div id="announcer" class="sr-only" role="status" aria-live="polite"></div>
+  <script>
+'use strict';
+
+// All numbers and links below are a self-contained, explicitly labelled demo.
+const courses = [
+  { name: '数据结构', code: 'CS · 202', score: 76.8, pass: 88, count: 186, x: 465, y: 329, r: 100, weekly: [35, 46, 41, 65, 61, 82], metrics: [76.8, 88, 91, 85, 82, 94], description: '从抽象结构到解决问题的路径。沿着出勤、作业和成绩，观察同一门课程的不同侧面。' },
+  { name: '高等数学', code: 'MA · 101', score: 72.4, pass: 81, count: 212, x: 222, y: 154, r: 67, weekly: [48, 39, 58, 51, 65, 71], metrics: [72.4, 81, 86, 80, 75, 89], description: '从变化中寻找规律。在学习轮廓中，对照课程均分、出勤与完成情况。' },
+  { name: '程序设计', code: 'CS · 101', score: 82.6, pass: 93, count: 196, x: 724, y: 197, r: 76, weekly: [32, 49, 55, 52, 76, 89], metrics: [82.6, 93, 94, 90, 88, 96], description: '让想法成为可以运行的表达。查看示意课程在六项学习指标上的不同表现。' },
+  { name: '线性代数', code: 'MA · 103', score: 74.1, pass: 84, count: 178, x: 746, y: 489, r: 64, weekly: [29, 43, 40, 57, 62, 73], metrics: [74.1, 84, 88, 83, 79, 90], description: '在向量与空间中建立联系。不同的指标，为同一门课程提供互补的观察角度。' },
+  { name: '大学英语', code: 'EN · 102', score: 79.3, pass: 91, count: 205, x: 349, y: 583, r: 61, weekly: [55, 57, 49, 70, 67, 81], metrics: [79.3, 91, 93, 89, 86, 94], description: '在持续练习中积累理解。把分散的活动与结果整理为清楚的学习轮廓。' },
+  { name: '计算机网络', code: 'CS · 305', score: 78.5, pass: 89, count: 164, x: 126, y: 425, r: 70, weekly: [26, 40, 51, 47, 66, 79], metrics: [78.5, 89, 90, 84, 81, 92], description: '连接不同节点，理解信息流动。沿着六项示意指标，发现值得进一步关注的线索。' },
+];
+const metricLabels = ['课程均分', '通过率', '出勤率', '作业提交率', '按时提交率', '课程完成率'];
+const $ = (id) => document.getElementById(id);
+const root = document.documentElement;
+let selected = 0;
+let mode = 'canvas';
+let detail = false;
+let manualReduced = false;
+const systemMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+function spark(values, width = 120, height = 42) {
+  return values.map((v, i) => `${(i * width / (values.length - 1)).toFixed(1)},${(height - v / 100 * (height - 8)).toFixed(1)}`).join(' ');
+}
+
+function renderNetwork() {
+  const edges = [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [1, 2], [1, 5], [2, 3], [3, 4], [4, 5]];
+  const lines = edges.map(([a, b]) => {
+    const p = courses[a], q = courses[b];
+    const bend = (a + b) % 2 ? 55 : -65;
+    return `<path class="network-link ${a === selected || b === selected ? 'related' : ''}" d="M${p.x},${p.y} Q${(p.x + q.x) / 2 + bend},${(p.y + q.y) / 2 - 35} ${q.x},${q.y}"/>`;
+  }).join('');
+  const nodes = courses.map((c, i) => `<g class="network-node ${selected === i ? 'active' : ''}" role="button" tabindex="0" aria-label="${c.name}，示意均分${c.score}分，点击查看焦点" aria-pressed="${selected === i}" data-course="${i}" transform="translate(${c.x},${c.y})">
+    <circle class="node-halo" r="${c.r + 8}"/><circle class="node-wash" r="${c.r}"/><circle class="node-rim" r="${c.r - .8}"/>
+    ${selected === i ? `<circle class="selected-ring" r="${c.r + 13}"/>` : ''}
+    <text class="node-label" y="-25">${c.name}</text><text class="node-score" y="17" style="font-size:${i === 0 ? 44 : 32}px">${c.score}</text><text class="node-unit" y="40">${c.code}</text>
+  </g>`).join('');
+  $('network').innerHTML = `<ellipse class="orbit" cx="455" cy="355" rx="310" ry="223" transform="rotate(-19 455 355)"/><ellipse class="orbit" cx="455" cy="355" rx="350" ry="300" transform="rotate(12 455 355)"/>${lines}<g aria-hidden="true"><circle class="satellite-dot" cx="490" cy="80" r="2"/><text class="satellite-label" x="504" y="84">概念相连，路径延伸</text><circle class="satellite-dot" cx="568" cy="620" r="2"/><circle class="satellite-dot" cx="76" cy="254" r="2"/></g>${nodes}`;
+  $('network').querySelectorAll('[data-course]').forEach((el) => {
+    const pick = () => selectCourse(Number(el.dataset.course));
+    el.addEventListener('click', pick);
+    el.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); pick(); const replacement = $('network').querySelector(`[data-course="${selected}"]`); replacement?.focus({ preventScroll: true }); } });
+  });
+}
+
+function selectCourse(index, announce = true) {
+  selected = index;
+  const c = courses[selected];
+  $('course-name').textContent = c.name;
+  $('course-code').textContent = c.code;
+  $('course-index').textContent = String(index + 1).padStart(2, '0');
+  $('mean-score').innerHTML = `${c.score.toFixed(1)}<small>分</small>`;
+  $('pass-rate').innerHTML = `${c.pass}<small>%</small>`;
+  $('sample-count').textContent = c.count;
+  $('explore-button').innerHTML = `探索${c.name} <span>↗</span>`;
+  $('sparkline').innerHTML = `<polyline fill="none" stroke="var(--accent)" stroke-opacity=".65" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" points="${spark(c.weekly)}"/><path d="M0,42 L${spark(c.weekly).replaceAll(' ', ' L')} L120,42 Z" fill="rgba(var(--accent-rgb),.045)"/>`;
+  renderNetwork();
+  updateStack();
+  if (announce) $('announcer').textContent = `已聚焦${c.name}，示意均分${c.score}分，通过率${c.pass}%`;
+}
+
+function renderStack() {
+  $('stack-scene').innerHTML = courses.map((c, i) => `<button class="stack-card" data-stack="${i}" aria-label="${c.name}，点选聚焦，再次点选进入课程">
+    <span class="card-no">EXPLORATION / ${String(i + 1).padStart(2, '0')}</span><h2>${c.name}</h2><span class="card-code">${c.code} / COURSE PROFILE</span>
+    <svg viewBox="0 0 240 130" aria-hidden="true">${c.metrics.map((v, j) => `<rect x="${j * 39 + 5}" y="${120 - v}" width="24" height="${v}" rx="3" fill="${j === 0 ? 'var(--accent)' : 'var(--ink)'}" opacity="${j === 0 ? .65 : .09 + j * .025}"/>`).join('')}</svg>
+    <span class="card-value">${c.score}<small>分 / 课程均分</small></span><span class="card-bottom"><span>示意样本 ${c.count} 人</span><span>打开课程 ↗</span></span>
+  </button>`).join('');
+  $('stack-scene').querySelectorAll('[data-stack]').forEach((el) => el.addEventListener('click', () => { const i = Number(el.dataset.stack); if (selected === i) openDetail(); else selectCourse(i); }));
+}
+
+function updateStack() {
+  const blur = Number($('blur-range').value) / 60;
+  $('stack-scene').querySelectorAll('[data-stack]').forEach((card) => {
+    const i = Number(card.dataset.stack), delta = i - selected, distance = Math.abs(delta);
+    card.style.transform = `translate3d(${delta * 121}px,${-delta * 16 + (delta === 0 ? -30 : 0)}px,${delta === 0 ? 160 : -distance * 45}px)`;
+    card.style.filter = `blur(${distance * .8 * blur}px)`;
+    card.style.opacity = String(Math.max(.23, 1 - distance * .13));
+    card.classList.toggle('current', i === selected);
+    card.setAttribute('aria-pressed', String(i === selected));
+  });
+  $('stack-title').textContent = courses[selected].name;
+  $('stack-position').textContent = `${String(selected + 1).padStart(2, '0')} / 06`;
+  $('previous-card').disabled = selected === 0;
+  $('next-card').disabled = selected === courses.length - 1;
+}
+
+function animateView(el) {
+  el.classList.remove('view-enter');
+  void el.offsetWidth;
+  el.classList.add('view-enter');
+}
+
+function showMode(next) {
+  mode = next;
+  detail = false;
+  $('detail-view').hidden = true;
+  $('canvas-view').hidden = next !== 'canvas';
+  $('overview-view').hidden = next !== 'overview';
+  document.querySelectorAll('.mode').forEach((el) => { const active = el.dataset.mode === next; el.classList.toggle('active', active); el.setAttribute('aria-pressed', String(active)); });
+  animateView($(next === 'canvas' ? 'canvas-view' : 'overview-view'));
+  $('announcer').textContent = next === 'canvas' ? '课程全景，示意数据' : '空间全览，可用前后按钮或方向键选择主题';
+}
+
+function openDetail() {
+  const c = courses[selected];
+  detail = true;
+  $('canvas-view').hidden = true;
+  $('overview-view').hidden = true;
+  $('detail-view').hidden = false;
+  $('detail-title').textContent = c.name;
+  $('detail-score').textContent = c.score;
+  $('detail-description').textContent = c.description;
+  $('detail-bars').innerHTML = c.metrics.map((v, i) => `<div class="bar-row"><span>${metricLabels[i]}</span><div class="bar-track"><div class="bar-fill" style="--value:${v}%;--delay:${i * 65}ms"></div></div><span>${v}${i ? '%' : ' 分'}</span></div>`).join('');
+  animateView($('detail-view'));
+  $('back-button').focus({ preventScroll: true });
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+
+function setPanel(open) {
+  $('appearance-panel').hidden = !open;
+  $('settings-toggle').setAttribute('aria-expanded', String(open));
+  if (open) $('blur-range').focus({ preventScroll: true });
+  else $('settings-toggle').focus({ preventScroll: true });
+}
+
+function updateMotion() {
+  const reduced = manualReduced || systemMotion.matches;
+  document.body.classList.toggle('reduced-motion', reduced);
+  $('motion-toggle').setAttribute('aria-pressed', String(!reduced));
+  $('motion-toggle').innerHTML = `${reduced ? '静态' : '动态'} <span class="motion-indicator" style="opacity:${reduced ? .25 : 1}"></span>`;
+  $('motion-toggle').title = systemMotion.matches ? '跟随系统减少动态设置' : '切换动态效果';
+}
+
+document.querySelectorAll('.mode').forEach((el) => el.addEventListener('click', () => showMode(el.dataset.mode)));
+document.querySelector('.brand').addEventListener('click', (event) => { event.preventDefault(); showMode('canvas'); window.scrollTo({ top: 0, behavior: 'instant' }); });
+$('theme-toggle').addEventListener('click', () => { const dark = root.dataset.theme !== 'dark'; root.dataset.theme = dark ? 'dark' : 'light'; $('theme-toggle').setAttribute('aria-label', dark ? '切换到浅色主题' : '切换到深色主题'); });
+$('open-detail').addEventListener('click', openDetail);
+$('explore-button').addEventListener('click', openDetail);
+$('back-button').addEventListener('click', () => { showMode(mode); document.querySelector(`.mode[data-mode="${mode}"]`).focus({ preventScroll: true }); });
+$('previous-card').addEventListener('click', () => { if (selected > 0) selectCourse(selected - 1); });
+$('next-card').addEventListener('click', () => { if (selected < courses.length - 1) selectCourse(selected + 1); });
+$('settings-toggle').addEventListener('click', () => setPanel($('appearance-panel').hidden));
+$('settings-close').addEventListener('click', () => setPanel(false));
+$('blur-range').addEventListener('input', (event) => { const n = Number(event.target.value); root.style.setProperty('--edge-blur', `${n / 6}px`); root.style.setProperty('--far-blur', `${n / 37.5}px`); $('blur-value').textContent = `${n}%`; updateStack(); });
+$('light-range').addEventListener('input', (event) => { const n = Number(event.target.value); root.style.setProperty('--light', n / 100); $('light-value').textContent = `${n}%`; });
+document.querySelectorAll('.swatch').forEach((el) => el.addEventListener('click', () => { root.style.setProperty('--accent', el.dataset.color); root.style.setProperty('--accent-rgb', el.dataset.rgb); document.querySelectorAll('.swatch').forEach((button) => { const active = button === el; button.classList.toggle('selected', active); button.setAttribute('aria-pressed', String(active)); }); }));
+$('motion-toggle').addEventListener('click', () => { manualReduced = !manualReduced; updateMotion(); });
+systemMotion.addEventListener('change', updateMotion);
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') { if (!$('appearance-panel').hidden) setPanel(false); else if (detail) { showMode(mode); document.querySelector(`.mode[data-mode="${mode}"]`).focus({ preventScroll: true }); } else if (mode === 'overview') showMode('canvas'); }
+  if (event.target instanceof HTMLInputElement || !$('appearance-panel').hidden || mode !== 'overview' || detail) return;
+  if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') { event.preventDefault(); selectCourse(Math.max(0, Math.min(courses.length - 1, selected + (event.key === 'ArrowRight' ? 1 : -1)))); }
+});
+
+renderStack();
+selectCourse(0, false);
+updateMotion();
+
+</script>
+<script>document.body.classList.add("reduced-motion"); selectCourse(0,false); openDetail();</script>
+</body>
+</html>

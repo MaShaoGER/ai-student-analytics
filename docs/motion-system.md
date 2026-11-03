@@ -103,7 +103,7 @@ SVG 图表用 `data-enter` / 模块内 keyframes（stroke-dashoffset、clip）�
 | 分析报告      | 控件区、报告预览框入场                                                                  |
 | 系统管理      | 标签页、统计数字计数、表单分区、账号列表错峰                                            |
 | 个人设置      | 账号卡与密码卡错峰                                                                      |
-| 主题切换      | 全站以点击位置为圆心的 700ms 圆形揭示（View Transition API，自动降级）                  |
+| 主题切换      | 实时界面颜色 150ms 过渡，不生成全页截图或阻塞后续点击；减少动态时即时更新               |
 | 导航抽屉      | 全站 460ms 滑入 + 导航项 80–280ms 错峰                                                  |
 
 ## AI 状态与依据补充（2026-10-20）
@@ -136,6 +136,15 @@ SVG 图表用 `data-enter` / 模块内 keyframes（stroke-dashoffset、clip）�
 
 ## 落地记录（2026-10-18）
 
-- 共享层：`app/motion.css`、`components/ui/animated-number.tsx`、`app/layout.tsx` 引入顺序、`components/ui/theme-provider.tsx` 圆形揭示全站化。
+- 共享层：`app/motion.css`、`components/ui/animated-number.tsx`、`app/layout.tsx` 引入顺序。`components/ui/theme-provider.tsx` 直接切换主题 token；2026-11-03 移除旧全页圆形截图揭示，避免主题过渡时文档暂时不可交互。
 - 页面层：`components/learning-overview.tsx`（声明式 API 参考实现）、`components/workspace.tsx`（页面标题/视图切换/数据/报告/账号/chrome）、`components/analysis-result.tsx` + `app/motion-analysis.css`、`components/ai-conversation.tsx` / `conversation-tool-result.tsx` / `app/motion-conversation.css`、`course-panorama*` / `course-relations*`、`score-distribution.tsx` / `chart-studio.tsx` / `studio-chart.tsx`、`login-screen.tsx` / `admin-panel.tsx` / `app/motion-auth.css`。
 - 交互开关补充：`MotionPreferences` 在重新开启动效时写入 `data-motion-replay-guard`，避免已渲染页面重播入场；`workspace.navigate/changeMode` 清除该标记，下一次视图切换恢复正常。
+
+## 数据浏览细节打磨（2026-11-03）
+
+- 首页改为桌面图文并排，标题上限50px、摘要数字上限40px，窄屏上下排列；首页分组入场240–360ms，星图错峰有上限。概念图主题切换360ms、返回340ms、同数据换画法260ms，避免长时间等待模糊消散。
+- 全览相机桌面缩放0.72、窄屏0.5，先缩放再应用相反世界坐标的平移，使当前平面在切主题／画法时保持同一落点。平面虚化按距离0.8px递增、上限3px；入场顺序与层级值分离，不能把 `--k:1000` 当动画延迟。
+- 全览纵向滚轮切主题，横向或 Shift＋滚轮切画法。44px累计阈值、280ms最短间隔，惯性尾波延长静默窗口，避免一次甩动连跳；不拦截 Ctrl／Command 缩放。方向键、按钮和滚轮使用同一选择状态。
+- 全览退出240ms，放射菜单退出168ms；保持原生对话框挂载直至结束，再取消或提交一次。放射菜单捕获当前可见帧，取消可打断尚未结束的展开动画，选项向中心收回。取消不改变图表、URL、history或阅读位置，结束后恢复触发点焦点。
+- 这两个空间导航对话框用 `data-navigation-motion` 保留方向键和 Esc 的连续动效，不受旧的“键盘交互一律0ms”规则影响。应用关闭动效或系统减少动态时仍即时完成，不等待退出计时器。
+- 图元鼠标高亮只作用于图形与颜色，不给文字或透明点击区描边；键盘焦点保留明确的局部图形提示。数据浏览固定浅色时，文档根底色同步画布，避免滚动边缘露出其他工作区的深色底；离开后恢复原主题。

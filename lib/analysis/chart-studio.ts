@@ -1,4 +1,5 @@
-import type { DataSource } from "./types";
+import type { AnalysisResult, DataSource, Metric } from "./types";
+import type { ChartCoverage, FocusSummary } from "../exploration/selection";
 
 export type StudioChartType = "sankey" | "boxplot" | "heatmap" | "density" | "dumbbell";
 export type StudioRelationshipMetric = "activity" | "attendance" | "absence" | "unexcused";
@@ -8,6 +9,12 @@ export type StudioTable = {
   rows: StudioRow[];
   description: string;
   sortChange?: "asc" | "desc";
+  meta?: {
+    project?: boolean;
+    beforeTerm?: string;
+    afterTerm?: string;
+    density?: { metric: "attendance" | "activity"; xWidth: number; yWidth: number };
+  };
 };
 export type StudioProjectData = {
   datasetId: DataSource;
@@ -18,6 +25,10 @@ export type StudioProjectData = {
   term: string | null;
   course: string;
   tables: Partial<Record<StudioChartType, StudioTable>>;
+  comparisonTerm?: string | null;
+  focusSummary?: FocusSummary;
+  coverage?: ChartCoverage[];
+  focusedResults?: Partial<Record<Metric, AnalysisResult>>;
 };
 export type StudioFields = Record<string, string>;
 export const STUDIO_CHARTS: { value: StudioChartType; label: string; description: string }[] = [

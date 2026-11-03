@@ -33,7 +33,8 @@
 .auto > span {
   width: 6px;
   height: 6px;
-  border-radius: var(--corner-radius);
+  /* Status mark, not a control: stays round. */
+  border-radius: 50%;
   background: var(--success);
 }
 .types {
@@ -50,7 +51,7 @@
   padding: 20px;
   background: transparent;
   border: 1px solid var(--line);
-  border-radius: var(--corner-radius);
+  border-radius: 0;
   color: var(--ink);
   text-align: left;
   min-width: 0;
@@ -142,7 +143,7 @@
   background: var(--surface-inset);
   color: var(--ink);
   border: 1px solid var(--line);
-  border-radius: var(--corner-radius);
+  border-radius: 0;
   padding: 16px;
   font:
     13px/1.8 ui-monospace,
@@ -229,7 +230,7 @@
   gap: 24px;
   padding: 20px;
   background: var(--surface-inset);
-  border-radius: var(--corner-radius);
+  border-radius: 0;
   margin-top: 16px;
 }
 .selection select {
@@ -242,6 +243,15 @@
   font-size: 12px;
   line-height: 1.9;
   color: var(--ink);
+}
+.compactDetails {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.compactDetails > summary {
+  cursor: pointer;
+  width: fit-content;
 }
 .preview {
   margin-top: 24px;
@@ -342,7 +352,7 @@
   }
   .types button {
     padding: 16px;
-    border-radius: var(--corner-radius);
+    border-radius: 0;
     gap: 8px;
   }
   .types button:last-child {
@@ -384,7 +394,7 @@
   padding: 24px;
 }
 :global(.glass-workspace) .types button {
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--ui-control-bg);
   border-color: var(--ui-control-border);
 }
@@ -397,12 +407,12 @@
   font-weight: 500;
 }
 :global(.glass-workspace) .editor textarea {
-  border-radius: var(--ui-control-radius);
+  border-radius: 0;
   background: var(--ui-inset);
 }
 :global(.glass-workspace) .selection {
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--ui-inset);
 }
 

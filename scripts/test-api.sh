@@ -23,7 +23,7 @@ const port = process.env.API_TEST_PORT || '3100';
 const base = `http://localhost:${port}`;
 const username = 'http.test.admin';
 const password = randomBytes(24).toString('base64url');
-const env = { ...process.env, NEXT_DIST_DIR: '.next/api-test', DEMO_DATA_DIR: demoDirectory, APP_STATE_DIR: directory, ANALYSIS_RECORDS_DIR: join(directory, 'analysis-records'), APP_ORIGIN: base, ADMIN_USERNAME: username, ADMIN_PASSWORD: password,
+const env = { ...process.env, NEXT_DIST_DIR: '.next-api-test', DEMO_DATA_DIR: demoDirectory, APP_STATE_DIR: directory, ANALYSIS_RECORDS_DIR: join(directory, 'analysis-records'), APP_ORIGIN: base, ADMIN_USERNAME: username, ADMIN_PASSWORD: password,
   APP_SETTINGS_KEY: randomBytes(32).toString('base64'), OPENAI_API_KEY: '', OPENAI_MODEL: '', OPENAI_INPUT_PRICE: '', OPENAI_OUTPUT_PRICE: '',
   API_TEST_USERNAME: username, API_TEST_PASSWORD: password, API_BASE_URL: base, API_INTEGRATION: '1', NEXT_TELEMETRY_DISABLED: '1' };
 const startServer = () => spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '--port', port], { env, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -46,6 +46,7 @@ try {
   console.log('HTTP tests use isolated accounts and settings; AI provider calls are disabled.');
   const tests = spawn('pnpm', ['exec', 'vitest', 'run', 'lib/api/api-integration.test.ts', 'lib/api/admin-integration.test.ts', 'lib/api/grade-import-integration.test.ts', '--no-file-parallelism'], { env, stdio: 'inherit' });
   process.exitCode = await new Promise(resolve => tests.on('exit', code => resolve(code ?? 1)));
+  if (process.exitCode !== 0) console.error(logs);
   if (process.exitCode === 0) {
     const api = async (route, cookie, body, method = body ? 'POST' : 'GET') => fetch(base + route, { method, headers: { origin: base, 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
     const signIn = async (name, pass) => { const response = await api('/api/auth/login', '', { username: name, password: pass }); assert.equal(response.status, 200); return response.headers.get('set-cookie').split(';')[0]; };
@@ -115,9 +116,9 @@ try {
   const originalConfig = JSON.parse(originalTsconfig);
   const originalIncludes = originalConfig.include || [];
   currentTsconfig.include = (currentTsconfig.include || []).filter(value =>
-    !value.startsWith('.next/api-test/') || originalIncludes.includes(value));
+    !value.startsWith('.next-api-test/') || originalIncludes.includes(value));
   if (JSON.stringify(currentTsconfig) === JSON.stringify(originalConfig)) writeFileSync('tsconfig.json', originalTsconfig);
-  if (readFileSync('next-env.d.ts', 'utf8').includes('.next/api-test/')) writeFileSync('next-env.d.ts', originalNextEnv);
+  if (readFileSync('next-env.d.ts', 'utf8').includes('.next-api-test/')) writeFileSync('next-env.d.ts', originalNextEnv);
   rmSync(directory, { recursive: true, force: true });
 }
 JS

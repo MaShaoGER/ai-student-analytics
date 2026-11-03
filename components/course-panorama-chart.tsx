@@ -1,10 +1,19 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { useMotionPreferences } from "@/components/ui/motion-preferences";
 import { relationKey } from "@/lib/analysis/course-relations";
 import { courseColorTokens } from "@/lib/analysis/course-colors";
 import type { CoursePanoramaData } from "@/lib/analysis/course-panorama";
+import type { ChartPick, PickAnchor } from "@/lib/exploration/selection";
 import styles from "./course-panorama.module.css";
 
 const number = (value: number) => value.toLocaleString("zh-CN");
@@ -23,15 +32,25 @@ export function CoursePanoramaChart({
   data,
   disabled,
   onSelect,
+  onPickCourse,
+  onPickScore,
 }: {
   data: CoursePanoramaData;
   disabled: boolean;
-  onSelect: (key: string) => void;
+  onSelect: (key: string, anchor?: PickAnchor) => void;
+  onPickCourse?: (course: string, anchor?: PickAnchor) => void;
+  onPickScore?: (pick: Extract<ChartPick, { kind: "score" }>, anchor?: PickAnchor) => void;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const [availableWidth, setAvailableWidth] = useState(0);
   const [hovered, setHovered] = useState("");
+  // SVG handlers mount with the chart; refs always call the latest parent callback.
+  const pickCourseRef = useRef(onPickCourse);
+  const pickScoreRef = useRef(onPickScore);
+  pickCourseRef.current = onPickCourse;
+  pickScoreRef.current = onPickScore;
   const { enabled: motionEnabled, reduced: reducedMotion } = useMotionPreferences();
+  const baselineLabel = data.focusSummary ? "固定群体" : "全体";
   // The draw-in belongs to the moment data first paints: every element mounted in
   // this window animates once, then the class drops so filter/focus updates stay
   // instant instead of replaying the entrance.
@@ -81,6 +100,23 @@ export function CoursePanoramaChart({
   const y = (score: number) => chartBottom - (score * (chartBottom - chartTop)) / 100;
   const ticks = [0, 20, 40, 60, 80, 100];
   const hoverRelation = data.relations.find((item) => relationKey(item) === hovered);
+  const activateOnKey = (run: (anchor: PickAnchor) => void) => (event: ReactKeyboardEvent<SVGElement>) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    const rect = event.currentTarget.getBoundingClientRect();
+    run({ x: rect.left + rect.width / 2, y: rect.bottom });
+  };
+  const scorePick = (course: string, bin: number) =>
+    ({
+      kind: "score",
+      course,
+      min: bin * 5,
+      max: (bin + 1) * 5,
+      includeMax: bin === 19,
+    }) as Extract<ChartPick, { kind: "score" }>;
+  // A role="img" SVG prunes its focusable children from the accessibility tree;
+  // while the chart accepts picks it is a labelled group of buttons instead.
+  const interactive = !disabled;
 
   return (
     <figure className={styles.figure} data-enter="fade">
@@ -90,8 +126,8 @@ export function CoursePanoramaChart({
           width={width}
           height={670}
           viewBox={`0 0 ${width} 670`}
-          role="img"
-          aria-label={`${data.term}学科关联全景。当前${selection ? `${selection.source}与${selection.target}共同未达标的${number(selection.count)}名学生` : "全体学生"}。各科按相同顺序展示成绩分布、均分、及格率与有效人数。可用右侧关联选择器和按钮查看相同数据。`}
+          role={interactive ? "group" : "img"}
+          aria-label={`${data.term}学科关联全景。当前${selection ? `${selection.source}与${selection.target}共同未达标的${number(selection.count)}名学生` : data.focusSummary ? (data.focusSummary.count !== null ? `${number(data.focusSummary.count)}名固定群体学生` : "人数已隐藏的固定群体") : "全体学生"}。各科按相同顺序展示成绩分布、均分、及格率与有效人数。可用课程标题、分布区间和关联选择器继续查看相同数据。`}
         >
           <defs>
             {shown.map((item) => (
@@ -149,15 +185,34 @@ export function CoursePanoramaChart({
                   stroke="transparent"
                   strokeWidth={Math.max(6, ribbonWidth)}
                   className={styles.ribbonTarget}
-                  style={{ pointerEvents: disabled ? "none" : "stroke" }}
+                  style={{
+                    pointerEvents: disabled ? "none" : "stroke",
+                  }}
+                  role={disabled ? undefined : "button"}
+                  tabIndex={disabled ? undefined : 0}
+                  aria-label={
+                    disabled
+                      ? undefined
+                      : `${item.source} 与 ${item.target}，${number(item.belowCount)} 人两科均低于 ${data.threshold} 分，选择这组群体`
+                  }
+                  aria-pressed={disabled ? undefined : key === selectedKey}
                   onPointerEnter={(event) => {
                     if (event.pointerType !== "touch") setHovered(key);
                   }}
                   onPointerLeave={() => setHovered("")}
-                  onClick={() => {
+                  onClick={(event) => {
+                    if (disabled) return;
                     setHovered("");
-                    onSelect(key === selectedKey ? "" : key);
+                    onSelect(key === selectedKey ? "" : key, { x: event.clientX, y: event.clientY });
                   }}
+                  onKeyDown={
+                    disabled
+                      ? undefined
+                      : activateOnKey((anchor) => {
+                          setHovered("");
+                          onSelect(key === selectedKey ? "" : key, anchor);
+                        })
+                  }
                 >
                   <title>{`${item.source} × ${item.target}：${number(item.belowCount)} 人共同低于 ${data.threshold} 分；两科均有成绩 ${number(item.commonCount)} 人，占 ${item.rate}%。点击联动。`}</title>
                 </path>
@@ -204,6 +259,21 @@ export function CoursePanoramaChart({
                     </tspan>
                   ))}
                 </text>
+                {!disabled && onPickCourse && column.course.trim() && (
+                  <rect
+                    x={x(index) - columnWidth / 2 + 2}
+                    y={158}
+                    width={Math.max(8, columnWidth - 4)}
+                    height={74}
+                    fill="transparent"
+                    style={{ cursor: "pointer" }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`选择 ${column.course} 课程继续查看`}
+                    onClick={(event) => pickCourseRef.current?.(column.course, { x: event.clientX, y: event.clientY })}
+                    onKeyDown={activateOnKey((anchor) => pickCourseRef.current?.(column.course, anchor))}
+                  />
+                )}
               </g>
             );
           })}
@@ -276,7 +346,7 @@ export function CoursePanoramaChart({
                       fill="var(--muted)"
                       opacity={count ? 0.15 + (0.6 * count) / maxBin : 0.05}
                     >
-                      <title>{`${column.course}全体：${bin * 5}至${(bin + 1) * 5}分，${number(count)}人${bin < 19 ? "（不含区间上界）" : "（含100分）"}`}</title>
+                      <title>{`${column.course}${baselineLabel}：${bin * 5}至${(bin + 1) * 5}分，${number(count)}人${bin < 19 ? "（不含区间上界）" : "（含100分）"}`}</title>
                     </rect>
                   ))}
                 {current?.bins.map((count, bin) => (
@@ -290,8 +360,21 @@ export function CoursePanoramaChart({
                     fill={subjectColor(column.course)}
                     opacity={count ? 0.2 + (0.8 * count) / maxBin : 0.045}
                     className={styles.bar}
+                    {...(!disabled && onPickScore && column.course.trim() && count > 0
+                      ? {
+                          role: "button" as const,
+                          tabIndex: 0,
+                          "aria-label": `选择 ${column.course} ${bin * 5}至${(bin + 1) * 5}分${bin === 19 ? "（含100分）" : "（不含区间上界）"}共 ${number(count)} 人继续查看`,
+                          style: { cursor: "pointer" },
+                          onClick: (event: ReactMouseEvent<SVGRectElement>) =>
+                            pickScoreRef.current?.(scorePick(column.course, bin), { x: event.clientX, y: event.clientY }),
+                          onKeyDown: activateOnKey((anchor) =>
+                            pickScoreRef.current?.(scorePick(column.course, bin), anchor),
+                          ),
+                        }
+                      : {})}
                   >
-                    <title>{`${column.course}${selection ? "选中人群" : "全体"}：${bin * 5}至${(bin + 1) * 5}分，${number(count)}人${bin < 19 ? "（不含区间上界）" : "（含100分）"}`}</title>
+                    <title>{`${column.course}${selection ? "选中人群" : baselineLabel}：${bin * 5}至${(bin + 1) * 5}分，${number(count)}人${bin < 19 ? "（不含区间上界）" : "（含100分）"}`}</title>
                   </rect>
                 ))}
                 {current ? (
@@ -315,7 +398,7 @@ export function CoursePanoramaChart({
                 </text>
                 {selection && (
                   <text x={x(index)} y={563} textAnchor="middle" className={styles.axis}>
-                    全体 {column.baseline.mean.toFixed(1)}
+                    {baselineLabel} {column.baseline.mean.toFixed(1)}
                   </text>
                 )}
                 <text x={x(index)} y={603} textAnchor="middle" className={styles.passRate}>
@@ -375,12 +458,12 @@ export function CoursePanoramaChart({
       >
         <span>
           <i />
-          {selection ? "选中人群" : "全体学生"}
+          {selection ? "选中人群" : `${baselineLabel}学生`}
         </span>
         {selection && (
           <span>
             <i className={styles.referenceSwatch} />
-            全体参照
+            {baselineLabel}参照
           </span>
         )}
         <span>黑线＝均分 · 及格率按 60 分计算</span>

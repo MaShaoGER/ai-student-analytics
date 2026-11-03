@@ -336,28 +336,10 @@ html[data-motion="on"][data-input-modality="pointer"]
   animation: enter-fade 320ms var(--ease-out) 300ms both;
 }
 
-/* ---- 主题圆形揭示（全站，含登录页） ------------------------------------ */
-html[data-theme-switch]::view-transition-old(root),
-html[data-theme-switch]::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
-html[data-theme-switch]::view-transition-new(root) {
-  animation: theme-reveal 700ms var(--check-ease) both;
-}
-@keyframes theme-reveal {
-  from {
-    clip-path: circle(0 at var(--theme-switch-x, 50%) var(--theme-switch-y, 50%));
-  }
-  to {
-    clip-path: circle(
-      var(--theme-switch-radius, 120vmax) at var(--theme-switch-x, 50%) var(--theme-switch-y, 50%)
-    );
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  html[data-theme-switch]::view-transition-new(root) {
-    animation: none;
+/* Theme colours blend on the live surface, never through an inert page snapshot. */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-motion="on"] .glass-workspace {
+    transition: background-color 150ms ease-out, color 150ms ease-out;
   }
 }
 

@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学析台 - 新风格预览导航</title>
+  <style>
+    :root {
+      --bg: #f5f5f2;
+      --ink: #232329;
+      --muted: #8a8a94;
+      --accent: #7666cc;
+      --line: rgba(36, 36, 54, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 80px clamp(20px, 5vw, 80px);
+    }
+
+    .header {
+      margin-bottom: 80px;
+      text-align: center;
+    }
+
+    .logo {
+      display: inline-flex;
+      gap: 12px;
+      align-items: center;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      margin-bottom: 24px;
+    }
+
+    .logo-mark {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, rgba(118, 102, 204, 0.2), rgba(118, 102, 204, 0.05));
+      border: 2px solid var(--accent);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    h1 {
+      font-size: 42px;
+      font-weight: 450;
+      letter-spacing: -0.03em;
+      margin: 0 0 16px;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: var(--muted);
+      margin: 0 0 8px;
+    }
+
+    .tagline {
+      font-size: 13px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 32px;
+      margin-bottom: 80px;
+    }
+
+    .preview-card {
+      padding: 32px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(250,250,248,0.3) 100%);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+      cursor: pointer;
+    }
+
+    .preview-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(118, 102, 204, 0.12);
+      background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(250,250,248,0.6) 100%);
+    }
+
+    .preview-icon {
+      font-size: 48px;
+      line-height: 1;
+    }
+
+    .preview-title {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin: 0;
+    }
+
+    .preview-desc {
+      font-size: 13px;
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.6;
+    }
+
+    .preview-tags {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 8px;
+      background: rgba(118, 102, 204, 0.1);
+      border: 1px solid rgba(118, 102, 204, 0.2);
+      border-radius: 4px;
+      font-size: 10px;
+      color: var(--accent);
+      font-weight: 500;
+      letter-spacing: 0.05em;
+    }
+
+    .features {
+      padding: 40px;
+      background: linear-gradient(135deg, rgba(118, 102, 204, 0.05) 0%, rgba(118, 102, 204, 0.02) 100%);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      margin-bottom: 80px;
+    }
+
+    .features h2 {
+      font-size: 22px;
+      font-weight: 500;
+      margin: 0 0 24px;
+      letter-spacing: -0.02em;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-item {
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.4);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .feature-icon {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+
+    .feature-name {
+      font-size: 13px;
+      font-weight: 600;
+      margin: 0 0 4px;
+    }
+
+    .feature-desc {
+      font-size: 11px;
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.6;
+    }
+
+    .cta {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      padding-top: 40px;
+      border-top: 1px solid var(--line);
+    }
+
+    .btn {
+      padding: 12px 28px;
+      border: none;
+      border-radius: 999px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.05em;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(118, 102, 204, 0.3);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(118, 102, 204, 0.05);
+      border-color: var(--accent);
+    }
+
+    .footer {
+      padding-top: 40px;
+      margin-top: 40px;
+      border-top: 1px solid var(--line);
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .footer p {
+      margin: 8px 0;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 60px 20px;
+      }
+
+      h1 {
+        font-size: 32px;
+      }
+
+      .preview-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <div class="logo-mark">学</div>
+        <span>学析台</span>
+      </div>
+      <h1>✨ 新视觉风格预览</h1>
+      <p class="subtitle">探索重新设计的界面风格</p>
+      <p class="tagline">暖白画布 · 淡紫强调 · 开放布局 · 光感玻璃 · 空间透视</p>
+    </div>
+
+    <div class="preview-grid">
+      <a href="01-explorer-canvas.html" class="preview-card" target="_blank">
+        <div class="preview-icon">🎨</div>
+        <h3 class="preview-title">数据浏览画布</h3>
+        <p class="preview-desc">展示开放式画布、暖白背景、淡紫玻璃浮层、细线分隔的数据浏览主界面</p>
+        <div class="preview-tags">
+          <span class="tag">开放画布</span>
+          <span class="tag">玻璃浮层</span>
+          <span class="tag">细线分隔</span>
+        </div>
+      </a>
+
+      <a href="02-chart-interactions.html" class="preview-card" target="_blank">
+        <div class="preview-icon">📊</div>
+        <h3 class="preview-title">图表与交互</h3>
+        <p class="preview-desc">展示图表边缘虚化、等宽数字、小样本灰化、紫色交互反馈、按钮胶囊等细节</p>
+        <div class="preview-tags">
+          <span class="tag">边缘虚化</span>
+          <span class="tag">交互反馈</span>
+          <span class="tag">等宽数字</span>
+        </div>
+      </a>
+
+      <a href="03-components.html" class="preview-card" target="_blank">
+        <div class="preview-icon">🧩</div>
+        <h3 class="preview-title">组件库</h3>
+        <p class="preview-desc">完整的组件系统：按钮、输入框、玻璃面板、加载动画、焦点效果、消息提示等</p>
+        <div class="preview-tags">
+          <span class="tag">按钮胶囊</span>
+          <span class="tag">焦点发光</span>
+          <span class="tag">玻璃面板</span>
+        </div>
+      </a>
+
+      <a href="04-spatial-overview.html" class="preview-card" target="_blank">
+        <div class="preview-icon">🌌</div>
+        <h3 class="preview-title">空间全览</h3>
+        <p class="preview-desc">3D 俯视透视、历史页面堆叠、鼠标移动位移效果、远层虚化。尝试移动鼠标！</p>
+        <div class="preview-tags">
+          <span class="tag">3D 透视</span>
+          <span class="tag">页面堆叠</span>
+          <span class="tag">远层虚化</span>
+        </div>
+      </a>
+    </div>
+
+    <div class="features">
+      <h2>🎯 核心设计特性</h2>
+      <div class="features-grid">
+        <div class="feature-item">
+          <div class="feature-icon">🎨</div>
+          <h4 class="feature-name">暖白画布</h4>
+          <p class="feature-desc">#f5f5f2 暖白底 + #232329 接近黑文字，保持清爽与可读</p>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon">💜</div>
+          <h4 class="feature-name">淡紫强调</h4>
+          <p class="feature-desc">#7666cc 少量点缀，用于选中、焦点、图形主线，保持克制</p>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon">✨</div>
+          <h4 class="feature-name">玻璃材质</h4>
+          <p class="feature-desc">15px 背景模糊 + 半透明渐变 + 顶部白光 + 底部紫边</p>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon">👁️</div>
+          <h4 class="feature-name">边缘虚化</h4>
+          <p class="feature-desc">中心清晰、外围渐进虚化，用于图表、全览、过渡动画</p>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon">🔄</div>
+          <h4 class="feature-name">混合圆角</h4>
+          <p class="feature-desc">按钮/标签 999px 胶囊，容器 0-12px 直角或微弧</p>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon">⌨️</div>
+          <h4 class="feature-name">焦点发光</h4>
+          <p class="feature-desc">紫色边框 + 微妙光晕 + 平滑 0.2s 过渡，不生硬</p>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon">📊</div>
+          <h4 class="feature-name">等宽数字</h4>
+          <p class="feature-desc">font-variant-numeric: tabular-nums 对齐表格数据</p>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon">🌌</div>
+          <h4 class="feature-name">空间透视</h4>
+          <p class="feature-desc">rotateX(6deg) 俯视 + 鼠标位移 + 历史堆叠 + 远层虚化</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding: 40px; background: linear-gradient(180deg, rgba(118, 102, 204, 0.05) 0%, transparent 100%); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 40px;">
+      <h2 style="margin-top: 0; font-size: 20px; font-weight: 500;">📋 设计决策汇总</h2>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; font-size: 12px;">
+        <div>
+          <strong style="color: var(--accent);">主题色体系</strong>
+          <p style="margin: 6px 0 0; color: var(--muted);">
+            基础紫 #7666cc<br>
+            浅紫 #dcd6ee<br>
+            透明紫 rgba(118, 102, 204, 0.15)
+          </p>
+        </div>
+
+        <div>
+          <strong style="color: var(--accent);">圆角策略</strong>
+          <p style="margin: 6px 0 0; color: var(--muted);">
+            按钮：999px<br>
+            卡片：0-4px<br>
+            浮层：12-16px
+          </p>
+        </div>
+
+        <div>
+          <strong style="color: var(--accent);">动画参数</strong>
+          <p style="margin: 6px 0 0; color: var(--muted);">
+            快速过渡：150ms<br>
+            进入/离开：300-400ms<br>
+            缓动：cubic-bezier(0.22, 1, 0.36, 1)
+          </p>
+        </div>
+
+        <div>
+          <strong style="color: var(--accent);">模糊效果</strong>
+          <p style="margin: 6px 0 0; color: var(--muted);">
+            玻璃：blur(12-15px)<br>
+            装饰：blur(2-4px)<br>
+            过渡：blur(0-12px)
+          </p>
+        </div>
+
+        <div>
+          <strong style="color: var(--accent);">优先级实施</strong>
+          <p style="margin: 6px 0 0; color: var(--muted);">
+            1️⃣ Token + 基础<br>
+            2️⃣ 数据浏览<br>
+            3️⃣ 其他页面
+          </p>
+        </div>
+
+        <div>
+          <strong style="color: var(--accent);">验收标准</strong>
+          <p style="margin: 6px 0 0; color: var(--muted);">
+            ✓ 静态画面接近<br>
+            ✓ 图表响应数据<br>
+            ✓ 浏览器实截图
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="cta">
+      <a href="docs/design/ai-implementation-brief-2026-11-03.md" class="btn btn-primary">📖 查看完整文档</a>
+      <button class="btn btn-secondary" onclick="alert('回到文件浏览器')">📁 返回项目</button>
+    </div>
+
+    <div class="footer">
+      <p>💬 新风格设计总结 · 2026-11-03</p>
+      <p>暖白底色 · 淡紫强调 · 开放画布 · 细线分隔 · 光感玻璃 · 边缘虚化</p>
+      <p style="font-size: 11px; margin-top: 16px;">这些是静态 HTML 预览。实际项目改造将保留所有业务逻辑、权限、数据交互等。</p>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,46 @@
+[
+  {
+    "file": "01-课程关系图.png",
+    "source": "课程全景-HTML实际截图.png",
+    "crop_box_xyxy": [
+      1040,
+      310,
+      2830,
+      1720
+    ],
+    "note": "Crop only from browser-generated PNG; no chart styling or pixel content changed."
+  },
+  {
+    "file": "02-指标横向柱状图.png",
+    "source": "指标详情-HTML实际截图.png",
+    "crop_box_xyxy": [
+      1370,
+      545,
+      2740,
+      1370
+    ],
+    "note": "Crop only from browser-generated PNG; no chart styling or pixel content changed."
+  },
+  {
+    "file": "03-玻璃指标与趋势图.png",
+    "source": "课程全景-HTML实际截图.png",
+    "crop_box_xyxy": [
+      80,
+      1220,
+      1140,
+      1740
+    ],
+    "note": "Crop only from browser-generated PNG; no chart styling or pixel content changed."
+  },
+  {
+    "file": "04-叠层柱图预览.png",
+    "source": "空间全览-HTML实际截图.png",
+    "crop_box_xyxy": [
+      1050,
+      410,
+      2870,
+      1480
+    ],
+    "note": "Crop only from browser-generated PNG; no chart styling or pixel content changed."
+  }
+]

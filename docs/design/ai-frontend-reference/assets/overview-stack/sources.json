@@ -1,0 +1,110 @@
+[
+  {
+    "id": "REF-004",
+    "short_url": "https://pin.it/74FDRvYo6",
+    "title": "No 35 in our collection is called Descend Stack. It looks simple until you realize every slide actually uses two media l… | Medium layered, Flyer and poster design, Motion design",
+    "description": "23-Jun-2026 — No 35 in our collection is called Descend Stack. It looks simple until you realize every slide actually uses two media layers just to fake that endless loop feeling 👀 Coming on Thursday.\n\nOh and I'm preparing a nice refresh to our website and branding, stay tuned, I can't wait to share it!\n\nAriel",
+    "canonical_url": "https://in.pinterest.com/pin/no-35-in-our-collection-is-called-descend-stack-it-looks-simple-until-you-realize-every-slide-actually-uses-two-media-l--825214331766810246/",
+    "further_source": "https://www.instagram.com/p/DYwIpnRAsnC/?img_index=2",
+    "preview_url": "https://i.pinimg.com/736x/c1/6d/c3/c16dc352907144bd339e5c7b2036e986.jpg",
+    "video_urls": [
+      "https://v1.pinimg.com/videos/iht/expMp4/8f/e0/32/8fe0328f3042af3e057864eb9530f5ee_720w.mp4",
+      "https://v1.pinimg.com/videos/iht/expMp4/93/74/31/937431b19029d76dec71eca540b519c0_720w.mp4"
+    ],
+    "captured_at": "2026-11-03",
+    "role": "motion reference",
+    "pin_url": "https://www.pinterest.com/pin/825214331766810246/",
+    "videos": [
+      {
+        "file": "ref-004-placeholder.mp4",
+        "url": "https://v1.pinimg.com/videos/iht/expMp4/8f/e0/32/8fe0328f3042af3e057864eb9530f5ee_720w.mp4",
+        "duration_seconds": 15.7,
+        "width": 720,
+        "height": 960,
+        "role": "numbered placeholder variant"
+      },
+      {
+        "file": "ref-004-media.mp4",
+        "url": "https://v1.pinimg.com/videos/iht/expMp4/93/74/31/937431b19029d76dec71eca540b519c0_720w.mp4",
+        "duration_seconds": 15.0,
+        "width": 720,
+        "height": 960,
+        "role": "media variant used for main analysis"
+      }
+    ],
+    "frames": [
+      {
+        "file": "ref-004-01.jpg",
+        "time_seconds": 0.6,
+        "operation": "Decoded frame; no cropping or retouching."
+      },
+      {
+        "file": "ref-004-02.jpg",
+        "time_seconds": 1.4,
+        "operation": "Decoded frame; no cropping or retouching."
+      },
+      {
+        "file": "ref-004-03.jpg",
+        "time_seconds": 2.0,
+        "operation": "Decoded frame; no cropping or retouching."
+      },
+      {
+        "file": "ref-004-04.jpg",
+        "time_seconds": 2.8,
+        "operation": "Decoded frame; no cropping or retouching."
+      },
+      {
+        "file": "ref-004-05.jpg",
+        "time_seconds": 4.2,
+        "operation": "Decoded frame; no cropping or retouching."
+      },
+      {
+        "file": "ref-004-06.jpg",
+        "time_seconds": 5.2,
+        "operation": "Decoded frame; no cropping or retouching."
+      }
+    ],
+    "placeholder_frames": [
+      {
+        "file": "ref-004-placeholder-01.jpg",
+        "time_seconds": 1.0
+      },
+      {
+        "file": "ref-004-placeholder-02.jpg",
+        "time_seconds": 2.0
+      }
+    ],
+    "sequence_file": "ref-004-motion-sequence.jpg",
+    "evidence_scope": "Public Pinterest media viewed locally; original website implementation and interaction inputs not inspected.",
+    "checksums": {
+      "ref-004-media.mp4": "cdaf82571f10cbe9e390df0e2adae8502c5693a29901579e5a60c5662f2c637e",
+      "ref-004-placeholder.mp4": "9bd99e713d23371aa7a98d8e4cc3e54f1fc26c549e69c5bee7fba31ce60fdb3a"
+    },
+    "user_reference_focus": {
+      "primary": "Edge blur as the main visual style across the whole website.",
+      "secondary": "Stack movement is an observation, not the main requested effect.",
+      "clarified_at": "2026-11-03"
+    }
+  },
+  {
+    "id": "REF-005",
+    "short_url": "https://pin.it/33RrxhXoa",
+    "title": "Seen Credit Card - Product Visualization by Constantin Calcatinge | Best credit cards for 2023, Blue and black card stack, How to choose a credit card",
+    "description": "Check out this stunning product visualization of a credit card by Constantin Calcatinge. Get inspired by the creativity and attention to detail in this design. Fintech, Banking, Bank card",
+    "canonical_url": "https://www.pinterest.com/pin/402438916717696056/",
+    "further_source": "https://dribbble.com/constantinmotion",
+    "preview_url": "https://i.pinimg.com/736x/85/af/3a/85af3a437295815fedbf755a45512b6e.jpg",
+    "video_urls": [],
+    "captured_at": "2026-11-03",
+    "role": "camera and spatial arrangement reference",
+    "pin_url": "https://www.pinterest.com/pin/402438916717696056/",
+    "image_file": "ref-005-perspective.png",
+    "image_url": "https://i.pinimg.com/originals/85/af/3a/85af3a437295815fedbf755a45512b6e.png",
+    "image_width": 1024,
+    "image_height": 768,
+    "evidence_scope": "Public Pinterest media viewed locally; original website implementation and interaction inputs not inspected.",
+    "checksums": {
+      "ref-005-perspective.png": "e5a8f01ed9f4cfadb0ffc75fdb4c76b418b7feb0774d89e759ba2dc23fa5c405"
+    }
+  }
+]

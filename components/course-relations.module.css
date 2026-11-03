@@ -67,7 +67,7 @@
 }
 .detail {
   background: var(--surface-inset);
-  border-radius: var(--corner-radius);
+  border-radius: 0;
   padding: 24px;
 }
 .detail h3 {
@@ -138,7 +138,7 @@
   padding: 12px 8px;
   background: transparent;
   border: 0;
-  border-radius: var(--corner-radius);
+  border-radius: 0;
   text-align: left;
   color: var(--ink);
 }
@@ -187,7 +187,7 @@
   min-height: 40px;
   padding: 8px 12px;
   border: 1px solid var(--line);
-  border-radius: var(--corner-radius);
+  border-radius: 0;
   background: transparent;
   color: var(--ink);
   font-size: 12px;
@@ -317,13 +317,13 @@ html[data-motion="off"] .chart path {
 }
 :global(.glass-workspace) .detail {
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--ui-inset);
 }
 
 :global(.glass-workspace) .coursePicker button {
   min-height: var(--ui-control-height);
-  border-radius: var(--ui-control-radius);
+  border-radius: 0;
   background: var(--ui-control-bg);
 }
 :global(.glass-workspace) .coursePicker button[aria-pressed="true"],

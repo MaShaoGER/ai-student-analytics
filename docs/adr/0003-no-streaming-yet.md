@@ -1,6 +1,6 @@
 # ADR 0003：暂不做流式输出，保留一次性 JSON 响应
 
-- 状态：普通问答继续采纳；综合分析于 2026-10-19 调整为阶段事件 SSE（见下文）
+- 状态：历史决策，已被统一对话与正式账号会话调整。当前 `/api/chat` 不以 `mode` 区分普通/综合分析，是否使用 SSE 由 `Accept` 决定；正式页面接收阶段事件与完整结果，不逐字输出模型文本。见[当前架构](../architecture.md)、[正式对话说明](../ai-conversation-experience.md)。下文保留原决策及 2026-10-19 的中间状态，不作为现行请求示例。
 - 背景材料：`output/ai-review/human-ai-interaction.md`（P1-1 与“小改 vs 大改”，本地审计材料）、[AI 第一阶段](../ai-phase1.md)、[AI 图表能力扩展](../ai-chart-capabilities.md)
 
 ## 决策

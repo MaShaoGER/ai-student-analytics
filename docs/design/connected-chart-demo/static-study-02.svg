@@ -1,0 +1,347 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="2580" viewBox="0 0 1440 2580">
+<rect width="1440" height="2580" fill="#FDFEFB"/>
+<defs><radialGradient id="lav"><stop stop-color="#C9BCF2" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><radialGradient id="mint"><stop stop-color="#D3EAB6" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><radialGradient id="peach"><stop stop-color="#F8CFB6" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><linearGradient id="fade" gradientUnits="userSpaceOnUse" x1="0" y1="90" x2="0" y2="400"><stop stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient><mask id="gridmask"><rect width="1440" height="420" fill="url(#fade)"/></mask><linearGradient id="cd" gradientUnits="userSpaceOnUse" x1="180" x2="390" y1="0" y2="0"><stop stop-color="#3F86C2"/><stop offset="1" stop-color="#E8734A"/></linearGradient></defs>
+<ellipse cx="940" cy="400" rx="460" ry="260" fill="url(#lav)"/>
+<ellipse cx="520" cy="1080" rx="400" ry="230" fill="url(#mint)"/>
+<ellipse cx="980" cy="1560" rx="420" ry="210" fill="url(#peach)"/>
+<ellipse cx="600" cy="2200" rx="460" ry="220" fill="url(#lav)"/>
+<g mask="url(#gridmask)" stroke="#E3E7DD" stroke-width=".8" fill="none"><path d="M100 87V420"/><path d="M255 87V420"/><path d="M410 87V420"/><path d="M565 87V420"/><path d="M720 87V420"/><path d="M875 87V420"/><path d="M1030 87V420"/><path d="M1185 87V420"/><path d="M1340 87V420"/><path d="M100 242H1340"/><path d="M100 397H1340"/></g>
+<path d="M255 235L256.4 240.6L262 242L256.4 243.4L255 249L253.6 243.4L248 242L253.6 240.6Z" fill="#A893DD" opacity=".75"/>
+<path d="M875 235L876.4 240.6L882 242L876.4 243.4L875 249L873.6 243.4L868 242L873.6 240.6Z" fill="#A893DD" opacity=".75"/>
+<path d="M1185 390L1186.4 395.6L1192 397L1186.4 398.4L1185 404L1183.6 398.4L1178 397L1183.6 395.6Z" fill="#A893DD" opacity=".75"/>
+<path d="M1116.0 470.0 L1232.0 470.0 A18 18 0 0 1 1250.0 488.0 L1250.0 858.0 A22 22 0 0 1 1228.0 880.0 L702.0 880.0 A22 22 0 0 0 680.0 902.0 L680.0 1240.0" fill="none" stroke="#7962BC" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M620.0 1340.0 L620.0 1458.0 A22 22 0 0 0 642.0 1480.0 L670.0 1480.0" fill="none" stroke="#7962BC" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M1262.0 1480.0 L1324.0 1480.0 A16 16 0 0 1 1340.0 1496.0 L1340.0 1730.0" fill="none" stroke="#7962BC" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M1270.0 1830.0 L1270.0 1948.0 A22 22 0 0 1 1248.0 1970.0 L832.0 1970.0 A22 22 0 0 0 810.0 1992.0 L810.0 2112.6" fill="none" stroke="#7962BC" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M1092.0 520.0 L1207.0 520.0 A18 18 0 0 1 1225.0 538.0 L1225.0 838.0 A22 22 0 0 1 1203.0 860.0 L582.0 860.0 A22 22 0 0 0 560.0 882.0 L560.0 1240.0" fill="none" stroke="#6E9E45" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M595.0 1340.0 L595.0 1508.0 A22 22 0 0 0 617.0 1530.0 L670.0 1530.0" fill="none" stroke="#6E9E45" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M1262.0 1530.0 L1304.0 1530.0 A16 16 0 0 1 1320.0 1546.0 L1320.0 1730.0" fill="none" stroke="#6E9E45" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M1240.0 1830.0 L1240.0 1918.0 A22 22 0 0 1 1218.0 1940.0 L622.0 1940.0 A22 22 0 0 0 600.0 1962.0 L600.0 2109.6" fill="none" stroke="#6E9E45" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M1068.0 570.0 L1182.0 570.0 A18 18 0 0 1 1200.0 588.0 L1200.0 818.0 A22 22 0 0 1 1178.0 840.0 L462.0 840.0 A22 22 0 0 0 440.0 862.0 L440.0 1240.0" fill="none" stroke="#E8734A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M570.0 1340.0 L570.0 1558.0 A22 22 0 0 0 592.0 1580.0 L670.0 1580.0" fill="none" stroke="#E8734A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M1262.0 1580.0 L1284.0 1580.0 A16 16 0 0 1 1300.0 1596.0 L1300.0 1730.0" fill="none" stroke="#E8734A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M1210.0 1830.0 L1210.0 1888.0 A22 22 0 0 1 1188.0 1910.0 L412.0 1910.0 A22 22 0 0 0 390.0 1932.0 L390.0 2102.4" fill="none" stroke="#E8734A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M1044.0 620.0 L1157.0 620.0 A18 18 0 0 1 1175.0 638.0 L1175.0 798.0 A22 22 0 0 1 1153.0 820.0 L342.0 820.0 A22 22 0 0 0 320.0 842.0 L320.0 1240.0" fill="none" stroke="#3F86C2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M545.0 1340.0 L545.0 1608.0 A22 22 0 0 0 567.0 1630.0 L670.0 1630.0" fill="none" stroke="#3F86C2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M1262.0 1630.0 L1264.0 1630.0 A16 16 0 0 1 1280.0 1646.0 L1280.0 1730.0" fill="none" stroke="#3F86C2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M1180.0 1830.0 L1180.0 1858.0 A22 22 0 0 1 1158.0 1880.0 L202.0 1880.0 A22 22 0 0 0 180.0 1902.0 L180.0 2098.2" fill="none" stroke="#3F86C2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M102 1290H1340" stroke="#C9CEC2" stroke-width="1" stroke-dasharray="2 5"/>
+<text x="102" y="1276" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="start" letter-spacing="1.4">SWITCH / 均分 → 每周活动</text>
+<text x="102" y="1320" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="start" >指标切换：从成绩到人均学习活动次数</text>
+<rect x="676.0" y="1236.0" width="8" height="8" fill="#7962BC" />
+<rect x="616.0" y="1336.0" width="8" height="8" fill="#7962BC" />
+<rect x="676.5" y="1251.4" width="6" height="6" fill="#7962BC" opacity="0.81"/>
+<rect x="673.1" y="1260.8" width="5" height="5" fill="#7962BC" opacity="0.65"/>
+<rect x="666.2" y="1269.7" width="5" height="5" fill="#7962BC" opacity="0.52"/>
+<rect x="657.3" y="1278.6" width="5" height="5" fill="#7962BC" opacity="0.43"/>
+<rect x="647.5" y="1287.5" width="5" height="5" fill="#7962BC" opacity="0.40"/>
+<rect x="637.7" y="1296.4" width="5" height="5" fill="#7962BC" opacity="0.43"/>
+<rect x="628.8" y="1305.3" width="5" height="5" fill="#7962BC" opacity="0.52"/>
+<rect x="621.9" y="1314.2" width="5" height="5" fill="#7962BC" opacity="0.65"/>
+<rect x="617.5" y="1322.6" width="6" height="6" fill="#7962BC" opacity="0.81"/>
+<rect x="556.0" y="1236.0" width="8" height="8" fill="#6E9E45" />
+<rect x="591.0" y="1336.0" width="8" height="8" fill="#6E9E45" />
+<rect x="557.3" y="1251.4" width="6" height="6" fill="#6E9E45" opacity="0.81"/>
+<rect x="560.1" y="1260.8" width="5" height="5" fill="#6E9E45" opacity="0.65"/>
+<rect x="564.1" y="1269.7" width="5" height="5" fill="#6E9E45" opacity="0.52"/>
+<rect x="569.3" y="1278.6" width="5" height="5" fill="#6E9E45" opacity="0.43"/>
+<rect x="575.0" y="1287.5" width="5" height="5" fill="#6E9E45" opacity="0.40"/>
+<rect x="580.7" y="1296.4" width="5" height="5" fill="#6E9E45" opacity="0.43"/>
+<rect x="585.9" y="1305.3" width="5" height="5" fill="#6E9E45" opacity="0.52"/>
+<rect x="589.9" y="1314.2" width="5" height="5" fill="#6E9E45" opacity="0.65"/>
+<rect x="591.7" y="1322.6" width="6" height="6" fill="#6E9E45" opacity="0.81"/>
+<rect x="436.0" y="1236.0" width="8" height="8" fill="#E8734A" />
+<rect x="566.0" y="1336.0" width="8" height="8" fill="#E8734A" />
+<rect x="438.2" y="1251.4" width="6" height="6" fill="#E8734A" opacity="0.81"/>
+<rect x="447.1" y="1260.8" width="5" height="5" fill="#E8734A" opacity="0.65"/>
+<rect x="462.0" y="1269.7" width="5" height="5" fill="#E8734A" opacity="0.52"/>
+<rect x="481.2" y="1278.6" width="5" height="5" fill="#E8734A" opacity="0.43"/>
+<rect x="502.5" y="1287.5" width="5" height="5" fill="#E8734A" opacity="0.40"/>
+<rect x="523.8" y="1296.4" width="5" height="5" fill="#E8734A" opacity="0.43"/>
+<rect x="543.0" y="1305.3" width="5" height="5" fill="#E8734A" opacity="0.52"/>
+<rect x="557.9" y="1314.2" width="5" height="5" fill="#E8734A" opacity="0.65"/>
+<rect x="565.8" y="1322.6" width="6" height="6" fill="#E8734A" opacity="0.81"/>
+<rect x="316.0" y="1236.0" width="8" height="8" fill="#3F86C2" />
+<rect x="541.0" y="1336.0" width="8" height="8" fill="#3F86C2" />
+<rect x="319.0" y="1251.4" width="6" height="6" fill="#3F86C2" opacity="0.81"/>
+<rect x="334.2" y="1260.8" width="5" height="5" fill="#3F86C2" opacity="0.65"/>
+<rect x="359.9" y="1269.7" width="5" height="5" fill="#3F86C2" opacity="0.52"/>
+<rect x="393.1" y="1278.6" width="5" height="5" fill="#3F86C2" opacity="0.43"/>
+<rect x="430.0" y="1287.5" width="5" height="5" fill="#3F86C2" opacity="0.40"/>
+<rect x="466.9" y="1296.4" width="5" height="5" fill="#3F86C2" opacity="0.43"/>
+<rect x="500.1" y="1305.3" width="5" height="5" fill="#3F86C2" opacity="0.52"/>
+<rect x="525.8" y="1314.2" width="5" height="5" fill="#3F86C2" opacity="0.65"/>
+<rect x="540.0" y="1322.6" width="6" height="6" fill="#3F86C2" opacity="0.81"/>
+<path d="M102 1780H1340" stroke="#C9CEC2" stroke-width="1" stroke-dasharray="2 5"/>
+<text x="102" y="1766" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="start" letter-spacing="1.4">SWITCH / 每周活动 → 共同薄弱</text>
+<text x="102" y="1810" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="start" >统计对象切换：低于 70 分的学生，按人数重新排列</text>
+<rect x="1336.0" y="1726.0" width="8" height="8" fill="#7962BC" />
+<rect x="1266.0" y="1826.0" width="8" height="8" fill="#7962BC" />
+<rect x="1336.4" y="1741.4" width="6" height="6" fill="#7962BC" opacity="0.81"/>
+<rect x="1332.3" y="1750.8" width="5" height="5" fill="#7962BC" opacity="0.65"/>
+<rect x="1324.3" y="1759.7" width="5" height="5" fill="#7962BC" opacity="0.52"/>
+<rect x="1314.0" y="1768.6" width="5" height="5" fill="#7962BC" opacity="0.43"/>
+<rect x="1302.5" y="1777.5" width="5" height="5" fill="#7962BC" opacity="0.40"/>
+<rect x="1291.0" y="1786.4" width="5" height="5" fill="#7962BC" opacity="0.43"/>
+<rect x="1280.7" y="1795.3" width="5" height="5" fill="#7962BC" opacity="0.52"/>
+<rect x="1272.7" y="1804.2" width="5" height="5" fill="#7962BC" opacity="0.65"/>
+<rect x="1267.6" y="1812.6" width="6" height="6" fill="#7962BC" opacity="0.81"/>
+<rect x="1316.0" y="1726.0" width="8" height="8" fill="#6E9E45" />
+<rect x="1236.0" y="1826.0" width="8" height="8" fill="#6E9E45" />
+<rect x="1316.3" y="1741.4" width="6" height="6" fill="#6E9E45" opacity="0.81"/>
+<rect x="1311.6" y="1750.8" width="5" height="5" fill="#6E9E45" opacity="0.65"/>
+<rect x="1302.4" y="1759.7" width="5" height="5" fill="#6E9E45" opacity="0.52"/>
+<rect x="1290.6" y="1768.6" width="5" height="5" fill="#6E9E45" opacity="0.43"/>
+<rect x="1277.5" y="1777.5" width="5" height="5" fill="#6E9E45" opacity="0.40"/>
+<rect x="1264.4" y="1786.4" width="5" height="5" fill="#6E9E45" opacity="0.43"/>
+<rect x="1252.6" y="1795.3" width="5" height="5" fill="#6E9E45" opacity="0.52"/>
+<rect x="1243.4" y="1804.2" width="5" height="5" fill="#6E9E45" opacity="0.65"/>
+<rect x="1237.7" y="1812.6" width="6" height="6" fill="#6E9E45" opacity="0.81"/>
+<rect x="1296.0" y="1726.0" width="8" height="8" fill="#E8734A" />
+<rect x="1206.0" y="1826.0" width="8" height="8" fill="#E8734A" />
+<rect x="1296.2" y="1741.4" width="6" height="6" fill="#E8734A" opacity="0.81"/>
+<rect x="1290.8" y="1750.8" width="5" height="5" fill="#E8734A" opacity="0.65"/>
+<rect x="1280.5" y="1759.7" width="5" height="5" fill="#E8734A" opacity="0.52"/>
+<rect x="1267.3" y="1768.6" width="5" height="5" fill="#E8734A" opacity="0.43"/>
+<rect x="1252.5" y="1777.5" width="5" height="5" fill="#E8734A" opacity="0.40"/>
+<rect x="1237.7" y="1786.4" width="5" height="5" fill="#E8734A" opacity="0.43"/>
+<rect x="1224.5" y="1795.3" width="5" height="5" fill="#E8734A" opacity="0.52"/>
+<rect x="1214.2" y="1804.2" width="5" height="5" fill="#E8734A" opacity="0.65"/>
+<rect x="1207.8" y="1812.6" width="6" height="6" fill="#E8734A" opacity="0.81"/>
+<rect x="1276.0" y="1726.0" width="8" height="8" fill="#3F86C2" />
+<rect x="1176.0" y="1826.0" width="8" height="8" fill="#3F86C2" />
+<rect x="1276.1" y="1741.4" width="6" height="6" fill="#3F86C2" opacity="0.81"/>
+<rect x="1270.1" y="1750.8" width="5" height="5" fill="#3F86C2" opacity="0.65"/>
+<rect x="1258.6" y="1759.7" width="5" height="5" fill="#3F86C2" opacity="0.52"/>
+<rect x="1243.9" y="1768.6" width="5" height="5" fill="#3F86C2" opacity="0.43"/>
+<rect x="1227.5" y="1777.5" width="5" height="5" fill="#3F86C2" opacity="0.40"/>
+<rect x="1211.1" y="1786.4" width="5" height="5" fill="#3F86C2" opacity="0.43"/>
+<rect x="1196.4" y="1795.3" width="5" height="5" fill="#3F86C2" opacity="0.52"/>
+<rect x="1184.9" y="1804.2" width="5" height="5" fill="#3F86C2" opacity="0.65"/>
+<rect x="1177.9" y="1812.6" width="6" height="6" fill="#3F86C2" opacity="0.81"/>
+<rect x="72" y="36" width="8" height="8" fill="#20231F"/>
+<rect x="88" y="36" width="8" height="8" fill="#20231F"/>
+<rect x="72" y="44" width="8" height="8" fill="#20231F"/>
+<rect x="80" y="44" width="8" height="8" fill="#20231F"/>
+<rect x="88" y="44" width="8" height="8" fill="#20231F"/>
+<rect x="80" y="52" width="8" height="8" fill="#20231F"/>
+<text x="110" y="54" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="22" font-weight="500" fill="#20231F" text-anchor="start" >知序</text>
+<text x="170" y="53" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="start" letter-spacing="1.4">ZHIXU / CONNECTED INSIGHTS</text>
+<text x="1056" y="53" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="start" >看差异</text>
+<text x="1134" y="53" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="start" >看变化</text>
+<text x="1212" y="53" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="start" >看节奏</text>
+<text x="1290" y="53" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="start" >看联系</text>
+<path d="M72 86H1368" stroke="#E4E7DF"/>
+<text x="102" y="150" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="start" letter-spacing="1.4">SCROLL STUDY 02 / STATIC</text>
+<text x="102" y="226" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="56" font-weight="400" fill="#20231F" text-anchor="start" >让发现，连成一幅画。</text>
+<text x="102" y="282" font-family="Georgia, serif" font-size="28" font-weight="400" fill="#7962BC" text-anchor="start" font-style="italic">One canvas. Many perspectives.</text>
+<text x="102" y="332" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="16" font-weight="400" fill="#74796F" text-anchor="start" >一种颜色的线，始终是同一门课。沿着它往下看。</text>
+<text x="960" y="150" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="start" letter-spacing="1.4">HOW TO READ</text>
+<path d="M960 190H1040" stroke="#20231F" stroke-width="2.6" stroke-linecap="round"/>
+<text x="1060" y="195" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="start" >实线：同一门课、同一个数值，直接延续</text>
+<path d="M960 230H978" stroke="#20231F" stroke-width="2.6" stroke-linecap="round"/>
+<rect x="985.5" y="227.5" width="5" height="5" fill="#20231F" opacity="0.8"/>
+<rect x="996.5" y="227.5" width="5" height="5" fill="#20231F" opacity="0.45"/>
+<rect x="1007.5" y="227.5" width="5" height="5" fill="#20231F" opacity="0.45"/>
+<rect x="1018.5" y="227.5" width="5" height="5" fill="#20231F" opacity="0.8"/>
+<path d="M1031 230H1040" stroke="#20231F" stroke-width="2.6" stroke-linecap="round"/>
+<text x="1060" y="235" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="start" >像素断开：换了指标或统计对象</text>
+<rect x="960.0" y="265.0" width="12" height="12" fill="#7962BC" />
+<text x="980" y="276" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="start" >课程 A</text>
+<rect x="1052.0" y="265.0" width="12" height="12" fill="#6E9E45" />
+<text x="1072" y="276" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="start" >课程 B</text>
+<rect x="1144.0" y="265.0" width="12" height="12" fill="#E8734A" />
+<text x="1164" y="276" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="start" >课程 C</text>
+<rect x="1236.0" y="265.0" width="12" height="12" fill="#3F86C2" />
+<text x="1256" y="276" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="start" >课程 D</text>
+<text x="960" y="318" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="12" font-weight="400" fill="#74796F" text-anchor="start" >固定演示数据 · 连线表示阅读路径，不表示统计推导</text>
+<text x="102" y="436" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="start" letter-spacing="1.4">01 / COMPARE · 本学期均分</text>
+<text x="102" y="490" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="36" font-weight="400" fill="#20231F" text-anchor="start" >从差异开始。</text>
+<text x="102" y="528" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="17" font-weight="400" fill="#74796F" text-anchor="start" >同一学期，四门课程的平均成绩。</text>
+<text x="102" y="616" font-family="Arial Narrow, Arial, sans-serif" font-size="64" font-weight="400" fill="#20231F" text-anchor="start" letter-spacing="-2">12</text>
+<text x="170" y="616" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="15" font-weight="400" fill="#74796F" text-anchor="start" >分 · 最高与最低均分之差</text>
+<text x="102" y="652" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="15" font-weight="400" fill="#20231F" text-anchor="start" >每根柱子的末端，延伸成这门课的线。</text>
+<path d="M600 446V646" stroke="#B3BCA7"/>
+<text x="600" y="668" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >0</text>
+<path d="M720 446V646" stroke="#E1E5DA"/>
+<text x="720" y="668" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >20</text>
+<path d="M840 446V646" stroke="#E1E5DA"/>
+<text x="840" y="668" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >40</text>
+<path d="M960 446V646" stroke="#E1E5DA"/>
+<text x="960" y="668" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >60</text>
+<path d="M1080 446V646" stroke="#E1E5DA"/>
+<text x="1080" y="668" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >80</text>
+<text x="600" y="692" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="12" font-weight="400" fill="#74796F" text-anchor="start" >均分 / 分 · 每门课约 120 人 · 满分 100</text>
+<rect x="600" y="454" width="516" height="32" fill="#7962BC"/>
+<text x="1104" y="476" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="17" font-weight="500" fill="#FFFFFF" text-anchor="end" >86</text>
+<text x="586" y="475" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="end" >课程 A</text>
+<rect x="600" y="504" width="492" height="32" fill="#6E9E45"/>
+<text x="1080" y="526" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="17" font-weight="500" fill="#FFFFFF" text-anchor="end" >82</text>
+<text x="586" y="525" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="end" >课程 B</text>
+<rect x="600" y="554" width="468" height="32" fill="#E8734A"/>
+<text x="1056" y="576" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="17" font-weight="500" fill="#FFFFFF" text-anchor="end" >78</text>
+<text x="586" y="575" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="end" >课程 C</text>
+<rect x="600" y="604" width="444" height="32" fill="#3F86C2"/>
+<text x="1032" y="626" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="17" font-weight="500" fill="#FFFFFF" text-anchor="end" >74</text>
+<text x="586" y="625" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="end" >课程 D</text>
+<path d="M200 965V1180" stroke="#E1E5DA"/>
+<text x="200" y="1204" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >70</text>
+<path d="M350 965V1180" stroke="#E1E5DA"/>
+<text x="350" y="1204" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >75</text>
+<path d="M500 965V1180" stroke="#E1E5DA"/>
+<text x="500" y="1204" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >80</text>
+<path d="M650 965V1180" stroke="#E1E5DA"/>
+<text x="650" y="1204" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >85</text>
+<path d="M800 965V1180" stroke="#E1E5DA"/>
+<text x="800" y="1204" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >90</text>
+<text x="800" y="1226" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="end" >均分 / 分</text>
+<path d="M590 1000H680" stroke="#7962BC" stroke-width="7" opacity=".28"/>
+<circle cx="590" cy="1000" r="7" fill="#FDFEFB" stroke="#7962BC" stroke-width="2.6"/>
+<rect x="672.5" y="992.5" width="15" height="15" fill="#7962BC" />
+<text x="180" y="1005" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="end" >课程 A</text>
+<text x="830" y="1005" font-family="Menlo, monospace" font-size="14" font-weight="500" fill="#20231F" text-anchor="start" >+3</text>
+<path d="M620 1050H560" stroke="#6E9E45" stroke-width="7" opacity=".28"/>
+<circle cx="620" cy="1050" r="7" fill="#FDFEFB" stroke="#6E9E45" stroke-width="2.6"/>
+<rect x="552.5" y="1042.5" width="15" height="15" fill="#6E9E45" />
+<text x="180" y="1055" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="end" >课程 B</text>
+<text x="830" y="1055" font-family="Menlo, monospace" font-size="14" font-weight="500" fill="#74796F" text-anchor="start" >-2</text>
+<path d="M350 1100H440" stroke="#E8734A" stroke-width="7" opacity=".28"/>
+<circle cx="350" cy="1100" r="7" fill="#FDFEFB" stroke="#E8734A" stroke-width="2.6"/>
+<rect x="432.5" y="1092.5" width="15" height="15" fill="#E8734A" />
+<text x="180" y="1105" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="end" >课程 C</text>
+<text x="830" y="1105" font-family="Menlo, monospace" font-size="14" font-weight="500" fill="#20231F" text-anchor="start" >+3</text>
+<path d="M410 1150H320" stroke="#3F86C2" stroke-width="7" opacity=".28"/>
+<circle cx="410" cy="1150" r="7" fill="#FDFEFB" stroke="#3F86C2" stroke-width="2.6"/>
+<rect x="312.5" y="1142.5" width="15" height="15" fill="#3F86C2" />
+<text x="180" y="1155" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="end" >课程 D</text>
+<text x="830" y="1155" font-family="Menlo, monospace" font-size="14" font-weight="500" fill="#74796F" text-anchor="start" >-3</text>
+<text x="830" y="975" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="start" letter-spacing="1.4">Δ</text>
+<text x="900" y="962" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="start" letter-spacing="1.4">02 / CHANGE · 上学期 → 本学期</text>
+<text x="900" y="1016" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="36" font-weight="400" fill="#20231F" text-anchor="start" >差异，沿时间展开。</text>
+<text x="900" y="1054" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="17" font-weight="400" fill="#74796F" text-anchor="start" >每条线带着本学期均分落下，向左回看上学期。</text>
+<text x="900" y="1104" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="15" font-weight="400" fill="#20231F" text-anchor="start" >A、C 各上升 3 分；B、D 有所回落。</text>
+<circle cx="906" cy="1150" r="6" fill="#FDFEFB" stroke="#20231F" stroke-width="2"/>
+<text x="920" y="1155" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="13" font-weight="400" fill="#74796F" text-anchor="start" >上学期</text>
+<rect x="984.5" y="1144.5" width="11" height="11" fill="#20231F" />
+<text x="1004" y="1155" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="13" font-weight="400" fill="#74796F" text-anchor="start" >本学期 · 与 01 同一数值</text>
+<text x="102" y="1404" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="start" letter-spacing="1.4">03 / LEARNING RHYTHM · 本学期 12 周</text>
+<text x="102" y="1456" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="36" font-weight="400" fill="#20231F" text-anchor="start" >曲线，落入日常的节奏。</text>
+<text x="102" y="1494" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="17" font-weight="400" fill="#74796F" text-anchor="start" >每条线接入一行，铺开一学期的学习活动。</text>
+<text x="102" y="1540" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="15" font-weight="400" fill="#20231F" text-anchor="start" >C 后半学期持续升温，D 逐周走低。</text>
+<text x="702.0" y="1446" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >01</text>
+<text x="750.0" y="1446" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >02</text>
+<text x="798.0" y="1446" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >03</text>
+<text x="846.0" y="1446" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >04</text>
+<text x="894.0" y="1446" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >05</text>
+<text x="942.0" y="1446" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >06</text>
+<text x="990.0" y="1446" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >07</text>
+<text x="1038.0" y="1446" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >08</text>
+<text x="1086.0" y="1446" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >09</text>
+<text x="1134.0" y="1446" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >10</text>
+<text x="1182.0" y="1446" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >11</text>
+<text x="1230.0" y="1446" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >12</text>
+<text x="530" y="1485" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="end" >课程 A</text>
+<rect x="680" y="1460" width="44" height="40" fill="#BEB3DE"/>
+<rect x="728" y="1460" width="44" height="40" fill="#B3A7D9"/>
+<rect x="776" y="1460" width="44" height="40" fill="#B3A7D9"/>
+<rect x="824" y="1460" width="44" height="40" fill="#A99AD4"/>
+<rect x="872" y="1460" width="44" height="40" fill="#9F8ECF"/>
+<rect x="920" y="1460" width="44" height="40" fill="#A99AD4"/>
+<rect x="968" y="1460" width="44" height="40" fill="#B3A7D9"/>
+<rect x="1016" y="1460" width="44" height="40" fill="#9482CA"/>
+<rect x="1064" y="1460" width="44" height="40" fill="#8A76C5"/>
+<rect x="1112" y="1460" width="44" height="40" fill="#9F8ECF"/>
+<rect x="1160" y="1460" width="44" height="40" fill="#A99AD4"/>
+<rect x="1208" y="1460" width="44" height="40" fill="#9482CA"/>
+<text x="530" y="1535" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="end" >课程 B</text>
+<rect x="680" y="1510" width="44" height="40" fill="#ADC896"/>
+<rect x="728" y="1510" width="44" height="40" fill="#ADC896"/>
+<rect x="776" y="1510" width="44" height="40" fill="#A2C188"/>
+<rect x="824" y="1510" width="44" height="40" fill="#ADC896"/>
+<rect x="872" y="1510" width="44" height="40" fill="#B8D0A5"/>
+<rect x="920" y="1510" width="44" height="40" fill="#ADC896"/>
+<rect x="968" y="1510" width="44" height="40" fill="#A2C188"/>
+<rect x="1016" y="1510" width="44" height="40" fill="#97B979"/>
+<rect x="1064" y="1510" width="44" height="40" fill="#A2C188"/>
+<rect x="1112" y="1510" width="44" height="40" fill="#ADC896"/>
+<rect x="1160" y="1510" width="44" height="40" fill="#ADC896"/>
+<rect x="1208" y="1510" width="44" height="40" fill="#A2C188"/>
+<text x="530" y="1585" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="end" >课程 C</text>
+<rect x="680" y="1560" width="44" height="40" fill="#F7D1C3"/>
+<rect x="728" y="1560" width="44" height="40" fill="#F6C6B5"/>
+<rect x="776" y="1560" width="44" height="40" fill="#F4BBA7"/>
+<rect x="824" y="1560" width="44" height="40" fill="#F4BBA7"/>
+<rect x="872" y="1560" width="44" height="40" fill="#F2B099"/>
+<rect x="920" y="1560" width="44" height="40" fill="#F0A58B"/>
+<rect x="968" y="1560" width="44" height="40" fill="#F0A58B"/>
+<rect x="1016" y="1560" width="44" height="40" fill="#EE9A7D"/>
+<rect x="1064" y="1560" width="44" height="40" fill="#ED906F"/>
+<rect x="1112" y="1560" width="44" height="40" fill="#ED906F"/>
+<rect x="1160" y="1560" width="44" height="40" fill="#EB8561"/>
+<rect x="1208" y="1560" width="44" height="40" fill="#E97A53"/>
+<text x="530" y="1635" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="end" >课程 D</text>
+<rect x="680" y="1610" width="44" height="40" fill="#84B1D8"/>
+<rect x="728" y="1610" width="44" height="40" fill="#93BBDD"/>
+<rect x="776" y="1610" width="44" height="40" fill="#93BBDD"/>
+<rect x="824" y="1610" width="44" height="40" fill="#A2C4E1"/>
+<rect x="872" y="1610" width="44" height="40" fill="#A2C4E1"/>
+<rect x="920" y="1610" width="44" height="40" fill="#B0CEE6"/>
+<rect x="968" y="1610" width="44" height="40" fill="#B0CEE6"/>
+<rect x="1016" y="1610" width="44" height="40" fill="#A2C4E1"/>
+<rect x="1064" y="1610" width="44" height="40" fill="#B0CEE6"/>
+<rect x="1112" y="1610" width="44" height="40" fill="#BFD7EB"/>
+<rect x="1160" y="1610" width="44" height="40" fill="#B0CEE6"/>
+<rect x="1208" y="1610" width="44" height="40" fill="#BFD7EB"/>
+<rect x="680" y="1668" width="18" height="12" fill="#CDCECD"/>
+<rect x="702" y="1668" width="18" height="12" fill="#B5B6B4"/>
+<rect x="724" y="1668" width="18" height="12" fill="#9C9E9C"/>
+<rect x="746" y="1668" width="18" height="12" fill="#848684"/>
+<rect x="768" y="1668" width="18" height="12" fill="#6C6E6B"/>
+<text x="798" y="1679" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="12" font-weight="400" fill="#74796F" text-anchor="start" >人均每周活动 3 → 11 次</text>
+<text x="1252" y="1679" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="end" letter-spacing="1.4">周次 / 01 — 12</text>
+<path d="M390 2130Q600.0 2361 810 2130" fill="none" stroke="#9AA090" stroke-width="5.4" stroke-linecap="round" opacity="0.22"/>
+<text x="600.0" y="2267.5" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >6</text>
+<path d="M180 2130Q495.0 2476 810 2130" fill="none" stroke="#9AA090" stroke-width="6.3" stroke-linecap="round" opacity="0.22"/>
+<text x="495.0" y="2325.25" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >7</text>
+<path d="M390 2130Q495.0 2246 600 2130" fill="none" stroke="#9AA090" stroke-width="7.2" stroke-linecap="round" opacity="0.22"/>
+<text x="495.0" y="2209.75" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >8</text>
+<path d="M600 2130Q705.0 2246 810 2130" fill="none" stroke="#9AA090" stroke-width="8.1" stroke-linecap="round" opacity="0.22"/>
+<text x="705.0" y="2209.75" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >9</text>
+<path d="M180 2130Q390.0 2361 600 2130" fill="none" stroke="#9AA090" stroke-width="9.9" stroke-linecap="round" opacity="0.22"/>
+<text x="390.0" y="2267.5" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="middle" >11</text>
+<path d="M180 2130Q285.0 2246 390 2130" fill="none" stroke="url(#cd)" stroke-width="16.2" stroke-linecap="round" opacity="0.85"/>
+<text x="285.0" y="2224" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="500" fill="#20231F" text-anchor="middle" >18 人</text>
+<circle cx="810" cy="2130" r="17.4" fill="#FDFEFB" stroke="#7962BC" stroke-width="4"/>
+<rect x="805.0" y="2125.0" width="10" height="10" fill="#7962BC" />
+<text x="839.4" y="2126" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="start" >课程 A</text>
+<text x="839.4" y="2146" font-family="Menlo, monospace" font-size="12" font-weight="400" fill="#74796F" text-anchor="start" >14 人</text>
+<circle cx="600" cy="2130" r="20.4" fill="#FDFEFB" stroke="#6E9E45" stroke-width="4"/>
+<rect x="595.0" y="2125.0" width="10" height="10" fill="#6E9E45" />
+<text x="632.4" y="2126" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="start" >课程 B</text>
+<text x="632.4" y="2146" font-family="Menlo, monospace" font-size="12" font-weight="400" fill="#74796F" text-anchor="start" >19 人</text>
+<circle cx="390" cy="2130" r="27.6" fill="#FDFEFB" stroke="#E8734A" stroke-width="4"/>
+<rect x="385.0" y="2125.0" width="10" height="10" fill="#E8734A" />
+<text x="429.6" y="2126" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="start" >课程 C</text>
+<text x="429.6" y="2146" font-family="Menlo, monospace" font-size="12" font-weight="400" fill="#74796F" text-anchor="start" >31 人</text>
+<circle cx="180" cy="2130" r="31.8" fill="#FDFEFB" stroke="#3F86C2" stroke-width="4"/>
+<rect x="175.0" y="2125.0" width="10" height="10" fill="#3F86C2" />
+<text x="223.8" y="2126" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="14" font-weight="400" fill="#20231F" text-anchor="start" >课程 D</text>
+<text x="223.8" y="2146" font-family="Menlo, monospace" font-size="12" font-weight="400" fill="#74796F" text-anchor="start" >38 人</text>
+<text x="990" y="2040" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="start" letter-spacing="1.4">04 / CONNECTIONS · 低于 70 分的学生</text>
+<text x="990" y="2094" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="36" font-weight="400" fill="#20231F" text-anchor="start" >每一门课，都有联系。</text>
+<text x="990" y="2132" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="17" font-weight="400" fill="#74796F" text-anchor="start" >四条线汇成一张关系图。</text>
+<text x="990" y="2178" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="15" font-weight="400" fill="#20231F" text-anchor="start" >C 与 D 同时低于 70 分的有 18 人，</text>
+<text x="990" y="2204" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="15" font-weight="400" fill="#20231F" text-anchor="start" >是联系最紧的一对。</text>
+<text x="990" y="2250" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="12" font-weight="400" fill="#74796F" text-anchor="start" >圆大小：该课低于 70 分的人数</text>
+<text x="990" y="2272" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="12" font-weight="400" fill="#74796F" text-anchor="start" >线宽：两门课同时低于 70 分的人数 · 非因果</text>
+<path d="M72 2410H1368" stroke="#E4E7DF"/>
+<text x="102" y="2460" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="start" letter-spacing="1.4">A CONTINUOUS DATA LANDSCAPE</text>
+<text x="102" y="2508" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="32" font-weight="400" fill="#20231F" text-anchor="start" >图表相连，发现继续。</text>
+<text x="102" y="2542" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="13" font-weight="400" fill="#74796F" text-anchor="start" >静态样例 · 固定演示数据 · 连线是阅读路径，图形之间不存在统计推导。</text>
+<rect x="1190" y="2470" width="150" height="48" fill="#20231F"/>
+<text x="1240" y="2500" font-family="PingFang SC, Hiragino Sans GB, sans-serif" font-size="15" font-weight="400" fill="#FFFFFF" text-anchor="start" >体验演示</text>
+<rect x="1306" y="2486" width="6" height="6" fill="#CBEF8B"/>
+<rect x="1314" y="2486" width="6" height="6" fill="#CBEF8B"/>
+<rect x="1314" y="2494" width="6" height="6" fill="#CBEF8B"/>
+<text x="1340" y="2560" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#74796F" text-anchor="end" letter-spacing="1.4">知序 / STATIC STUDY — 02</text>
+</svg>
