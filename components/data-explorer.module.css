@@ -28,6 +28,16 @@
     radial-gradient(ellipse 60% 50% at 12% 6%, var(--accent-transparent), transparent 70%),
     radial-gradient(ellipse 40% 36% at 92% 96%, rgba(255, 190, 220, 0.12), transparent 70%);
 }
+.periphery::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(90deg, var(--line-strong) 1px, transparent 1px);
+  background-size: clamp(96px, 9vw, 160px) 100%;
+  opacity: 0.55;
+  -webkit-mask-image: radial-gradient(ellipse 72% 68% at 50% 50%, transparent 52%, #000 86%);
+  mask-image: radial-gradient(ellipse 72% 68% at 50% 50%, transparent 52%, #000 86%);
+}
 .periphery::after {
   content: "";
   position: absolute;
@@ -65,25 +75,47 @@
   min-width: 0;
 }
 .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin: 0 0 18px;
   color: var(--muted);
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: var(--tracking-meta);
   text-transform: uppercase;
 }
+.eyebrow::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  background: var(--ink);
+  transform: rotate(45deg);
+}
 .title {
+  display: inline-block;
+  max-width: 100%;
   margin: 0;
   color: var(--ink);
   font-family: var(--font-sans);
-  font-size: clamp(40px, 5.2vw, 76px);
-  font-weight: 450;
-  line-height: 1.04;
-  letter-spacing: -0.03em;
+  font-size: var(--type-display);
+  font-weight: var(--weight-display);
+  line-height: 0.95;
+  letter-spacing: var(--tracking-display);
   overflow-wrap: anywhere;
 }
 .title:focus { outline: none; }
 .title:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; }
+/* The mask is a span inside the heading, so it only needs leading room for ink;
+   the focus ring sits on the heading and is never clipped by the mask. */
+.title > .titleMask {
+  padding-top: 0.12em;
+  padding-bottom: 0.14em;
+  margin-top: -0.12em;
+  margin-bottom: -0.14em;
+}
 .scope {
   margin: 24px 0 0;
   max-width: 34ch;
@@ -100,20 +132,71 @@
   line-height: 1.7;
 }
 
-/* On-demand entries: small labelled links, separated by hairlines, not a toolbar. */
+/* Lead reading: the course mean, set like a magazine open number. */
+.lead {
+  container-type: inline-size;
+  margin-top: 40px;
+}
+.leadNumber {
+  display: flex;
+  align-items: flex-start;
+  margin: 0;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.heroNumber {
+  color: var(--ink);
+  font-size: clamp(56px, 26cqi, var(--type-hero));
+  font-weight: var(--weight-display);
+  line-height: 0.84;
+  letter-spacing: -0.055em;
+  font-variant-numeric: tabular-nums;
+}
+.heroUnit {
+  align-self: flex-start;
+  margin-left: 10px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0;
+}
+.leadNote {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+}
+/* No number when the mean is hidden: say why, in the same slot, without a zero. */
+.leadMissing {
+  margin: 40px 0 0;
+  max-width: 34ch;
+  padding-top: 12px;
+  border-top: var(--rule);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+@supports not (container-type: inline-size) {
+  .heroNumber { font-size: clamp(56px, 9vw, 120px); }
+}
+
+/* On-demand entries: numbered hairlines, one inverting row per action. */
 .entries {
   display: grid;
-  margin: 40px 0 0;
+  margin: 40px -12px 0;
   max-width: 320px;
-  border-top: 1px solid var(--line);
+  border-top: var(--rule);
 }
 .entry {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
+  align-items: center;
+  gap: 10px;
   min-height: 44px;
-  padding: 10px 0;
+  padding: 11px 12px;
   border: 0;
   border-bottom: 1px solid var(--line);
   background: transparent;
@@ -121,22 +204,62 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: color 150ms ease-out, padding 150ms ease-out;
+  transition: opacity 180ms ease-out, background-color 160ms ease-out, color 160ms ease-out;
+}
+.entry::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  background: var(--ink);
+  transform: rotate(45deg);
+  transition: background-color 160ms ease-out;
 }
 .entry > span {
   color: var(--muted);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-}
-.entry > strong {
-  font-size: 14px;
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
   font-weight: 500;
+  letter-spacing: var(--tracking-meta);
+  text-transform: uppercase;
+  transition: color 160ms ease-out;
+}
+.entry > span::before {
+  content: "01";
+  margin-right: 8px;
+}
+.entries .entry:nth-of-type(2) > span::before { content: "02"; }
+.entries .entry:nth-of-type(3) > span::before { content: "03"; }
+.entry > strong {
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: 600;
+  transition: color 160ms ease-out;
 }
 .entry > strong::after {
   content: " ↗";
   color: var(--accent-ink);
+  transition: color 160ms ease-out;
 }
-.entry:hover { color: var(--accent-ink); padding-left: 6px; }
+.entry:focus-visible {
+  background: var(--ink);
+  color: var(--surface-raised);
+}
+.entry:focus-visible::before { background: var(--accent-light); }
+.entry:focus-visible > span { color: rgba(255, 255, 255, 0.7); }
+.entry:focus-visible > strong::after { color: var(--accent-light); }
+/* Focus band: only the neighbouring auxiliary rows fade; chart readings never blur. */
+.entries:has(.entry:focus-visible) .entry:not(:focus-visible) { opacity: 0.5; }
+@media (hover: hover) {
+  .entry:hover {
+    background: var(--ink);
+    color: var(--surface-raised);
+  }
+  .entry:hover::before { background: var(--accent-light); }
+  .entry:hover > span { color: rgba(255, 255, 255, 0.7); }
+  .entry:hover > strong::after { color: var(--accent-light); }
+  .entries:has(.entry:hover) .entry:not(:hover) { opacity: 0.5; }
+}
 
 /* Stage: one chart, generous air, nothing boxed around it. */
 .stage {
@@ -206,15 +329,89 @@
 .pager {
   grid-area: pager;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0 24px;
+  min-width: 0;
   border-top: 1px solid var(--line);
 }
+/* Numbered trail: true ordinals on a hairline; a filled diamond marks this page. */
+.trail {
+  position: relative;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+  margin: 0;
+  padding: 10px 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  list-style: none;
+  scrollbar-width: thin;
+}
+.trail li { display: flex; align-items: flex-start; flex: none; }
+.trail li + li::before {
+  content: "";
+  flex: none;
+  width: calc(clamp(16px, 2.2vw, 30px) + 20px);
+  height: 1px;
+  margin-top: 8px;
+  margin-right: -20px;
+  background: var(--line-strong);
+}
+.trailGap {
+  justify-content: center;
+  min-width: 24px;
+  padding-top: 17px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+}
+.trailMark {
+  position: relative;
+  display: block;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 18px 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-meta);
+  cursor: pointer;
+  transition: color 150ms ease-out;
+}
+.trailMark::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  margin-left: -3.5px;
+  border: 1px solid currentColor;
+  background: var(--background);
+  transform: rotate(45deg);
+  transition: background-color 150ms ease-out, border-color 150ms ease-out, transform 150ms ease-out;
+}
+.trailMark:hover { color: var(--ink); }
+.trailMark[aria-current="page"] { color: var(--ink); font-weight: 600; }
+.trailMark[aria-current="page"]::before {
+  border-color: var(--accent);
+  background: var(--accent);
+  transform: rotate(45deg) scale(1.3);
+}
+.trailMark[aria-current="page"] > span { border-bottom: 1px solid var(--accent); }
 .page {
   display: grid;
   gap: 6px;
   min-height: 72px;
-  padding: 18px 0 0;
+  padding: 12px 0 0;
   border: 0;
   background: transparent;
   color: var(--ink);
@@ -225,8 +422,10 @@ button.page { cursor: pointer; }
 .page[data-direction="next"] { justify-items: end; text-align: right; }
 .page > span {
   color: var(--muted);
-  font-size: 12px;
-  letter-spacing: 0.1em;
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
+  letter-spacing: var(--tracking-meta);
+  text-transform: uppercase;
 }
 .page > strong {
   font-size: 17px;
@@ -321,7 +520,7 @@ button.page:hover > strong { color: var(--accent-ink); }
   margin: 0;
   font-family: var(--font-sans);
   font-size: 30px;
-  font-weight: 400;
+  font-weight: 600;
   line-height: 1.15;
   overflow-wrap: anywhere;
 }
@@ -456,34 +655,46 @@ button.page:hover > strong { color: var(--accent-ink); }
 .ghost:focus-visible,
 .page:focus-visible,
 .option:focus-visible,
+.trailMark:focus-visible,
 .cornerLeft .ghost:focus-visible,
 .cornerRight:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
   box-shadow: 0 0 0 6px var(--accent-transparent);
 }
+/* Inverted rows need a light ring, not accent-on-ink. */
+.entries .entry:focus-visible {
+  outline-color: var(--accent-light);
+  box-shadow: 0 0 0 6px rgba(220, 214, 238, 0.24);
+}
+/* The strip scrolls, so its ring sits inside the button and is never clipped. */
+.trail .trailMark:focus-visible {
+  outline-offset: -2px;
+  box-shadow: none;
+}
 
 /* Semantic transitions: short progressive blur (240–360ms) so data never stays soft;
-   every scene remounts its keyed head/figure, so a new commit interrupts the old one. */
+   the head sets its own type (MaskRise/InkText), so it is never doubled here; only
+   the chart changes meaningfully between scenes and is interrupted on every commit. */
 .root { --ease-show: cubic-bezier(0.16, 1, 0.3, 1); }
-/* New topic: words rise out of a light blur, then the chart focuses in from shallow depth. */
-.root[data-motion="on"] .poster[data-transition="topic"] .head > * { animation: rise 300ms var(--ease-show) both; }
-.root[data-motion="on"] .poster[data-transition="topic"] .head > :nth-child(2) { animation-delay: 30ms; }
-.root[data-motion="on"] .poster[data-transition="topic"] .head > :nth-child(3) { animation-delay: 60ms; }
-.root[data-motion="on"] .poster[data-transition="topic"] .head > :nth-child(n+4) { animation-delay: 80ms; }
+/* New topic: the chart focuses in from shallow depth. */
 .root[data-motion="on"] .poster[data-transition="topic"] .figure { animation: focusIn 360ms var(--ease-show) 40ms both; }
-/* Return: slides back in from the left, as if the camera stepped back along the trail. */
-.root[data-motion="on"] .poster[data-transition="return"] .head { animation: settle 300ms var(--ease-show) both; }
+/* Return: the chart slides back in from the left, as if the camera stepped back. */
 .root[data-motion="on"] .poster[data-transition="return"] .figure { animation: settleDeep 340ms var(--ease-show) 30ms both; }
 /* Same data, new drawing: scope stays put; only the chart dissolves and re-forms. */
 .root[data-motion="on"] .poster[data-transition="drawing"] .figure { animation: redraw 260ms var(--ease-show) both; }
+/* Numbered entries land one after another, only once the data is in. */
+.root[data-motion="on"] .entries .entry { animation: entry-fade 340ms var(--ease-editorial) both; }
+.root[data-motion="on"] .entries .entry:nth-of-type(1) { animation-delay: 140ms; }
+.root[data-motion="on"] .entries .entry:nth-of-type(2) { animation-delay: 190ms; }
+.root[data-motion="on"] .entries .entry:nth-of-type(3) { animation-delay: 240ms; }
+@keyframes entry-fade { from { opacity: 0; transform: translateY(6px); } }
 .root[data-motion="on"] .sheet[open] { animation: sheetIn 280ms var(--ease-show); }
 .root[data-motion="on"] .homeShowcase + .poster { animation: rise 320ms var(--ease-show) 120ms both; }
 /* Peripheral blur breathes slightly stronger while a scene is arriving. */
 .root[data-motion="on"]:has(.poster[aria-busy="true"]) .periphery::after { animation: fogPulse 1.6s ease-in-out infinite alternate; }
 @keyframes rise { from { opacity: 0; transform: translateY(8px); filter: blur(4px); } }
 @keyframes focusIn { from { opacity: 0; filter: blur(6px); transform: perspective(1200px) translateZ(-40px) scale(0.985); } }
-@keyframes settle { from { opacity: 0; transform: translateX(-16px); filter: blur(4px); } }
 @keyframes settleDeep { from { opacity: 0; transform: translateX(-24px); filter: blur(5px); } }
 @keyframes redraw { from { opacity: 0.3; filter: blur(4px); } }
 @keyframes sheetIn { from { opacity: 0; transform: translateX(20px); filter: blur(4px); } }
@@ -524,7 +735,6 @@ button.page:hover > strong { color: var(--accent-ink); }
 }
 @media (max-width: 640px) {
   .poster { padding: 96px 16px 140px; row-gap: 32px; }
-  .title { font-size: clamp(34px, 10vw, 44px); }
   .entries { grid-template-columns: minmax(0, 1fr); }
   .pager { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .page[data-direction="next"] { justify-items: start; text-align: left; }
@@ -545,5 +755,10 @@ button.page:hover > strong { color: var(--accent-ink); }
 
 @media print {
   .periphery, .cornerLeft, .cornerRight, .pager, .entries, .sheet { display: none; }
+  .periphery::before { display: none; }
   .root { background: #fff; }
+  .eyebrow, .leadNote, .entry > span { font-size: 9px; }
+  .heroNumber { font-size: 48px; }
+  .heroUnit { font-size: 11px; }
+  .title { font-size: 44px; }
 }

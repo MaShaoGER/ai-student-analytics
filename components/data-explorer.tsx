@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ConceptChart, type ChartData, type ChartItem, type ChartPickOrigin } from "./concept-chart";
 import { HomeShowcase } from "./home-showcase";
 import { RadialMenu, type RadialOption } from "./radial-menu";
@@ -22,6 +22,7 @@ import {
 import { CONCEPT_METRICS } from "@/lib/analysis/concept-explorer";
 import type { DataSource, DatasetProfile } from "@/lib/analysis/types";
 import { useMotionPreferences } from "./ui/motion-preferences";
+import { CountUp, InkText, MaskRise } from "./ui/editorial-motion";
 import styles from "./data-explorer.module.css";
 
 type Api = (url: string, options?: RequestInit) => Promise<any>;
@@ -251,6 +252,7 @@ export function DataExplorer({
   const sheetDialog = useRef<HTMLDialogElement>(null);
   const [radial, setRadial] = useState<Radial | null>(null);
   const drawingButton = useRef<HTMLButtonElement>(null);
+  const trailStrip = useRef<HTMLOListElement>(null);
   const returnFocus = useRef<HTMLElement | SVGElement | null>(null);
   const [transition, setTransition] = useState<MotionKind>("topic");
   const { enabled, reduced } = useMotionPreferences();
@@ -509,6 +511,18 @@ export function DataExplorer({
   const shown = visible.filter((item) =>
     item === home || item.id === entryId || recent.includes(item) || (earlier && older.includes(item)));
 
+  // Keep the current step inside the compact strip without turning the page.
+  useEffect(() => {
+    const strip = trailStrip.current;
+    const mark = strip?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!strip || !mark) return;
+    const start = mark.offsetLeft;
+    const end = start + mark.offsetWidth;
+    if (start < strip.scrollLeft || end > strip.scrollLeft + strip.clientWidth) {
+      strip.scrollLeft = Math.max(0, start - (strip.clientWidth - mark.offsetWidth) / 2);
+    }
+  }, [entryId, visible.length]);
+
   /** Fills the overview cache with the same permission-scoped query the page itself uses. */
   const loadPlane = (entry: TrailEntry, retryFailed = false) => {
     const route = parseConceptLocation(entry.href);
@@ -554,11 +568,27 @@ export function DataExplorer({
     : valid.scene === "home" ? `${termLabel} · ${data.totalCourses} 门课程${data.totalCourses > data.courseLimit ? `，显示前 ${data.courseLimit} 门` : ""}`
       : allScope ? `${termLabel} · 共 ${data.totalCourses} 门课程${data.totalCourses > data.courses.length ? `，展示 ${data.courses.length} 门` : ""}（由「${valid.course}」显式扩展）`
         : `${termLabel} · ${valid.course} · ${course?.count ?? "样本少于 3"} 人`;
+  /** The course page leads with its own mean score: six metrics mix 分, %, 课时 and 份, so no cross-metric maximum. */
+  const scoreReading = course?.metrics.score;
+  const heroValue = valid.scene === "course" ? scoreReading?.value ?? null : null;
+  const heroCount = scoreReading?.count ?? null;
+  const heroVisible = heroValue !== null && heroCount !== null && heroCount >= 3 && !course?.suppressed;
+  const heroMissing = valid.scene === "course" && course && !heroVisible
+    ? course.suppressed
+      ? `课程均分：${HIDDEN}`
+      : heroCount !== null && heroCount < 3
+        ? "课程均分：有效成绩不足 3 人，已隐藏"
+        : `课程均分：${scoreReading?.reason ?? "这学期没有可用成绩记录"}`
+    : null;
   const title = conceptTitle(valid);
   const href = conceptHref(valid, datasetId);
   const position = visible.findIndex((item) => item.id === entryId);
   const previous = position > 0 ? visible[position - 1] : undefined;
   const following = position >= 0 && position < visible.length - 1 ? visible[position + 1] : undefined;
+  /** Compact trail: real two-digit ordinals; past six entries only the home page and the neighbourhood stay visible. */
+  const trailMarks = visible
+    .map((item, index) => ({ item, ordinal: index + 1 }))
+    .filter((_, index) => visible.length <= 6 || index === 0 || index === position || Math.abs(index - position) <= 2);
   const openEntry = (item: TrailEntry, kind: MotionKind) => {
     const route = parseConceptLocation(item.href);
     if (route.status !== "valid") return;
@@ -769,16 +799,28 @@ export function DataExplorer({
             onPick={(course, origin) => openRadial({ kind: "pick", pick: { kind: "course", course }, origin })} />
         </div>
       )}
-      <article className={styles.poster} aria-busy={!data && !error} data-transition={transition}>
+      <article className={styles.poster} aria-busy={!data && !error} data-transition={transition} data-navigation-motion>
         <header className={styles.head} key={`head:${entryId}`}>
-          <p className={styles.eyebrow}>{centreOf(valid)}</p>
+          <InkText text={centreOf(valid)} as="p" className={styles.eyebrow} step={18} />
           {valid.scene === "home" && data
-            ? <h2 className={styles.title} tabIndex={-1} data-scene-heading>{title}</h2>
-            : <h1 className={styles.title} tabIndex={-1} data-scene-heading>{title}</h1>}
-          <p className={styles.scope}>{scope}{data?.synthetic ? " · 演示合成数据" : ""}</p>
-          {data && !error && <p className={styles.hint}>{hint}</p>}
+            ? <h2 className={styles.title} tabIndex={-1} data-scene-heading><MaskRise className={styles.titleMask}>{title}</MaskRise></h2>
+            : <h1 className={styles.title} tabIndex={-1} data-scene-heading><MaskRise className={styles.titleMask}>{title}</MaskRise></h1>}
+          <InkText text={`${scope}${data?.synthetic ? " · 演示合成数据" : ""}`} as="p" className={styles.scope} step={18} delay={40} />
+          {data && !error && <InkText text={hint} as="p" className={styles.hint} step={16} delay={120} />}
+          {heroVisible && heroValue !== null && heroCount !== null ? (
+            <div className={styles.lead} data-navigation-motion>
+              <p className={styles.leadNumber}>
+                <CountUp className={styles.heroNumber} value={heroValue} duration={0.6}
+                  format={(value) => value.toFixed(2)} />
+                <span className={styles.heroUnit}>分</span>
+              </p>
+              <InkText text={`课程均分 · 有效成绩贡献 ${heroCount} 人`} as="p" className={styles.leadNote} step={16} delay={140} />
+            </div>
+          ) : heroMissing ? (
+            <p className={styles.leadMissing} data-navigation-motion>{heroMissing}</p>
+          ) : null}
           {data && !error && (
-            <div className={styles.entries} role="group" aria-label="按需打开">
+            <div className={styles.entries} role="group" aria-label="按需打开" data-navigation-motion>
               {drawings.length > 1 && (
                 <button ref={drawingButton} type="button" className={styles.entry} aria-haspopup="dialog"
                   onClick={(event) => {
@@ -808,16 +850,34 @@ export function DataExplorer({
           ) : !data ? (
             <p className={styles.state} role="status"><span className={styles.loader} aria-hidden />正在读取{valid.scene === "home" ? "课程目录" : `「${valid.course}」`}的聚合数据…</p>
           ) : (
-            <figure className={styles.figure} key={`figure:${entryId}:${valid.drawing}`}>
+            <figure className={styles.figure} key={`figure:${entryId}:${valid.drawing}`} data-navigation-motion>
               {typeof plot === "string" || !plot
                 ? <p className={styles.state}>{plot ?? "没有数据"}</p>
                 : <ConceptChart data={plot} drawing={valid.drawing} label={`${title} · ${DRAWING_LABELS[valid.drawing]}`} />}
-              <figcaption className={styles.caption}>{DRAWING_LABELS[valid.drawing]}{valid.scene === "course" ? " · 均分单位：分；其余指标：%" : ""} · 样本少于 3 人的组隐藏，缺失不补 0。</figcaption>
+              <InkText as="figcaption" className={styles.caption} step={14} delay={120}
+                text={`${DRAWING_LABELS[valid.drawing]}${valid.scene === "course" ? " · 均分单位：分；其余指标：%" : ""} · 样本少于 3 人的组隐藏，缺失不补 0。`} />
             </figure>
           )}
         </section>
 
         <nav className={styles.pager} aria-label="探索前后页">
+          <ol ref={trailStrip} className={styles.trail} role="list" aria-label={visible.length > 6 ? "探索轨迹（仅显示首页与相邻页）" : "探索轨迹"} data-collapsed={visible.length > 6 ? "" : undefined}>
+            {trailMarks.map(({ item, ordinal }, index) => (
+              <Fragment key={item.id}>
+                {index > 0 && ordinal - trailMarks[index - 1].ordinal > 1 && (
+                  <li className={styles.trailGap} aria-hidden>…</li>
+                )}
+                <li>
+                  <button type="button" className={styles.trailMark}
+                    aria-current={item.id === entryId ? "page" : undefined}
+                    aria-label={`第 ${ordinal} 步 · ${item.title}`} title={item.title}
+                    onClick={() => { if (item.id !== entryId) openEntry(item, "return"); }}>
+                    <span>{String(ordinal).padStart(2, "0")}</span>
+                  </button>
+                </li>
+              </Fragment>
+            ))}
+          </ol>
           {previous ? (
             <button type="button" className={styles.page} data-direction="previous" onClick={() => openEntry(previous, "return")}>
               <span>← 上一页</span><strong>{previous.title}</strong>
@@ -846,7 +906,7 @@ export function DataExplorer({
         </button>
       )}
 
-      <dialog ref={sheetDialog} className={styles.sheet} aria-labelledby="explorer-sheet-title"
+      <dialog ref={sheetDialog} className={styles.sheet} aria-labelledby="explorer-sheet-title" data-navigation-motion
         onCancel={(event) => { event.preventDefault(); closeSheet(); }}
         onClick={(event) => { if (event.target === event.currentTarget) closeSheet(); }}>
         {sheet && (

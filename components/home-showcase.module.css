@@ -1,5 +1,6 @@
-/* Home showcase: hero numbers + constellation + metric strips. Real data only.
-   Showcase positioning: generous whitespace, large figures, progressive reveals. */
+/* Home showcase: a sticky editorial masthead over a scrolling narrative.
+   Swiss grid: warm canvas, hairline rules, mono meta labels, one counted hero
+   figure per segment, one lavender focus band. Real aggregates only. */
 
 .showcase {
   position: relative;
@@ -11,98 +12,267 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Lead: hero copy beside the constellation so the first screen reads both. */
+/* Lead: the masthead is pinned on the left while the narrative scrolls by.
+   Its type is capped by viewport height as well as width, so the whole block
+   always fits above the fold instead of sliding off a short screen. */
 .lead {
   display: grid;
-  grid-template-columns: minmax(300px, 0.82fr) minmax(0, 1.18fr);
+  grid-template-columns: minmax(340px, 0.68fr) minmax(0, 1.32fr);
   gap: clamp(32px, 4vw, 64px);
   align-items: start;
   max-width: 1320px;
-  margin: 0 auto clamp(56px, 8vh, 96px);
+  margin: 0 auto clamp(48px, 7vh, 88px);
 }
 .hero {
+  position: sticky;
+  top: clamp(48px, 7vh, 88px);
+  align-self: start;
   min-width: 0;
-  padding-top: 8px;
+  padding-top: 4px;
 }
 .kicker {
   display: flex;
   gap: 12px;
   align-items: center;
-  margin: 0 0 20px;
+  margin: 0 0 22px;
   color: var(--muted);
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
   font-weight: 500;
-  letter-spacing: 0.16em;
+  letter-spacing: var(--tracking-meta);
   text-transform: uppercase;
 }
+/* The list marker is a set diamond, not a glowing dot. */
 .kicker span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 12px var(--accent);
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 0;
+  background: var(--ink);
+  box-shadow: none;
+  transform: rotate(45deg);
 }
+/* One weight, one sans: the headline is set as three solid lines and never
+   becomes a serif second line or a seven-line wall of Chinese. */
 .headline {
   margin: 0;
-  font-size: clamp(34px, 3.4vw, 50px);
-  font-weight: 500;
-  line-height: 1.18;
-  letter-spacing: -0.01em;
+  font-size: clamp(34px, min(5vw, 8.4vh), 72px);
+  font-weight: var(--weight-display);
+  letter-spacing: var(--tracking-display);
+  line-height: 1;
 }
-.headline span {
+.headlineLine {
   display: block;
-  margin-top: 4px;
-  font-family: var(--font-serif, serif);
-  font-weight: 400;
 }
 .lede {
-  max-width: 68ch;
-  margin: 20px 0 0;
+  max-width: 40ch;
+  margin: 24px 0 0;
   color: var(--muted);
   font-size: 15px;
   line-height: 1.75;
 }
-.figures {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 22px 28px;
-  max-width: 560px;
-  margin: 32px 0 0;
-  padding: 0;
+.cue {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 26px 0 0;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
+  font-weight: 500;
+  letter-spacing: var(--tracking-meta);
+  text-transform: uppercase;
 }
-.figures > div {
+.cueLine {
+  width: 28px;
+  height: 1px;
+  background: var(--line-strong);
+}
+.narrative {
+  display: grid;
+  gap: clamp(48px, 7vh, 88px);
+  min-width: 0;
+}
+.statsSection {
+  min-width: 0;
+}
+
+/* Section heads: diamond number + title, description on its own baseline. */
+.figHead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 18px;
+  align-items: baseline;
+  margin: 0 0 18px;
+  padding-bottom: 14px;
+  border-bottom: var(--rule);
+}
+.index {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  grid-column: 1;
+  grid-row: 1;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
+  font-weight: 500;
+  letter-spacing: var(--tracking-meta);
+}
+.index::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  background: var(--ink);
+  transform: rotate(45deg);
+}
+.figHead strong {
+  grid-column: 2;
+  grid-row: 1;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.figHead > span:last-child {
+  grid-column: 2;
+  grid-row: 2;
+  max-width: 64ch;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* Statistics chapter: one numbered segment per figure, joined by a real spine.
+   The spine thickens in the accent colour for whichever segment sits closest
+   to the middle of the viewport; the number itself stays full ink always. */
+.stats {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-bottom: var(--rule);
+}
+.stat {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  min-height: clamp(180px, 36vh, 290px);
+  padding: clamp(16px, 2.2vh, 24px) 0 clamp(18px, 2.4vh, 28px) clamp(16px, 1.6vw, 26px);
+  border-top: var(--rule);
+  container-type: inline-size;
 }
-.figures dt {
+.stat::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: -1px;
+  width: 1px;
+  background: var(--line-strong);
+  transition: background-color 240ms var(--ease-editorial), width 240ms var(--ease-editorial);
+}
+.stat::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--accent-soft), transparent 62%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 320ms var(--ease-editorial);
+}
+.stat > * {
+  position: relative;
+  z-index: 1;
+}
+.stat[data-active="true"]::before {
+  width: 2px;
+  background: var(--accent);
+}
+.stat[data-active="true"]::after {
+  opacity: 1;
+}
+/* Keyboard focus anywhere inside a segment reads as the current one too. */
+.stat:focus-within::before {
+  width: 2px;
+  background: var(--ink);
+}
+.statHead {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
   margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
 }
-.figures dd {
+.statIndex {
+  flex: none;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
+  font-weight: 500;
+  letter-spacing: var(--tracking-meta);
+  transition: color 240ms var(--ease-editorial);
+}
+.stat[data-active="true"] .statIndex {
+  color: var(--accent-ink);
+}
+.statLabel {
+  min-width: 0;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
+  font-weight: 500;
+  letter-spacing: var(--tracking-meta);
+  text-transform: uppercase;
+  transition: color 240ms var(--ease-editorial);
+}
+.stat[data-active="true"] .statLabel {
+  color: var(--ink);
+}
+/* The reading is capped by the column it sits in, so no figure ever runs
+   under the next one; it is never dimmed by the focus band. */
+.statValue {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
   margin: 0;
   color: var(--ink);
-  font-size: clamp(30px, 2.6vw, 40px);
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: -0.02em;
+  font-size: min(clamp(56px, 9vw, 120px), 24cqi);
+  font-weight: var(--weight-display);
+  letter-spacing: -0.055em;
+  line-height: 0.84;
+  font-variant-numeric: tabular-nums;
 }
-.figures dd small {
-  margin-left: 6px;
-  font-size: 0.45em;
-  font-weight: 400;
+.statValue small {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
   letter-spacing: 0;
+  line-height: 1.2;
+}
+.statNote {
+  max-width: 46ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+  transition: color 240ms var(--ease-editorial);
+}
+.stat[data-active="true"] .statNote {
+  color: var(--ink);
+}
+/* The unit sits on the tinted band, so it darkens with the label rather than
+   dropping under 4.5:1 against the lavender wash. */
+.stat[data-active="true"] .statValue small {
+  color: var(--ink);
 }
 .note {
-  max-width: 68ch;
-  margin: 20px 0 0;
+  margin: 14px 0 0;
   color: var(--muted);
-  font-size: 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
   line-height: 1.7;
 }
 
@@ -111,29 +281,8 @@
   min-width: 0;
   margin: 0;
 }
-.figHead {
-  display: flex;
-  gap: 16px;
-  align-items: baseline;
-  margin-bottom: 16px;
-}
-.index {
-  flex-shrink: 0;
-  padding: 4px 10px;
-  border: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-}
-.figHead strong {
-  font-size: 20px;
-  font-weight: 500;
-}
-.figHead > span {
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.7;
+.constellation .figHead {
+  margin-top: 0;
 }
 .sky {
   display: block;
@@ -165,60 +314,67 @@
 .star {
   cursor: pointer;
   outline: none;
-  transition: filter 200ms ease-out, opacity 200ms ease-out;
   pointer-events: auto;
+}
+.touchTarget {
+  fill: transparent;
+  stroke: none;
 }
 .halo {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 300ms ease-out;
+  transition: opacity 280ms ease-out;
 }
 .halo, .core { pointer-events: none; }
 .core {
   stroke: rgba(118, 102, 204, 0.5);
   stroke-width: 1.5;
-  transition: stroke-width 200ms ease-out, fill 200ms ease-out;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: stroke-width 280ms ease-out, stroke 280ms ease-out,
+    fill 280ms ease-out, transform 280ms ease-out;
 }
-.starLabel {
-  pointer-events: none;
-  fill: var(--ink);
-  font-size: 12px;
-  font-weight: 500;
-  opacity: 0;
-  transition: opacity 200ms ease-out;
+/* Hovering a star widens its halo and nudges the core, never the resting state. */
+.star:hover .halo,
+.star:focus-visible .halo { opacity: 0.8; }
+.star:hover .core {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  transform: scale(1.08);
 }
-.star:hover .halo { opacity: 0.6; }
-.star:focus-visible .halo { opacity: 1; }
-.star:hover .core { stroke: var(--accent); }
-.star:focus-visible .core { stroke: var(--ink); stroke-width: 2; fill: rgba(118, 102, 204, 0.18); }
-.star:hover .starLabel,
-.star:focus-visible .starLabel { opacity: 1; }
+.star:focus-visible .core {
+  stroke: var(--ink);
+  stroke-width: 2.5;
+  fill: rgba(118, 102, 204, 0.18);
+  transform: scale(1.08);
+}
 
 /* Metric strips: six rows, each a labeled rail with beads. */
 .strips {
-  max-width: 1280px;
-  margin: 0 auto;
+  min-width: 0;
 }
 .strip {
   display: grid;
-  grid-template-columns: minmax(0, 280px) minmax(0, 1fr) auto;
-  gap: 20px 32px;
+  grid-template-columns: minmax(0, 240px) minmax(0, 1fr) auto;
+  gap: 16px 28px;
   align-items: center;
-  padding: 24px 0;
-  border-bottom: 1px solid var(--line);
+  padding: 20px 0;
+  border-bottom: var(--rule);
 }
-.strip:first-of-type { border-top: 1px solid var(--line); }
 .stripLabel {
   margin: 0;
-  font-size: 17px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 .stripLabel small {
   display: block;
   margin-top: 6px;
   color: var(--muted);
-  font-size: 13px;
-  font-weight: 400;
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
+  font-weight: 500;
+  letter-spacing: var(--tracking-meta);
 }
 .stripSvg {
   display: block;
@@ -254,57 +410,101 @@
   justify-content: space-between;
   margin: 0;
   color: var(--muted);
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
+  letter-spacing: var(--tracking-meta);
 }
 
-/* Showcase entrance choreography. */
-.showcase[data-motion="on"] .hero > * { animation: riseIn 320ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-.showcase[data-motion="on"] .hero > :nth-child(2) { animation-delay: 30ms; }
-.showcase[data-motion="on"] .hero > :nth-child(3) { animation-delay: 60ms; }
-.showcase[data-motion="on"] .hero > :nth-child(4) { animation-delay: 90ms; }
-.showcase[data-motion="on"] .hero > :nth-child(5) { animation-delay: 110ms; }
-.showcase[data-motion="on"] .constellation { animation: riseIn 360ms cubic-bezier(0.16, 1, 0.3, 1) 60ms both; }
-.showcase[data-motion="on"] .star { animation: starIn 280ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(100ms + min(var(--i), 12) * 12ms); }
-.showcase[data-motion="on"] .strips { animation: riseIn 320ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both; }
-.showcase[data-motion="on"] .strip { animation: fadeIn 240ms ease-out both; animation-delay: calc(140ms + var(--row) * 20ms); }
+/* Entrance choreography. The masthead plays once; each segment, section head
+   and ruler arms itself when it reaches the viewport, so scrolling — not one
+   shared trigger — moves the story along. Only handles whose text can stay
+   readable mid-transition blur; charts and figures move without blur. */
+.showcase[data-motion="on"] .hero > .kicker { animation: riseIn 360ms var(--ease-editorial) both; }
+.showcase[data-motion="on"] .hero > .lede { animation: riseIn 420ms var(--ease-editorial) 180ms both; }
+.showcase[data-motion="on"] .hero > .cue { animation: riseIn 420ms var(--ease-editorial) 280ms both; }
+.showcase[data-motion="on"] .statsSection > .figHead { animation: riseIn 460ms var(--ease-editorial) 120ms both; }
+.showcase[data-motion="on"] .stat:not([data-visible="true"]) { opacity: 0; }
+.showcase[data-motion="on"] .stat[data-visible="true"] { animation: statIn 460ms var(--ease-editorial) both; }
+.showcase[data-motion="on"] .constellation:not([data-visible="true"]) :is(.figHead, .sky) { opacity: 0; }
+.showcase[data-motion="on"] .constellation[data-visible="true"] .figHead { animation: riseIn 460ms var(--ease-editorial) both; }
+.showcase[data-motion="on"] .constellation[data-visible="true"] .sky { animation: chartIn 480ms var(--ease-editorial) 60ms both; }
+.showcase[data-motion="on"] .constellation[data-visible="true"] .star { animation: starIn 320ms var(--ease-editorial) both; animation-delay: calc(140ms + min(var(--i), 12) * 14ms); }
+.showcase[data-motion="on"] .strips > .figHead:not([data-visible="true"]) { opacity: 0; }
+.showcase[data-motion="on"] .strips > .figHead[data-visible="true"] { animation: riseIn 440ms var(--ease-editorial) both; }
+.showcase[data-motion="on"] .strip:not([data-visible="true"]) { opacity: 0; }
+.showcase[data-motion="on"] .strip[data-visible="true"] { animation: chartIn 420ms var(--ease-editorial) both; }
 @keyframes riseIn { from { opacity: 0; transform: translateY(8px); filter: blur(4px); } }
+@keyframes chartIn { from { opacity: 0; transform: translateY(10px); } }
+@keyframes statIn { from { opacity: 0; transform: translateY(14px); } }
 @keyframes starIn { from { opacity: 0; transform: scale(0.8); } }
-@keyframes fadeIn { from { opacity: 0; } }
 
 .showcase[data-motion="off"] * { animation: none !important; transition: none !important; }
 
+@media (max-width: 1180px) {
+  .lead { grid-template-columns: minmax(300px, 0.72fr) minmax(0, 1.28fr); }
+  .stat { min-height: clamp(176px, 34vh, 240px); }
+}
 @media (max-width: 900px) {
   .showcase { padding: 56px 20px 72px; }
-  .lead { grid-template-columns: minmax(0, 1fr); gap: 36px; margin-bottom: 48px; }
-  .headline { font-size: 34px; }
-  .figures { max-width: none; gap: 16px 20px; margin-top: 24px; }
-  .figures dd { font-size: 30px; }
-  .figHead { flex-wrap: wrap; gap: 10px 14px; margin-bottom: 20px; }
-  .figHead strong { flex: 1 1 70%; font-size: 21px; }
-  .figHead > span:last-child { flex: 1 1 100%; }
-  .constellation { margin-bottom: 0; }
+  .lead { grid-template-columns: minmax(0, 1fr); gap: 36px; margin-bottom: 44px; }
+  .hero { position: static; top: auto; }
+  .headline { font-size: clamp(38px, 9.4vw, 56px); }
+  .lede { margin-top: 20px; }
+  .cue { margin-top: 20px; }
+  .narrative { gap: 44px; }
+  .figHead { margin-bottom: 16px; }
+  .figHead strong { font-size: 19px; }
+  /* Phones keep the whole statistics story but tighten each segment. */
+  .stat { min-height: clamp(148px, 24vh, 190px); padding-left: 16px; }
+  .statValue { font-size: min(clamp(48px, 11vw, 88px), 26cqi); }
   .strip { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .stripLabel { font-size: 15px; }
   .scale { margin-top: 4px; }
 }
 @media (max-width: 480px) {
   .showcase { padding: 52px 18px 72px; }
-  .lead { gap: 28px; margin-bottom: 40px; }
-  .kicker { margin-bottom: 14px; }
-  .headline { font-size: 28px; line-height: 1.2; }
-  .headline span { margin-top: 4px; }
-  .lede { margin-top: 14px; font-size: 14px; line-height: 1.65; }
-  .figures { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 14px; margin-top: 20px; }
-  .figures > div { gap: 6px; padding-top: 10px; }
-  .figures dt { font-size: 11px; }
-  .figures dd { font-size: clamp(24px, 7.5vw, 30px); }
-  .figHead { align-items: flex-start; }
-  .figHead strong { flex-basis: calc(100% - 48px); font-size: 19px; }
-  .figHead > span:last-child { padding-left: 40px; font-size: 12px; }
+  .lead { gap: 28px; margin-bottom: 36px; }
+  .kicker { margin-bottom: 16px; }
+  .lede { margin-top: 18px; font-size: 14px; line-height: 1.65; }
+  .stat { min-height: 146px; padding: 14px 0 18px 14px; gap: 8px; }
+  .statValue { font-size: min(clamp(40px, 13vw, 64px), 30cqi); }
+  .statNote { font-size: 12.5px; }
+  .figHead { align-items: start; }
+  .figHead > span:last-child { font-size: 12px; }
   .tick, .axis { font-size: 15px; }
+}
+/* Short screens: a sticky masthead cannot fit, so it scrolls with the page. */
+@media (max-height: 660px) {
+  .hero { position: static; top: auto; }
+  .cue { margin-top: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .showcase [data-visible],
+  .showcase .hero > *,
+  .showcase .statsSection > .figHead,
+  .showcase .stat,
+  .showcase .constellation .star,
+  .showcase .strip { animation: none !important; }
+  .showcase .stat:not([data-visible="true"]),
+  .showcase .constellation:not([data-visible="true"]) :is(.figHead, .sky),
+  .showcase .strips > .figHead:not([data-visible="true"]),
+  .showcase .strip:not([data-visible="true"]) { opacity: 1 !important; }
 }
 
 @media print {
-  .showcase { padding: 32px 20px; }
+  .showcase { padding: 32px 20px; min-height: 0; }
+  .hero { position: static; top: auto; }
+  .cue { display: none; }
   .kicker span { box-shadow: none; }
+  .statValue { font-size: 48px; }
+  .kicker, .statLabel, .index, .stripLabel small, .scale { font-size: 9px; }
+  .constellation, .strips, .stat { break-inside: avoid; }
+  .stat,
+  .statsSection > .figHead,
+  .strips > .figHead,
+  .constellation .figHead,
+  .constellation .sky,
+  .strip { opacity: 1 !important; animation: none !important; }
+  .stat::after { display: none; }
 }

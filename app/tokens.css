@@ -22,6 +22,17 @@
   --font-weight-title: 450;
   --font-weight-bold: 600;
 
+  /* Editorial scale: extreme contrast between display figures and meta text.
+     Display sizes are for one hero element per screen; meta is monospace. */
+  --type-hero: clamp(88px, 11vw, 176px);
+  --type-display: clamp(48px, 6.4vw, 104px);
+  --type-meta: 11px;
+  --weight-display: 650;
+  --tracking-display: -0.045em;
+  --tracking-meta: 0.14em;
+  --rule: 1px solid var(--line-strong);
+  --ease-editorial: cubic-bezier(0.16, 1, 0.3, 1);
+
   /* Square interface shapes: containers, controls, menus and dialogs. */
   --corner-radius: 0px;
   --panel-radius: 0px;

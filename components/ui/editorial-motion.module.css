@@ -1,0 +1,58 @@
+/* Editorial entrances. Elements carry data-navigation-motion so the global
+   keyboard rule (theme.css) keeps their duration; the app switch and the
+   system reduced-motion preference still turn every one of them off. */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.count { font-variant-numeric: tabular-nums; }
+
+/* Ink: each word lands in the accent colour, then sinks to the element's ink. */
+.ink > span > span {
+  display: inline;
+}
+:global(html[data-motion="on"]) .ink > span > span {
+  animation: ink-settle 640ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes ink-settle {
+  from { opacity: 0; color: var(--accent); filter: blur(3px); }
+  45% { opacity: 1; color: var(--accent); filter: blur(0); }
+}
+
+/* Mask: the line rises out of its own clipping box. */
+.mask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+}
+.mask > span { display: block; }
+:global(html[data-motion="on"]) .mask > span {
+  animation: mask-rise 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes mask-rise {
+  from { transform: translateY(105%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ink > span > span,
+  .mask > span { animation: none !important; }
+}
+@media print {
+  .ink > span > span,
+  .mask > span { animation: none !important; }
+  .count { display: none; }
+  .finalValue {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+  }
+}
