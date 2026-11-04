@@ -62,8 +62,9 @@
 .glass-auth .login-signals {
   max-width: none;
   margin-top: 34px;
-  padding: 18px 20px 14px;
-  border: 1px solid var(--line);
+  padding: 18px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
   border-radius: 0;
   background: transparent;
 }
@@ -79,9 +80,12 @@
 .glass-auth .login-form-card {
   width: 100%;
   max-width: 412px;
-  padding: clamp(24px, 2.4vw, 34px);
-  background: var(--paper);
-  box-shadow: var(--surface-shadow);
+  padding: clamp(24px, 2.4vw, 34px) 0 clamp(24px, 2.4vw, 34px)
+    clamp(20px, 2.4vw, 32px);
+  border: 0;
+  border-left: var(--rule);
+  background: transparent;
+  box-shadow: none;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
@@ -91,16 +95,17 @@
   font-weight: 600;
   letter-spacing: -0.03em;
 }
-/* Stable, legible inputs on the same surface as the rest of the product. */
+/* Inputs read on the canvas with a single bottom rule. */
 .glass-auth .login-form .form-field input {
-  background: var(--surface-raised);
+  background: transparent;
   box-shadow: none;
 }
 .glass-auth .login-eyebrow,
 .glass-auth .login-signals-heading,
 .glass-auth .login-signal-labels {
   font-size: 11px;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 .glass-auth .signal-path-secondary {
   stroke: var(--accent);
@@ -228,7 +233,7 @@
 @media (prefers-reduced-transparency: reduce) {
   .glass-workspace.glass-auth .login-story,
   .glass-workspace.glass-auth .login-form-card {
-    background: var(--paper);
+    background: transparent;
     box-shadow: none;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -237,6 +242,6 @@
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .glass-workspace.glass-auth .login-story,
   .glass-workspace.glass-auth .login-form-card {
-    background: color-mix(in srgb, var(--paper) 92%, var(--sage-soft));
+    background: transparent;
   }
 }

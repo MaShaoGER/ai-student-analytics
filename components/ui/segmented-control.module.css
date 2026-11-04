@@ -25,7 +25,7 @@
   height: 100%;
   border: 0;
   border-radius: var(--ui-segment-radius, var(--corner-radius, 0));
-  background: var(--ui-selected-bg, var(--metric-soft, var(--surface-raised)));
+  background: var(--ink);
   transition: transform var(--motion-standard, 180ms)
     var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
@@ -60,7 +60,7 @@
 }
 
 .control .button[aria-pressed="true"] {
-  color: var(--ui-selected-ink, var(--metric-color, var(--ink)));
+  color: var(--paper);
 }
 
 .control .button:focus-visible {
@@ -95,7 +95,10 @@
 
 @media (hover: hover) and (pointer: fine) {
   .control .button:hover:not(:disabled) {
-    color: var(--ui-selected-ink, var(--metric-color, var(--ink)));
+    color: var(--ink);
+  }
+  .control .button[aria-pressed="true"]:hover:not(:disabled) {
+    color: var(--paper);
   }
 }
 

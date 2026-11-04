@@ -76,7 +76,7 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 3px;
+  outline-offset: 2px;
   box-shadow: var(--focus-glow, 0 0 0 3px rgba(118, 102, 204, 0.15));
   transition: outline-color var(--transition-focus, 200ms ease-out);
 }
@@ -237,40 +237,103 @@ table caption {
   justify-content: center;
   gap: 8px;
   min-height: 40px;
-  border-radius: var(--corner-radius, 0);
-  padding: 8px 16px;
+  border-radius: 0;
+  padding: 8px 18px;
   font-size: 13px;
   font-weight: 600;
   line-height: 1.5;
   text-decoration: none;
 }
 .primary-button {
-  background: var(--accent);
-  color: var(--button-ink);
-  border: 1px solid transparent;
+  background: var(--ink);
+  color: var(--paper);
+  border: 1px solid var(--ink);
 }
 .secondary-button {
-  background: var(--paper);
+  background: transparent;
   color: var(--ink);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
 }
 .text-button {
   background: transparent;
-  color: var(--accent);
+  color: var(--ink);
   border: 0;
-  padding: 8px;
+  padding: 8px 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--line-strong);
 }
 .icon-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 36px;
-  min-height: 36px;
-  border: 0;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border: 1px solid transparent;
   background: transparent;
   padding: 8px;
   color: inherit;
-  border-radius: var(--corner-radius, 0);
+  border-radius: 0;
+}
+.primary-button:disabled,
+.secondary-button:disabled,
+.text-button:disabled,
+.icon-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.secondary-button[data-tone="danger"] {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+@media (hover: hover) and (pointer: fine) {
+  .primary-button:hover:not(:disabled) {
+    background: var(--accent-ink);
+    border-color: var(--accent-ink);
+    color: var(--paper);
+  }
+  .secondary-button:hover:not(:disabled) {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--paper);
+  }
+  .text-button:hover:not(:disabled) {
+    color: var(--accent-ink);
+    text-decoration-color: var(--accent);
+  }
+  .icon-button:hover:not(:disabled) {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .secondary-button[data-tone="danger"]:hover:not(:disabled) {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: var(--paper);
+  }
+}
+html[data-input-modality="pointer"]
+  :is(.primary-button, .secondary-button, .text-button, .icon-button):active:not(:disabled) {
+  transform: translateY(1px);
+}
+@media (pointer: coarse) {
+  .primary-button,
+  .secondary-button,
+  .text-button {
+    min-height: 44px;
+  }
+  .icon-button {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 .badge {
   display: inline-flex;
@@ -302,39 +365,47 @@ table caption {
   color: var(--warning);
 }
 .notice {
-  border-radius: var(--corner-radius, 0);
-  padding: 12px 16px;
+  border: 0;
+  border-left: 2px solid var(--line-strong);
+  border-radius: 0;
+  background: transparent;
+  padding: 8px 0 8px 14px;
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 10px;
   font-size: 13px;
   line-height: 1.7;
-  border: 1px solid transparent;
+  color: var(--ink);
   margin-bottom: 16px;
   overflow-wrap: anywhere;
 }
 .notice .app-icon {
   margin-top: 3px;
+  color: var(--muted);
 }
 .notice-error {
-  background: color-mix(in srgb, var(--danger) 9%, var(--paper));
+  border-left-color: var(--danger);
+}
+.notice-error .app-icon {
   color: var(--danger);
-  border-color: color-mix(in srgb, var(--danger) 24%, var(--paper));
 }
 .notice-success {
-  background: color-mix(in srgb, var(--success) 9%, var(--paper));
+  border-left-color: var(--success);
+}
+.notice-success .app-icon {
   color: var(--success);
-  border-color: color-mix(in srgb, var(--success) 24%, var(--paper));
 }
 .notice-info {
-  background: var(--teal-soft);
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 24%, var(--paper));
+  border-left-color: var(--accent);
+}
+.notice-info .app-icon {
+  color: var(--accent-ink);
 }
 .notice-warning {
-  background: color-mix(in srgb, var(--warning) 9%, var(--paper));
+  border-left-color: var(--warning);
+}
+.notice-warning .app-icon {
   color: var(--warning);
-  border-color: color-mix(in srgb, var(--warning) 24%, var(--paper));
 }
 .global-notice > span {
   flex: 1;
@@ -351,20 +422,62 @@ table caption {
   display: flex;
   align-items: center;
   gap: 8px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
-.form-field input:not([type="checkbox"]),
-.form-field select {
+.form-field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.form-field select,
+.form-field textarea {
   width: 100%;
   min-height: 40px;
-  background: var(--surface-inset);
-  border: 1px solid var(--line);
-  border-radius: var(--corner-radius, 0);
-  padding: 9px 12px;
-  font-size: 13px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
+  border-radius: 0;
+  padding: 8px 0;
+  font-size: 15px;
   font-weight: 400;
+  color: var(--ink);
+}
+.form-field textarea {
+  border: 1px solid var(--line);
+  padding: 12px;
 }
 .form-field select {
-  padding-right: 32px;
+  padding-right: 28px;
+}
+.form-field input:hover:not(:disabled),
+.form-field select:hover:not(:disabled),
+.form-field textarea:hover:not(:disabled) {
+  border-bottom-color: var(--ink);
+}
+.form-field textarea:hover:not(:disabled) {
+  border-color: var(--line-strong);
+}
+.form-field input:focus-visible,
+.form-field select:focus-visible,
+.form-field textarea:focus-visible {
+  border-bottom-color: var(--accent);
+  box-shadow: inset 0 -1px 0 var(--accent);
+}
+.form-field textarea:focus-visible {
+  box-shadow: none;
+}
+.form-field input[aria-invalid="true"],
+.form-field select[aria-invalid="true"],
+.form-field textarea[aria-invalid="true"] {
+  border-bottom-color: var(--danger);
+}
+.form-field input:disabled,
+.form-field select:disabled,
+.form-field textarea:disabled {
+  background: transparent;
+  color: var(--muted);
+  border-bottom-style: dashed;
 }
 .form-help {
   display: block;
@@ -375,30 +488,101 @@ table caption {
   overflow-wrap: anywhere;
 }
 .panel {
-  border: 1px solid var(--line);
-  border-radius: var(--corner-radius, 0);
-  background: var(--paper);
+  border: 0;
+  border-top: var(--rule);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   min-width: 0;
 }
 .panel-header {
-  padding: 20px 24px;
+  padding: 20px 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   border-bottom: 1px solid var(--line);
+  background: transparent;
 }
 .panel-title {
-  font-size: 15px;
+  font-family: var(--font-sans);
+  font-size: 18px;
   font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+/* Monospace metadata: the editorial counterweight to display headings. */
+.meta,
+.section-kicker,
+.page-eyebrow,
+.settings-section-label,
+.control-field > span,
+.analysis-availability,
+.rail-label,
+.glass-sidebar-label,
+.login-eyebrow,
+.login-field-label > span {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.login-field-label > span {
+  text-transform: none;
+  letter-spacing: 0.02em;
 }
 .section-kicker {
   display: block;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--muted);
   margin-bottom: 8px;
+}
+.page-eyebrow,
+.settings-section-label {
+  display: block;
+}
+.workbench-page-heading h1,
+.page-introduction h1 {
+  font-family: var(--font-sans);
+  font-size: clamp(28px, 3.2vw, 40px);
+  font-weight: var(--weight-display, 650);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.section-heading h2,
+.result-section-heading h2,
+.panel-header h2,
+.dataset-heading h2,
+.report-controls h2,
+.admin-intro h2,
+.account-grid h2 {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+/* CSS-only section index inside the reading surface. */
+.view-surface {
+  counter-reset: section-index;
+}
+.view-surface .section-heading h2::before {
+  counter-increment: section-index;
+  content: counter(section-index, decimal-leading-zero);
+  margin-right: 12px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  vertical-align: 2px;
+}
+.section-heading {
+  margin-bottom: 20px;
 }
 .feature-icon {
   display: inline-flex;
@@ -407,8 +591,9 @@ table caption {
   width: 40px;
   height: 40px;
   color: var(--accent);
-  background: var(--teal-soft);
-  border-radius: var(--corner-radius, 0);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 0;
   flex-shrink: 0;
 }
 .status-dot {
@@ -515,22 +700,24 @@ table caption {
   align-items: center;
   gap: 9px;
   color: var(--muted);
-  font-size: 10px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
   font-weight: 500;
-  letter-spacing: 1.8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 .login-eyebrow > i {
   height: 5px;
   width: 5px;
   background: var(--accent);
-  border-radius: var(--corner-radius, 0);
+  border-radius: 50%;
 }
 .login-story-copy h1 {
   margin-top: 22px;
   font-size: clamp(30px, 2.85vw, 44px);
-  font-weight: 500;
-  line-height: 1.65;
-  letter-spacing: -1.3px;
+  font-weight: var(--weight-display, 650);
+  line-height: 1.45;
+  letter-spacing: -0.025em;
 }
 .login-story-copy h1 em {
   color: var(--accent);
@@ -606,11 +793,19 @@ table caption {
   margin-top: 42px;
   color: var(--muted);
   font-size: 11px;
+  counter-reset: login-feature;
 }
 .login-story-features > span {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+.login-story-features > span::before {
+  counter-increment: login-feature;
+  content: counter(login-feature, decimal-leading-zero);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  color: var(--faint);
 }
 .login-story-features .app-icon {
   color: var(--accent);
@@ -681,19 +876,24 @@ table caption {
 .login-form .form-field input {
   width: 100%;
   min-height: 52px;
-  padding: 13px 15px;
-  border: 1px solid var(--line);
-  border-radius: var(--corner-radius, 0);
-  background: var(--surface-inset);
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
+  border-radius: 0;
+  background: transparent;
   color: var(--ink);
-  font-size: 13px;
+  font-size: 15px;
   box-shadow: none;
 }
+.login-form .form-field input:hover:not(:disabled) {
+  border-bottom-color: var(--ink);
+}
 .login-form .form-field input:focus {
-  border-color: var(--accent-ink);
+  border-bottom-color: var(--accent);
 }
 .login-form .form-field input:focus-visible {
-  outline-color: var(--accent-ink);
+  outline-color: var(--accent);
+  box-shadow: inset 0 -1px 0 var(--accent);
 }
 .login-form .form-field input::placeholder {
   color: var(--muted);
@@ -744,11 +944,8 @@ table caption {
   min-height: 52px;
   margin-top: 2px;
   justify-content: space-between;
-  padding: 13px 17px;
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
-  border-radius: var(--corner-radius, 0);
-  background: var(--accent);
-  color: var(--button-ink);
+  padding: 13px 18px;
+  border-radius: 0;
   box-shadow: none;
   font-size: 13px;
   font-weight: 600;
@@ -762,6 +959,8 @@ table caption {
   color: var(--muted);
   font-size: 11px;
   line-height: 1.8;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  letter-spacing: 0.04em;
 }
 .login-secure-note .app-icon {
   margin-top: 2px;
@@ -785,22 +984,13 @@ table caption {
   margin-bottom: 22px;
   font-size: 12px;
 }
-.login-screen .notice-error {
-  border-color: color-mix(in srgb, var(--danger) 32%, var(--paper));
-  background: color-mix(in srgb, var(--danger) 9%, var(--paper));
-  color: var(--danger);
-}
+.login-screen .notice-error,
 .login-screen .notice-info {
-  border-color: color-mix(in srgb, var(--accent-ink) 32%, var(--paper));
-  background: var(--teal-soft);
-  color: var(--accent-ink);
+  background: transparent;
 }
 @media (hover: hover) and (pointer: fine) {
-  .login-form .primary-button:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--accent) 86%, var(--ink));
-  }
   .login-password-toggle:hover:not(:disabled) {
-    color: var(--accent);
+    color: var(--accent-ink);
     background: var(--surface-inset);
   }
 }
@@ -986,7 +1176,7 @@ table caption {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 20px 24px;
+  padding: 20px 0;
   cursor: pointer;
   list-style: none;
 }
@@ -1014,7 +1204,7 @@ table caption {
   transform: rotate(90deg);
 }
 .source-details-body {
-  padding: 0 24px 24px;
+  padding: 0 0 24px;
 }
 .source-tables {
   display: grid;
@@ -1024,10 +1214,11 @@ table caption {
 }
 .source-tables > article {
   min-width: 0;
-  border: 1px solid var(--line);
-  background: var(--surface-inset);
-  padding: 16px;
-  border-radius: var(--corner-radius, 0);
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  padding: 16px 0;
+  border-radius: 0;
 }
 .source-table-title {
   display: flex;
@@ -1089,14 +1280,15 @@ table caption {
 .report-controls {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 24px;
+  gap: 24px;
+  padding: 0;
 }
 .report-controls h2,
 .report-empty h2 {
   margin-top: 8px;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 .report-controls p,
 .report-empty p {
@@ -1114,19 +1306,18 @@ table caption {
 .report-frame {
   display: block;
   width: 100%;
-  height: 780px;
-  border: 0;
-  border-top: 1px solid var(--line);
+  height: clamp(560px, 75vh, 960px);
+  border: 1px solid var(--line-strong);
   background: var(--surface-inset);
   color-scheme: light;
 }
 .report-empty {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
-  padding: 48px 24px;
-  text-align: center;
+  padding: 48px 0;
+  text-align: left;
 }
 .report-empty p {
   max-width: 552px;
@@ -1135,16 +1326,16 @@ table caption {
 .account-grid {
   display: grid;
   grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.4fr);
-  gap: 24px;
+  gap: 40px;
   align-items: start;
   max-width: 960px;
 }
 .account-card {
-  padding: 32px 24px 24px;
-  text-align: center;
+  padding: 24px 0 0;
+  text-align: left;
 }
 .account-card h2 {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
   margin-top: 20px;
   overflow-wrap: anywhere;
@@ -1158,7 +1349,7 @@ table caption {
 .account-note {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 8px;
   font-size: 12px;
   line-height: 1.8;
@@ -1168,7 +1359,7 @@ table caption {
   padding-top: 20px;
 }
 .password-form {
-  padding: 0 24px 24px;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -1177,79 +1368,75 @@ table caption {
   align-self: flex-start;
 }
 
-/* Administration uses the same rounded surfaces and controls as analysis. */
+/* Administration shares the open canvas and editorial type. */
 .admin-panel {
   min-width: 0;
 }
 .admin-tabs {
   display: flex;
-  align-items: center;
-  gap: 4px;
-  border: 1px solid var(--line);
-  border-radius: var(--corner-radius, 0);
-  background: var(--paper);
-  padding: 6px;
+  align-items: stretch;
+  gap: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
   margin-bottom: 24px;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+}
+.admin-tabs::-webkit-scrollbar {
+  display: none;
 }
 .admin-tabs > [role="group"] {
-  width: auto;
+  display: flex;
+  width: 100%;
   max-width: none;
   min-width: max-content;
-  flex: 0 0 auto;
-  grid-auto-columns: max-content;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.admin-tabs > [role="group"] > span[aria-hidden="true"] {
+  display: none;
 }
 .admin-tabs [role="group"] > button {
-  width: auto;
-  min-width: max-content;
-  flex: 0 0 auto;
-}
-/* Phones: six sections become a 3×2 grid so the last tabs are never clipped. */
-@media (max-width: 600px) {
-  .admin-tabs {
-    overflow: visible;
-  }
-  .admin-tabs > [role="group"] {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-auto-flow: row;
-    grid-auto-columns: minmax(0, 1fr);
-    width: 100%;
-    min-width: 0;
-    flex: 1 1 auto;
-  }
-  .admin-tabs > [role="group"] > span[aria-hidden="true"] {
-    display: none;
-  }
-  .admin-tabs [role="group"] > button {
-    width: 100%;
-    min-width: 0;
-  }
-  .admin-tabs [role="group"] > button[aria-pressed="true"] {
-    background: var(--surface-raised);
-  }
-}
-.admin-tabs > button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 40px;
-  background: transparent;
+  width: auto;
+  min-width: max-content;
+  min-height: 48px;
+  flex: 0 0 auto;
+  padding: 8px 18px;
   border: 0;
-  border-radius: var(--corner-radius, 0);
-  padding: 8px 16px;
+  border-radius: 0;
+  background: transparent;
   color: var(--muted);
-  font-size: 13px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
   font-weight: 500;
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
-.admin-tabs > button.active,
-.admin-tabs > button[aria-selected="true"] {
+.admin-tabs [role="group"] > button[aria-pressed="true"] {
   color: var(--ink);
-  background: var(--surface-raised);
+  font-weight: 600;
+  background: transparent;
+  box-shadow: inset 0 -2px 0 var(--ink);
+}
+@media (hover: hover) and (pointer: fine) {
+  .admin-tabs [role="group"] > button:hover:not(:disabled) {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .admin-tabs [role="group"] > button[aria-pressed="true"]:hover:not(:disabled) {
+    background: transparent;
+    color: var(--ink);
+  }
 }
 .admin-intro {
   display: flex;
@@ -1270,27 +1457,45 @@ table caption {
 }
 .admin-config-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
-  gap: 24px;
+  grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+  gap: 40px;
   align-items: start;
+}
+@media (max-width: 900px) {
+  .admin-config-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
 }
 .admin-config-main {
   overflow: hidden;
 }
 .admin-form-section {
-  padding: 24px;
+  padding: 24px 0;
   border-bottom: 1px solid var(--line);
+}
+.admin-form-section:last-of-type {
+  border-bottom: 0;
 }
 .admin-section-heading {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 24px;
   gap: 16px;
 }
+.admin-section-heading > .meta {
+  flex: 0 0 auto;
+  padding-top: 4px;
+}
+.admin-section-heading > div {
+  flex: 1;
+  min-width: 0;
+}
 .admin-section-heading h3 {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 .admin-section-heading p {
   color: var(--muted);
@@ -1387,35 +1592,47 @@ table caption {
 .admin-config-side {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 32px;
 }
 .admin-config-side .panel > .form-help {
-  padding: 0 20px;
+  padding: 0;
   margin: 16px 0 20px;
   font-size: 12px;
 }
 .admin-config-side .panel > .secondary-button {
-  margin: 0 20px;
+  margin: 0;
 }
 .admin-config-side .panel-header {
-  padding: 20px;
+  padding: 16px 0;
 }
 .admin-stats {
-  padding: 4px 20px 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 .admin-stat {
-  padding: 16px 0;
-  border-bottom: 1px solid var(--line);
+  padding: 16px 16px 16px 0;
+  border-bottom: 0;
+  min-width: 0;
+}
+.admin-stat + .admin-stat {
+  border-left: 1px solid var(--line);
+  padding-left: 16px;
 }
 .admin-stat > span {
   display: block;
   color: var(--muted);
-  font-size: 12px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   margin-bottom: 8px;
 }
 .admin-stat > strong {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 600;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 .admin-stat small {
@@ -1483,7 +1700,7 @@ table caption {
   align-items: start;
 }
 .admin-user-list {
-  padding: 0 24px;
+  padding: 0;
 }
 .admin-user-row {
   display: flex;
@@ -1538,25 +1755,18 @@ table caption {
 .admin-user-actions .text-button {
   font-size: 12px;
 }
-.admin-user-layout > .panel > .form-help {
-  padding: 20px 24px;
-}
-.admin-user-layout > form .form-field {
-  margin: 20px 24px;
-}
-.admin-user-layout > form .primary-button {
-  margin: 0 24px 24px;
-}
 .admin-account-card {
   max-width: 664px;
-  padding: 32px 24px 24px;
-  text-align: center;
+  padding: 0 0 0 24px;
+  border-top: 0;
+  border-left: var(--rule);
+  text-align: left;
 }
 .admin-account-card > .admin-user-avatar {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 16px;
-  font-size: 24px;
+  width: 48px;
+  height: 48px;
+  margin: 0 0 16px;
+  font-size: 18px;
 }
 .admin-account-card > h3 {
   font-size: 22px;
@@ -1569,50 +1779,39 @@ table caption {
   overflow-wrap: anywhere;
 }
 .admin-account-card > .form-field {
-  margin: 24px;
+  margin: 24px 0;
 }
 .admin-account-card > .primary-button {
-  margin: 0 24px 24px;
+  margin: 0 0 24px;
 }
 .admin-account-card > .notice {
   margin: 24px 0 0;
   text-align: left;
 }
+.admin-user-layout > .panel > .form-help {
+  padding: 20px 0;
+}
+.admin-user-layout > form .form-field {
+  margin: 20px 0;
+}
+.admin-user-layout > form .primary-button {
+  margin: 0 0 24px;
+}
 
 /* Frequency gate: brief press feedback and state changes, pointer only. */
 html[data-input-modality="pointer"]
-  :is(.primary-button, .secondary-button, .text-button, .icon-button, .admin-tabs > button) {
-  transition: transform var(--motion-fast) var(--ease-out);
-}
-html[data-input-modality="pointer"]
-  :is(
-    .primary-button,
-    .secondary-button,
-    .text-button,
-    .icon-button,
-    .admin-tabs > button
-  ):active:not(:disabled) {
-  transform: scale(0.98);
+  :is(.primary-button, .secondary-button, .text-button, .icon-button) {
+  transition:
+    transform var(--motion-fast) var(--ease-out),
+    background-color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out);
 }
 html[data-input-modality="pointer"] .admin-toggle input::before,
 html[data-input-modality="pointer"] .source-details > summary > .app-icon {
   transition: transform var(--motion-standard) var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
-  .primary-button:hover:not(:disabled) {
-    opacity: 0.9;
-  }
-  .secondary-button:hover:not(:disabled),
-  .icon-button:hover:not(:disabled) {
-    background: var(--surface-raised);
-  }
-  .text-button:hover:not(:disabled) {
-    color: var(--ink);
-  }
-  .admin-tabs > button:hover:not(.active) {
-    color: var(--ink);
-    background: var(--surface-inset);
-  }
   .result-table tbody tr:hover {
     background: var(--surface-inset);
   }
@@ -1651,19 +1850,11 @@ html[data-input-modality="pointer"] .source-details > summary > .app-icon {
 
 /* Shared responsive behavior. Sign-in breakpoints are grouped with its styles above. */
 @media (max-width: 1200px) {
-  .admin-config-layout {
-    grid-template-columns: minmax(0, 1fr) 240px;
-    gap: 20px;
-  }
-  .admin-form-section {
-    padding: 20px;
-  }
   .admin-form-grid {
     gap: 16px;
   }
 }
 @media (max-width: 1000px) {
-  .admin-config-layout,
   .admin-user-layout {
     grid-template-columns: 1fr;
   }
@@ -1675,46 +1866,45 @@ html[data-input-modality="pointer"] .source-details > summary > .app-icon {
     gap: 12px;
   }
 }
+@media (max-width: 900px) {
+  .admin-config-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+}
 @media (max-width: 760px) {
   .account-grid,
   .admin-future-grid {
     grid-template-columns: 1fr;
   }
-  .report-controls,
   .panel-header {
-    padding: 20px;
+    padding: 16px 0;
+  }
+  .report-controls {
+    padding: 0;
   }
   .report-frame {
-    height: 680px;
+    height: 70vh;
+  }
+  .admin-form-section {
+    padding: 20px 0;
   }
 }
 @media (max-width: 540px) {
-  .admin-tabs > button {
-    flex: 1;
-    padding: 8px;
-    gap: 6px;
-    font-size: 12px;
-  }
   .admin-intro {
     align-items: flex-start;
     flex-direction: column;
     gap: 12px;
   }
-  .admin-intro h2 {
-    font-size: 16px;
-  }
   .admin-form-section,
   .admin-form-actions {
-    padding: 20px 16px;
+    padding: 20px 0;
   }
   .admin-form-grid,
   .admin-budget-grid,
   .admin-config-side,
   .source-tables {
     grid-template-columns: 1fr;
-  }
-  .admin-user-list {
-    padding: 0 16px;
   }
   .admin-user-row {
     flex-wrap: wrap;
@@ -1726,17 +1916,20 @@ html[data-input-modality="pointer"] .source-details > summary > .app-icon {
     margin-left: 52px;
   }
   .admin-user-layout > form .form-field {
-    margin: 20px 16px;
+    margin: 20px 0;
   }
   .admin-user-layout > form .primary-button {
-    margin: 0 16px 20px;
+    margin: 0 0 20px;
+  }
+  .admin-account-card {
+    padding-left: 16px;
   }
   .source-details > summary {
-    padding: 16px;
+    padding: 16px 0;
     gap: 12px;
   }
   .source-details-body {
-    padding: 0 16px 16px;
+    padding: 0 0 16px;
   }
   .report-actions > button {
     flex: 1 1 100%;
@@ -1746,5 +1939,11 @@ html[data-input-modality="pointer"] .source-details > summary > .app-icon {
   }
   .table-bar-col {
     display: none;
+  }
+}
+@media print {
+  .notice,
+  .report-frame {
+    border-color: #b8b8b0;
   }
 }

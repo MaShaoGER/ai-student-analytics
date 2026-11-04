@@ -33,6 +33,17 @@
   --rule: 1px solid var(--line-strong);
   --ease-editorial: cubic-bezier(0.16, 1, 0.3, 1);
 
+  /* One spacing ladder for every workspace page. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 40px;
+  --space-7: 64px;
+  /* The only float shadow: menus, drawers and dialogs. */
+  --shadow-float: 0 12px 32px #2424361a;
+
   /* Square interface shapes: containers, controls, menus and dialogs. */
   --corner-radius: 0px;
   --panel-radius: 0px;
@@ -139,31 +150,33 @@
   font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
 }
-/* Dark workspaces keep their existing palette until the dark theme ships. */
+/* Dark workspaces use the same neutral paper/ink system as the light one,
+   with the lavender accent lifted for contrast. Data and status colours keep
+   their established meaning. */
 :root[data-theme="dark"] .glass-workspace:not([data-exploration="true"]) {
-  --background: #0b1220;
-  --paper: #101a2b;
-  --surface: #101a2b;
-  --surface-inset: #152238;
-  --surface-raised: #19273d;
-  --control-group: #152238;
+  --background: #17171b;
+  --paper: #1d1d22;
+  --surface: #1d1d22;
+  --surface-inset: #26262c;
+  --surface-raised: #232329;
+  --control-group: #26262c;
 
-  --ink: #edf2fb;
-  --muted: #a3b1c8;
-  --muted-on-sage: #a3b1c8;
-  --faint: #a3b1c8;
-  --line: #2b3b53;
-  --line-strong: #617797;
+  --ink: #ecebe6;
+  --muted: #a3a3ad;
+  --muted-on-sage: #a3a3ad;
+  --faint: #a3a3ad;
+  --line: #ecebe61a;
+  --line-strong: #ecebe640;
 
-  --accent: #8ab4ff;
-  --accent-ink: #b5cfff;
-  --accent-light: #203a60;
-  --accent-transparent: rgba(138, 180, 255, 0.15);
-  --accent-soft: #203a60;
-  --button-ink: #0b1220;
-  --sage: #617797;
-  --sage-surface: #19273d;
-  --sage-soft: #152238;
+  --accent: #9d8fe6;
+  --accent-ink: #c2b8f2;
+  --accent-light: #3a3360;
+  --accent-transparent: rgba(157, 143, 230, 0.18);
+  --accent-soft: #2c2840;
+  --button-ink: #17171b;
+  --sage: #a3a3ad;
+  --sage-surface: #232329;
+  --sage-soft: #26262c;
   --live: #6fcf97;
 
   --score: #bdd5c4;
@@ -176,29 +189,30 @@
   --completion-soft: #173136;
   --completion-bar: #84b5b8;
 
-  --instrument-grid: #edf2fb14;
-  --chart-grid: #edf2fb14;
+  --instrument-grid: #ecebe614;
+  --chart-grid: #ecebe614;
   --danger: #ffab9f;
   --warning: #f3c689;
   --success: #8fd6ad;
 
-  --glass-fill: #101a2bed;
-  --glass-fill-dim: #101a2bed;
-  --glass-fill-dense: #19273dfa;
+  --glass-fill: #232329f0;
+  --glass-fill-dim: #232329f0;
+  --glass-fill-dense: #232329fa;
   --glass-border: var(--line);
-  --glass-rim: #edf2fb12;
-  --glass-shadow: inset 0 1px 0 #ffffff14;
+  --glass-rim: #ecebe61a;
+  --glass-shadow: inset 0 1px 0 #ffffff10;
   --glass-relief: none;
   --surface-veil: var(--paper);
   --surface-sheen: transparent;
-  --surface-glint: #8ab4ff08;
+  --surface-glint: rgba(157, 143, 230, 0.06);
   --surface-blur: none;
-  --surface-shadow: 0 1px 3px #0000001a;
+  --surface-shadow: 0 1px 3px #0000004d;
+  --shadow-float: 0 12px 32px #0000004d;
 
-  --field-ground: #0b1220;
-  --field-warm: #06b6d40d;
-  --field-cool: #7c3aed12;
-  --field-light: #2563eb0d;
+  --field-ground: #17171b;
+  --field-warm: #9d8fe60a;
+  --field-cool: #9d8fe60a;
+  --field-light: #9d8fe606;
   color-scheme: dark;
 }
 

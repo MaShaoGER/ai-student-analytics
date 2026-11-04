@@ -77,6 +77,7 @@ export function AnalysisControls({
   return (
     <div className="admin-form-section" aria-busy={busy}>
       <div className="admin-section-heading">
+        <span className="meta" aria-hidden="true">02</span>
         <div>
           <h3>AI 对话分析</h3>
           <p>统一对话的模型、工具与知识检索限制；关闭后仅保留无需模型的已验证问题和展示切换。</p>

@@ -1,19 +1,23 @@
 import { knowledgeDocuments, KNOWLEDGE_VERSION } from "@/lib/ai/knowledge";
+import styles from "./page.module.css";
 
 export default function TeachingKnowledgePage() {
   return (
-    <main style={{ maxWidth: 820, margin: "40px auto", padding: "0 24px" }}>
-      <a href="/">返回学析台</a>
-      <h1>教学分析口径与数据限制</h1>
-      <p>
-        资料版本：{KNOWLEDGE_VERSION}
-        。本页为项目维护的指标和数据说明，不包含学生记录。尚未收录学校或课程的正式教学规则。
-      </p>
+    <main className={`glass-workspace ${styles.page}`}>
+      <a className="text-button" href="/">返回学析台</a>
+      <header className={styles.header}>
+        <span className="meta">REFERENCE / 指标口径</span>
+        <h1>教学分析口径与数据限制</h1>
+        <p>
+          资料版本：{KNOWLEDGE_VERSION}
+          。本页为项目维护的指标和数据说明，不包含学生记录。尚未收录学校或课程的正式教学规则。
+        </p>
+      </header>
       {knowledgeDocuments().map((document) => (
         <section
           key={document.id}
           id={document.id}
-          style={{ paddingBlock: 16, scrollMarginTop: 32 }}
+          className={styles.document}
         >
           <h2>{document.title}</h2>
           <p>{document.excerpt}</p>
@@ -27,7 +31,7 @@ export default function TeachingKnowledgePage() {
           </small>
         </section>
       ))}
-      <p>指标定义与计算程序同步；数据限制由项目维护，修改时同步更新资料版本。</p>
+      <p className={styles.footer}>指标定义与计算程序同步；数据限制由项目维护，修改时同步更新资料版本。</p>
     </main>
   );
 }

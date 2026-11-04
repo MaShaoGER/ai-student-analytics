@@ -68,10 +68,11 @@
   padding: clamp(112px, 14vh, 152px) clamp(24px, 4.5vw, 64px) clamp(120px, 14vh, 160px);
 }
 
+/* The head stays in normal grid flow. Sticky here made the tall left column
+   (title, lead, entries) overflow its row and paint over the pager trail once
+   the content grew taller than the chart beside it. */
 .head {
   grid-area: head;
-  position: sticky;
-  top: clamp(112px, 14vh, 152px);
   min-width: 0;
 }
 .eyebrow {
@@ -516,6 +517,9 @@ button.page:hover > strong { color: var(--accent-ink); }
   background: rgba(255, 255, 255, 0.92);
 }
 .sheetHead .eyebrow { margin-bottom: 8px; }
+/* Long sheet titles take the first line; the cancel control keeps its own width
+   instead of wrapping into a squeezed column. */
+.sheetHead > .ghost { flex: none; white-space: nowrap; }
 .sheetHead h2 {
   margin: 0;
   font-family: var(--font-sans);
@@ -729,7 +733,6 @@ button.page:hover > strong { color: var(--accent-ink); }
     grid-template-areas: "head" "stage" "pager";
     row-gap: 40px;
   }
-  .head { position: static; }
   .scope, .hint { max-width: 60ch; }
   .entries { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: none; column-gap: 20px; }
 }

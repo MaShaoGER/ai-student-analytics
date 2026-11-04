@@ -19,43 +19,9 @@
   --ui-surface: var(--paper);
   --ui-focus: var(--accent-ink);
 }
-.glass-workspace :is(.primary-button, .secondary-button, .text-button) {
-  min-height: var(--ui-control-height);
-  border-radius: 0;
-  padding: 7px 14px;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.5;
-}
-.glass-workspace .secondary-button {
-  border-color: var(--ui-control-border);
-  background: var(--ui-control-bg);
-  box-shadow: none;
-}
-.glass-workspace .primary-button {
-  background: var(--accent);
-  color: var(--button-ink);
-  border-color: color-mix(in srgb, var(--accent) 72%, var(--ink));
-  box-shadow: none;
-}
-@media (hover: hover) and (pointer: fine) {
-  .glass-workspace .primary-button:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--accent) 86%, var(--ink));
-    color: var(--button-ink);
-  }
-}
-.glass-workspace .primary-button:disabled {
-  background: color-mix(in srgb, var(--accent) 42%, var(--paper));
-  color: color-mix(in srgb, var(--button-ink) 55%, var(--accent));
-}
-.glass-workspace .text-button {
-  padding-inline: 8px;
-}
+/* Button appearance and sizing live in globals.css; the workspace only
+   supplies its control metrics. */
 .glass-workspace .icon-button {
-  width: var(--ui-control-height);
-  height: var(--ui-control-height);
-  min-width: var(--ui-control-height);
-  min-height: var(--ui-control-height);
   border-radius: 0;
 }
 .glass-workspace
@@ -73,24 +39,45 @@
     )
   ) {
   min-height: var(--ui-control-height);
-  border: 1px solid var(--ui-control-border);
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
   border-radius: 0;
-  padding: 7px 12px;
-  background-color: var(--ui-inset);
+  padding: 7px 0;
+  background-color: transparent;
   color: var(--ink);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
   line-height: 1.5;
   box-shadow: none;
 }
 .glass-workspace
   :is(.form-field, .control-field, .result-filter, .result-filter-fields, .workbench-source)
-  select {
-  padding-right: 32px;
+  textarea {
+  border: 1px solid var(--line);
+  padding: 10px 12px;
 }
-.glass-workspace :is(.form-field, .control-field) > :is(label, span) {
-  font-size: 12px;
+.glass-workspace
+  :is(.form-field, .control-field, .result-filter, .result-filter-fields, .workbench-source)
+  select {
+  padding-right: 28px;
+}
+.glass-workspace
+  :is(.form-field, .control-field, .result-filter, .result-filter-fields, .workbench-source)
+  :is(input, select, textarea):focus-visible {
+  border-bottom-color: var(--accent);
+  box-shadow: inset 0 -1px 0 var(--accent);
+}
+.glass-workspace
+  :is(.form-field, .control-field, .result-filter, .result-filter-fields, .workbench-source)
+  textarea:focus-visible {
+  box-shadow: none;
+}
+.glass-workspace :is(.form-field, .control-field) > :is(label, span):not(.form-help):not(.password-input-wrap) {
+  font-size: 11px;
   font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 .glass-workspace input::placeholder,
 .glass-workspace textarea::placeholder {
@@ -102,7 +89,7 @@
 }
 .glass-workspace :is(button, a, input, select, textarea, summary):focus-visible {
   outline: 2px solid var(--ui-focus);
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
 .glass-workspace .badge {
   border-radius: 0;
@@ -125,7 +112,7 @@
 .glass-workspace .analysis-workspace-controls {
   border-radius: 0;
   border-color: var(--line);
-  background: var(--ui-inset);
+  background: transparent;
 }
 .glass-workspace .analysis-refresh {
   min-height: var(--ui-control-height);
@@ -141,16 +128,21 @@
   white-space: nowrap;
 }
 .glass-workspace .page-introduction h1 {
-  font-size: 30px;
-  font-weight: 600;
+  font-family: var(--font-sans);
+  font-size: clamp(28px, 3.2vw, 40px);
+  font-weight: var(--weight-display);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
 }
 .glass-workspace :is(.section-heading, .result-section-heading, .panel-header) h2 {
-  font-size: 20px;
-  font-weight: 500;
-  letter-spacing: -0.3px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
 }
 .glass-workspace :is(.section-kicker, .page-eyebrow, .source-card-label) {
-  font-weight: 400;
+  font-weight: 500;
 }
 .glass-workspace .overview-section-bar > span::before {
   display: none;
@@ -163,11 +155,11 @@
 }
 .glass-workspace .result-filter-fields {
   flex-wrap: wrap;
-  padding: 12px;
-  margin-bottom: 16px;
-  border: 1px solid var(--line);
+  padding: 0 0 16px;
+  margin-bottom: 0;
+  border: 0;
   border-radius: 0;
-  background: var(--ui-inset);
+  background: transparent;
 }
 .glass-workspace .result-disclosure > summary,
 .glass-workspace .result-export > summary {
@@ -189,15 +181,16 @@
 }
 .glass-workspace .report-controls {
   border-radius: 0;
-  background: var(--ui-inset);
+  background: transparent;
+  padding: 0;
 }
 .glass-workspace .report-empty {
   border-radius: 0;
 }
 .glass-workspace :is(.dataset-heading, .report-controls, .account-grid) h2 {
-  font-size: 20px;
-  font-weight: 500;
-  letter-spacing: -0.3px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 .glass-workspace .overview-metric-tabs {
   display: inline-flex;
@@ -231,18 +224,22 @@
 .glass-workspace .chart-view-options button {
   min-height: var(--ui-control-height);
   padding: 7px 10px;
-  border: 1px solid var(--ui-control-border);
+  border: 1px solid var(--line);
   border-radius: 0;
-  background: var(--ui-control-bg);
+  background: transparent;
   color: var(--muted);
   font-size: 12px;
   font-weight: 500;
 }
-.glass-workspace .chart-view-options button[aria-pressed="true"],
+.glass-workspace .chart-view-options button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
 .glass-workspace .chart-key button[aria-pressed="true"] {
-  background: var(--ui-selected-bg);
-  color: var(--ui-selected-ink);
-  border-color: var(--glass-rim);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-color: var(--line-strong);
 }
 /* Floating surfaces are the only place the frosted material appears. */
 .glass-workspace .export-options {
@@ -320,16 +317,10 @@
 }
 /* Preserve the larger primary action and readable fields at sign-in. */
 .glass-workspace.glass-auth .login-form .primary-button {
-  min-height: 48px;
+  min-height: 52px;
 }
 .glass-workspace.glass-auth .login-form input:not([type="checkbox"]) {
-  min-height: 46px;
-}
-@media (hover: hover) and (pointer: fine) {
-  .glass-workspace :is(.secondary-button, .text-button, .icon-button):hover:not(:disabled) {
-    background: var(--ui-control-hover);
-    color: var(--ink);
-  }
+  min-height: 52px;
 }
 @media (max-width: 760px) {
   .glass-workspace {

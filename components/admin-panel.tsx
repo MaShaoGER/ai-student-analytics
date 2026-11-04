@@ -417,6 +417,9 @@ export function AdminPanel({
               >
                 <div className="admin-form-section">
                   <div className="admin-section-heading">
+                    <span className="meta" aria-hidden="true">
+                      01
+                    </span>
                     <div>
                       <h3>模型连接</h3>
                       <p>密钥保存在服务端，页面不会显示已有密钥。</p>
@@ -563,6 +566,9 @@ export function AdminPanel({
                 />
                 <div className="admin-form-section">
                   <div className="admin-section-heading">
+                    <span className="meta" aria-hidden="true">
+                      03
+                    </span>
                     <div>
                       <h3>费用估算</h3>
                       <p>按服务商的模型单价填写，单位为美元 / 百万 token。</p>
@@ -620,6 +626,9 @@ export function AdminPanel({
                 </div>
                 <div className="admin-form-section">
                   <div className="admin-section-heading">
+                    <span className="meta" aria-hidden="true">
+                      04
+                    </span>
                     <div>
                       <h3>调用预算</h3>
                       <p>达到对应上限后暂停 AI 调用，帮助控制支出。</p>

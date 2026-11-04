@@ -34,7 +34,8 @@ export function RadialMenu({ origin, eyebrow, title, reading, options, motion, o
   onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const [view, setView] = useState({ w: 0, h: 0 });
+  const [view, setView] = useState({ w: 0, h: 0, x: 0, y: 0 });
+  const [sizes, setSizes] = useState({ hubWidth: 280, hubHeight: 180, petalHeight: 100, legendHeight: 48 });
   const [phase, setPhase] = useState<"open" | "closing">("open");
 
   // One exit at a time: choosing or cancelling commits once, after the petals fold in.
@@ -87,16 +88,30 @@ export function RadialMenu({ origin, eyebrow, title, reading, options, motion, o
   };
 
   useLayoutEffect(() => {
-    const measure = () => setView({ w: window.innerWidth, h: window.innerHeight });
+    const measure = () => {
+      const viewport = window.visualViewport;
+      setView({
+        w: viewport?.width ?? window.innerWidth,
+        h: viewport?.height ?? window.innerHeight,
+        x: viewport?.offsetLeft ?? 0,
+        y: viewport?.offsetTop ?? 0,
+      });
+    };
     measure();
     window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    window.visualViewport?.addEventListener("resize", measure);
+    window.visualViewport?.addEventListener("scroll", measure);
+    return () => {
+      window.removeEventListener("resize", measure);
+      window.visualViewport?.removeEventListener("resize", measure);
+      window.visualViewport?.removeEventListener("scroll", measure);
+    };
   }, []);
 
   useEffect(() => {
     const element = dialog.current;
-    if (!element || !view.w) return;
-    if (!element.open) element.showModal();
+    if (!element || !view.w || element.open) return;
+    element.showModal();
     element.querySelector<HTMLButtonElement>("[data-petal]:not(:disabled)")?.focus({ preventScroll: true });
   }, [view.w]);
   useEffect(() => () => { if (dialog.current?.open) dialog.current.close(); }, []);
@@ -116,22 +131,48 @@ export function RadialMenu({ origin, eyebrow, title, reading, options, motion, o
   }, [motion]);
 
   const { w, h } = view;
-  const narrow = w <= 640;
-  const R = narrow ? 126 : 232;
-  const room = narrow ? 160 : 292;
-  const cx = w ? clamp(origin.x, Math.min(room, w / 2), Math.max(w - room, w / 2)) : 0;
-  const cy = h ? clamp(origin.y, narrow ? 248 : Math.min(R + 66, h / 2), Math.max(248, h - 140)) : 0;
-  const petals = options.map((option, index) => {
-    const angle = narrow
-      ? [-Math.PI * 0.75, -Math.PI / 2, -Math.PI * 0.25][index % 3]
-      : -Math.PI / 2 + ((index + 0.5) * 2 * Math.PI) / Math.max(options.length, 1);
-    const x = narrow ? w * (index + 0.5) / Math.max(options.length, 1) : cx + Math.cos(angle) * R;
-    const y = narrow ? 330 : cy + Math.sin(angle) * R;
-    const right = x >= cx;
-    const max = narrow ? Math.min(112, w / Math.max(options.length, 1) - 12) : Math.max(72, 2 * Math.min(x, w - x) - 16);
-    return { option, index, x, y, right, max };
+  const R = 232;
+  const petalWidth = 208;
+  const points = options.map((option, index) => {
+    const angle = -Math.PI / 2 + ((index + 0.5) * 2 * Math.PI) / Math.max(options.length, 1);
+    return { option, index, dx: Math.cos(angle) * R, dy: Math.sin(angle) * R };
   });
-  const moved = Math.hypot(origin.x - cx, origin.y - cy) > 6;
+  // Fit the entire menu, not just its centre. Reserve room for the legend and
+  // focus outlines; content that cannot fit a ring uses a scrollable sheet.
+  const left = Math.min(-sizes.hubWidth / 2, ...points.map(({ dx }) => dx - petalWidth / 2));
+  const right = Math.max(sizes.hubWidth / 2, ...points.map(({ dx }) => dx + petalWidth / 2));
+  const top = Math.min(-sizes.hubHeight / 2, ...points.map(({ dy }) => dy - sizes.petalHeight / 2));
+  const bottom = Math.max(sizes.hubHeight / 2, ...points.map(({ dy }) => dy + sizes.petalHeight / 2));
+  const compact = w <= 640 || options.length > 6
+    || right - left > w - 32 || bottom - top > h - sizes.legendHeight - 64;
+  const cx = compact ? w / 2 : clamp(origin.x - view.x, 16 - left, w - 16 - right);
+  const cy = compact ? h / 2 : clamp(origin.y - view.y, 16 - top, h - sizes.legendHeight - 48 - bottom);
+  const petals = points.map(({ option, index, dx, dy }) => ({
+    option, index, x: cx + dx, y: cy + dy, right: dx >= 0,
+  }));
+  const moved = Math.hypot(origin.x - view.x - cx, origin.y - view.y - cy) > 6;
+
+  useLayoutEffect(() => {
+    const element = dialog.current;
+    if (!element || !w || compact) return;
+    const hub = element.querySelector<HTMLElement>(`.${styles.hub}`);
+    const legend = element.querySelector<HTMLElement>(`.${styles.legend}`);
+    const items = [...element.querySelectorAll<HTMLElement>(`.${styles.petal}`)];
+    if (!hub || !legend) return;
+    const measure = () => {
+      const next = {
+        hubWidth: hub.offsetWidth,
+        hubHeight: hub.offsetHeight,
+        petalHeight: Math.max(0, ...items.map((item) => item.offsetHeight)),
+        legendHeight: legend.offsetHeight,
+      };
+      setSizes((previous) => Object.keys(next).every((key) => next[key as keyof typeof next] === previous[key as keyof typeof next]) ? previous : next);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    [hub, legend, ...items].forEach((item) => observer.observe(item));
+    return () => observer.disconnect();
+  }, [w, h, compact, options]);
 
   const onKeyDown = (event: KeyboardEvent<HTMLDialogElement>) => {
     const step = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 0;
@@ -141,18 +182,19 @@ export function RadialMenu({ origin, eyebrow, title, reading, options, motion, o
     event.preventDefault();
     if (closing.current) return;
     const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
-    buttons[(at + step + buttons.length) % buttons.length].focus({ preventScroll: true });
+    buttons[(at + step + buttons.length) % buttons.length].focus({ preventScroll: !compact });
   };
 
   return (
     <dialog ref={dialog} className={styles.radial} aria-labelledby="radial-title" data-navigation-motion data-phase={phase} data-motion={motion ? "on" : "off"}
+      data-layout={compact ? "compact" : "radial"} style={{ left: view.x, top: view.y, width: w || undefined, height: h || undefined }}
       onCancel={(event) => { event.preventDefault(); leave(onClose); }}
       onClick={(event) => { if (event.target === event.currentTarget) leave(onClose); }}
       onKeyDown={onKeyDown}>
       {w > 0 && (
         <>
           <div className={styles.veil} style={{ "--ox": `${cx}px`, "--oy": `${cy}px` } as CSSProperties} aria-hidden />
-          <svg className={styles.spokes} width={w} height={h} aria-hidden>
+          {!compact && <svg className={styles.spokes} width={w} height={h} aria-hidden>
             <defs>
               <radialGradient id="radial-halo">
                 <stop offset="0" stopColor="rgba(118,102,204,0.22)" />
@@ -164,25 +206,26 @@ export function RadialMenu({ origin, eyebrow, title, reading, options, motion, o
             <circle className={styles.ringFaint} cx={cx} cy={cy} r={R * 0.62} />
             {moved && (
               <>
-                <line className={styles.tether} x1={origin.x} y1={origin.y} x2={cx} y2={cy} />
-                <circle className={styles.originDot} cx={origin.x} cy={origin.y} r={5} />
+                <line className={styles.tether} x1={origin.x - view.x} y1={origin.y - view.y} x2={cx} y2={cy} />
+                <circle className={styles.originDot} cx={origin.x - view.x} cy={origin.y - view.y} r={5} />
               </>
             )}
             {petals.map(({ option, index, x, y }) => (
               <line key={option.key} className={styles.spoke} data-kind={option.kind} x1={cx} y1={cy} x2={x} y2={y} pathLength={1}
                 style={{ "--k": index } as CSSProperties} />
             ))}
-          </svg>
-          <div className={styles.hub} style={{ left: cx, top: cy }}>
+          </svg>}
+          <div className={styles.layout}>
+          <div className={styles.hub} style={compact ? undefined : { left: cx, top: cy }}>
             <p className={styles.hubEyebrow}>{eyebrow}</p>
             <h2 id="radial-title" className={styles.hubTitle}>{title}</h2>
             {reading && <p className={styles.hubReading}>{reading}</p>}
             <button type="button" className={styles.close} onClick={() => leave(onClose)}>取消 · Esc</button>
           </div>
           <ul className={styles.petals} aria-label="可选去向与画法">
-            {petals.map(({ option, index, x, y, right, max }) => (
+            {petals.map(({ option, index, x, y, right }) => (
               <li key={option.key} className={styles.petal} data-side={right ? "right" : "left"} data-kind={option.kind}
-                style={{ left: x, top: y, width: narrow ? max : undefined, maxWidth: max, "--dx": `${cx - x}px`, "--dy": `${cy - y}px`, "--k": index } as CSSProperties}>
+                style={{ ...(compact ? {} : { left: x, top: y, width: petalWidth }), "--dx": `${cx - x}px`, "--dy": `${cy - y}px`, "--k": index } as CSSProperties}>
                 <button type="button" data-petal disabled={option.disabled} aria-current={option.current || undefined}
                   onClick={() => leave(option.current ? onClose : option.onSelect)}>
                   <span className={styles.node} aria-hidden />
@@ -198,6 +241,7 @@ export function RadialMenu({ origin, eyebrow, title, reading, options, motion, o
           <p className={styles.legend} aria-hidden>
             <span><i data-kind="topic" />去新主题</span><span><i data-kind="drawing" />同数据换画法</span><span>方向键切换 · Esc 取消</span>
           </p>
+          </div>
         </>
       )}
     </dialog>

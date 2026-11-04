@@ -288,12 +288,18 @@ export function DataExplorer({
     const currentId = currentSaved?.scope === scopeKey && currentSaved.id ? currentSaved.id : currentSavedEntry?.id ?? crypto.randomUUID();
     const previousRestoration = window.history.scrollRestoration;
     window.history.scrollRestoration = "manual";
-    const previousHome = stored.find((item) => item.href.includes("browse=home"));
+    // The scene the reader landed on owns exactly one trail entry: a cold load has no history state yet,
+    // so home and topic entries must already carry the id this mount will use instead of a fresh twin.
+    const homeStored = stored.filter((item) => item.href.includes("browse=home"));
+    const homeBase = (currentLocation?.scene === "home" ? homeStored.find((item) => item.id === currentId) : undefined) ?? homeStored[0];
     const homeLocation: ConceptLocation = { scene: "home", drawing: "rank", term: currentLocation?.term };
-    const homeEntry: TrailEntry = previousHome ?? {
-      id: crypto.randomUUID(), href: conceptHref(homeLocation, datasetId), title: conceptTitle(homeLocation),
-      centre: centreOf(homeLocation), views: ["rank"], scroll: 0,
-    };
+    const homeEntry: TrailEntry = homeBase
+      ? { ...homeBase, id: currentLocation?.scene === "home" ? currentId : homeBase.id }
+      : {
+        id: currentLocation?.scene === "home" ? currentId : crypto.randomUUID(),
+        href: conceptHref(homeLocation, datasetId), title: conceptTitle(homeLocation),
+        centre: centreOf(homeLocation), views: ["rank"], scroll: 0,
+      };
 
     const topicsByHref = new Map<string, TrailEntry>();
     for (const item of stored) {
@@ -323,13 +329,13 @@ export function DataExplorer({
     }
     trailRef.current = initialTrail;
     try { sessionStorage.setItem(trailKey, JSON.stringify(initialTrail)); } catch {}
-    const sync = (initial: boolean) => {
+    const sync = (initial: boolean, knownId?: string) => {
       if (!initial && currentEntry.current) {
         saveTrail(trailRef.current.map(item => item.id === currentEntry.current ? { ...item, scroll: scrollPosition.current } : item));
       }
       const next = readLocation(datasetId);
       const saved = window.history.state?.concept as EntryState | undefined;
-      const id = saved?.scope === scopeKey && saved.id ? saved.id : crypto.randomUUID();
+      const id = saved?.scope === scopeKey && saved.id ? saved.id : knownId ?? crypto.randomUUID();
       if (typeof next !== "string") {
         const href = conceptHref(next, datasetId);
         if (!saved || saved.scope !== scopeKey)
@@ -343,10 +349,14 @@ export function DataExplorer({
       focusAfter.current = !initial;
       setTransition(initial ? "topic" : "return");
       setSheet(null);
+      // A history move replaces the scene the pickers were opened from; a menu left over would offer the old topic.
+      setRadial(null);
+      setOverview(false);
+      returnFocus.current = null;
       setEntryId(id);
       setLocation(next);
     };
-    sync(true);
+    sync(true, currentId);
     const onPop = () => sync(false);
     window.addEventListener("popstate", onPop);
     return () => {

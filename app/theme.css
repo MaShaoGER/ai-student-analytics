@@ -80,34 +80,37 @@
   font-family: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 :root[data-theme="dark"] {
-  --ink: #e4eef0;
-  --muted: #adc1c8;
-  --muted-on-sage: #adc1c8;
-  --accent: #ff5b04;
-  --accent-ink: #ffb58e;
-  --button-ink: #16232a;
-  --paper: #16232a;
-  --surface-inset: #121e25;
-  --surface-raised: #21343d;
-  --background: #101b21;
-  --line: #3b535c;
-  --control-group: #1c3039;
-  --sage: #75bfbd;
-  --sage-surface: #075056;
-  --sage-soft: #193e45;
-  --instrument-bg: #101c23;
-  --instrument-ink: #e4eef0;
-  --instrument-muted: #adc1c8;
-  --instrument-inset: #1a2d36;
-  --instrument-raised: #233a44;
-  --instrument-line: #3b535c;
-  --instrument-soft: #193e45;
-  --instrument-grid: #30464f;
-  --instrument-tooltip: #21343d;
-  --instrument-tooltip-line: #56717b;
-  --tone-paper: #e4eef0;
-  --teal-dark: #ffb58e;
-  --teal-soft: #3e2b24;
+  --ink: #ecebe6;
+  --muted: #a3a3ad;
+  --muted-on-sage: #a3a3ad;
+  --faint: #a3a3ad;
+  --accent: #9d8fe6;
+  --accent-ink: #c2b8f2;
+  --button-ink: #17171b;
+  --paper: #1d1d22;
+  --surface: #1d1d22;
+  --surface-inset: #26262c;
+  --surface-raised: #232329;
+  --background: #17171b;
+  --line: #ecebe61a;
+  --line-strong: #ecebe640;
+  --control-group: #26262c;
+  --sage: #a3a3ad;
+  --sage-surface: #232329;
+  --sage-soft: #26262c;
+  --instrument-bg: #1d1d22;
+  --instrument-ink: #ecebe6;
+  --instrument-muted: #a3a3ad;
+  --instrument-inset: #26262c;
+  --instrument-raised: #232329;
+  --instrument-line: #ecebe640;
+  --instrument-soft: #2c2840;
+  --instrument-grid: #ecebe614;
+  --instrument-tooltip: #232329;
+  --instrument-tooltip-line: #ecebe640;
+  --tone-paper: #ecebe6;
+  --teal-dark: #c2b8f2;
+  --teal-soft: #2c2840;
   --success: #9dd2b4;
   --warning: #f3c689;
   --danger: #ffaba0;
@@ -186,14 +189,19 @@ select:focus-visible,
 textarea:focus-visible {
   outline-color: var(--accent);
 }
-.panel,
+.panel {
+  position: relative;
+  background: transparent;
+  border: 0;
+  border-top: var(--rule);
+  box-shadow: none;
+}
 .overview-ask-card {
   position: relative;
   background: var(--paper);
   border: 1px solid var(--line);
   box-shadow: none;
 }
-.primary-button,
 .ask-card-button,
 .topbar-ask {
   background: var(--accent);
@@ -201,21 +209,8 @@ textarea:focus-visible {
   border: 1px solid transparent;
   font-weight: 600;
 }
-.secondary-button,
-.icon-button {
-  background: var(--surface-inset);
-  color: var(--ink);
-  border: 1px solid var(--line);
-}
 .text-button {
   color: var(--ink);
-}
-.icon-button {
-  width: 36px;
-  height: 36px;
-  min-height: 36px;
-  min-width: 36px;
-  padding: 8px;
 }
 .form-field input,
 .form-field select,
@@ -226,19 +221,10 @@ textarea:focus-visible {
 .result-filter input,
 .result-filter select,
 .question-form textarea {
-  background: var(--surface-inset);
-  border: 1px solid var(--line);
   color: var(--ink);
 }
 .form-field label,
 .admin-panel label {
-  color: var(--ink);
-}
-.feature-icon,
-.avatar,
-.admin-user-avatar,
-.admin-future-icon {
-  background: var(--sage-soft);
   color: var(--ink);
 }
 .badge {
@@ -267,7 +253,7 @@ textarea:focus-visible {
   letter-spacing: 0.07em;
 }
 .section-kicker {
-  font-size: 10px;
+  font-size: 11px;
 }
 button,
 summary {
@@ -538,7 +524,7 @@ summary {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
 }
 .page-eyebrow::before {
@@ -666,8 +652,10 @@ summary {
 }
 .settings-section-label {
   margin-bottom: 16px;
-  color: var(--ink);
-  font-weight: 600;
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 .logout-confirmation {
   width: min(420px, calc(100vw - 32px));
@@ -1328,18 +1316,18 @@ summary {
   box-shadow: none;
 }
 .analysis-workspace-controls {
-  padding: 24px 28px;
+  padding: 20px 0;
   border: 0;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface-inset);
+  border-bottom: var(--rule);
+  background: transparent;
 }
 .analysis-result {
   margin: 0;
   border: 0;
-  background: var(--paper);
+  background: transparent;
 }
 .result-focus {
-  background: var(--sage-soft);
+  background: var(--surface-inset);
   border: 1px solid var(--line);
 }
 .focus-number-block strong,
@@ -1347,8 +1335,8 @@ summary {
   color: var(--ink);
 }
 .result-visual {
-  background: var(--sage-surface);
-  border: 1px solid var(--line);
+  background: transparent;
+  border: 0;
 }
 .result-section-heading [role="group"],
 .admin-tabs [role="group"] {
@@ -1396,13 +1384,13 @@ summary {
 }
 .dataset-heading h2,
 .report-controls h2 {
-  font-size: 25px;
-  letter-spacing: -0.7px;
+  font-size: 18px;
+  letter-spacing: -0.01em;
   font-weight: 600;
 }
 .dataset-scope {
   padding: 18px;
-  background: var(--sage-surface);
+  background: var(--surface-inset);
   border: 1px solid var(--line);
 }
 .report-preview {
@@ -1414,7 +1402,7 @@ summary {
   padding: 40px 28px;
 }
 .admin-panel {
-  padding: 28px;
+  padding: 0;
 }
 .admin-panel .panel,
 .account-grid .panel {
@@ -1430,11 +1418,8 @@ summary {
   background: transparent;
   max-width: 100%;
 }
-.admin-tabs [role="group"] {
-  background: var(--surface-inset);
-}
 .account-grid {
-  padding: 28px;
+  padding: 0;
 }
 .account-appearance {
   display: grid;
@@ -1553,11 +1538,11 @@ select {
   color: var(--ink);
 }
 .login-story-copy h1 {
-  font-weight: 700;
-  letter-spacing: -2px;
+  font-weight: var(--weight-display, 650);
+  letter-spacing: -0.03em;
 }
 .login-story-copy h1 em {
-  color: var(--ink);
+  color: var(--accent-ink);
   font-style: normal;
 }
 .login-eyebrow,
@@ -1573,10 +1558,11 @@ select {
   background: var(--accent);
 }
 .login-signals {
-  padding: 20px;
-  background: var(--sage-surface);
+  padding: 20px 0;
+  background: transparent;
   color: var(--ink);
-  border: 1px solid var(--line);
+  border: 0;
+  border-top: 1px solid var(--line);
 }
 .login-signals-heading,
 .login-signals-heading > span:last-child,
@@ -1616,9 +1602,8 @@ select {
   color: var(--ink);
 }
 .login-form-area {
-  background: var(--sage-surface);
+  background: transparent;
   border: 0;
-  border-left: 1px solid var(--line);
 }
 .login-form-card {
   background: transparent;
@@ -1627,17 +1612,15 @@ select {
 }
 .login-form .form-field input {
   color: var(--ink);
-  background: var(--paper);
-  border-color: var(--line);
+  background: transparent;
+  border-color: var(--line-strong);
 }
 .login-password-toggle {
   color: var(--muted);
   background: transparent;
 }
 .login-form .primary-button {
-  color: var(--button-ink);
-  background: var(--accent);
-  border-color: transparent;
+  border-radius: 0;
 }
 
 /* Motion belongs to interaction: no ambient loops or moving data panels. */
@@ -1651,18 +1634,10 @@ html[data-motion="on"][data-input-modality="pointer"] button:enabled:active {
   transform: translateY(1px);
 }
 @media (hover: hover) and (pointer: fine) {
-  .primary-button:hover:not(:disabled),
-  .login-form .primary-button:hover:not(:disabled),
   .ask-card-button:hover {
     background: var(--accent);
     color: var(--button-ink);
     opacity: 1;
-  }
-  .secondary-button:hover:not(:disabled),
-  .icon-button:hover:not(:disabled),
-  .workspace-nav button:hover {
-    background: var(--surface-inset);
-    color: var(--ink);
   }
   .overview-metric:hover:not(:disabled):not(.is-selected) {
     background: color-mix(in srgb, var(--ink) 4%, transparent);

@@ -62,8 +62,9 @@
   .glass-workspace
   [data-workspace-part="welcomeSuggestions"]
   button[data-recommended="true"] {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
-  background: var(--accent-soft);
+  border-color: var(--line);
+  border-left: 2px solid var(--accent);
+  background: transparent;
   box-shadow: none;
 }
 :root[data-theme] .glass-workspace .welcome-start-label {
@@ -289,7 +290,10 @@
   :root[data-theme]
     .glass-workspace
     [data-workspace-part="welcomeSuggestions"]
-    button:hover:not(:disabled),
+    button:hover:not(:disabled) {
+    border-color: var(--line-strong);
+    background-color: var(--surface-inset);
+  }
   :root[data-theme] .glass-workspace .overview-metric:hover:not(:disabled) {
     border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
     background-color: var(--accent-soft);

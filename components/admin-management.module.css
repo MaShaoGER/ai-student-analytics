@@ -1,16 +1,16 @@
-/* Stage 2–4 admin workbench on the data-browser surface: white reading panels,
-   hairline separations, one blue interaction colour and regular sans type.
-   Colour, material and control tokens come from app/tokens.css and
-   app/glass-controls.css; this file never declares its own palette. */
+/* Administration on the editorial workbench surface: mono labels, hairline
+   rules, open sections and a single interaction accent. Buttons, fields and
+   notices come from the shared global contracts; this file only arranges the
+   admin-specific layout and never declares its own palette. */
 
 .intro {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 18px;
+  margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: var(--rule);
 }
 
 .introWithAction {
@@ -20,119 +20,128 @@
 .intro h2 {
   margin: 4px 0 8px;
   color: var(--ink);
-  font-size: clamp(21px, 2vw, 26px);
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: -0.01em;
+  font-family: var(--font-sans);
+  font-size: clamp(22px, 2.4vw, 30px);
+  font-weight: var(--weight-display);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
 }
 
 .intro p {
   max-width: 68ch;
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 14px;
+  line-height: 1.65;
 }
 
 .eyebrow {
-  color: var(--accent-ink);
-  font-size: 12px;
-  font-weight: 600;
+  display: block;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
+  font-weight: 500;
   line-height: 1.4;
-  letter-spacing: 0.01em;
+  letter-spacing: var(--tracking-meta);
+  text-transform: uppercase;
 }
 
 .windowControl {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex: 0 0 auto;
 }
 
 .dashboard {
   display: grid;
-  gap: 16px;
+  gap: 40px;
 }
 
-/* Metric cards stay a real task summary, not a marketing band. */
+/* Metrics are one ruled strip, not a row of floating cards. */
 .metricGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  border-top: var(--rule);
+  border-bottom: var(--rule);
 }
 
 .metricCard {
-  position: relative;
   display: flex;
   min-width: 0;
-  min-height: 128px;
   flex-direction: column;
   justify-content: space-between;
-  gap: 10px;
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--surface-raised);
+  gap: 12px;
+  padding: 18px 20px;
+  border: 0;
+  background: transparent;
+}
+
+.metricCard + .metricCard {
+  border-left: 1px solid var(--line);
 }
 
 .metricCard > span {
   color: var(--muted);
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
   font-weight: 500;
   line-height: 1.4;
+  letter-spacing: var(--tracking-meta);
+  text-transform: uppercase;
 }
 
 .metricCard strong {
   color: var(--ink);
-  font-size: clamp(26px, 2.4vw, 32px);
-  font-weight: 600;
+  font-size: clamp(24px, 2.4vw, 32px);
+  font-weight: var(--weight-display);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
+  letter-spacing: -0.02em;
   overflow-wrap: anywhere;
 }
 
 .metricCard small {
-  max-width: 30ch;
+  max-width: 32ch;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
 }
 
 .costMetric {
-  border-color: color-mix(in srgb, var(--accent) 26%, var(--line));
-  background: color-mix(in srgb, var(--accent-soft) 46%, var(--surface-raised));
+  border-left-color: var(--line);
+  background: transparent;
 }
 
 .overviewGrid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
-  gap: 16px;
+  gap: 40px;
 }
 
-.dataPanel {
+.dataPanel,
+.tablePanel {
   min-width: 0;
-  overflow: hidden;
 }
 
 .panelBody {
   display: grid;
-  gap: 16px;
-  padding: 16px;
+  gap: 20px;
+  padding: 16px 0 0;
 }
 
 .requestBreakdown {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--surface-inset);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 
 .requestBreakdown > div {
   display: grid;
   gap: 4px;
-  padding: 12px;
+  min-width: 0;
+  padding: 14px 16px;
   border-right: 1px solid var(--line);
 }
 
@@ -150,7 +159,7 @@
 .requestBreakdown strong {
   color: var(--ink);
   font-size: 22px;
-  font-weight: 600;
+  font-weight: var(--weight-display);
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
 }
@@ -167,7 +176,7 @@
   justify-content: space-between;
   gap: 20px;
   min-width: 0;
-  padding: 9px 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -198,14 +207,13 @@
 
 .rangeNote {
   margin: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--accent);
-  border-radius: 0;
-  background: var(--surface-inset);
+  padding: 2px 0 2px 12px;
+  border: 0;
+  border-left: 2px solid var(--accent);
+  background: transparent;
   color: var(--muted);
   font-size: 12px;
-  line-height: 1.65;
+  line-height: 1.7;
 }
 
 .coverageLayout {
@@ -214,10 +222,10 @@
 }
 
 .limitations {
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--surface-inset);
+  padding: 16px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
 }
 
 .limitations strong {
@@ -233,7 +241,7 @@
   margin: 0;
   color: var(--muted);
   font-size: 12px;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 .limitations ul {
@@ -245,39 +253,39 @@
 }
 
 .warningText {
-  color: var(--warning) !important;
+  color: var(--warning);
   font-weight: 600;
 }
 
 .toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(126px, 0.35fr)) auto;
+  grid-template-columns: minmax(220px, 1.6fr) repeat(2, minmax(140px, 0.6fr)) auto;
   align-items: end;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 16px;
+  padding: 16px 0;
   border-bottom: 1px solid var(--line);
-  background: var(--surface-inset);
+  background: transparent;
 }
 
 .searchField {
   display: flex;
-  min-height: var(--ui-control-height, 36px);
+  min-width: 0;
+  min-height: 40px;
   align-items: center;
   gap: 8px;
-  padding: 0 11px;
-  border: 1px solid var(--ui-control-border, var(--line));
+  padding: 0 0 8px;
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
   border-radius: 0;
-  background: var(--ui-control-bg, var(--surface-raised));
+  background: transparent;
   color: var(--muted);
-  transition:
-    border-color var(--motion-fast, 120ms) ease,
-    box-shadow var(--motion-fast, 120ms) ease;
+  transition: border-color var(--motion-fast, 120ms) ease;
 }
 
 .searchField:focus-within {
-  border-color: var(--accent);
-  outline: 0;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  border-bottom-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 :global(.glass-workspace) .searchField input {
@@ -285,10 +293,10 @@
   min-width: 0;
   min-height: 0;
   padding: 0;
-  border: 0 !important;
-  outline: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   color: var(--ink);
   font-size: 14px;
 }
@@ -296,70 +304,77 @@
 .compactField {
   display: grid;
   min-width: 0;
-  gap: 5px;
+  gap: 6px;
 }
 
 .compactField > span {
   color: var(--muted);
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
   font-weight: 500;
   line-height: 1.4;
+  letter-spacing: var(--tracking-meta);
+  text-transform: uppercase;
 }
 
 :global(.glass-workspace) .compactField select,
-:global(.glass-workspace) .logFilters input,
-:global(.glass-workspace) .logFilters select,
 :global(.glass-workspace) .pagination select {
   width: 100%;
-  min-height: var(--ui-control-height, 36px);
-  padding: 7px 10px;
-  border: 1px solid var(--ui-control-border, var(--line));
+  min-height: 40px;
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
   border-radius: 0;
-  background-color: var(--ui-control-bg, var(--surface-raised));
+  background: transparent;
   color: var(--ink);
   font: inherit;
   font-size: 13px;
   line-height: 1.5;
 }
 
-.tablePanel {
-  min-width: 0;
-  overflow: hidden;
+:global(.glass-workspace) .compactField select:focus-visible,
+:global(.glass-workspace) .pagination select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
+/* Tables scroll inside their own frame so the page never widens. */
 .tableScroll {
   width: 100%;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table {
   width: 100%;
-  min-width: 800px;
+  min-width: 720px;
   border-collapse: collapse;
   color: var(--ink);
   font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
 .table th {
-  position: sticky;
-  z-index: 1;
-  top: 0;
   padding: 10px 14px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface-inset);
+  border-bottom: var(--rule);
+  background: transparent;
   color: var(--muted);
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
   font-weight: 500;
-  letter-spacing: 0;
+  letter-spacing: var(--tracking-meta);
   text-align: left;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
 .table td {
-  padding: 11px 14px;
+  height: 44px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--line);
   vertical-align: top;
+  line-height: 1.5;
 }
 
 .table tbody tr:last-child td {
@@ -416,100 +431,109 @@
 
 .avatar {
   display: grid;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
   place-items: center;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 0;
-  background: var(--surface-inset);
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 600;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .grantList,
 .rowActions,
-.capabilities {
+.capabilities > div {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
 }
 
-.grantList > span {
-  padding: 3px 8px;
+.grantList > span,
+.capabilities span {
+  padding: 2px 6px;
   border: 1px solid var(--line);
   border-radius: 0;
-  background: var(--surface-inset);
-  color: var(--ink);
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1.5;
 }
 
 .rowActions {
   min-width: 210px;
-  gap: 2px 8px;
+  gap: 4px 12px;
 }
 
 :global(.glass-workspace) .rowActions :global(.text-button),
 :global(.glass-workspace) .rowActions button {
-  min-height: var(--ui-control-height, 36px);
-  padding: 4px 6px;
+  min-height: 28px;
+  padding: 0 10px;
   font-size: 12px;
 }
 
 .protectedText {
   display: inline-flex;
+  min-height: 28px;
   align-items: center;
-  min-height: 32px;
   gap: 6px;
   color: var(--muted);
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
 }
 
 .mutedCell {
-  color: var(--muted) !important;
+  color: var(--muted);
   font-size: 12px;
 }
 
 .pagination {
   display: flex;
+  min-height: 56px;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 56px;
-  padding: 9px 14px;
+  padding: 12px 0;
   border-top: 1px solid var(--line);
-  background: var(--surface-inset);
+  background: transparent;
   color: var(--muted);
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
 }
 
 .paginationControls {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
 }
 
 .paginationControls label {
   min-width: 116px;
-}
-
-.paginationControls select {
-  min-height: var(--ui-control-height, 36px);
-  padding: 6px 8px;
+  font-size: 12px;
 }
 
 :global(.glass-workspace) .paginationControls button {
   display: grid;
-  width: var(--ui-control-height, 36px);
-  min-width: var(--ui-control-height, 36px);
-  height: var(--ui-control-height, 36px);
-  min-height: var(--ui-control-height, 36px);
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
   place-items: center;
   padding: 0;
+  border: 1px solid var(--line-strong);
   border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  transition:
+    background-color var(--motion-fast, 120ms) ease,
+    color var(--motion-fast, 120ms) ease;
 }
 
 .pageIndicator {
@@ -521,20 +545,20 @@
   text-align: center;
 }
 
+/* Empty and loading states are typography plus whitespace, not illustrations. */
 .emptyState,
 .loadingState {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 104px;
-  margin: 12px;
-  padding: 18px;
-  border: 1px dashed var(--line-strong);
-  border-radius: 0;
-  background: var(--surface-inset);
+  min-height: 0;
+  align-items: flex-start;
+  gap: 14px;
+  margin: 0;
+  padding: 48px 0;
+  border: 0;
+  background: transparent;
   color: var(--muted);
   font-size: 13px;
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
 .emptyState > div {
@@ -543,10 +567,13 @@
 
 .emptyState strong {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   color: var(--ink);
-  font-size: 14px;
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
+  font-weight: 500;
+  letter-spacing: var(--tracking-meta);
+  text-transform: uppercase;
 }
 
 .emptyState p {
@@ -555,59 +582,68 @@
 
 .emptyIcon {
   display: grid;
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
   place-items: center;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--surface-raised);
+  border: 0;
+  background: transparent;
   color: var(--muted);
 }
 
-.loadingMark {
-  width: 20px;
-  height: 20px;
-  flex: 0 0 20px;
-  border: 2px solid var(--line-strong);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: adminSpin 900ms linear infinite;
+.loadingState {
+  align-items: center;
+  padding: 32px 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
 }
 
-@keyframes adminSpin {
-  to {
-    transform: rotate(360deg);
+.loadingMark {
+  width: 48px;
+  height: 2px;
+  flex: 0 0 48px;
+  border: 0;
+  border-radius: 0;
+  background: var(--accent);
+  transform-origin: left center;
+  animation: adminPulse 1.2s var(--ease-editorial, ease) infinite;
+}
+
+@keyframes adminPulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scaleX(0.25);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
   }
 }
 
 .inlineNotice {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  margin: 0 12px 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--accent);
-  border-radius: 0;
-  background: var(--surface-inset);
-  color: var(--ink);
-  font-size: 12px;
-  line-height: 1.6;
+  margin: 0 0 16px;
 }
 
 :global(.glass-workspace .panel).createPanel {
-  margin: 0 0 16px;
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
-  overflow: hidden;
+  margin: 0 0 24px;
 }
 
 .createGrid,
 .editGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  padding: 16px;
+  gap: 16px 24px;
+}
+
+.createGrid {
+  padding: 20px 0 0;
+}
+
+.editGrid {
+  padding: 20px 24px;
 }
 
 .createGrid > .datasetChoices,
@@ -617,7 +653,7 @@
 }
 
 .panelSubtitle {
-  margin: 0 0 2px;
+  margin: 0;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.6;
@@ -626,31 +662,44 @@
 .requiredMark {
   /* Label rows use flex + 8px gap, so pull the star back next to the label text. */
   margin-left: -5px;
-  color: var(--danger);
+  color: var(--accent);
   font-weight: 600;
 }
 
 .fieldError {
   margin: 0;
   color: var(--danger);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 400;
-  line-height: 1.6;
+  line-height: 1.5;
+}
+
+:global(.glass-workspace) input[aria-invalid="true"],
+:global(.glass-workspace) select[aria-invalid="true"] {
+  border-bottom-color: var(--danger);
 }
 
 .datasetChoices {
   min-width: 0;
   margin: 0;
-  padding: 12px;
-  border: 1px solid var(--line);
+  padding: 14px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
   border-radius: 0;
 }
 
+.datasetChoices:disabled {
+  opacity: 0.5;
+}
+
 .datasetChoices legend {
-  padding: 0 6px;
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 600;
+  padding: 0 0 8px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
+  font-weight: 500;
+  letter-spacing: var(--tracking-meta);
+  text-transform: uppercase;
 }
 
 .datasetChoices > :global(.form-help) {
@@ -659,10 +708,10 @@
 
 .checkRow {
   display: flex;
+  min-height: 40px;
   align-items: flex-start;
   gap: 10px;
-  min-height: 40px;
-  padding: 8px;
+  padding: 8px 0;
   border-bottom: 1px solid var(--line);
   border-radius: 0;
   cursor: pointer;
@@ -700,44 +749,48 @@
 }
 
 .formActions {
-  padding: 12px 16px;
-  border-top: 1px solid var(--line);
-  background: var(--surface-inset);
+  padding: 16px 0 0;
+  border-top: var(--rule);
+  background: transparent;
 }
 
+/* Native dialogs are the only floating layers; everything else is flat. */
 .dialog {
-  width: min(560px, calc(100vw - 32px));
+  width: min(560px, calc(100vw - 24px));
   max-height: min(82svh, 760px);
   margin: auto;
   padding: 0;
   overflow: auto;
-  border: 1px solid var(--line);
+  border: var(--rule);
   border-radius: 0;
-  background: var(--surface-raised);
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   color: var(--ink);
-  box-shadow: var(--surface-shadow);
+  box-shadow: none;
 }
 
 .dialogWide {
-  width: min(720px, calc(100vw - 32px));
+  width: min(720px, calc(100vw - 24px));
 }
 
 .dialog::backdrop {
-  background: color-mix(in srgb, var(--ink) 38%, transparent);
-  backdrop-filter: blur(3px);
+  background: rgba(35, 35, 41, 0.4);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 :root[data-theme="dark"] .dialog::backdrop {
-  background: color-mix(in srgb, var(--surface-inset) 86%, transparent);
+  background: color-mix(in srgb, var(--surface-inset) 82%, transparent);
 }
 
 .dialogHeader {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 18px;
+  padding: 20px 24px;
   border-bottom: 1px solid var(--line);
-  background: var(--surface-raised);
+  background: transparent;
 }
 
 .dialogHeader > div {
@@ -747,7 +800,8 @@
 .dialogHeader h2 {
   margin: 2px 0 6px;
   color: var(--ink);
-  font-size: 19px;
+  font-family: var(--font-sans);
+  font-size: 20px;
   font-weight: 600;
   line-height: 1.3;
   letter-spacing: -0.01em;
@@ -762,95 +816,100 @@
 
 .dialogIcon {
   display: grid;
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
   place-items: center;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 0;
-  background: var(--surface-inset);
-  color: var(--ink);
+  background: transparent;
+  color: var(--muted);
 }
 
 .dangerIcon {
-  border-color: color-mix(in srgb, var(--danger) 40%, var(--line));
-  background: color-mix(in srgb, var(--danger) 10%, var(--surface-raised));
   color: var(--danger);
 }
 
 .dialogActions {
-  padding: 14px 18px 18px;
+  padding: 16px 24px 20px;
+  border-top: var(--rule);
 }
 
 .dangerButton {
-  min-height: var(--ui-control-height, 36px);
+  min-height: 36px;
   padding: 7px 14px;
   border: 1px solid var(--danger);
   border-radius: 0;
-  background: var(--danger);
-  color: var(--paper);
+  background: transparent;
+  color: var(--danger);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
+  transition:
+    background-color var(--motion-fast, 120ms) ease,
+    color var(--motion-fast, 120ms) ease;
 }
 
 .dangerButton:disabled {
-  opacity: 0.55;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .passwordReveal {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 18px;
+  gap: 12px;
+  padding: 20px 24px;
 }
 
 .passwordReveal code {
   min-width: 0;
   flex: 1;
-  padding: 12px;
+  padding: 14px;
   overflow-x: auto;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 0;
-  background: var(--surface-inset);
+  background: transparent;
   color: var(--ink);
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 14px;
+  font-family: var(--font-mono);
+  font-size: 18px;
+  letter-spacing: 0.04em;
   white-space: nowrap;
   user-select: all;
 }
 
+/* Dataset directory is a ruled list, not a card wall. */
 .datasetGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: 1fr;
+  gap: 0;
 }
 
-.datasetCard {
-  position: relative;
+:global(.glass-workspace) .datasetCard {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--line);
+  padding: 20px 0;
+  border: 0;
+  border-top: var(--rule);
   border-radius: 0;
-  background: var(--surface-raised);
+  background: transparent;
 }
 
 .datasetCard[data-enabled="false"] {
-  background: var(--surface-inset);
+  background: transparent;
 }
 
 .datasetHeader {
   display: flex;
   align-items: flex-start;
-  gap: 11px;
-  padding: 15px;
+  gap: 12px;
+  padding: 0 0 12px;
   border-bottom: 1px solid var(--line);
 }
 
 .datasetHeader > div:last-child {
   min-width: 0;
+  flex: 1;
 }
 
 .datasetHeader h3 {
@@ -858,6 +917,7 @@
   color: var(--ink);
   font-size: 16px;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .datasetHeader p {
@@ -870,27 +930,27 @@
 
 .datasetIcon {
   display: grid;
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
   place-items: center;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 0;
-  background: var(--surface-inset);
-  color: var(--accent-ink);
+  background: transparent;
+  color: var(--muted);
 }
 
 .datasetFacts {
   display: grid;
   margin: 0;
-  padding: 4px 15px;
+  padding: 4px 0;
 }
 
 .datasetFacts > div {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  padding: 8px 0;
+  padding: 9px 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -904,22 +964,25 @@
   color: var(--ink);
   font-size: 12px;
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
   text-align: right;
   overflow-wrap: anywhere;
 }
 
 .capabilities {
-  padding: 11px 15px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
 }
 
-.capabilities span {
-  padding: 3px 8px;
-  border: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--surface-inset);
-  color: var(--ink);
-  font-size: 11px;
-  line-height: 1.5;
+.capabilities > strong {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
+  font-weight: 500;
+  letter-spacing: var(--tracking-meta);
+  text-transform: uppercase;
 }
 
 .datasetFooter {
@@ -928,73 +991,64 @@
   justify-content: space-between;
   gap: 12px;
   margin-top: auto;
-  padding: 12px 15px;
+  padding: 12px 0 0;
   border-top: 1px solid var(--line);
-  background: var(--surface-inset);
+  background: transparent;
 }
 
 :global(.glass-workspace) .switchButton {
   display: inline-flex;
   min-width: 96px;
-  min-height: var(--ui-control-height, 36px);
+  min-height: 36px;
   align-items: center;
   justify-content: center;
   gap: 7px;
   padding: 7px 12px;
-  border: 1px solid var(--ui-control-border, var(--line));
+  border: 1px solid var(--line-strong);
   border-radius: 0;
-  background: var(--ui-control-bg, var(--surface-raised));
+  background: transparent;
   color: var(--ink);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
+  transition:
+    background-color var(--motion-fast, 120ms) ease,
+    color var(--motion-fast, 120ms) ease,
+    border-color var(--motion-fast, 120ms) ease;
 }
 
 .switchButton span {
   width: 8px;
   height: 8px;
   flex: 0 0 8px;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--muted);
 }
 
 .switchButton[data-checked="true"] {
-  border-color: color-mix(in srgb, var(--success) 45%, var(--line));
+  border-color: var(--live);
+  color: var(--live);
 }
 
 .switchButton[data-checked="true"] span {
-  background: var(--success);
+  background: var(--live);
 }
 
 .switchButton:disabled {
-  opacity: 0.55;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .logFilters {
   display: grid;
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 14px;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 20px 0 0;
 }
 
 .filterGrid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(120px, 1fr));
-  gap: 10px;
-}
-
-.logFilters label {
-  display: grid;
-  min-width: 0;
-  gap: 5px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.4;
-}
-
-.logFilters input {
-  font-size: 13px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
 }
 
 .filterActions {
@@ -1004,16 +1058,18 @@
 }
 
 .logTime {
-  color: var(--ink);
-  font-size: 12px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
   white-space: nowrap;
 }
 
 .summaryList {
   display: grid;
-  gap: 4px;
   max-width: 320px;
+  gap: 4px;
   color: var(--ink);
   font-size: 12px;
   line-height: 1.5;
@@ -1027,35 +1083,64 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  padding: 11px 14px;
+  gap: 8px;
+  padding: 14px 0;
   border-top: 1px solid var(--line);
-  background: var(--surface-inset);
+  background: transparent;
   color: var(--muted);
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
   line-height: 1.5;
 }
 
 .coverageStrip > strong {
   margin-right: 4px;
   color: var(--ink);
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: var(--tracking-meta);
+  text-transform: uppercase;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  :global(.glass-workspace) .switchButton:hover:not(:disabled),
-  :global(.glass-workspace) .rowActions button:hover:not(:disabled) {
-    background: var(--ui-control-hover, var(--surface-inset));
+  :global(.glass-workspace) .switchButton:hover:not(:disabled) {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--paper);
   }
 
-  :global(.glass-workspace) .table tbody tr:hover {
-    background: var(--ui-control-hover, var(--surface-inset));
+  :global(.glass-workspace) .paginationControls button:hover:not(:disabled) {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  :global(.glass-workspace) .table tbody tr:hover td {
+    background: var(--surface-inset);
+  }
+
+  .dangerButton:hover:not(:disabled) {
+    background: var(--danger);
+    color: var(--paper);
+  }
+
+  .datasetCard:hover .datasetHeader h3 {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    text-decoration-color: var(--accent);
   }
 }
 
 @media (max-width: 1120px) {
   .metricGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metricCard:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .metricCard:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
   }
 }
 
@@ -1065,12 +1150,8 @@
     grid-template-columns: 1fr;
   }
 
-  .filterGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   .toolbar {
-    grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(120px, 0.35fr));
+    grid-template-columns: minmax(200px, 1fr) repeat(2, minmax(130px, 0.6fr));
   }
 
   .toolbar > :global(.text-button) {
@@ -1084,7 +1165,7 @@
   .introWithAction {
     align-items: flex-start;
     flex-direction: column;
-    gap: 13px;
+    gap: 16px;
   }
 
   .windowControl {
@@ -1094,17 +1175,26 @@
   }
 
   :global(.glass-workspace) .windowControl :global(.text-button) {
-    min-height: 44px;
+    min-height: 40px;
     justify-content: center;
   }
 
-  .metricGrid,
-  .datasetGrid {
+  .metricGrid {
     grid-template-columns: 1fr;
   }
 
+  .metricCard,
+  .metricCard:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .metricCard + .metricCard {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
   .metricCard {
-    min-height: 112px;
+    padding: 16px 0;
   }
 
   .requestBreakdown {
@@ -1113,6 +1203,7 @@
 
   .requestBreakdown > div {
     grid-template-columns: 1fr auto;
+    padding: 12px 0;
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
@@ -1127,7 +1218,7 @@
 
   .toolbar {
     grid-template-columns: 1fr;
-    padding: 12px;
+    padding: 12px 0;
   }
 
   .toolbar > :global(.text-button) {
@@ -1138,6 +1229,14 @@
   .createGrid,
   .editGrid {
     grid-template-columns: 1fr;
+  }
+
+  .createGrid {
+    padding: 16px 0 0;
+  }
+
+  .editGrid {
+    padding: 16px;
   }
 
   .createGrid > .datasetChoices,
@@ -1157,7 +1256,7 @@
   :global(.glass-workspace) .dialogActions > button,
   :global(.glass-workspace) .filterActions > button {
     width: 100%;
-    min-height: 44px;
+    min-height: 40px;
   }
 
   .pagination {
@@ -1175,8 +1274,6 @@
   }
 
   :global(.glass-workspace) .compactField select,
-  :global(.glass-workspace) .logFilters input,
-  :global(.glass-workspace) .logFilters select,
   :global(.glass-workspace) .pagination select,
   .searchField {
     min-height: 40px;
@@ -1189,59 +1286,9 @@
     min-height: 40px;
   }
 
-  :global(.glass-workspace) .rowActions :global(.text-button),
   :global(.glass-workspace) .rowActions button,
   .protectedText {
-    min-height: 44px;
-  }
-
-  /* Narrow screens turn records into readable cards instead of a squeezed grid. */
-  .tableScroll {
-    overflow: visible;
-  }
-
-  .table {
-    display: block;
-    min-width: 0;
-  }
-
-  .table thead {
-    display: none;
-  }
-
-  .table tbody {
-    display: grid;
-    gap: 10px;
-    padding: 10px;
-  }
-
-  .table tr {
-    display: grid;
-    border: 1px solid var(--line);
-    border-radius: 0;
-    background: var(--surface-raised);
-    overflow: hidden;
-  }
-
-  .table td {
-    display: grid;
-    grid-template-columns: minmax(88px, 0.34fr) minmax(0, 0.66fr);
-    gap: 10px;
-    min-width: 0;
-    padding: 10px 12px;
-  }
-
-  .table td::before {
-    align-self: start;
-    color: var(--muted);
-    content: attr(data-label);
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0;
-  }
-
-  .table td > * {
-    min-width: 0;
+    min-height: 40px;
   }
 
   .accountIdentity,
@@ -1254,18 +1301,22 @@
   }
 
   .rowActions {
-    gap: 1px 12px;
+    gap: 2px 12px;
   }
 
-  .table td > small,
-  .table td > span > small,
-  .table td > div > small {
-    margin-top: 2px;
+  .datasetHeader {
+    flex-wrap: wrap;
+  }
+
+  .datasetFooter {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .passwordReveal {
     align-items: stretch;
     flex-direction: column;
+    padding: 16px;
   }
 
   .passwordReveal code {
@@ -1273,25 +1324,21 @@
   }
 
   .dialog {
-    width: 100vw;
-    max-width: 100vw;
+    width: calc(100vw - 24px);
     max-height: 92svh;
-    margin: auto 0 0;
-    border-radius: 0;
-    border-bottom: 0;
-    box-shadow: none;
+    margin: auto;
   }
 
   .dialogWide {
-    width: 100vw;
+    width: calc(100vw - 24px);
   }
 
   .dialogHeader {
-    padding: 15px;
+    padding: 16px;
   }
 
   .dialogActions {
-    padding: 12px 15px 16px;
+    padding: 12px 16px 16px;
   }
 
   .emptyState {
@@ -1302,13 +1349,16 @@
 
 @media (prefers-reduced-motion: reduce) {
   .loadingMark {
-    animation-duration: 1800ms;
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
 
   .table tbody tr,
   .searchField,
   .switchButton,
-  .rowActions button {
+  .dangerButton,
+  .paginationControls button {
     transition: none;
   }
 }
