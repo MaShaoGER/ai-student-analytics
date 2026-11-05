@@ -9,7 +9,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
 } from "react";
-import { useInView } from "motion/react";
+import { useInView, useScroll, useTransform, motion } from "motion/react";
 import type { ConceptCourse, ConceptMetric } from "@/lib/analysis/concept-explorer";
 import { CONCEPT_METRICS } from "@/lib/analysis/concept-explorer";
 import { CONCEPT_LABELS } from "@/lib/exploration/concepts";
@@ -183,6 +183,16 @@ export function HomeShowcase({ courses, term, totalCourses, onPick }: {
   onPick: Pick;
 }) {
   const { enabled, reduced } = useMotionPreferences();
+  const heroRef = useRef<HTMLDivElement | null>(null);
+  const leadRef = useRef<HTMLDivElement | null>(null);
+
+  // Light parallax: hero drifts slower than narrative when sticky is active.
+  // Disabled on narrow screens (≤900px) and short screens (≤660px) where
+  // sticky is also disabled, and when motion is reduced or off.
+  const { scrollY } = useScroll({ target: leadRef });
+  const parallaxY = useTransform(scrollY, [0, 1000], [0, -40]);
+  const shouldParallax = enabled && !reduced;
+
   const open = courses.filter((course) => !course.suppressed);
   const students = open.reduce((sum, course) => sum + (course.count ?? 0), 0);
   const scores = open.flatMap((course) => course.metrics.score.value === null ? [] : [{ course, value: course.metrics.score.value }]);
@@ -264,8 +274,12 @@ export function HomeShowcase({ courses, term, totalCourses, onPick }: {
 
   return (
     <section className={styles.showcase} aria-label="课程全景导读" data-navigation-motion data-motion={enabled && !reduced ? "on" : "off"}>
-      <div className={styles.lead}>
-        <div className={styles.hero}>
+      <div ref={leadRef} className={styles.lead}>
+      <motion.div
+        ref={heroRef}
+        className={styles.hero}
+        style={shouldParallax ? { y: parallaxY } : undefined}
+      >
           <p className={styles.kicker}><span aria-hidden />{term} · 学习数据全景</p>
           <h1 className={styles.headline} tabIndex={-1} data-scene-heading>
             <MaskRise className={styles.headlineLine}>{`${totalCourses} 门课`}</MaskRise>
@@ -274,7 +288,7 @@ export function HomeShowcase({ courses, term, totalCourses, onPick }: {
           </h1>
           <p className={styles.lede}>从每门课的均分出发，点一颗星就能走进它的出勤、作业与成绩。星图与六把尺子都可以直接点击，去向和主图完全一致。</p>
           <p className={styles.cue}><span className={styles.cueLine} aria-hidden />向下滚动：四个数字，一张星图，六把尺子</p>
-        </div>
+      </motion.div>
 
         <div className={styles.narrative}>
           <section className={styles.statsSection} aria-label="数据规模">

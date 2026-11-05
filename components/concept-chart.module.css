@@ -47,13 +47,52 @@
   stroke: rgba(36, 36, 54, 0.1);
   stroke-width: 1;
 }
-.void { fill: var(--muted); font-size: 12px; }
+/* Withheld (n < 3) marks carry a diagonal hatch so grey reads as deliberate,
+   not as a mark that failed to load. Ground and line reuse the void greys. */
+.hatch { pointer-events: none; }
+.hatchGround { fill: rgba(208, 208, 216, 0.45); }
+.hatchLine { stroke: rgba(36, 36, 54, 0.22); stroke-width: 1; }
+/* The note sits on top of the hatch: a paper halo keeps the words crisp. */
+.void {
+  fill: var(--muted);
+  font-size: 12px;
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
 .voidDot {
   fill: rgba(208, 208, 216, 0.4);
   stroke: rgba(36, 36, 54, 0.18);
   stroke-width: 1;
   stroke-dasharray: 3 2;
 }
+
+/* Withheld tooltip: sheet type at 11px, warm paper, one accent hairline, square corners.
+   Pointer only; a withheld datum shows its note as visible text instead of a native
+   <title>, so no second browser bubble stacks on top of this one. Compact previews,
+   which print no note text, keep their <title>. */
+.tipFrame { overflow: hidden; opacity: 0; pointer-events: none; transition: opacity 150ms ease-out; }
+.datum:hover > .tipFrame,
+.datum:focus-within > .tipFrame { opacity: 1; }
+.tip {
+  display: block;
+  box-sizing: border-box;
+  width: max-content;
+  height: 26px;
+  padding: 4px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 0;
+  background: var(--surface-raised);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 16px;
+  white-space: nowrap;
+}
+.tipFrame[data-side="left"] .tip { margin-left: auto; }
 
 .glowLine { fill: none; stroke: var(--accent); stroke-width: 6; opacity: 0.14; filter: blur(4px); }
 .line { fill: none; stroke: var(--accent); stroke-width: 2; }
@@ -93,10 +132,24 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .track, .hit, .bar, .label, .value, .dot { transition: none; }
+  .track, .hit, .bar, .label, .value, .dot, .tipFrame { transition: none; }
 }
+/* Print: hairlines gain one pixel and every label lands on 12px, because paper
+   and photocopies lose the thinnest geometry first. Tooltips never print. */
 @media print {
   .glowLine { display: none; }
   .viewport { overflow: visible; }
   .viewport > .chart { min-width: 0; }
+  .bar { opacity: 1; }
+  .grid { stroke-width: 2; }
+  .stem { stroke-width: 2; }
+  .line { stroke-width: 3; }
+  .dot { stroke-width: 3; }
+  .area { stroke-width: 2.5; }
+  .voidBox { stroke-width: 2; }
+  .voidDot { stroke-width: 2; stroke-dasharray: 4 3; }
+  .hatchLine { stroke-width: 2; }
+  .label,
+  .value { font-size: 12px; }
+  .tipFrame { display: none; }
 }

@@ -1,6 +1,10 @@
+/* Conversation transcript uses the same horizontal margins and reading width
+   as the data explorer, maintaining consistent four-corner alignment. */
 .conversation {
   min-width: 0;
-  padding: 24px 28px 0;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: clamp(32px, 5vh, 56px) clamp(24px, 4.5vw, 64px) 0;
 }
 .executionSteps,
 .citations {
@@ -754,6 +758,32 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
     padding-inline: 8px;
   }
 }
+
+/* Conversation workspace heading with report trigger. */
+.workspaceHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  margin: 0;
+  padding: 16px clamp(24px, 4.5vw, 64px);
+  border-bottom: 0;
+}
+.workspaceHeading h1 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: var(--ink);
+}
+@media (max-width: 600px) {
+  .workspaceHeading {
+    flex-direction: row;
+    justify-content: flex-end;
+    padding: 12px 16px;
+  }
+}
 /* Reduced motion: the chevron swap is instant; folding itself is a plain
    show/hide with no entrance or layout animation. */
 @media (prefers-reduced-motion: reduce) {
@@ -1246,7 +1276,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 /* The conversation reads on the flat page surface: 14px reading text, a 22px
    title and hairlines; the only raised element is the composer dock. */
 :global(.glass-workspace) .conversation {
-  --conversation-inset: clamp(20px, 3vw, 48px);
+  --conversation-inset: clamp(24px, 4.5vw, 64px);
   --history-offset: 0px;
   border: 0;
   border-radius: 0;
@@ -1261,9 +1291,9 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   padding: 0 0 16px;
 }
 :global(.glass-workspace) .formalHeader h1 {
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-size: clamp(32px, 3.8vw, 56px);
+  font-weight: var(--weight-display);
+  letter-spacing: var(--tracking-display);
   margin: 6px 0;
 }
 :global(.glass-workspace) .formalHeader > div > span {
@@ -1475,27 +1505,6 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   margin-right: 1px;
   border-radius: 0;
 }
-/* With history collapsed the transcript, header and composer centre as one
-   reading column. Percentages resolve against the conversation width for both
-   the padding and the absolutely positioned dock. */
-:global(.glass-workspace [data-history-collapsed="true"]) .conversation {
-  --conversation-inset: max(clamp(20px, 3vw, 48px), calc((100% - 920px) / 2));
-  /* Balance the 52px collapsed rail so the column centres in the panel. */
-  --rail-balance: 52px;
-  padding-right: calc(var(--conversation-inset) + var(--rail-balance));
-}
-:global(.glass-workspace [data-history-collapsed="true"]) .composerDock[data-collapsed] {
-  right: calc(var(--conversation-inset) + var(--rail-balance));
-  width: calc(100% - 2 * var(--conversation-inset) - var(--rail-balance));
-}
-@media (max-width: 900px) {
-  :global(.glass-workspace [data-history-collapsed="true"]) .conversation {
-    --rail-balance: 0px;
-  }
-  :global(.glass-workspace) .readingArea {
-    margin-top: 48px;
-  }
-}
 @media (max-width: 600px) {
   :global(.glass-workspace) .conversation {
     --conversation-inset: 14px;
@@ -1675,11 +1684,6 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   border-radius: 0;
   background: var(--surface-raised);
   box-shadow: none;
-}
-/* The collapsed-rail rule centres the expanded dock with a calculated width;
-   the folded handle stays a square anchored at the same right edge. */
-:global(.glass-workspace [data-history-collapsed="true"]) .composerDock[data-collapsed="true"] {
-  width: 46px;
 }
 :global(.glass-workspace) .composerDock[data-collapsed="true"]:focus-within {
   outline: 2px solid var(--accent);

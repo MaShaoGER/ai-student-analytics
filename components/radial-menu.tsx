@@ -63,7 +63,7 @@ export function RadialMenu({ origin, eyebrow, title, reading, options, motion, o
     });
   };
 
-  const leave = (action: () => void) => {
+  const leave = (action: () => void, selectedIndex?: number) => {
     if (closing.current) return;
     closing.current = true;
     exitAction.current = action;
@@ -74,17 +74,20 @@ export function RadialMenu({ origin, eyebrow, title, reading, options, motion, o
     // Entry animations use fill-mode. Replacing them with transitions would snap
     // to the hidden end state; capture the visible frame for an interruptible exit.
     const animated = ["veil", "legend", "tether", "originDot", "halo", "ringFaint", "ring", "spoke", "hub", "petal"];
-    dialog.current?.querySelectorAll<HTMLElement | SVGElement>(animated.map((name) => `.${styles[name]}`).join(",")).forEach((element) => {
+    dialog.current?.querySelectorAll<HTMLElement | SVGElement>(animated.map((name) => `.${styles[name]}`).join(",")).forEach((element, index) => {
       const current = getComputedStyle(element);
       element.style.setProperty("--exit-opacity", current.opacity);
       element.style.setProperty("--exit-transform", current.transform);
       element.style.setProperty("--exit-dash", current.strokeDashoffset);
+      if (element.classList.contains(styles.petal) && selectedIndex !== undefined && index === selectedIndex) {
+        element.style.setProperty("--exit-selected", "1");
+      }
     });
     setPhase("closing");
     exitTimer.current = window.setTimeout(() => {
       exitTimer.current = null;
       flushExit();
-    }, EXIT_MS);
+    }, selectedIndex !== undefined ? 200 : EXIT_MS);
   };
 
   useLayoutEffect(() => {
@@ -227,7 +230,7 @@ export function RadialMenu({ origin, eyebrow, title, reading, options, motion, o
               <li key={option.key} className={styles.petal} data-side={right ? "right" : "left"} data-kind={option.kind}
                 style={{ ...(compact ? {} : { left: x, top: y, width: petalWidth }), "--dx": `${cx - x}px`, "--dy": `${cy - y}px`, "--k": index } as CSSProperties}>
                 <button type="button" data-petal disabled={option.disabled} aria-current={option.current || undefined}
-                  onClick={() => leave(option.current ? onClose : option.onSelect)}>
+                  onClick={() => { const idx = index; leave(option.current ? onClose : option.onSelect, option.current ? undefined : idx); }}>
                   <span className={styles.node} aria-hidden />
                   <span className={styles.text}>
                     <span className={styles.tag}>{option.kind === "topic" ? "新主题" : "同数据 · 画法"}{option.current ? " · 当前" : ""}</span>

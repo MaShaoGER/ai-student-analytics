@@ -7,13 +7,10 @@ import { MotionToggle, useMotionPreferences } from "@/components/ui/motion-prefe
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { AnalysisResultView } from "@/components/analysis-result";
 import { Icon } from "@/components/app-icons";
 import { conceptHref, parseConceptLocation, type ConceptLocation } from "@/lib/exploration/concepts";
 import { LoginScreen } from "@/components/login-screen";
 import { ThemeToggle, useTheme } from "@/components/ui/theme-provider";
-import { SegmentedControl } from "@/components/ui/segmented-control";
-import { ScoreDistribution } from "@/components/score-distribution";
 import { ConversationWorkspace, type ConversationTurn } from "@/components/ai-conversation";
 import experienceStyles from "@/components/conversation-experience.module.css";
 import conversationStyles from "@/components/ai-conversation.module.css";
@@ -31,8 +28,6 @@ import type {
   ConversationSummary,
 } from "@/lib/conversations/types";
 import { readChatStream } from "@/lib/ai/chat-stream";
-import { createPlan } from "@/lib/analysis/plan";
-import { METRICS } from "@/lib/analysis/metrics";
 import { describeChatContext } from "@/lib/ai/context-label";
 import {
   analysisDimensionLabel,
@@ -40,14 +35,7 @@ import {
   analysisSourceLabel,
   downloadAnalysisFile,
 } from "@/lib/exports/analysis";
-import type {
-  AnalysisPlan,
-  AnalysisResult,
-  DataSource,
-  DatasetProfile,
-  Metric,
-} from "@/lib/analysis/types";
-import type { ChartViewType } from "@/lib/analysis/visualization";
+import type { AnalysisResult, DataSource, DatasetProfile } from "@/lib/analysis/types";
 import {
   capabilitiesFor,
   datasetAccessKey,
@@ -56,39 +44,6 @@ import {
   sessionScopeKey,
 } from "@/lib/client-capabilities";
 import type { SessionUser } from "@/lib/client-types";
-
-const CourseRelations = dynamic(
-  () => import("@/components/course-relations").then((module) => module.CourseRelations),
-  {
-    loading: () => (
-      <div className="workbench-loading" role="status">
-        正在打开学科关联…
-      </div>
-    ),
-  },
-);
-
-const CoursePanorama = dynamic(
-  () => import("@/components/course-panorama").then((module) => module.CoursePanorama),
-  {
-    loading: () => (
-      <div className="workbench-loading" role="status">
-        正在打开学科全景…
-      </div>
-    ),
-  },
-);
-
-const ChartStudio = dynamic(
-  () => import("@/components/chart-studio").then((module) => module.ChartStudio),
-  {
-    loading: () => (
-      <div className="workbench-loading" role="status">
-        正在打开图表工坊…
-      </div>
-    ),
-  },
-);
 
 const AdminPanel = dynamic(
   () => import("@/components/admin-panel").then((module) => module.AdminPanel),
@@ -104,8 +59,11 @@ const DataExplorer = dynamic(
   () => import("@/components/data-explorer").then((module) => module.DataExplorer),
   { loading: () => <p role="status">正在打开数据浏览…</p> },
 );
-type View = "overview" | "analysis" | "data" | "reports" | "admin" | "account";
-type AnalysisMode = "metrics" | "question";
+type View = "overview" | "analysis" | "reports" | "admin" | "account";
+/** Two primary workspaces; subordinate pages inherit the primary that opened them. */
+type Primary = "explore" | "conversation";
+/** Direction of the workspace transition shared with CSS. */
+type ViewTransition = "primary-forward" | "primary-back" | "deeper" | "back";
 type AIStatus = { configured: boolean; enabled: boolean; model: string | null };
 type SessionAnalysis = { key: string; result: AnalysisResult };
 type FailedAsk = { question: string; code: string | null; retryable: boolean };
@@ -167,10 +125,9 @@ function requestMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 const pageInfo: Record<View, { title: string; description: string }> = {
-  overview: { title: "学习全景", description: "把分散的学习记录，变成清晰的教学线索。" },
-  analysis: { title: "指标分析", description: "比较课程与学期表现，查看每个结论的统计依据。" },
-  data: { title: "数据", description: "查看当前数据源、字段与可用范围。" },
-  reports: { title: "本次分析", description: "预览和导出本次会话中的分析结果。" },
+  overview: { title: "数据浏览", description: "从真实图表出发，逐层查看学习数据。" },
+  analysis: { title: "AI 对话", description: "连续提问、核对数据，把教学线索追问清楚。" },
+  reports: { title: "分析报告", description: "预览和导出本次会话中的分析结果。" },
   admin: { title: "系统管理", description: "配置 AI 连接、使用预算与工作台账号。" },
   account: { title: "设置", description: "查看账号信息，管理登录密码与工作台偏好。" },
 };
@@ -188,11 +145,6 @@ const tableNames: Record<string, string> = {
   studentAssessment: "考核成绩记录",
   assessments: "课程考核信息",
   courses: "课程信息",
-};
-const metricCopy: Record<Metric, string> = {
-  score: "在关联全景中联动查看同一人群，或切换成绩分布、均分对比与学科关联。",
-  activity: "比较学习资源的访问次数，了解学习活动情况。",
-  completion_rate: "查看课程完成情况，比较不同分组的完成比例。",
 };
 const formatNumber = (value: number) => value.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
 
@@ -632,8 +584,9 @@ function ReportCenter({
 export function Workspace({ initialConversation = false }: { initialConversation?: boolean } = {}) {
   const [glassPaused, setGlassPaused] = useState(false);
   const motionPreference = useMotionPreferences();
-  const lastDataView = useRef<View>("overview");
   const explorationLocation = useRef("/?workspace=overview");
+  const explorationState = useRef<Record<string, unknown> | null>(null);
+  const conversationScroll = useRef(0);
   const [workspaceRouteError, setWorkspaceRouteError] = useState("");
   const rememberExplorationLocation = useCallback((href: string) => {
     explorationLocation.current = href;
@@ -643,8 +596,11 @@ export function Workspace({ initialConversation = false }: { initialConversation
   const [setupRequired, setSetupRequired] = useState(false);
   const [bootError, setBootError] = useState("");
   const [view, setView] = useState<View>("overview");
+  const viewRef = useRef<View>("overview");
+  const [primary, setPrimary] = useState<Primary>("explore");
+  const [transition, setTransition] = useState<ViewTransition | null>(null);
+  const transitionTimer = useRef<number | null>(null);
   const [adminInitialTab, setAdminInitialTab] = useState<"overview" | "ai" | undefined>(undefined);
-  const [mode, setMode] = useState<AnalysisMode>("metrics");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebar = useRef<HTMLElement>(null);
   const pageHeading = useRef<HTMLHeadingElement>(null);
@@ -666,17 +622,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
   // leaving system management can change it, which refreshes the check once.
   const [aiStatusRefresh, setAiStatusRefresh] = useState(0);
   const previousView = useRef<View | null>(null);
-  const [metric, setMetric] = useState<Metric>("score");
-  const [scoreView, setScoreView] = useState<
-    "panorama" | "distribution" | "comparison" | "relations"
-  >("panorama");
-  const [analysisView, setAnalysisView] = useState<"standard" | "studio">("standard");
-  const [dimension, setDimension] = useState<"course" | "term">("course");
-  const [chartType, setChartType] = useState<ChartViewType>("bar");
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
-  const [browseLoading, setBrowseLoading] = useState(false);
   const [question, setQuestion] = useState("");
-  const [askResult, setAskResult] = useState<AnalysisResult | null>(null);
   const [chatMessages, setChatMessages] = useState<ConversationTurn[]>([]);
   const [conversation, setConversation] = useState<ConversationSummary | null>(null);
   const conversationRef = useRef<ConversationSummary | null>(null);
@@ -714,7 +660,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
   const [failedAsk, setFailedAsk] = useState<FailedAsk | null>(null);
   const [loginNotice, setLoginNotice] = useState<string | null>(null);
   const [profileRefreshCount, setProfileRefreshCount] = useState(0);
-  const [refreshCount, setRefreshCount] = useState(0);
   const generation = useRef(0);
   const askPending = useRef<AbortController | null>(null);
   const sessionSyncPending = useRef<{
@@ -732,22 +677,10 @@ export function Workspace({ initialConversation = false }: { initialConversation
     Boolean(selectedProfile && isDatasetEligible(selectedProfile));
   const eligibleDatasetId =
     datasetId && selectedProfile && isDatasetEligible(selectedProfile) ? datasetId : null;
-  const availableMetrics: Metric[] = selectedProfile?.metrics ?? [
-    "score",
-    "activity",
-    "completion_rate",
-  ];
-  const metricCapabilityKey = availableMetrics.join(",");
-  useEffect(() => {
-    if (!(metricCapabilityKey.split(",") as Metric[]).includes(metric)) setMetric("score");
-  }, [metricCapabilityKey, metric]);
   const aiReady = aiStatus.configured && aiStatus.enabled;
   const aiAllowed = capabilities.canUseAI && canRun;
-  const showDistribution = mode === "metrics" && metric === "score" && scoreView === "distribution";
-  const showRelations = mode === "metrics" && metric === "score" && scoreView === "relations";
-  const showPanorama = mode === "metrics" && metric === "score" && scoreView === "panorama";
-  const showChartStudio = mode === "metrics" && analysisView === "studio";
-  const showSpecialScore = showDistribution || showRelations || showPanorama || showChartStudio;
+  /** Reports, account and admin are subordinate to whichever primary opened them. */
+  const subordinate = view === "reports" || view === "admin" || view === "account";
 
   const rememberResult = useCallback((result: AnalysisResult) => {
     const key = analysisKey(result);
@@ -757,8 +690,9 @@ export function Workspace({ initialConversation = false }: { initialConversation
   }, []);
 
   const expire = useCallback((notice: string | null = null) => {
-    lastDataView.current = "overview";
     explorationLocation.current = "/?workspace=overview";
+    explorationState.current = null;
+    conversationScroll.current = 0;
     setWorkspaceRouteError("");
     generation.current++;
     sessionSyncPending.current?.controller.abort();
@@ -777,8 +711,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
     setProfilesError(null);
     setDatasetId(null);
     profileAccessKey.current = "";
-    setAnalysis(null);
-    setAskResult(null);
     setSessionAnalyses([]);
     setSelectedReportKey("");
     conversationRef.current = null;
@@ -798,18 +730,19 @@ export function Workspace({ initialConversation = false }: { initialConversation
     setInputError(null);
     setFailedAsk(null);
     setAskLoading(false);
-    setBrowseLoading(false);
     sidebar.current?.hidePopover();
     logoutDialog.current?.close();
     setSidebarOpen(false);
-    setMode("metrics");
+    setPrimary("explore");
+    setTransition(null);
     setView("overview");
   }, []);
 
   const clearScopedState = useCallback(
     (nextView: View = "overview", notice: string | null = null) => {
-      lastDataView.current = "overview";
       explorationLocation.current = "/?workspace=overview";
+      explorationState.current = null;
+      conversationScroll.current = 0;
       setWorkspaceRouteError("");
       generation.current++;
       askPending.current?.abort();
@@ -824,8 +757,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
       setDatasetId(null);
       profileAccessKey.current = "";
       setAIStatus({ configured: false, enabled: false, model: null });
-      setAnalysis(null);
-      setAskResult(null);
       setSessionAnalyses([]);
       setSelectedReportKey("");
       conversationRef.current = null;
@@ -845,9 +776,9 @@ export function Workspace({ initialConversation = false }: { initialConversation
       setInputError(null);
       setFailedAsk(null);
       setAskLoading(false);
-      setBrowseLoading(false);
       setLoginNotice(notice);
-      setMode("metrics");
+      setPrimary(nextView === "analysis" ? "conversation" : "explore");
+      setTransition(null);
       setView(nextView);
     },
     [],
@@ -912,7 +843,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
         if (changed) {
           clearScopedState(nextUser.mustChangePassword ? "account" : "overview");
         } else if (nextUser.mustChangePassword) {
-          setMode("metrics");
+          setPrimary("explore");
           setView("account");
         }
       })().finally(() => {
@@ -932,14 +863,19 @@ export function Workspace({ initialConversation = false }: { initialConversation
       askPending.current = null;
       sessionSyncPending.current?.controller.abort();
       sessionSyncPending.current = null;
+      if (transitionTimer.current) window.clearTimeout(transitionTimer.current);
     },
     [],
   );
   useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
+  useEffect(() => {
     if (!user || view === "overview") return;
     pageHeading.current?.focus({ preventScroll: true });
-    window.scrollTo(0, 0);
-  }, [view, mode, user]);
+    // Returning to the AI primary keeps the reader where the conversation was.
+    window.scrollTo(0, view === "analysis" ? conversationScroll.current : 0);
+  }, [view, user]);
   useEffect(() => {
     void syncAccess({ boot: true })
       .catch((requestError) => {
@@ -964,34 +900,56 @@ export function Workspace({ initialConversation = false }: { initialConversation
   }, [user, syncAccess]);
   useEffect(() => {
     if (bootLoading || !user || passwordChangeRequired) return;
+    const canonicalHref = (next: View, nextPrimary: Primary) => {
+      const params = new URLSearchParams({ workspace: next });
+      if (next !== "overview" && next !== "analysis") params.set("primary", nextPrimary);
+      return `/?${params}`;
+    };
+    const replaceHref = (href: string) => {
+      if (window.location.pathname + window.location.search !== href)
+        window.history.replaceState(window.history.state, "", href);
+    };
     const restoreLocation = () => {
+      if (viewRef.current === "analysis") conversationScroll.current = window.scrollY;
       const params = new URLSearchParams(window.location.search);
       const requested = params.get("workspace");
-      const views: View[] = ["overview", "analysis", "data", "reports", "admin", "account"];
-      if (
+      const views: View[] = ["overview", "analysis", "reports", "admin", "account"];
+      const legacyAnalysis = requested === "analysis" && params.get("mode") === "metrics";
+      const invalid =
         params.getAll("workspace").length > 1 ||
-        (requested !== null && !views.includes(requested as View))
-      ) {
-        setWorkspaceRouteError("页面地址无效，请使用数据总览重新开始。");
+        (requested !== null && requested !== "data" && !views.includes(requested as View));
+      // The standalone metric page and the old data page no longer exist. Both
+      // URLs redirect to browsing instead of rendering a hidden legacy screen.
+      if (requested === "data" || legacyAnalysis || invalid) {
+        setWorkspaceRouteError(invalid ? "页面地址无效，请从数据浏览重新开始。" : "");
+        replaceHref("/?workspace=overview");
+        setPrimary("explore");
         setView("overview");
         return;
       }
       setWorkspaceRouteError("");
-      const next =
+      const next: View =
         (requested as View | null) ??
         (params.has("browse") || !initialConversation ? "overview" : "analysis");
-      const nextMode =
-        next === "analysis" &&
-        (params.get("mode") === "question" || (!requested && initialConversation))
-          ? "question"
-          : "metrics";
-      if (next !== "analysis" || nextMode !== "question") {
+      const requestedPrimary = params.get("primary");
+      const nextPrimary: Primary =
+        next === "overview"
+          ? "explore"
+          : next === "analysis"
+            ? "conversation"
+            : requestedPrimary === "explore" || requestedPrimary === "conversation"
+              ? requestedPrimary
+              : next === "reports"
+                ? "conversation"
+                : "explore";
+      if (next !== "analysis") {
         askPending.current?.abort();
         askPending.current = null;
         setAskLoading(false);
       }
-      setMode(nextMode === "question" && !capabilities.canUseAI ? "metrics" : nextMode);
+      setPrimary(nextPrimary);
       setView(next);
+      if (requested !== null && next !== "overview") replaceHref(canonicalHref(next, nextPrimary));
       if (next === "overview") {
         const route = parseConceptLocation(window.location.href);
         if (route.status === "valid" && route.datasetId) setDatasetId(route.datasetId);
@@ -1000,7 +958,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
     restoreLocation();
     window.addEventListener("popstate", restoreLocation);
     return () => window.removeEventListener("popstate", restoreLocation);
-  }, [initialConversation, bootLoading, user?.id, passwordChangeRequired, capabilities.canUseAI]);
+  }, [initialConversation, bootLoading, user?.id, passwordChangeRequired]);
 
   const api = useCallback(
     async (url: string, options?: RequestInit, onStep?: (step: AnalysisStep) => void) => {
@@ -1211,7 +1169,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
     setPendingSteps([]);
     setChatContext(null);
     setExpandedChartId(null);
-    setAskResult(null);
     setQuestion("");
     setError(null);
     setInputError(null);
@@ -1245,9 +1202,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
         const nextKey = datasetAccessKey(nextProfiles);
         if (profileAccessKey.current !== "" && profileAccessKey.current !== nextKey) {
           generation.current++;
-          setRefreshCount((count) => count + 1);
-          setAnalysis(null);
-          setAskResult(null);
           setSessionAnalyses([]);
           setSelectedReportKey("");
           conversationRef.current = null;
@@ -1267,7 +1221,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
           setInputError(null);
           setFailedAsk(null);
           setAskLoading(false);
-          setBrowseLoading(false);
         }
         profileAccessKey.current = nextKey;
         profilesLoaded.current = true;
@@ -1332,64 +1285,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
       setProfileRefreshCount((count) => count + 1);
     }
   }, [view]);
-  useEffect(() => {
-    if (
-      !user ||
-      passwordChangeRequired ||
-      view !== "analysis" ||
-      mode !== "metrics" ||
-      !eligibleDatasetId ||
-      showSpecialScore
-    ) {
-      setBrowseLoading(false);
-      return;
-    }
-    const currentDatasetId = eligibleDatasetId;
-    const controller = new AbortController();
-    const current = generation.current;
-    setBrowseLoading(true);
-    setError(null);
-    const plan = createPlan({
-      datasetId: currentDatasetId,
-      metric,
-      dimension,
-      chartType: dimension === "term" ? "line" : "bar",
-    });
-    plan.limit = 100;
-    api("/api/analysis", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(plan),
-      signal: controller.signal,
-    })
-      .then((payload) => {
-        if (!controller.signal.aborted && current === generation.current) {
-          setAnalysis(payload.result);
-          rememberResult(payload.result);
-        }
-      })
-      .catch((requestError) => {
-        if (!controller.signal.aborted && current === generation.current)
-          setError(requestMessage(requestError, "请求失败，请稍后重试。"));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted && current === generation.current) setBrowseLoading(false);
-      });
-    return () => controller.abort();
-  }, [
-    user,
-    view,
-    mode,
-    eligibleDatasetId,
-    metric,
-    dimension,
-    passwordChangeRequired,
-    api,
-    refreshCount,
-    rememberResult,
-    showSpecialScore,
-  ]);
-
   function changeSource(value: DataSource) {
     if (view === "overview") window.dispatchEvent(new Event("exploration:leave"));
     generation.current++;
@@ -1399,15 +1294,13 @@ export function Workspace({ initialConversation = false }: { initialConversation
     if (view === "overview") {
       const href = conceptHref({ scene: "home", drawing: "rank" }, value);
       explorationLocation.current = href;
+      explorationState.current = null;
       const state = { ...window.history.state, explorationScroll: 0 };
       delete state.explorationHistory;
       delete state.concept;
       window.history.pushState(state, "", href);
       setWorkspaceRouteError("");
     }
-    setMetric("score");
-    setAnalysis(null);
-    setAskResult(null);
     conversationRef.current = null;
     setConversation(null);
     pendingTurn.current = null;
@@ -1420,53 +1313,91 @@ export function Workspace({ initialConversation = false }: { initialConversation
     setBrowseContext(null);
     setExpandedChartId(null);
     setAskLoading(false);
-    setBrowseLoading(false);
     setError(null);
     setInputError(null);
     setFailedAsk(null);
   }
-  function navigate(next: View, nextMode: AnalysisMode = mode) {
+  const playTransition = useCallback(
+    (kind: ViewTransition) => {
+      if (!motionPreference.enabled || motionPreference.reduced) {
+        setTransition(null);
+        return;
+      }
+      delete document.documentElement.dataset.motionReplayGuard;
+      setTransition(kind);
+      if (transitionTimer.current) window.clearTimeout(transitionTimer.current);
+      transitionTimer.current = window.setTimeout(() => setTransition(null), 420);
+    },
+    [motionPreference.enabled, motionPreference.reduced],
+  );
+  /** Primary entries, subordinate pages, and their shared URL/history contract. */
+  function navigate(next: View, options: { origin?: Primary; back?: boolean } = {}) {
     if (passwordChangeRequired && next !== "account") return;
-    if (view === "overview" && next !== "overview") {
-      window.dispatchEvent(new Event("exploration:leave"));
-    }
-    const href =
+    const nextPrimary: Primary =
       next === "overview"
-        ? explorationLocation.current
-        : `/?${new URLSearchParams({
-            workspace: next,
-            ...(next === "analysis" ? { mode: nextMode } : {}),
-          })}`;
+        ? "explore"
+        : next === "analysis"
+          ? "conversation"
+          : (options.origin ?? primary);
+    if (next === view && nextPrimary === primary) {
+      if (next === "overview" && workspaceRouteError) setWorkspaceRouteError("");
+      sidebar.current?.hidePopover();
+      return;
+    }
+    if (view === "analysis" && next !== "analysis") conversationScroll.current = window.scrollY;
+    if (view === "overview" && next !== "overview") {
+      // Saving happens synchronously in DataExplorer's listener; capture the
+      // resulting state so returning restores the same reading position.
+      window.dispatchEvent(new Event("exploration:leave"));
+      explorationState.current = { ...window.history.state };
+    }
+    const wasSubordinate =
+      view === "reports" || view === "admin" || view === "account";
+    const primarySeries =
+      next === "overview" ? "explore" : next === "analysis" ? "conversation" : null;
+    let kind: ViewTransition = "deeper";
+    if (options.back) kind = "back";
+    else if (primarySeries && nextPrimary !== primary)
+      kind = nextPrimary === "conversation" ? "primary-forward" : "primary-back";
+    else if (wasSubordinate && primarySeries) kind = "back";
+    const params = new URLSearchParams({ workspace: next });
+    if (next !== "overview" && next !== "analysis") params.set("primary", nextPrimary);
+    const href = next === "overview" ? explorationLocation.current : `/?${params}`;
     if (window.location.pathname + window.location.search !== href) {
       const state = { ...window.history.state };
-      delete state.explorationHistory;
-      delete state.explorationScroll;
+      if (next === "overview" && explorationState.current) {
+        Object.assign(state, explorationState.current);
+      } else {
+        // Legacy keys only need scrubbing when entering a non-browse entry.
+        delete state.explorationHistory;
+        delete state.explorationScroll;
+      }
       window.history.pushState(state, "", href);
     }
-    delete document.documentElement.dataset.motionReplayGuard;
     if (next !== "analysis") {
       askPending.current?.abort();
       askPending.current = null;
       setAskLoading(false);
     }
+    setPrimary(nextPrimary);
     setView(next);
+    if (next === "overview") setWorkspaceRouteError("");
     sidebar.current?.hidePopover();
     setError(null);
+    playTransition(kind);
   }
-  function changeMode(next: AnalysisMode) {
-    if (passwordChangeRequired || (next === "question" && !capabilities.canUseAI)) return;
-    delete document.documentElement.dataset.motionReplayGuard;
-    askPending.current?.abort();
-    askPending.current = null;
-    setAskLoading(false);
-    setBrowseLoading(false);
-    setMode(next);
-    setError(null);
+  function openExplore() {
+    // Leaving the AI primary still resolves a running turn, as before.
+    if (view === "analysis" && askPending.current) void stopConversation();
+    navigate("overview");
+  }
+  function returnToPrimary() {
+    navigate(primary === "conversation" ? "analysis" : "overview", { back: true });
   }
   function previewReport(result: AnalysisResult) {
     rememberResult(result);
     setSelectedReportKey(analysisKey(result));
-    navigate("reports");
+    navigate("reports", { origin: "conversation" });
   }
   function requestLogout() {
     sidebar.current?.hidePopover();
@@ -1529,7 +1460,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
       setBrowseContext(null);
       setExpandedChartId(null);
       setPendingSteps([]);
-      setAskResult(null);
     }
     const controller = new AbortController();
     askPending.current = controller;
@@ -1635,7 +1565,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
             payload.artifacts?.length ? `${turnId}-assistant:0` : `${turnId}-assistant`,
           );
         if (payload.artifact.kind === "analysis") {
-          setAskResult(payload.artifact.result);
           rememberResult(payload.artifact.result);
         }
       }
@@ -1810,25 +1739,13 @@ export function Workspace({ initialConversation = false }: { initialConversation
         }}
       />
     );
-  const currentPage =
-    view === "analysis" && mode === "question"
-      ? { title: "一句话分析", description: "连续提问、核对数据，把教学线索追问清楚。" }
-      : pageInfo[view];
-  const activeResult = mode === "metrics" ? analysis : askResult;
-  const visibleResult = activeResult?.datasetId === datasetId ? activeResult : null;
-  const loading = mode === "metrics" ? browseLoading : askLoading;
-  const showDataset = view === "overview" || view === "analysis" || view === "data";
+  const currentPage = pageInfo[view];
   const retryableAsk =
-    failedAsk && failedAsk.retryable && view === "analysis" && mode === "question"
-      ? failedAsk
-      : null;
+    failedAsk && failedAsk.retryable && view === "analysis" ? failedAsk : null;
   const notice = error && (
     <div className="notice notice-error global-notice" role="alert" data-enter="fade">
       <Icon name="info" size={18} />
-      <span>
-        {error}
-        {visibleResult && view === "analysis" && " 上次成功的结果仍可查看。"}
-      </span>
+      <span>{error}</span>
       {retryableAsk && (
         <button
           type="button"
@@ -1856,52 +1773,53 @@ export function Workspace({ initialConversation = false }: { initialConversation
       </button>
     </div>
   );
-  const navigation = passwordChangeRequired ? (
-    <nav className="workspace-nav" aria-label="主要功能">
+  const primaryNavigation = passwordChangeRequired ? (
+    <nav className="workspace-primary-nav glass-mode-switch" aria-label="工作台主入口">
       <button type="button" aria-current="page" onClick={() => navigate("account")}>
-        <span>修改密码</span>
+        修改密码
       </button>
     </nav>
   ) : (
-    <nav className="workspace-nav" aria-label="主要功能">
-      {(
-        [
-          ["overview", "学习全景"],
-          ["analysis", "指标分析"],
-          ["data", "数据"],
-          ["reports", "分析报告"],
-        ] as const
-      ).map(([key, label], index) => {
-        const active =
-          key === "analysis" ? view === "analysis" && mode === "metrics" : view === key;
-        return (
-          <button
-            type="button"
-            key={key}
-            aria-current={active ? "page" : undefined}
-            onClick={() => {
-              if (key === "analysis") {
-                changeMode("metrics");
-                navigate("analysis", "metrics");
-              } else navigate(key);
-            }}
-          >
-            <span className="nav-index" aria-hidden="true">
-              {String(index + 1).padStart(2, "0")}
-            </span>
-            <span>{view === "overview" && key === "analysis" ? "指标分析（全体数据）" : label}</span>
-            {key === "reports" && sessionAnalyses.length > 0 && (
-              <small>{sessionAnalyses.length}</small>
-            )}
-          </button>
-        );
-      })}
+    <nav className="workspace-primary-nav glass-mode-switch" aria-label="工作台主入口" data-glass-pane="0.08">
+      <button
+        type="button"
+        data-primary-entry="explore"
+        aria-current={primary === "explore" ? "page" : undefined}
+        data-glass-relief={primary === "explore" ? "0.85" : undefined}
+        onClick={openExplore}
+      >
+        <Icon name="chart" size={15} />
+        <span>数据浏览</span>
+      </button>
+      <button
+        type="button"
+        data-primary-entry="conversation"
+        aria-current={primary === "conversation" ? "page" : undefined}
+        data-glass-relief={primary === "conversation" ? "0.85" : undefined}
+        disabled={!capabilities.canUseAI}
+        title={!capabilities.canUseAI ? "当前账号没有 AI 使用权限" : undefined}
+        aria-describedby={!capabilities.canUseAI ? "workspace-primary-ai-reason" : undefined}
+        onClick={() => navigate("analysis")}
+      >
+        <Icon name="sparkles" size={15} />
+        <span>AI 对话</span>
+        {!capabilities.canUseAI && (
+          <span className="workspace-primary-note" aria-hidden="true">
+            无权限
+          </span>
+        )}
+      </button>
+      {!capabilities.canUseAI && (
+        <span id="workspace-primary-ai-reason" className="sr-only">
+          当前账号没有 AI 使用权限
+        </span>
+      )}
     </nav>
   );
   const pageHeader = (
-    <div className="page-introduction" key={`header-${view}-${mode}`}>
+    <div className="page-introduction" key={`header-${view}`}>
       <span className="page-eyebrow" data-enter="wipe">
-        {view === "overview" ? "01 / LEARNING OVERVIEW" : "学析台 / LEARNING WORKSPACE"}
+        {view === "overview" ? "01 / DATA EXPLORATION" : "学析台 / LEARNING WORKSPACE"}
       </span>
       <h1
         ref={pageHeading}
@@ -1917,10 +1835,10 @@ export function Workspace({ initialConversation = false }: { initialConversation
       </p>
     </div>
   );
-  const sourcePicker = showDataset && !passwordChangeRequired && (
+  const sourcePicker = !passwordChangeRequired && (
     <label
       className="workbench-source"
-      key={`source-${view}-${mode}`}
+      key={`source-${view}`}
       data-enter="rise-sm"
       style={{ "--enter-delay": "240ms" } as CSSProperties}
     >
@@ -1965,8 +1883,11 @@ export function Workspace({ initialConversation = false }: { initialConversation
     <div
       className={`graphite-workspace workbench-shell glass-workspace ${experienceStyles.shell}`}
       data-view={view}
-      data-conversation={(view === "analysis" && mode === "question") || undefined}
+      data-primary={primary}
+      data-conversation={view === "analysis" || undefined}
       data-exploration={view === "overview" || undefined}
+      data-navigation-motion={transition ? "" : undefined}
+      data-transition={transition ?? undefined}
       data-drawer-open={sidebarOpen || undefined}
     >
       <a className="skip-link" href="#main-content">
@@ -1983,58 +1904,18 @@ export function Workspace({ initialConversation = false }: { initialConversation
             type="button"
             className="glass-brand"
             aria-label="返回数据浏览"
-            onClick={() => {
-              changeMode("metrics");
-              navigate("overview");
-            }}
+            onClick={openExplore}
           >
             <ProductBrand />
           </button>
-          <div
-            className="glass-mode-switch"
-            data-glass-pane="0.08"
-            role="group"
-            aria-label="工作台模式"
-          >
-            {capabilities.canUseAI && !passwordChangeRequired && (
-              <button
-                type="button"
-                aria-pressed={view === "analysis" && mode === "question"}
-                data-glass-relief={view === "analysis" && mode === "question" ? "0.85" : undefined}
-                onClick={() => {
-                  if (view === "analysis" && mode === "question") return;
-                  lastDataView.current = view;
-                  changeMode("question");
-                  navigate("analysis", "question");
-                }}
-              >
-                <Icon name="sparkles" size={15} />
-                <span>AI 对话</span>
-              </button>
-            )}
-            <button
-              type="button"
-              disabled={passwordChangeRequired}
-              aria-pressed={!(view === "analysis" && mode === "question")}
-              data-glass-relief={!(view === "analysis" && mode === "question") ? "0.85" : undefined}
-              onClick={() => {
-                if (!(view === "analysis" && mode === "question")) return;
-                if (askPending.current) void stopConversation();
-                changeMode("metrics");
-                navigate(lastDataView.current);
-              }}
-            >
-              <Icon name="chart" size={15} />
-              <span>数据浏览</span>
-            </button>
-          </div>
+          {primaryNavigation}
         </div>
         <div className="glass-tools" data-glass-pane="0.08">
           {datasetId === "demo" && <span className="glass-demo-tag">模拟演示数据</span>}
           <button
             type="button"
             className="icon-button glass-menu"
-            aria-label={sidebarOpen ? "收起导航" : "打开导航"}
+            aria-label={sidebarOpen ? "收起工具" : "打开工具"}
             aria-expanded={sidebarOpen}
             aria-controls="workspace-navigation"
             popoverTarget="workspace-navigation"
@@ -2129,19 +2010,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
           </div>
         </div>
       </header>
-      {view !== "overview" && !(view === "analysis" && mode === "question") && (
-        <aside className="glass-data-sidebar" data-glass-pane="0.45" aria-label="数据浏览导航">
-          <span className="glass-sidebar-label">学习工作台</span>
-          {navigation}
-          <div className="glass-sidebar-source">{sourcePicker}</div>
-          <div className="glass-sidebar-bottom">
-            <Icon name="shield" size={15} />
-            <span>
-              聚合分析 · 保护个人信息<small>从数据出发，回到教学。</small>
-            </span>
-          </div>
-        </aside>
-      )}
       <aside
         id="workspace-navigation"
         ref={sidebar}
@@ -2149,7 +2017,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
         popover="auto"
         onToggle={(event) => setSidebarOpen(event.newState === "open")}
         onKeyDown={(event) => {
-          if (view === "overview") return;
           if (event.key !== "Tab") return;
           const focusables = sidebar.current?.querySelectorAll<HTMLElement>(
             'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
@@ -2165,14 +2032,14 @@ export function Workspace({ initialConversation = false }: { initialConversation
             first.focus();
           }
         }}
-        aria-label="工作台导航"
+        aria-label="工作台工具"
       >
         <div className="drawer-heading">
-          <span className="drawer-label">导航</span>
+          <span className="drawer-label">工具</span>
           <button
             type="button"
             className="icon-button"
-            aria-label="关闭导航"
+            aria-label="关闭工具"
             popoverTarget="workspace-navigation"
             popoverTargetAction="hide"
             autoFocus
@@ -2180,32 +2047,35 @@ export function Workspace({ initialConversation = false }: { initialConversation
             <Icon name="close" size={18} />
           </button>
         </div>
-        {navigation}
-        {!(view === "analysis" && mode === "question") && sourcePicker}
-        {view === "overview" && (
-          <div className="canvas-menu-settings">
-            <p>{user.displayName || user.username}</p>
-            <div className="canvas-menu-preferences">
-              <span>其它页面外观（浏览固定浅色）</span>
-              <ThemeToggle />
-            </div>
-            <MotionToggle />
-            <button type="button" className="text-button" onClick={() => navigate("account")}>
-              我的账号
-            </button>
-            {user.role === "admin" && (
-              <button type="button" className="text-button" onClick={() => {
-                setAdminInitialTab(undefined);
-                navigate("admin");
-              }}>
-                系统管理与数据导入
-              </button>
-            )}
-            <button type="button" className="text-button" onClick={requestLogout}>
-              退出登录
-            </button>
+        {!passwordChangeRequired && (
+          <div className="workspace-utilities">
+            <span className="drawer-label">当前数据</span>
+            {sourcePicker}
+            <DataSourceDetails profile={selectedProfile} />
           </div>
         )}
+        <div className="canvas-menu-settings">
+          <p>{user.displayName || user.username}</p>
+          <div className="canvas-menu-preferences">
+            <span>其它页面外观（浏览固定浅色）</span>
+            <ThemeToggle />
+          </div>
+          <MotionToggle />
+          <button type="button" className="text-button" onClick={() => navigate("account")}>
+            我的账号
+          </button>
+          {user.role === "admin" && !passwordChangeRequired && (
+            <button type="button" className="text-button" onClick={() => {
+              setAdminInitialTab(undefined);
+              navigate("admin");
+            }}>
+              系统管理与数据导入
+            </button>
+          )}
+          <button type="button" className="text-button" onClick={requestLogout}>
+            退出登录
+          </button>
+        </div>
         <div className="drawer-footnote">
           <Icon name="shield" size={14} />
           <span>学析台 · 学习数据分析</span>
@@ -2213,30 +2083,46 @@ export function Workspace({ initialConversation = false }: { initialConversation
       </aside>
       <div
         className="workbench-main"
-        data-glass-pane={view === "analysis" && mode === "question" ? undefined : "0.35"}
+        data-glass-pane={view === "analysis" ? undefined : "0.35"}
       >
         <main
           id="main-content"
           className="workbench-content"
           aria-labelledby={
-            view === "analysis" && mode === "question"
+            view === "analysis"
               ? "conversation-heading"
               : view === "overview"
                 ? undefined
                 : "workspace-heading"
           }
         >
-          {view !== "overview" && (
-            <div
-              className={`workbench-page-heading ${view === "analysis" && mode === "question" ? conversationStyles.workspaceHeading : ""}`}
-            >
+          {subordinate ? (
+            <div className="workbench-page-heading workspace-secondary-heading">
+              {!passwordChangeRequired && (
+                <button type="button" className="workspace-back" onClick={returnToPrimary}>
+                  <Icon name="chevron" size={15} />
+                  返回{primary === "conversation" ? "AI 对话" : "数据浏览"}
+                </button>
+              )}
               {pageHeader}
             </div>
-          )}
-          <div key={view} className="view-surface">
+          ) : view === "analysis" ? (
+            <div className={`workbench-page-heading ${conversationStyles.workspaceHeading}`}>
+              <button
+                type="button"
+                className="workspace-report-trigger"
+                onClick={() => navigate("reports", { origin: "conversation" })}
+              >
+                <Icon name="file" size={15} />
+                分析报告
+                {sessionAnalyses.length > 0 && <small>{sessionAnalyses.length}</small>}
+              </button>
+            </div>
+          ) : null}
+          <div className="workspace-scene" data-scene={view} data-primary={primary}>
             {view !== "analysis" && notice}
             {view === "overview" && (
-              <>
+              <div className="workspace-primary-scene" data-primary-scene="explore">
                 {workspaceRouteError ? (
                   <div role="alert" className="exploration-state">
                     <h1>找不到这个位置</h1>
@@ -2246,11 +2132,12 @@ export function Workspace({ initialConversation = false }: { initialConversation
                       className="text-button"
                       onClick={() => {
                         explorationLocation.current = "/?workspace=overview";
+                        explorationState.current = null;
                         setWorkspaceRouteError("");
                         navigate("overview");
                       }}
                     >
-                      回到数据总览
+                      回到数据浏览
                     </button>
                   </div>
                 ) : profilesLoading ? (
@@ -2267,10 +2154,9 @@ export function Workspace({ initialConversation = false }: { initialConversation
                     onLocationChange={rememberExplorationLocation}
                     canUseAI={capabilities.canUseAI}
                     onAI={(context) => {
+                      if (!capabilities.canUseAI) return;
                       setBrowseContext({ ...context, datasetId: eligibleDatasetId });
-                      lastDataView.current = "overview";
-                      changeMode("question");
-                      navigate("analysis", "question");
+                      navigate("analysis", { origin: "conversation" });
                     }}
                   />
                 ) : (
@@ -2284,10 +2170,14 @@ export function Workspace({ initialConversation = false }: { initialConversation
                     </p>
                   </div>
                 )}
-              </>
+              </div>
             )}
-            {view === "analysis" &&
-              (mode === "question" ? (
+            {primary === "conversation" && (view === "analysis" || subordinate) && (
+              <div
+                className="workspace-primary-scene"
+                data-primary-scene="conversation"
+                hidden={view !== "analysis"}
+              >
                 <ConversationWorkspace
                   historyActivity={
                     conversation?.lastTurn?.status === "running" ? (
@@ -2372,246 +2262,46 @@ export function Workspace({ initialConversation = false }: { initialConversation
                   }}
                   onClear={newConversation}
                 />
-              ) : (
-                <section
-                  className="panel analysis-workspace metric-scope"
-                  data-metric={mode === "metrics" ? metric : undefined}
-                  aria-label="学习分析工作区"
-                >
-                  <div
-                    className="analysis-workspace-controls"
-                    data-enter="rise-sm"
-                    style={{ "--enter-delay": "60ms" } as CSSProperties}
-                  >
-                    {mode === "metrics" && (
-                      <div className="control-field">
-                        <span>分析方式</span>
-                        <SegmentedControl
-                          label="分析方式"
-                          value={analysisView}
-                          onChange={setAnalysisView}
-                          options={[
-                            { value: "standard", label: "指标分析" },
-                            { value: "studio", label: "图表工坊" },
-                          ]}
-                        />
-                      </div>
-                    )}
-                    {mode === "metrics" ? (
-                      showChartStudio ? (
-                        <p className="analysis-control-help">
-                          五种交互图表，支持项目数据、CSV、JSON 与自由字段映射。输入数据后自动生成。
-                        </p>
-                      ) : (
-                        <>
-                          <div className="control-field metric-control">
-                            <span>统计指标</span>
-                            <SegmentedControl<Metric>
-                              label="统计指标"
-                              value={metric}
-                              onChange={setMetric}
-                              disabled={!canRun}
-                              options={
-                                [
-                                  { value: "score", label: "成绩" },
-                                  { value: "activity", label: "活跃次数" },
-                                  { value: "completion_rate", label: "完成率" },
-                                ].filter((item) =>
-                                  availableMetrics.includes(item.value as Metric),
-                                ) as { value: Metric; label: string }[]
-                              }
-                            />
-                          </div>
-                          {metric === "score" && (
-                            <div className="control-field">
-                              <span>分析视图</span>
-                              <SegmentedControl
-                                label="成绩分析视图"
-                                value={scoreView}
-                                onChange={setScoreView}
-                                disabled={!canRun}
-                                options={[
-                                  { value: "panorama", label: "关联全景" },
-                                  { value: "distribution", label: "成绩分布" },
-                                  { value: "comparison", label: "均分对比" },
-                                  { value: "relations", label: "学科关联" },
-                                ]}
-                              />
-                            </div>
-                          )}
-                          {!showSpecialScore && (
-                            <label className="control-field dimension-control">
-                              <span>比较维度</span>
-                              <span className="dimension-select">
-                                <select
-                                  aria-label="比较维度"
-                                  value={dimension}
-                                  onChange={(event) => {
-                                    const next = event.target.value as "course" | "term";
-                                    setDimension(next);
-                                    setChartType(next === "term" ? "line" : "bar");
-                                  }}
-                                  disabled={!canRun}
-                                >
-                                  <option value="course">课程</option>
-                                  <option value="term">学期</option>
-                                </select>
-                                <Icon name="chevron" size={14} />
-                              </span>
-                            </label>
-                          )}
-                          {!showSpecialScore && (
-                            <button
-                              type="button"
-                              className="secondary-button analysis-refresh"
-                              data-loading={loading || undefined}
-                              aria-busy={loading}
-                              disabled={!canRun || loading}
-                              onClick={() => setRefreshCount((count) => count + 1)}
-                            >
-                              <span className="refresh-feedback" aria-hidden="true">
-                                <Icon name="refresh" size={16} />
-                                <span className="spinner" />
-                              </span>
-                              刷新结果
-                            </button>
-                          )}
-                          <p className="analysis-control-help">{metricCopy[metric]}</p>
-                        </>
-                      )
-                    ) : null}
-                  </div>
-                  <div
-                    className="analysis-notices"
-                    data-enter="fade"
-                    style={{ "--enter-delay": "140ms" } as CSSProperties}
-                  >
-                    {notice}
-                    {!showChartStudio && !profilesLoading && !canRun && (
-                      <div className="notice notice-warning" role="status">
-                        当前数据源不可用，请选择其他数据源或联系管理员检查数据文件。
-                      </div>
-                    )}
-                  </div>
-                  {showChartStudio && eligibleDatasetId ? (
-                    <ChartStudio key={eligibleDatasetId} datasetId={eligibleDatasetId} api={api} />
-                  ) : showPanorama && eligibleDatasetId ? (
-                    <CoursePanorama
-                      key={eligibleDatasetId}
-                      datasetId={eligibleDatasetId}
-                      api={api}
-                    />
-                  ) : showRelations && eligibleDatasetId ? (
-                    <CourseRelations
-                      key={eligibleDatasetId}
-                      datasetId={eligibleDatasetId}
-                      api={api}
-                    />
-                  ) : showDistribution && eligibleDatasetId ? (
-                    <ScoreDistribution
-                      key={eligibleDatasetId}
-                      datasetId={eligibleDatasetId}
-                      api={api}
-                    />
-                  ) : (
-                    <AnalysisResultView
-                      result={visibleResult}
-                      chartType={chartType}
-                      onChartChange={setChartType}
-                      loading={loading}
-                      onReport={previewReport}
-                      canExport={capabilities.canExport}
-                    />
-                  )}
-                </section>
-              ))}
-            {view === "data" && (
-              <section
-                className="panel dataset-workspace"
-                data-enter="panel"
-                style={{ "--enter-delay": "60ms" } as CSSProperties}
-              >
-                <div
-                  className="dataset-heading"
-                  data-enter="rise-sm"
-                  style={{ "--enter-delay": "120ms" } as CSSProperties}
-                >
-                  <span className="feature-icon">
-                    <Icon name="database" size={22} />
-                  </span>
-                  <div>
-                    <h2>{selectedProfile?.name ?? "正在读取数据…"}</h2>
-                    <p>{selectedProfile?.description ?? "读取数据源信息后，可查看表格和字段。"}</p>
-                  </div>
-                  <span className={"badge " + (canRun ? "badge-success" : "badge-warning")}>
-                    {profilesLoading ? "正在读取" : canRun ? "可用于分析" : "暂不可用"}
-                  </span>
-                </div>
-                <div
-                  className="dataset-scope"
-                  data-enter-group="rise"
-                  style={{ "--enter-group-delay": "180ms" } as CSSProperties}
-                >
-                  <span>
-                    <strong>
-                      {selectedProfile?.tables.filter((table) => table.status === "ready").length ??
-                        0}
-                    </strong>{" "}
-                    张可用数据表
-                  </span>
-                  <span>只展示分组统计</span>
-                  <span>指标口径随结果提供</span>
-                </div>
-                <DataSourceDetails profile={selectedProfile} />
-                <div
-                  className="dataset-actions"
-                  data-enter="rise-sm"
-                  style={{ "--enter-delay": "320ms" } as CSSProperties}
-                >
-                  <button
-                    type="button"
-                    className="primary-button"
-                    disabled={!canRun}
-                    onClick={() => navigate("analysis")}
-                  >
-                    开始分析
-                    <Icon name="arrow" size={16} />
-                  </button>
-                </div>
-              </section>
+              </div>
             )}
-            {view === "reports" && (
-              <ReportCenter
-                analyses={sessionAnalyses}
-                selectedKey={selectedReportKey}
-                onSelect={setSelectedReportKey}
-                onStart={() => navigate("analysis")}
-                canExport={capabilities.canExport}
-              />
-            )}
-            {view === "admin" && user.role === "admin" && (
-              <AdminPanel
-                user={user}
-                initialTab={adminInitialTab}
-                onSessionExpired={() => expire("登录已过期，请重新登录。")}
-              />
-            )}
-            {view === "account" && (
-              <>
-                <div className="settings-section-label" data-enter="fade">
-                  我的账号
-                </div>
-                <AccountPanel
-                  user={user}
-                  passwordChangeRequired={passwordChangeRequired}
-                  onPasswordChanged={() => expire("密码已更新，请重新登录。")}
-                  onSessionExpired={() => expire("登录已过期，请重新登录。")}
-                />
-              </>
+            {subordinate && (
+              <div className="workspace-subordinate-scene" data-subordinate={view}>
+                {view === "reports" && (
+                  <ReportCenter
+                    analyses={sessionAnalyses}
+                    selectedKey={selectedReportKey}
+                    onSelect={setSelectedReportKey}
+                    onStart={() =>
+                      navigate("analysis", { origin: "conversation", back: true })
+                    }
+                    canExport={capabilities.canExport}
+                  />
+                )}
+                {view === "admin" && user.role === "admin" && (
+                  <AdminPanel
+                    user={user}
+                    initialTab={adminInitialTab}
+                    onSessionExpired={() => expire("登录已过期，请重新登录。")}
+                  />
+                )}
+                {view === "account" && (
+                  <>
+                    <div className="settings-section-label" data-enter="fade">
+                      我的账号
+                    </div>
+                    <AccountPanel
+                      user={user}
+                      passwordChangeRequired={passwordChangeRequired}
+                      onPasswordChanged={() => expire("密码已更新，请重新登录。")}
+                      onSessionExpired={() => expire("登录已过期，请重新登录。")}
+                    />
+                  </>
+                )}
+              </div>
             )}
           </div>
           <footer
-            className={`workbench-footer ${view === "analysis" && mode === "question" ? conversationStyles.conversationFooter : ""}`}
+            className={`workbench-footer ${view === "analysis" ? conversationStyles.conversationFooter : ""}`}
           >
             <span>学析台 · 学习数据分析</span>
             <span>

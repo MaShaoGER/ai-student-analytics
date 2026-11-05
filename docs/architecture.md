@@ -5,7 +5,7 @@
 ```text
 浏览器
   -> 服务端会话登录与角色校验
-  -> Next.js 工作台（数据浏览 / 智能分析 / 原分析工具 / 管理）
+  -> Next.js 双入口工作台（数据浏览 / AI 对话；报告、账号、管理为从属工具）
   -> GET /api/concept-explorer（课程／指标关系聚合），或 POST /api/chat（账号可信历史）
   -> POST /api/ask 保留为旧单轮分析入口；无会话标识的 /api/chat 不创建账号历史
   -> /api/ask：固定问题映射或 OpenAI Responses API 结构化输出
@@ -22,7 +22,7 @@
 
 | 路径 | 主要职责 |
 | --- | --- |
-| `components/workspace.tsx` | 工作台页面壳、账号及 AI 会话等现有客户端编排 |
+| `components/workspace.tsx` | 双主入口、从属层及 URL／返回关系、账号与 AI 会话客户端编排；无独立指标分析或数据页及其自动查询 |
 | `components/data-explorer.tsx`、`lib/exploration/concepts.ts` | 课程／指标／关系中心、同数据画法、URL、双轴全览与阅读恢复 |
 | `lib/analysis/` | 受限计划、统计查询、图表结构与结果展示策略 |
 | `lib/analysis/concept-explorer.ts`、`concept-query.ts` | 概念浏览类型契约、真实目录与课内聚合，复用DuckDB来源和访问边界 |

@@ -1,6 +1,25 @@
 # 项目文件归属与保留清单
 
-盘点日期：2026-11-02。本文记录方案一的文件归属与清理边界，不改变代码结构、Git 分支或应用行为。功能说明见[工作台指南](workspace-guide.md)，资料入口见[文档导航](README.md)。
+更新日期：2026-11-05。当前只维护主目录 `chuanzhi_project` 的 `main`；下方 2026-11-02 盘点保留为历史，不再代表当前目录与分支状态。功能说明见[工作台指南](workspace-guide.md)，资料入口见[文档导航](README.md)。
+
+## 最新版本归并（2026-11-05）
+
+- **唯一开发主线**：基于 `main` 的 `d877ce3`，保留其后双入口工作台、数据浏览导航、AI 对话与视觉整理。远端刷新后仍为 `d187c89`，本轮不推送或部署。
+- **样式副本核对**：`chuanzhi_style_v2` 的全部已跟踪内容与主项目 `d877ce3` 一致，其未跟踪的教学说明页样式也已纳入主项目；主目录后续九个重叠文件更新更晚。因此不重复合并，不恢复旧侧栏或独立图表工坊。
+- **移除重复工作副本**：`chuanzhi_project-framework`、`chuanzhi_project-zhixu`、`chuanzhi_style_v2` 已先归档后移除。前两者是独立探索实现，不作为正式业务接入。另清除了一个目录已不存在的 Orca 锁定 worktree 登记。
+- **本地分支收敛**：移除 `codex/product-interface-system`、`feat/data-explorer-v3`、`feat/exploration-framework`、`feat/interface-style-unification`、`feat/zhixu-interactive`、`style/editorial-motion-v2`，只保留本地 `main`。远端分支不变；两份 stash 因工具安全策略禁止清空而原样保留。
+- **生成产物**：清除七套旧 `.next*` 构建目录，初始占用合计 9,500,340 KiB（约 9.06 GiB）；最终重新构建默认 `.next/`。HTTP 集成验证临时生成的 `.next-api-test/` 在验收后清除。磁盘占用之和不是文件系统实际释放空间的精确值。
+- **验收证据**：原 `output/` 与 `.playwright-cli/` 移出工程到恢复目录，保留历史截图和日志。设计文档、参考素材及仍用于 AI 的图表组件/API 保留，不能因独立页面退出就一起删除。
+- **配置与数据**：移除 `tsconfig.json` 对旧 showcase 构建目录的类型包含项。主项目 `.env.local`、`records/`、`oulad_raw/`、`oulad.zip` 原样保留；删除副本前核对其原始数据与主目录一致。
+- **修复归并审查发现的回归**：≤900px 单列首页恢复非 sticky 标题，避免遮挡下方内容；图表可聚焦滚动区域不再被全局左右翻页快捷键抢占，普通页面翻页保留。
+
+本机恢复目录为 `/Users/mashao/Documents/chuanzhi_project.rollback-backups/20261105-consolidation/`，目录权限仅限当前用户。`history.bundle` 保存分支历史，`stashes.bundle` 单独保存两份 stash；两者均经 `git bundle verify` 验证。`main-before.tar.gz` 保存整理前主项目文件，`alternate-worktrees.tar.gz` 保存旧副本源码、未提交和私有状态；压缩包均通过 gzip 完整性检查。依赖、可再生构建及与主目录一致的 OULAD 原始数据不重复打包。恢复包含私有资料，不公开上传。
+
+最终验证：`pnpm build`、`pnpm typecheck` 通过；首轮回归 779 项通过、73 项跳过，最终 HTTP 集成 37 项及真实服务重启恢复验证通过。最终 standalone 浏览器走通登录、首页、放射选单进入课程、图表横向键盘滚动、页面翻页、AI 主入口、报告从属页及返回、工具入口；1440px 首页、800px 首页和 390px 课程图表无全局横向溢出。800px 首页实际滚动时标题随正文离开，不再粘住。截图保存在恢复目录的 `verification/`，未发送真实外部 AI 请求。构建仍有既有 `grade-store.ts:361` 动态文件追踪警告，本轮未修改数据存储逻辑。
+
+---
+
+以下为 **2026-11-02 历史盘点**：
 
 ## 1. 工作区与功能提交
 

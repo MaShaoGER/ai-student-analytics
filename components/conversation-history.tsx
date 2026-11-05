@@ -160,7 +160,6 @@ export function ConversationHistory(
   );
   return (
     <>
-      <div data-workspace-part="historyRail" className={styles.historyRail}>
         <button
           type="button"
           data-workspace-part="historyToggle"
@@ -173,6 +172,7 @@ export function ConversationHistory(
         >
           <Icon name="chevron" size={16} />
         </button>
+      <div data-workspace-part="historyRail" className={styles.historyRail}>
         <aside
           id="desktop-conversation-history"
           data-workspace-part="history"

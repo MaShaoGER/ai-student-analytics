@@ -36,7 +36,7 @@ type Radial = { kind: "pick"; pick: Picked; origin: ChartPickOrigin } | { kind: 
 /** Long lists stay in a scrollable detail dialog; picks and drawings use the radial menu. */
 type Sheet = { kind: "routes" } | { kind: "data" };
 /** Which semantic transition the next rendered scene plays. */
-type MotionKind = "topic" | "return" | "drawing";
+type MotionKind = "topic" | "return" | "drawing" | "pager";
 
 const RECENT_TOPICS = 5;
 const HIDDEN = "样本 1–2 人，已隐藏";
@@ -514,6 +514,34 @@ export function DataExplorer({
   }, [sheet]);
 
   const visible = trail;
+  const position = visible.findIndex((item) => item.id === entryId);
+  const previous = position > 0 ? visible[position - 1] : undefined;
+  const following = position >= 0 && position < visible.length - 1 ? visible[position + 1] : undefined;
+  const openEntry = useCallback((item: TrailEntry, kind: MotionKind) => {
+    const route = parseConceptLocation(item.href);
+    if (route.status !== "valid") return;
+    go(route.location, item);
+    setTransition(kind);
+  }, [go]);
+
+  // Keep hooks unconditional, including while the URL is initializing or invalid.
+  useEffect(() => {
+    if (!valid || !data || sheet || radial || overview) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
+      const target = event.target;
+      if (target instanceof HTMLElement &&
+          (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable ||
+           target.closest('[role="region"][tabindex="0"]'))) return;
+      const destination = event.key === "ArrowLeft" ? previous : following;
+      if (!destination) return;
+      event.preventDefault();
+      openEntry(destination, "pager");
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [valid, data, sheet, radial, overview, previous, following, openEntry]);
+
   const home = visible.find((item) => item.href.includes("browse=home"));
   const topics = visible.filter((item) => item !== home);
   const recent = topics.slice(-RECENT_TOPICS);
@@ -592,19 +620,10 @@ export function DataExplorer({
     : null;
   const title = conceptTitle(valid);
   const href = conceptHref(valid, datasetId);
-  const position = visible.findIndex((item) => item.id === entryId);
-  const previous = position > 0 ? visible[position - 1] : undefined;
-  const following = position >= 0 && position < visible.length - 1 ? visible[position + 1] : undefined;
   /** Compact trail: real two-digit ordinals; past six entries only the home page and the neighbourhood stay visible. */
   const trailMarks = visible
     .map((item, index) => ({ item, ordinal: index + 1 }))
     .filter((_, index) => visible.length <= 6 || index === 0 || index === position || Math.abs(index - position) <= 2);
-  const openEntry = (item: TrailEntry, kind: MotionKind) => {
-    const route = parseConceptLocation(item.href);
-    if (route.status !== "valid") return;
-    go(route.location, item);
-    setTransition(kind);
-  };
   const hint = valid.scene === "home" ? "点一门课程，选择去向或换画法。"
     : valid.scene === "course" ? "点一项指标，打开它的关联。"
       : allScope ? "已显式扩展到全部课程；点一门课可从它重新开始。"
@@ -889,12 +908,12 @@ export function DataExplorer({
             ))}
           </ol>
           {previous ? (
-            <button type="button" className={styles.page} data-direction="previous" onClick={() => openEntry(previous, "return")}>
+            <button type="button" className={styles.page} data-direction="previous" onClick={() => openEntry(previous, "pager")}>
               <span>← 上一页</span><strong>{previous.title}</strong>
             </button>
           ) : <span className={styles.page} data-direction="previous" aria-hidden />}
           {following ? (
-            <button type="button" className={styles.page} data-direction="next" onClick={() => openEntry(following, "topic")}>
+            <button type="button" className={styles.page} data-direction="next" onClick={() => openEntry(following, "pager")}>
               <span>下一页 →</span><strong>{following.title}</strong>
             </button>
           ) : <span className={styles.page} data-direction="next" aria-hidden />}

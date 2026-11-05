@@ -395,7 +395,7 @@
 }
 @keyframes petalOut {
   from { opacity: var(--exit-opacity, 1); transform: var(--exit-transform, translate(-50%, -50%)); }
-  to { opacity: 0; transform: translate(calc(-50% + var(--dx) * 0.6), calc(-50% + var(--dy) * 0.6)) scale(0.86); }
+  to { opacity: 0; transform: translate(calc(-50% + var(--dx) * var(--exit-selected, 0.6)), calc(-50% + var(--dy) * var(--exit-selected, 0.6))) scale(calc(1.12 * var(--exit-selected, 0) + 0.86 * (1 - var(--exit-selected, 0)))); }
 }
 
 @media (prefers-reduced-transparency: reduce) {

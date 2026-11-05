@@ -2134,3 +2134,44 @@ html[data-motion="off"] button:active {
     width: 72px;
   }
 }
+
+/* ==========================================================================
+   Print — data-explorer sheet (appended section; nothing above is changed)
+   On paper the data-explorer page is a single poster: scene title, scope notes
+   and the main chart. Chart geometry (strokes +1px, labels 12px) is raised in
+   components/concept-chart.module.css, because CSS-module class names are
+   hashed and cannot be reached from this global sheet. The trail, pager and
+   on-demand openers only exist on the explorer page; the topbar and sidebar
+   are shared, so everything is scoped to [data-view="overview"] and addressed
+   through global classes or aria labels the explorer already carries.
+   ========================================================================== */
+@media print {
+  /* Frost is a screen material: no backdrop filter anywhere on paper. */
+  *,
+  *::before,
+  *::after {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Printed chart labels never fall below 12px. */
+  [data-view="overview"] svg text {
+    font-size: 12px;
+  }
+
+  /* Chrome out: topbar, sidebar/drawer, workspace page heading, exploration
+     trail with its pager, the on-demand openers and the 全览 dock. */
+  [data-view="overview"] :is(
+      .skip-link,
+      .workbench-header,
+      .glass-data-sidebar,
+      .workbench-drawer,
+      .workbench-page-heading,
+      nav[aria-label="探索前后页"],
+      nav[aria-label="探索"],
+      [role="group"][aria-label="按需打开"],
+      [aria-label="全览导航"]
+    ) {
+    display: none !important;
+  }
+}

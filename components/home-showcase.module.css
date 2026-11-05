@@ -447,7 +447,8 @@
 @media (max-width: 900px) {
   .showcase { padding: 56px 20px 72px; }
   .lead { grid-template-columns: minmax(0, 1fr); gap: 36px; margin-bottom: 44px; }
-  .hero { position: static; top: auto; }
+  /* Parallax is disabled when sticky is also disabled. */
+  .hero { position: static; top: auto; transform: none !important; }
   .headline { font-size: clamp(38px, 9.4vw, 56px); }
   .lede { margin-top: 20px; }
   .cue { margin-top: 20px; }
@@ -475,7 +476,7 @@
 }
 /* Short screens: a sticky masthead cannot fit, so it scrolls with the page. */
 @media (max-height: 660px) {
-  .hero { position: static; top: auto; }
+  .hero { position: static; top: auto; transform: none !important; }
   .cue { margin-top: 18px; }
 }
 
@@ -485,7 +486,7 @@
   .showcase .statsSection > .figHead,
   .showcase .stat,
   .showcase .constellation .star,
-  .showcase .strip { animation: none !important; }
+  .hero { transform: none !important; }
   .showcase .stat:not([data-visible="true"]),
   .showcase .constellation:not([data-visible="true"]) :is(.figHead, .sky),
   .showcase .strips > .figHead:not([data-visible="true"]),
@@ -494,7 +495,7 @@
 
 @media print {
   .showcase { padding: 32px 20px; min-height: 0; }
-  .hero { position: static; top: auto; }
+  .hero { position: static; top: auto; transform: none !important; }
   .cue { display: none; }
   .kicker span { box-shadow: none; }
   .statValue { font-size: 48px; }

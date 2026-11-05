@@ -275,7 +275,7 @@ export function ConversationWorkspace({
   const [composerCollapsed, setComposerCollapsed] = useState(false);
   const foldFrom = useRef<DOMRect | null>(null);
   const { enabled: motionEnabled, reduced: reducedMotion } = useMotionPreferences();
-  const [historyCollapsed, setHistoryCollapsed] = useState(false);
+  const [historyCollapsed, setHistoryCollapsed] = useState(true);
   const wasCollapsed = useRef(false);
   const stopRequested = useRef(false);
 
@@ -432,7 +432,7 @@ export function ConversationWorkspace({
         collapsed={historyCollapsed}
         onToggle={() => setHistoryCollapsed((value) => !value)}
       />
-      <div ref={root} className={styles.conversation}>
+      <div ref={root} className={styles.conversation} data-workspace-part="conversation">
         {messages.length === 0 && !loading ? (
           <>
             <header data-workspace-part="formalHeader" className={styles.formalHeader}>
@@ -485,7 +485,7 @@ export function ConversationWorkspace({
                     ? aiReady
                       ? "选择一个常用问题，或在下方输入你想了解的学习情况。"
                       : "选择一个常用问题，查看课程成绩、学期变化或学习关联。"
-                    : "只读账号可使用指标分析，不能使用 AI 对话。请返回指标分析查看确定性统计结果。"}
+                    : "只读账号不能使用 AI 对话。可返回数据浏览查看确定性图表和统计结果。"}
                 </p>
                 {aiAllowed && (
                   <div

@@ -680,11 +680,11 @@ button.page:hover > strong { color: var(--accent-ink); }
 /* Semantic transitions: short progressive blur (240–360ms) so data never stays soft;
    the head sets its own type (MaskRise/InkText), so it is never doubled here; only
    the chart changes meaningfully between scenes and is interrupted on every commit. */
-.root { --ease-show: cubic-bezier(0.16, 1, 0.3, 1); }
-/* New topic: the chart focuses in from shallow depth. */
-.root[data-motion="on"] .poster[data-transition="topic"] .figure { animation: focusIn 360ms var(--ease-show) 40ms both; }
-/* Return: the chart slides back in from the left, as if the camera stepped back. */
-.root[data-motion="on"] .poster[data-transition="return"] .figure { animation: settleDeep 340ms var(--ease-show) 30ms both; }
+.root { --ease-show: cubic-bezier(0.16, 1, 0.3, 1); --ease-exit: cubic-bezier(0.4, 0, 1, 1); }
+/* Directional transitions: topic (deeper, from right), return (back, to right), pager (depth push). */
+.root[data-motion="on"] .poster[data-transition="topic"] .figure { animation: slideInRight 340ms var(--ease-show) both; }
+.root[data-motion="on"] .poster[data-transition="return"] .figure { animation: slideOutRight 340ms var(--ease-show) both; }
+.root[data-motion="on"] .poster[data-transition="pager"] .figure { animation: depthPush 300ms var(--ease-show) both; }
 /* Same data, new drawing: scope stays put; only the chart dissolves and re-forms. */
 .root[data-motion="on"] .poster[data-transition="drawing"] .figure { animation: redraw 260ms var(--ease-show) both; }
 /* Numbered entries land one after another, only once the data is in. */
@@ -693,20 +693,20 @@ button.page:hover > strong { color: var(--accent-ink); }
 .root[data-motion="on"] .entries .entry:nth-of-type(2) { animation-delay: 190ms; }
 .root[data-motion="on"] .entries .entry:nth-of-type(3) { animation-delay: 240ms; }
 @keyframes entry-fade { from { opacity: 0; transform: translateY(6px); } }
+@keyframes slideInRight { from { opacity: 0; transform: translateX(32px); filter: blur(4px); } }
+@keyframes slideOutRight { from { opacity: 0; transform: translateX(-24px); filter: blur(4px); } }
+@keyframes depthPush { from { opacity: 0; transform: scale(0.98); filter: blur(3px); } }
+@keyframes redraw { from { opacity: 0.3; filter: blur(4px); } }
 .root[data-motion="on"] .sheet[open] { animation: sheetIn 280ms var(--ease-show); }
 .root[data-motion="on"] .homeShowcase + .poster { animation: rise 320ms var(--ease-show) 120ms both; }
 /* Peripheral blur breathes slightly stronger while a scene is arriving. */
 .root[data-motion="on"]:has(.poster[aria-busy="true"]) .periphery::after { animation: fogPulse 1.6s ease-in-out infinite alternate; }
 @keyframes rise { from { opacity: 0; transform: translateY(8px); filter: blur(4px); } }
-@keyframes focusIn { from { opacity: 0; filter: blur(6px); transform: perspective(1200px) translateZ(-40px) scale(0.985); } }
-@keyframes settleDeep { from { opacity: 0; transform: translateX(-24px); filter: blur(5px); } }
-@keyframes redraw { from { opacity: 0.3; filter: blur(4px); } }
 @keyframes sheetIn { from { opacity: 0; transform: translateX(20px); filter: blur(4px); } }
 @keyframes fogPulse { to { -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px); } }
 .root[data-motion="off"] *,
 .root[data-motion="off"] *::before,
 .root[data-motion="off"] *::after { animation: none !important; transition: none !important; }
-
 @media (prefers-reduced-transparency: reduce) {
   .sheet, .cornerRight {
     background: var(--surface-raised);
@@ -736,6 +736,10 @@ button.page:hover > strong { color: var(--accent-ink); }
   .scope, .hint { max-width: 60ch; }
   .entries { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: none; column-gap: 20px; }
 }
+@media (max-width: 1024px) and (min-height: 768px) {
+  .trail { padding: 12px 8px; }
+  .head { margin-bottom: 16px; }
+}
 @media (max-width: 640px) {
   .poster { padding: 96px 16px 140px; row-gap: 32px; }
   .entries { grid-template-columns: minmax(0, 1fr); }
@@ -754,6 +758,11 @@ button.page:hover > strong { color: var(--accent-ink); }
   .sheetHead { margin: 0 -18px; padding: 20px 18px 16px; }
   .sheetHead h2 { font-size: 24px; }
   .optionNote { max-width: 45%; }
+}
+@media (max-width: 360px) {
+  .title { font-size: 32px; }
+  .trail { padding: 8px 4px; }
+  .trailMark { min-width: 36px; min-height: 36px; padding: 14px 2px 0; }
 }
 
 @media print {

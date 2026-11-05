@@ -166,7 +166,7 @@
   margin: -200px 0 0 -280px;
   transform: translate3d(var(--x), 0, var(--z));
   transform-style: preserve-3d;
-  transition: opacity 360ms ease, filter 360ms ease;
+  transition: opacity 360ms ease, filter 360ms ease, transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
   opacity: max(0.4, calc(1 - var(--dist) * 0.14));
   filter: blur(min(3px, calc(var(--dist) * 0.8px))) saturate(max(0.55, calc(1 - var(--dist) * 0.15)));
   pointer-events: none;
@@ -175,7 +175,7 @@
 .face { pointer-events: auto; }
 /* The current camera focus is the sole plane raised above the shared stack. */
 .plane[data-focused] { z-index: 1000; }
-.plane[data-focused] { opacity: 1; filter: none; }
+.plane[data-focused] { opacity: 1; filter: none; transform: translate3d(var(--x), 0, var(--z)) scale(1.04); }
 
 .face {
   position: relative;

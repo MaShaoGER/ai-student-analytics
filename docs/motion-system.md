@@ -1,6 +1,15 @@
 # 学析台 · 统一动效系统（2026-10-18，已落地）
 
-主页「激进但受控」的动画语言已推广到全站（6 个代理分工实施）。核心实现位于 `app/motion.css`，本文件是所有页面/组件的实现契约。新增动效前先读本文件与 `components/learning-overview.tsx` 的参考实现。
+核心实现位于 `app/motion.css`；当前主场以 `components/data-explorer.tsx` 的阅读、聚焦和空间关系为基准。历史阶段参数保留在下文，双入口工作台优先遵循本节。
+
+## 双入口与从属层（2026-11-04）
+
+- 主导航只有数据浏览／AI 对话，共用左上品牌、右上主入口与工具；320px 使用两行排布，不增加第三主入口。账号、管理及报告提供明确返回路径，报告属于 AI。
+- 主场切换使用 `primary-forward`／`primary-back`：380ms、24px 相反水平位移、opacity 0.6→1，缓动 `cubic-bezier(0.32,0,0.2,1)`。从属深入为340ms、16px、scale 0.98→1，返回为320ms、反向16px、scale 1.02→1。稳定读数清晰。
+- `data-primary` 表示所属主场，`data-transition` 表示空间方向；`data-navigation-motion` 允许键盘触发同样的导航反馈。方向动画作用于内容，不给账号历史固定触发器的祖先施加 transform。
+- 对话以确定高度链填满剩余视口，只有正文／历史滚动；长文档从属页保留自然高度，页脚不参与覆盖正文。进入 AI 从属页时保留对话挂载与内部阅读位置。
+- 应用关闭动效及系统 reduced-motion 均禁用导航动画。浏览图表已有的模糊聚焦／放射菜单／全览动效继续沿用，不改变数据范围。
+
 
 ## 设计原则
 
@@ -95,12 +104,10 @@ SVG 图表用 `data-enter` / 模块内 keyframes（stroke-dashoffset、clip）�
 | 区域          | 入口动画                                                                                |
 | ------------- | --------------------------------------------------------------------------------------- |
 | 登录页        | 品牌/标题错峰上浮、概念信号图描线、表单卡右滑入场、表单字段错峰                         |
-| 工作台 chrome | 页面标题眉题擦入、标题上浮、副标题淡入；视图切换 `.view-surface` 淡入 + 内容 data-enter |
-| 学习全景      | 已实现（参考）                                                                          |
-| 指标分析      | 控件区、结果卡、焦点数字计数、图表入场、表格行错峰                                      |
-| 一句话分析    | 页面入场、消息逐条入场、图表附件展开、输入区入场                                        |
-| 数据          | 标题/统计条/表结构/字段错峰                                                             |
-| 分析报告      | 控件区、报告预览框入场                                                                  |
+| 工作台 chrome | 四角锚点固定，内容层 `.workspace-scene` 表达主场／从属方向，必要内容继续使用 data-enter      |
+| 数据浏览      | 单图阅读、方向性切换、图表到达聚焦及空间全览；详见下方编辑式补充                         |
+| AI 对话       | 主场方向切换、消息／结果附件展开、输入区收拢；历史按需打开                                |
+| 分析报告      | AI 从属深入／返回与报告内容入场，不占主导航                                               |
 | 系统管理      | 标签页、统计数字计数、表单分区、账号列表错峰                                            |
 | 个人设置      | 账号卡与密码卡错峰                                                                      |
 | 主题切换      | 实时界面颜色 150ms 过渡，不生成全页截图或阻塞后续点击；减少动态时即时更新               |
@@ -137,7 +144,7 @@ SVG 图表用 `data-enter` / 模块内 keyframes（stroke-dashoffset、clip）�
 ## 落地记录（2026-10-18）
 
 - 共享层：`app/motion.css`、`components/ui/animated-number.tsx`、`app/layout.tsx` 引入顺序。`components/ui/theme-provider.tsx` 直接切换主题 token；2026-11-03 移除旧全页圆形截图揭示，避免主题过渡时文档暂时不可交互。
-- 页面层：`components/learning-overview.tsx`（声明式 API 参考实现）、`components/workspace.tsx`（页面标题/视图切换/数据/报告/账号/chrome）、`components/analysis-result.tsx` + `app/motion-analysis.css`、`components/ai-conversation.tsx` / `conversation-tool-result.tsx` / `app/motion-conversation.css`、`course-panorama*` / `course-relations*`、`score-distribution.tsx` / `chart-studio.tsx` / `studio-chart.tsx`、`login-screen.tsx` / `admin-panel.tsx` / `app/motion-auth.css`。
+- 页面层（2026-10-18 历史落点，非当前文件清单）：当时包括 `learning-overview.tsx`、`workspace.tsx`、`analysis-result.tsx`、AI 对话及课程全景／关联、成绩分布、图表工坊、登录／管理页面。后续独立旧页面已退出；当前双入口由 `components/workspace.tsx`、`data-explorer.tsx`、`home-showcase.tsx`、`ai-conversation.tsx` 及其 CSS 承担，`course-panorama-chart.tsx`、`course-relation-chart.tsx`、`studio-chart.tsx` 仍用于图表呈现。不要按历史页面名称恢复已删除组件。
 - 交互开关补充：`MotionPreferences` 在重新开启动效时写入 `data-motion-replay-guard`，避免已渲染页面重播入场；`workspace.navigate/changeMode` 清除该标记，下一次视图切换恢复正常。
 
 ## 数据浏览细节打磨（2026-11-03）
@@ -149,9 +156,9 @@ SVG 图表用 `data-enter` / 模块内 keyframes（stroke-dashoffset、clip）�
 - 这两个空间导航对话框用 `data-navigation-motion` 保留方向键和 Esc 的连续动效，不受旧的“键盘交互一律0ms”规则影响。应用关闭动效或系统减少动态时仍即时完成，不等待退出计时器。
 - 图元鼠标高亮只作用于图形与颜色，不给文字或透明点击区描边；键盘焦点保留明确的局部图形提示。数据浏览固定浅色时，文档根底色同步画布，避免滚动边缘露出其他工作区的深色底；离开后恢复原主题。
 
-## 编辑式数据浏览试用版（2026-11-04，独立 worktree）
+## 编辑式数据浏览（2026-11-04 起，现已纳入主项目）
 
-本节仅对应 `chuanzhi_style_v2` / `style/editorial-motion-v2` 的本地试用版，未合并到原工作区。当前页采用粗无衬线大标题、等宽元信息和编号轨迹，保留暖白／近黑／淡紫及直角规则。
+本节最初对应 `chuanzhi_style_v2` / `style/editorial-motion-v2` 的本地试用版，成果已纳入主项目；2026-11-05 归并后仅保留 `main`，独立副本与旧分支已移除，恢复位置见[项目文件清单](project-files.md#最新版本归并2026-11-05)。页面采用粗无衬线大标题、等宽元信息和编号轨迹，保留暖白／近黑／淡紫及直角规则。
 
 - `components/ui/editorial-motion.tsx` 提供 `MaskRise`（620ms 遮罩升起）、`InkText`（逐词淡紫落墨）和 `CountUp`（真实终值计数）。课程页主读数明确是均分，不跨百分比与分数比较“最高指标”；小样本与缺失值仍显示原因，不参与计数。
 - 标题和主读数随主题条目挂载；同数据换画法不重挂标题，不重播计数。短说明可临时失焦，静止图表和读数保持清晰。编号轨迹复用既有历史跳转，较长轨迹只折叠显示，不删除条目。
