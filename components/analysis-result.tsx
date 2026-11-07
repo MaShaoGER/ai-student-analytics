@@ -208,12 +208,12 @@ export function AnalysisResultView({
             <button
               className="secondary-button result-report-button"
               type="button"
-              aria-label="生成报告"
-              title="生成报告"
+              aria-label="预览报告"
+              title="预览报告：查看并可打印当前分析结果，不产生新的分析"
               onClick={() => onReport(result)}
             >
               <Icon name="file" size={15} />
-              <span>生成报告</span>
+              <span>预览报告</span>
             </button>
           )}
         </div>

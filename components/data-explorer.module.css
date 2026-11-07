@@ -287,8 +287,6 @@
   align-items: center;
   gap: 12px 20px;
   min-height: 320px;
-  margin: 0;
-  color: var(--muted);
   font-size: 15px;
   line-height: 1.7;
 }
@@ -653,6 +651,24 @@ button.page:hover > strong { color: var(--accent-ink); }
 .homeShowcase { position: relative; z-index: 1; }
 .homeShowcase + .poster { padding-top: clamp(40px, 6vh, 72px); border-top: 1px solid var(--line); }
 
+/* Invalid address: the message takes the poster's own margins instead of starting at the
+   page edge, where a 111px fixed top bar on a phone covered it. No new global gutter —
+   the same width, gutters and rhythm as every other reading page. */
+.root[data-invalid] {
+  display: grid;
+  align-content: start;
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  padding: clamp(112px, 14vh, 152px) clamp(24px, 4.5vw, 64px) clamp(120px, 14vh, 160px);
+}
+.root[data-invalid] .state {
+  align-items: flex-start;
+  min-height: 0;
+  max-width: 46ch;
+  padding-top: 20px;
+  border-top: var(--rule);
+}
+
 /* Focus ring shared by every control. */
 .entry:focus-visible,
 .action:focus-visible,
@@ -741,7 +757,9 @@ button.page:hover > strong { color: var(--accent-ink); }
   .head { margin-bottom: 16px; }
 }
 @media (max-width: 640px) {
-  .poster { padding: 96px 16px 140px; row-gap: 32px; }
+  /* The workspace top bar is fixed and wraps to two rows (111px) at this width; 96px put the
+     eyebrow under it. 132px clears the bar with the poster's own rhythm. */
+  .poster { padding: 132px 16px 140px; row-gap: 32px; }
   .entries { grid-template-columns: minmax(0, 1fr); }
   .pager { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .page[data-direction="next"] { justify-items: start; text-align: left; }
@@ -763,6 +781,37 @@ button.page:hover > strong { color: var(--accent-ink); }
   .title { font-size: 32px; }
   .trail { padding: 8px 4px; }
   .trailMark { min-width: 36px; min-height: 36px; padding: 14px 2px 0; }
+}
+/* Below 760px the top bar wraps to two rows (111px), so both the poster and the invalid
+   message take the same clearance; above that the bar is 76px and the poster's own
+   clamp already clears it. */
+@media (max-width: 760px) {
+  .poster { padding-top: 132px; }
+  .root[data-invalid] { padding-top: 132px; }
+}
+
+/* Short viewports: a floating dock sits on top of the reading — at 320×480 it covered 61%
+   of the home call to action, and a few pixels of scrolling put any button under it. Below
+   600px of height the two shell entries drop into normal flow as a footer row: nothing is
+   hidden, both functions stay one tap away, and the reading is never covered. */
+@media (max-height: 600px) {
+  .cornerLeft,
+  .cornerRight { position: static; }
+  .cornerLeft {
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 12px clamp(16px, 3vw, 48px) 0;
+    border-top: 1px solid var(--line);
+    background: transparent;
+  }
+  .cornerRight {
+    display: block;
+    width: fit-content;
+    margin: 12px clamp(16px, 3vw, 48px) 24px auto;
+    max-width: calc(100% - 2 * clamp(16px, 3vw, 48px));
+  }
+  .poster { padding-bottom: 32px; }
+  .root[data-invalid] { padding-bottom: 32px; }
 }
 
 @media print {

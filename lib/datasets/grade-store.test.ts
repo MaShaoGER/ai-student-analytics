@@ -1,8 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { createHash, randomUUID } from "node:crypto";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { parseGradeFile } from "./grade-parser";
+import { parseGradeFile, serializeGradeRows, validateGradeSheet } from "./grade-parser";
+import type { GradeDataset } from "./grade-contract";
 import {
   createGradeDraft,
   deleteGradeDraft,
@@ -161,5 +173,73 @@ describe("private grade drafts and immutable publication", () => {
     expect(next.id).toBeTruthy();
     for (const d of drafts)
       expect(existsSync(join(directory, "grade-imports", `draft-${d.id}.json`))).toBe(false);
+  });
+  /** Rebuild exactly what a publication writes: the next version name, the CSV and its path. */
+  async function crashBoundary(base: GradeDataset) {
+    const book = await parseGradeFile(
+      new TextEncoder().encode(contents.replace(",80,", ",60,")),
+      "g.csv",
+    );
+    const draftId = createGradeDraft(actorId, book).id;
+    const csv = serializeGradeRows(validateGradeSheet(book, 0, 1, mapping).rows);
+    const version = `v${base.versions.length + 1}-${createHash("sha256")
+      .update(csv)
+      .digest("hex")
+      .slice(0, 16)}`;
+    const request = { actorId, draftId, sheet: 0, headerRow: 1, mapping, name: base.name };
+    return {
+      version,
+      csv,
+      file: join(directory, "grade-imports", `${base.id}-${version}.csv`),
+      publish: () =>
+        publishGradeDraft({ ...request, datasetId: base.id, baseVersion: base.currentVersion }),
+    };
+  }
+  it("adopts the fsynced version file a crash left before the catalog commit", async () => {
+    const { dataset } = await first();
+    const crash = await crashBoundary(dataset);
+    writeFileSync(crash.file, crash.csv, { mode: 0o600 });
+    // The crashed writer's catalog lock survives with a dead owner marker.
+    const lock = join(directory, "grade-catalog.json.lock");
+    const owner = join(lock, `owner-${randomUUID()}.json`);
+    mkdirSync(lock, { mode: 0o700 });
+    writeFileSync(owner, JSON.stringify({ version: 2, pid: 999999, identity: "crashed" }), {
+      mode: 0o600,
+    });
+    const aged = new Date(Date.now() - 120_000);
+    utimesSync(owner, aged, aged);
+    utimesSync(lock, aged, aged);
+
+    const next = crash.publish();
+
+    expect(next.currentVersion).toBe(crash.version);
+    expect(next.versions).toHaveLength(2);
+    expect(existsSync(lock)).toBe(false);
+    expect(readFileSync(crash.file, "utf8")).toBe(crash.csv);
+    expect(
+      readdirSync(join(directory, "grade-imports")).filter((name) =>
+        name.startsWith(`${dataset.id}-${crash.version}`),
+      ),
+    ).toEqual([`${dataset.id}-${crash.version}.csv`]);
+    expect(getGradeSnapshot(dataset.id).version).toBe(crash.version);
+  });
+  it("refuses to reuse a version path holding different content", async () => {
+    const { dataset } = await first();
+    const crash = await crashBoundary(dataset);
+    const foreign = crash.csv.replace('"001"', '"002"');
+    writeFileSync(crash.file, foreign, { mode: 0o600 });
+    expect(() => crash.publish()).toThrow(expect.objectContaining({ status: 409 }));
+    expect(readFileSync(crash.file, "utf8")).toBe(foreign);
+    expect(getGradeDataset(dataset.id)).toEqual(dataset);
+  });
+  it("refuses to reuse a symbolic link at the version path", async () => {
+    const { dataset } = await first();
+    const linked = await crashBoundary(dataset);
+    const target = join(directory, "elsewhere.csv");
+    writeFileSync(target, linked.csv, { mode: 0o600 });
+    symlinkSync(target, linked.file);
+    expect(() => linked.publish()).toThrow(expect.objectContaining({ status: 503 }));
+    expect(readFileSync(target, "utf8")).toBe(linked.csv);
+    expect(getGradeDataset(dataset.id)).toEqual(dataset);
   });
 });

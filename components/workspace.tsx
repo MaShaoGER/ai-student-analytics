@@ -6,12 +6,21 @@ import { ProductBrand } from "@/components/product-brand";
 import { MotionToggle, useMotionPreferences } from "@/components/ui/motion-preferences";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { Icon } from "@/components/app-icons";
 import { conceptHref, parseConceptLocation, type ConceptLocation } from "@/lib/exploration/concepts";
 import { LoginScreen } from "@/components/login-screen";
 import { ThemeToggle, useTheme } from "@/components/ui/theme-provider";
 import { ConversationWorkspace, type ConversationTurn } from "@/components/ai-conversation";
+import type { ConversationScrollPosition } from "@/components/hooks/use-conversation-scroll";
 import experienceStyles from "@/components/conversation-experience.module.css";
 import conversationStyles from "@/components/ai-conversation.module.css";
 import {
@@ -67,6 +76,12 @@ type ViewTransition = "primary-forward" | "primary-back" | "deeper" | "back";
 type AIStatus = { configured: boolean; enabled: boolean; model: string | null };
 type SessionAnalysis = { key: string; result: AnalysisResult };
 type FailedAsk = { question: string; code: string | null; retryable: boolean };
+/**
+ * A history/新建 request held back until the reader decides what happens to the
+ * unsent draft and the conversation on screen. It carries only the target, so
+ * nothing is aborted, cleared or fetched before the decision.
+ */
+type DraftIntent = { kind: "open"; id: string } | { kind: "new" };
 /** Mirrors `isRetryableErrorCode` in lib/analysis/http-errors.ts; the server sends
  *  `retryable` itself, this set only covers an older server response. */
 const RETRYABLE_CODES = new Set([
@@ -486,8 +501,10 @@ function ReportCenter({
         <span className="feature-icon">
           <Icon name="file" size={26} />
         </span>
-        <h2>先完成一次分析，再生成报告</h2>
-        <p>报告会包含真实结论、分组数据、样本人数和计算说明。本次会话还没有可用的分析结果。</p>
+        <h2>先完成一次分析，再预览报告</h2>
+        <p>
+          报告预览包含真实结论、分组数据、样本人数和计算说明。本次会话还没有可用的分析结果。
+        </p>
         <button className="primary-button" onClick={onStart} type="button">
           开始分析
           <Icon name="arrow" size={16} />
@@ -587,6 +604,13 @@ export function Workspace({ initialConversation = false }: { initialConversation
   const explorationLocation = useRef("/?workspace=overview");
   const explorationState = useRef<Record<string, unknown> | null>(null);
   const conversationScroll = useRef(0);
+  /**
+   * Per-conversation transcript reading positions shared with the AI screen.
+   * The map is session state: it must be cleared whenever the signed-in scope is
+   * replaced, or a new account would inherit a stale offset.
+   */
+  const readingPositions = useRef<Map<string, ConversationScrollPosition> | null>(null);
+  if (!readingPositions.current) readingPositions.current = new Map();
   const [workspaceRouteError, setWorkspaceRouteError] = useState("");
   const rememberExplorationLocation = useCallback((href: string) => {
     explorationLocation.current = href;
@@ -605,7 +629,14 @@ export function Workspace({ initialConversation = false }: { initialConversation
   const sidebar = useRef<HTMLElement>(null);
   const pageHeading = useRef<HTMLHeadingElement>(null);
   const logoutDialog = useRef<HTMLDialogElement>(null);
+  const accountTrigger = useRef<HTMLButtonElement>(null);
   const accountMenu = useRef<HTMLDivElement>(null);
+  const drawerClose = useRef<HTMLButtonElement>(null);
+  const draftGuardDialog = useRef<HTMLDialogElement>(null);
+  /** The control that opened the draft confirmation, so cancelling returns there. */
+  const draftGuardTrigger = useRef<HTMLElement | null>(null);
+  const [draftIntent, setDraftIntent] = useState<DraftIntent | null>(null);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
   const [profiles, setProfiles] = useState<DatasetProfile[]>([]);
@@ -661,6 +692,13 @@ export function Workspace({ initialConversation = false }: { initialConversation
   const [loginNotice, setLoginNotice] = useState<string | null>(null);
   const [profileRefreshCount, setProfileRefreshCount] = useState(0);
   const generation = useRef(0);
+  /**
+   * Which conversation the reader is currently looking at. Starting an ask, opening
+   * history, starting a new conversation or changing source is a new epoch, so an
+   * asynchronous round-trip only applies to the epoch it was started in. A late
+   * stop response must never overwrite a newer turn or a newer draft.
+   */
+  const conversationEpoch = useRef(0);
   const askPending = useRef<AbortController | null>(null);
   const sessionSyncPending = useRef<{
     controller: AbortController;
@@ -693,8 +731,10 @@ export function Workspace({ initialConversation = false }: { initialConversation
     explorationLocation.current = "/?workspace=overview";
     explorationState.current = null;
     conversationScroll.current = 0;
+    readingPositions.current?.clear();
     setWorkspaceRouteError("");
     generation.current++;
+    conversationEpoch.current++;
     sessionSyncPending.current?.controller.abort();
     sessionSyncPending.current = null;
     askPending.current?.abort();
@@ -732,6 +772,9 @@ export function Workspace({ initialConversation = false }: { initialConversation
     setAskLoading(false);
     sidebar.current?.hidePopover();
     logoutDialog.current?.close();
+    // An unsent-draft confirmation belongs to the scope that raised it; signing
+    // out must not leave it open over the sign-in screen.
+    setDraftIntent(null);
     setSidebarOpen(false);
     setPrimary("explore");
     setTransition(null);
@@ -743,8 +786,12 @@ export function Workspace({ initialConversation = false }: { initialConversation
       explorationLocation.current = "/?workspace=overview";
       explorationState.current = null;
       conversationScroll.current = 0;
+      // A different signed-in scope must never inherit another account's reader
+      // positions: the map is keyed by conversation id, not by account.
+      readingPositions.current?.clear();
       setWorkspaceRouteError("");
       generation.current++;
+      conversationEpoch.current++;
       askPending.current?.abort();
       askPending.current = null;
       setConversationHistory([]);
@@ -776,6 +823,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
       setInputError(null);
       setFailedAsk(null);
       setAskLoading(false);
+      setDraftIntent(null);
       setLoginNotice(notice);
       setPrimary(nextView === "analysis" ? "conversation" : "explore");
       setTransition(null);
@@ -962,7 +1010,10 @@ export function Workspace({ initialConversation = false }: { initialConversation
 
   const api = useCallback(
     async (url: string, options?: RequestInit, onStep?: (step: AnalysisStep) => void) => {
-      const current = generation.current;
+      // A rejected session is judged by the signed-in scope, not by chat
+      // navigation: moving between conversations or sources must not keep a dead
+      // login alive, and a scope that was already replaced must not expire again.
+      const scope = userScope.current;
       let response: Response;
       try {
         response = await fetch(url, { ...options, cache: "no-store" });
@@ -974,7 +1025,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
       }
       if (options?.signal?.aborted) throw new DOMException("Request cancelled", "AbortError");
       if (response.status === 401) {
-        if (current === generation.current) expire("登录已过期，请重新登录。");
+        if (scope === userScope.current) expire("登录已过期，请重新登录。");
         throw new ApiError("登录已过期，请重新登录。", "UNAUTHORIZED", false, 401, null);
       }
       if (response.ok && response.headers.get("content-type")?.includes("text/event-stream")) {
@@ -1075,7 +1126,19 @@ export function Workspace({ initialConversation = false }: { initialConversation
     refreshConversationHistory,
   ]);
 
-  function applyConversationDetail(detail: ConversationDetail, restored = true) {
+  /**
+   * Applies one conversation read from the API. `draft` decides what happens to
+   * the composer: a history open clears it, while a stop round-trip only clears
+   * the question it stopped and keeps anything typed since.
+   */
+  function applyConversationDetail(
+    detail: ConversationDetail,
+    options: {
+      restored?: boolean;
+      draft?: "clear" | { clearIfUnchanged: string };
+    } = {},
+  ) {
+    const { restored = true, draft = "clear" } = options;
     conversationRef.current = detail.conversation;
     setConversation(detail.conversation);
     setDatasetId(detail.conversation.datasetId);
@@ -1105,7 +1168,8 @@ export function Workspace({ initialConversation = false }: { initialConversation
     setPendingQuestion("");
     setAskLoading(false);
     setExpandedChartId(null);
-    setQuestion("");
+    if (draft === "clear") setQuestion("");
+    else setQuestion((current) => (current === draft.clearIfUnchanged ? "" : current));
     setError(null);
     setFailedAsk(null);
   }
@@ -1113,6 +1177,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
     askPending.current?.abort();
     askPending.current = null;
     generation.current++;
+    conversationEpoch.current++;
     const current = ++historyGeneration.current;
     const scope = userScope.current;
     historySelectionPending.current = true;
@@ -1159,6 +1224,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
     askPending.current?.abort();
     askPending.current = null;
     generation.current++;
+    conversationEpoch.current++;
     historyGeneration.current++;
     historySelectionPending.current = false;
     setHistorySelecting(false);
@@ -1177,6 +1243,120 @@ export function Workspace({ initialConversation = false }: { initialConversation
     resetConversationContext.current = false;
     setHistoryLoading(false);
   }
+  function runDraftIntent(intent: DraftIntent) {
+    if (intent.kind === "open") {
+      void openConversation(intent.id);
+      return;
+    }
+    // A confirmed reset discards the draft even when there is no conversation
+    // yet, which `newConversation` treats as a display-only no-op.
+    if (question.trim()) setQuestion("");
+    newConversation();
+  }
+  /**
+   * One confirmation surface for every action that would drop an unsent draft:
+   * the history list, the history list's 新建 button and the composer's 新对话
+   * all pass through here, and nothing is aborted or cleared before the answer.
+   */
+  function requestDraftIntent(intent: DraftIntent) {
+    const hasDraft = question.trim().length > 0;
+    const needsDecision =
+      intent.kind === "open" ? hasDraft : hasDraft || chatMessages.length > 0;
+    if (!needsDecision) {
+      runDraftIntent(intent);
+      return;
+    }
+    draftGuardTrigger.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setDraftIntent(intent);
+  }
+  function settleDraftIntent(accept: boolean) {
+    const intent = draftIntent;
+    setDraftIntent(null);
+    if (accept && intent) runDraftIntent(intent);
+  }
+  /** Cancelling or confirming returns focus to wherever the request came from. */
+  function restoreDraftGuardFocus() {
+    const trigger = draftGuardTrigger.current;
+    draftGuardTrigger.current = null;
+    // The trigger can be gone or behind a closed history drawer, and the focused
+    // textarea can be inside a folded composer, so fall through to whatever the
+    // conversation screen still shows.
+    const candidates: (Element | null | undefined)[] = [
+      trigger,
+      document.getElementById("analysis-question"),
+      ...Array.from(document.querySelectorAll('[data-workspace-part="collapseToggle"]')),
+      document.getElementById("conversation-heading"),
+    ];
+    candidates
+      .find(
+        (candidate): candidate is HTMLElement =>
+          candidate instanceof HTMLElement &&
+          candidate.isConnected &&
+          candidate.getClientRects().length > 0,
+      )
+      ?.focus({ preventScroll: true });
+  }
+  /** Open the tool drawer, with focus on the close button or the data source. */
+  function openTools(focus: "close" | "dataset" = "close") {
+    const drawer = sidebar.current;
+    if (!drawer) return;
+    const target =
+      focus === "dataset"
+        ? drawer.querySelector<HTMLElement>('select[aria-label="选择当前数据源"]')
+        : drawerClose.current;
+    if (!drawer.matches(":popover-open")) drawer.showPopover();
+    setSidebarOpen(true);
+    // The drawer is always mounted, so its `autoFocus` only ever fired on the
+    // first page render. Focus the requested control once it is displayed.
+    requestAnimationFrame(() => target?.focus({ preventScroll: true }));
+  }
+  function accountMenuItems() {
+    const menu = accountMenu.current;
+    if (!menu) return [];
+    return Array.from(
+      menu.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ),
+    );
+  }
+  /**
+   * `role="menu"` owes the reader roving arrow keys, Home/End, Escape back to
+   * the trigger, and a close once Tab leaves.
+   */
+  function handleAccountMenuKey(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const items = accountMenuItems();
+    if (!items.length) return;
+    const index = items.indexOf(document.activeElement as HTMLElement);
+    let next = -1;
+    if (event.key === "ArrowDown") next = index < 0 ? 0 : (index + 1) % items.length;
+    else if (event.key === "ArrowUp")
+      next = index < 0 ? items.length - 1 : (index - 1 + items.length) % items.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = items.length - 1;
+    if (next >= 0) {
+      event.preventDefault();
+      items[next]?.focus();
+      return;
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      accountMenu.current?.hidePopover();
+      accountTrigger.current?.focus({ preventScroll: true });
+      return;
+    }
+    if (event.key === "Tab") {
+      // Let the browser move focus first, then dismiss: hiding a popover that
+      // still holds focus would strand the tab cycle on the body.
+      window.setTimeout(() => accountMenu.current?.hidePopover(), 0);
+    }
+  }
+  useEffect(() => {
+    const dialog = draftGuardDialog.current;
+    if (!dialog) return;
+    if (draftIntent && !dialog.open) dialog.showModal();
+    else if (!draftIntent && dialog.open) dialog.close();
+  }, [draftIntent]);
 
   useEffect(() => {
     if (!user || passwordChangeRequired) {
@@ -1184,7 +1364,10 @@ export function Workspace({ initialConversation = false }: { initialConversation
       return;
     }
     const controller = new AbortController();
-    const current = generation.current;
+    // This load is owned by this effect and the signed-in scope only. Chat and
+    // browse navigation bump the shared generation for their own requests;
+    // discarding an authorized data-source load because the reader opened a
+    // conversation would leave the workbench loading until some later refresh.
     const scope = sessionScopeKey(user);
     const showLoading = !profilesLoaded.current;
     if (showLoading) setProfilesLoading(true);
@@ -1193,7 +1376,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
       .then((payload) => {
         if (
           controller.signal.aborted ||
-          current !== generation.current ||
           scope !== userScope.current ||
           !Array.isArray(payload.datasets)
         )
@@ -1240,7 +1422,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
         });
       })
       .catch((requestError) => {
-        if (!controller.signal.aborted && current === generation.current) {
+        if (!controller.signal.aborted && scope === userScope.current) {
           profilesLoaded.current = false;
           setProfiles([]);
           setDatasetId(null);
@@ -1248,7 +1430,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
         }
       })
       .finally(() => {
-        if (!controller.signal.aborted && current === generation.current) {
+        if (!controller.signal.aborted && scope === userScope.current) {
           profilesLoaded.current = true;
           setProfilesLoading(false);
         }
@@ -1261,10 +1443,12 @@ export function Workspace({ initialConversation = false }: { initialConversation
       return;
     }
     const controller = new AbortController();
-    const current = generation.current;
+    // AI availability belongs to this effect and the signed-in scope, not to the
+    // chat generation: a conversation the reader opens must not strand the check.
+    const scope = sessionScopeKey(user);
     api("/api/ai/status", { signal: controller.signal })
       .then((payload) => {
-        if (!controller.signal.aborted && current === generation.current)
+        if (!controller.signal.aborted && scope === userScope.current)
           setAIStatus({
             configured: Boolean(payload.configured),
             enabled: capabilities.canUseAI && Boolean(payload.enabled),
@@ -1272,7 +1456,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
           });
       })
       .catch(() => {
-        if (!controller.signal.aborted && current === generation.current)
+        if (!controller.signal.aborted && scope === userScope.current)
           setAIStatus({ configured: false, enabled: false, model: null });
       });
     return () => controller.abort();
@@ -1288,8 +1472,10 @@ export function Workspace({ initialConversation = false }: { initialConversation
   function changeSource(value: DataSource) {
     if (view === "overview") window.dispatchEvent(new Event("exploration:leave"));
     generation.current++;
+    conversationEpoch.current++;
     askPending.current?.abort();
     askPending.current = null;
+    readingPositions.current?.clear();
     setDatasetId(value);
     if (view === "overview") {
       const href = conceptHref({ scene: "home", drawing: "rank" }, value);
@@ -1461,6 +1647,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
       setExpandedChartId(null);
       setPendingSteps([]);
     }
+    conversationEpoch.current++;
     const controller = new AbortController();
     askPending.current = controller;
     setQuestion(nextQuestion);
@@ -1649,6 +1836,24 @@ export function Workspace({ initialConversation = false }: { initialConversation
       (selected?.lastTurn?.status === "running" ? selected.lastTurn.id : null);
     if (!askPending.current && !turnId) return;
     const selectedId = selected?.id;
+    /**
+     * A stop round-trip can finish long after the reader has moved on. Only the
+     * conversation, turn epoch and revision this stop named may be reconciled,
+     * and only while no newer ask owns the composer; the draft it may clear is
+     * exactly the text it stopped, never something typed since.
+     */
+    const stopped = {
+      epoch: conversationEpoch.current,
+      id: selectedId,
+      revision: selected?.revision,
+      turnId,
+      draft: question,
+    };
+    const stillStopped = () =>
+      conversationEpoch.current === stopped.epoch &&
+      !askPending.current &&
+      conversationRef.current?.id === stopped.id &&
+      conversationRef.current?.revision === stopped.revision;
     askPending.current?.abort();
     askPending.current = null;
     setAskLoading(false);
@@ -1657,17 +1862,20 @@ export function Workspace({ initialConversation = false }: { initialConversation
     try {
       await api(`/api/conversations/${selectedId}/stop`, {
         method: "POST",
-        body: JSON.stringify({ turnId }),
+        body: JSON.stringify({ turnId: stopped.turnId }),
       });
-      if (conversationRef.current?.id !== selectedId) return;
+      if (!stillStopped()) return;
       const detail = (await api(`/api/conversations/${selectedId}`)) as ConversationDetail;
-      if (conversationRef.current?.id === selectedId) {
-        applyConversationDetail(detail, false);
-        pendingTurn.current = null;
-        void refreshConversationHistory();
-      }
+      // The reconciliation must describe the turn this stop named, never another one.
+      if (!stillStopped() || !detail.turns.some((turn) => turn.id === stopped.turnId)) return;
+      applyConversationDetail(detail, {
+        restored: false,
+        draft: { clearIfUnchanged: stopped.draft },
+      });
+      pendingTurn.current = null;
+      void refreshConversationHistory();
     } catch (error) {
-      if (conversationRef.current?.id === selectedId)
+      if (stillStopped())
         setError(requestMessage(error, "停止状态尚未确认，请刷新历史。"));
     }
   }
@@ -1835,6 +2043,28 @@ export function Workspace({ initialConversation = false }: { initialConversation
       </p>
     </div>
   );
+  const draftGuardRounds = chatMessages.filter((message) => message.role === "user").length;
+  const draftGuardHasDraft = question.trim().length > 0;
+  const draftGuardCopy = draftIntent
+    ? draftGuardHasDraft
+      ? {
+          eyebrow: "DRAFT / 未发送草稿",
+          title: "草稿还没有发送",
+          description:
+            draftIntent.kind === "open"
+              ? "切换到所选对话会丢弃这段草稿；已保存的对话不会被删除。"
+              : "新建对话会丢弃这段草稿；已保存的对话不会被删除。",
+          cancel: "保留草稿",
+          confirm: "丢弃草稿并继续",
+        }
+      : {
+          eyebrow: "SESSION / 新建对话",
+          title: "离开当前对话？",
+          description: `当前 ${draftGuardRounds} 轮对话已保存，仍可在历史中继续。新建对话只会清空这一屏。`,
+          cancel: "取消",
+          confirm: "新建对话",
+        }
+    : null;
   const sourcePicker = !passwordChangeRequired && (
     <label
       className="workbench-source"
@@ -1846,9 +2076,11 @@ export function Workspace({ initialConversation = false }: { initialConversation
         <Icon name="database" size={14} />
         当前数据源
       </span>
+      {/* Only an eligible dataset may present itself as current: a stored but
+          unusable source (e.g. 演示数据 without permission) reads as "none". */}
       <select
         aria-label="选择当前数据源"
-        value={datasetId ?? ""}
+        value={eligibleDatasetId ?? ""}
         disabled={profilesLoading || profilesError !== null || profiles.length === 0}
         onChange={(event) => {
           if (event.target.value) changeSource(event.target.value as DataSource);
@@ -1862,7 +2094,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
           <option value="">未授权任何数据集</option>
         ) : (
           <>
-            {!datasetId && <option value="">请选择数据源</option>}
+            {!eligibleDatasetId && <option value="">请选择可用数据源</option>}
             {profiles.map((profile) => (
               <option key={profile.id} value={profile.id} disabled={!isDatasetEligible(profile)}>
                 {profile.name}
@@ -1911,23 +2143,41 @@ export function Workspace({ initialConversation = false }: { initialConversation
           {primaryNavigation}
         </div>
         <div className="glass-tools" data-glass-pane="0.08">
-          {datasetId === "demo" && <span className="glass-demo-tag">模拟演示数据</span>}
+          {eligibleDatasetId === "demo" && (
+            <span className="glass-demo-tag">模拟演示数据</span>
+          )}
           <button
             type="button"
             className="icon-button glass-menu"
             aria-label={sidebarOpen ? "收起工具" : "打开工具"}
             aria-expanded={sidebarOpen}
             aria-controls="workspace-navigation"
-            popoverTarget="workspace-navigation"
+            onClick={() => {
+              const drawer = sidebar.current;
+              if (!drawer) return;
+              if (drawer.matches(":popover-open")) drawer.hidePopover();
+              else openTools("close");
+            }}
           >
             <Icon name="menu" size={18} />
           </button>
           <button
             type="button"
             className="glass-account"
+            ref={accountTrigger}
             aria-label="账号与偏好"
+            aria-haspopup="menu"
+            aria-expanded={accountMenuOpen}
             title={user.displayName || user.username}
             popoverTarget="account-menu"
+            onClick={() => {
+              if (accountMenu.current?.matches(":popover-open")) return;
+              // Chrome leaves focus on the invoker. A menu has to start on its
+              // first item, otherwise arrows, Home/End and Escape never reach it.
+              requestAnimationFrame(() =>
+                accountMenuItems()[0]?.focus({ preventScroll: true }),
+              );
+            }}
           >
             <span className="glass-avatar">{Array.from(user.displayName || user.username)[0]}</span>
             <span className="glass-user-name">{user.displayName || user.username}</span>
@@ -1939,6 +2189,8 @@ export function Workspace({ initialConversation = false }: { initialConversation
             popover="auto"
             role="menu"
             aria-label="账号与偏好"
+            onKeyDown={handleAccountMenuKey}
+            onToggle={(event) => setAccountMenuOpen(event.newState === "open")}
           >
             <div className="account-menu-head">
               <strong>{user.displayName || user.username}</strong>
@@ -2039,10 +2291,10 @@ export function Workspace({ initialConversation = false }: { initialConversation
           <button
             type="button"
             className="icon-button"
+            ref={drawerClose}
             aria-label="关闭工具"
             popoverTarget="workspace-navigation"
             popoverTargetAction="hide"
-            autoFocus
           >
             <Icon name="close" size={18} />
           </button>
@@ -2101,7 +2353,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
               {!passwordChangeRequired && (
                 <button type="button" className="workspace-back" onClick={returnToPrimary}>
                   <Icon name="chevron" size={15} />
-                  返回{primary === "conversation" ? "AI 对话" : "数据浏览"}
+                  {primary === "conversation" ? "返回 AI 对话" : "返回数据浏览"}
                 </button>
               )}
               {pageHeader}
@@ -2168,6 +2420,18 @@ export function Workspace({ initialConversation = false }: { initialConversation
                           ? `${selectedProfile.name}${sourceStatusLabel(selectedProfile)}。请选择可用数据源。`
                           : "这份数据不存在或当前账号没有访问权限。请选择已授权数据源。")}
                     </p>
+                    <p>
+                      选择一个当前账号可用的数据源后才能继续浏览；没有可用数据源时请联系管理员授权。
+                    </p>
+                    <button
+                      type="button"
+                      className="text-button"
+                      aria-expanded={sidebarOpen}
+                      aria-controls="workspace-navigation"
+                      onClick={() => openTools("dataset")}
+                    >
+                      打开数据源工具
+                    </button>
                   </div>
                 )}
               </div>
@@ -2217,10 +2481,11 @@ export function Workspace({ initialConversation = false }: { initialConversation
                       if (historyCursor) void refreshConversationHistory(historyCursor);
                     },
                     onRefresh: () => void refreshConversationHistory(),
-                    onSelect: (id) => void openConversation(id),
+                    onSelect: (id) => requestDraftIntent({ kind: "open", id }),
                     onDelete: (id) => void deleteConversation(id),
-                    onNew: newConversation,
+                    onNew: () => requestDraftIntent({ kind: "new" }),
                   }}
+                  readingPositions={readingPositions.current ?? undefined}
                   messages={chatMessages}
                   question={question}
                   loading={askLoading}
@@ -2260,7 +2525,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
                     setChatContext(null);
                     resetConversationContext.current = true;
                   }}
-                  onClear={newConversation}
+                  onClear={() => requestDraftIntent({ kind: "new" })}
                 />
               </div>
             )}
@@ -2345,6 +2610,33 @@ export function Workspace({ initialConversation = false }: { initialConversation
             onClick={() => void logout()}
           >
             {loggingOut ? "正在退出…" : "退出登录"}
+          </button>
+        </div>
+      </dialog>
+      <dialog
+        ref={draftGuardDialog}
+        className="logout-confirmation"
+        aria-labelledby="draft-guard-title"
+        aria-describedby="draft-guard-description"
+        onCancel={(event) => {
+          event.preventDefault();
+          settleDraftIntent(false);
+        }}
+        onClose={restoreDraftGuardFocus}
+      >
+        <span className="page-eyebrow">{draftGuardCopy?.eyebrow}</span>
+        <h2 id="draft-guard-title">{draftGuardCopy?.title}</h2>
+        <p id="draft-guard-description">{draftGuardCopy?.description}</p>
+        <div className="logout-confirmation-actions">
+          <button type="button" className="secondary-button" onClick={() => settleDraftIntent(false)}>
+            {draftGuardCopy?.cancel}
+          </button>
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() => settleDraftIntent(true)}
+          >
+            {draftGuardCopy?.confirm}
           </button>
         </div>
       </dialog>

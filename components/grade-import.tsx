@@ -415,6 +415,22 @@ export function GradeImport({
     publishController.current = null;
   }, []);
 
+  /** Invalidating an in-flight request must also release its loading state; an aborted
+   * request returns through a generation mismatch and never clears it itself. */
+  const invalidatePreview = useCallback(() => {
+    previewGeneration.current += 1;
+    previewController.current?.abort();
+    previewController.current = null;
+    setPreviewing(false);
+  }, []);
+
+  const invalidateValidation = useCallback(() => {
+    validationGeneration.current += 1;
+    validationController.current?.abort();
+    validationController.current = null;
+    setValidating(false);
+  }, []);
+
   const deleteDraft = useCallback(async (draftId: string, signal?: AbortSignal) => {
     const response = await fetch("/api/admin/imports", {
       method: "DELETE",
@@ -440,9 +456,7 @@ export function GradeImport({
 
   function clearValidation(reason?: string): void {
     const hadValidation = Boolean(validation || validatedKey);
-    validationGeneration.current += 1;
-    validationController.current?.abort();
-    validationController.current = null;
+    invalidateValidation();
     setValidation(null);
     setValidatedKey(null);
     setPublished(null);
@@ -508,9 +522,7 @@ export function GradeImport({
   useEffect(() => {
     if (!draft || !expired || expirationNotified.current) return;
     expirationNotified.current = true;
-    validationGeneration.current += 1;
-    validationController.current?.abort();
-    validationController.current = null;
+    invalidateValidation();
     setValidation(null);
     setValidatedKey(null);
     setInvalidatedReason(null);
@@ -518,7 +530,7 @@ export function GradeImport({
       kind: "warning",
       message: "导入暂存已过期。请取消当前导入后重新选择文件，过期暂存不会再用于校验或发布。",
     });
-  }, [draft, expired]);
+  }, [draft, expired, invalidateValidation]);
 
   useEffect(() => {
     activeRef.current = true;
@@ -558,6 +570,15 @@ export function GradeImport({
     !expired;
 
   async function chooseFile(nextFile: File): Promise<void> {
+    // Publication and an in-flight upload or cancellation own the draft; starting a new
+    // import would abort their receipt while the server may still commit the change.
+    if (publishing || uploading || canceling) {
+      setFeedback({
+        kind: "info",
+        message: "当前导入正在处理中，请等待完成后再选择或替换文件。",
+      });
+      return;
+    }
     const lowerName = nextFile.name.toLowerCase();
     if (!lowerName.endsWith(".csv") && !lowerName.endsWith(".xlsx")) {
       setFeedback({ kind: "error", message: "仅支持 .csv 或 .xlsx 文件。" });
@@ -573,8 +594,8 @@ export function GradeImport({
 
     const previousDraft = draftRef.current;
     abortAllRequests();
-    previewGeneration.current += 1;
-    validationGeneration.current += 1;
+    invalidatePreview();
+    invalidateValidation();
     const generation = ++uploadGeneration.current;
     draftRef.current = null;
     expirationNotified.current = false;
@@ -1040,7 +1061,7 @@ export function GradeImport({
               accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               className={styles.fileInput}
               onChange={onFileInput}
-              disabled={uploading || publishing}
+              disabled={uploading || publishing || canceling}
             />
             <span className={styles.dropIcon}>
               <Icon name={file ? "file" : "upload"} size={22} />

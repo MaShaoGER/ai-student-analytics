@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
-import { readState, updateState } from "../settings/storage";
+import { createHash, randomUUID } from "node:crypto";
+import { updateState } from "../settings/storage";
 import { AuthError } from "./service";
 
 /**
@@ -9,22 +9,44 @@ import { AuthError } from "./service";
  * one account may fail 10 times per window, and one client (proxy-aware IP) may
  * fail 100 times per window. A successful login clears the account dimension.
  * The previous single global bucket allowed unauthenticated account lockout.
+ *
+ * Password verification is asynchronous, so a read-only pre-check followed by a
+ * later failure record would let concurrent guesses exceed the limits (TOCTOU).
+ * Each attempt instead reserves an in-flight slot inside the storage
+ * transaction, and settles it afterwards: a failure becomes a timestamp,
+ * a success or a non-credential error simply releases the slot.
  */
 export const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 export const ACCOUNT_FAILURE_LIMIT = 10;
 export const CLIENT_FAILURE_LIMIT = 100;
+/**
+ * In-flight slots are bounded so a crashed or killed process cannot hold them
+ * forever. It only needs to exceed one password verification.
+ */
+export const RESERVATION_TTL_MS = 60 * 1000;
 const STATE_FILE = "login-attempts.json";
 
-export type LoginAttemptsState = {
-  version: 2;
-  accounts: Record<string, number[]>;
-  clients: Record<string, number[]>;
+export type LoginReservation = {
+  id: string;
+  account: string;
+  client: string | null;
+  expiresAt: number;
 };
 
+export type LoginAttemptsState = {
+  version: 3;
+  accounts: Record<string, number[]>;
+  clients: Record<string, number[]>;
+  reservations: Record<string, LoginReservation>;
+};
+
+export type LoginAttemptOutcome = "success" | "failure" | "release";
+
 const initialLoginAttempts = (): LoginAttemptsState => ({
-  version: 2,
+  version: 3,
   accounts: {},
   clients: {},
+  reservations: {},
 });
 
 function isTimestampList(value: unknown): value is number[] {
@@ -43,36 +65,67 @@ function isTimestampMap(value: unknown): value is Record<string, number[]> {
   );
 }
 
-/** Legacy single-bucket files are discarded instead of being trusted as lock state. */
+function isReservation(value: unknown): value is LoginReservation {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Partial<LoginReservation>;
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.account === "string" &&
+    (candidate.client === null || typeof candidate.client === "string") &&
+    typeof candidate.expiresAt === "number" &&
+    Number.isFinite(candidate.expiresAt)
+  );
+}
+
+function isReservationMap(value: unknown): value is Record<string, LoginReservation> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.values(value as Record<string, unknown>).every(isReservation)
+  );
+}
+
+/**
+ * Accepts the current layout, and upgrades the version 2 failure counters that
+ * existing installations already hold. Older single-bucket files are discarded
+ * instead of being trusted as lock state.
+ */
 function normalizeLoginAttempts(value: unknown): LoginAttemptsState {
   if (typeof value === "object" && value !== null) {
-    const candidate = value as Partial<LoginAttemptsState>;
+    const candidate = value as {
+      version?: unknown;
+      accounts?: unknown;
+      clients?: unknown;
+      reservations?: unknown;
+    };
     if (
-      candidate.version === 2 &&
+      (candidate.version === 2 || candidate.version === 3) &&
       isTimestampMap(candidate.accounts) &&
       isTimestampMap(candidate.clients)
     ) {
-      return candidate as LoginAttemptsState;
+      return {
+        version: 3,
+        accounts: candidate.accounts,
+        clients: candidate.clients,
+        // Unreadable reservations only free slots; recorded failures are kept.
+        reservations: isReservationMap(candidate.reservations) ? candidate.reservations : {},
+      };
     }
   }
   return initialLoginAttempts();
 }
 
-function readLoginAttempts(): LoginAttemptsState {
-  return normalizeLoginAttempts(readState(STATE_FILE, initialLoginAttempts));
-}
-
-function updateLoginAttempts(update: (state: LoginAttemptsState) => void): void {
-  updateState(STATE_FILE, initialLoginAttempts, (state) => {
+function updateLoginAttempts<R>(update: (state: LoginAttemptsState) => R): R {
+  return updateState<LoginAttemptsState, R>(STATE_FILE, initialLoginAttempts, (raw) => {
+    const state = normalizeLoginAttempts(raw);
+    const result = update(state);
     // updateState persists the object it receives; rewrite a legacy layout in
     // place so the file is upgraded rather than silently discarded on write.
-    if (normalizeLoginAttempts(state) !== state) {
-      const mutable = state as unknown as Record<string, unknown>;
-      for (const key of Object.keys(mutable)) delete mutable[key];
-      const fresh = initialLoginAttempts();
-      for (const [key, value] of Object.entries(fresh)) mutable[key] = value;
-    }
-    update(state);
+    const mutable = raw as unknown as Record<string, unknown>;
+    for (const key of Object.keys(mutable)) delete mutable[key];
+    Object.assign(mutable, state);
+    return result;
   });
 }
 
@@ -102,6 +155,18 @@ function countWithinWindow(timestamps: number[] | undefined, cutoff: number): nu
   return (timestamps ?? []).filter((timestamp) => timestamp > cutoff).length;
 }
 
+function countReservations(
+  reservations: Record<string, LoginReservation>,
+  dimension: "account" | "client",
+  key: string,
+  now: number,
+): number {
+  let count = 0;
+  for (const reservation of Object.values(reservations))
+    if (reservation.expiresAt > now && reservation[dimension] === key) count += 1;
+  return count;
+}
+
 function pruneLoginAttempts(state: LoginAttemptsState, cutoff: number): void {
   for (const dimension of [state.accounts, state.clients]) {
     for (const key of Object.keys(dimension)) {
@@ -111,39 +176,83 @@ function pruneLoginAttempts(state: LoginAttemptsState, cutoff: number): void {
   }
 }
 
-/** Read-only check performed before any credential verification. */
-export function assertLoginAllowed(username: string, clientKey: string | null): void {
-  const cutoff = Date.now() - LOGIN_WINDOW_MS;
-  const state = readLoginAttempts();
-  if (countWithinWindow(state.accounts[accountKey(username)], cutoff) >= ACCOUNT_FAILURE_LIMIT)
-    throw loginRateLimited();
-  if (clientKey && countWithinWindow(state.clients[clientKey], cutoff) >= CLIENT_FAILURE_LIMIT)
-    throw loginRateLimited();
+/** Drops slots whose owner can no longer settle them (crash, kill, lost response). */
+function pruneReservations(state: LoginAttemptsState, now: number): void {
+  for (const [id, reservation] of Object.entries(state.reservations))
+    if (reservation.expiresAt <= now) delete state.reservations[id];
 }
 
-/** Record a single invalid-credential failure after verification failed. */
-export function recordLoginFailure(username: string, clientKey: string | null): void {
+/**
+ * Atomically claims an in-flight slot for one credential check.
+ *
+ * Completed failures plus slots still being verified may not reach the limits,
+ * so concurrent guesses cannot overshoot them. The reservation identifier is
+ * random: the persisted state holds no username or address, only their hashes.
+ */
+export function reserveLoginAttempt(
+  username: string,
+  clientKey: string | null,
+): LoginReservation {
   const now = Date.now();
   const cutoff = now - LOGIN_WINDOW_MS;
-  updateLoginAttempts((state) => {
+  const account = accountKey(username);
+  return updateLoginAttempts((state) => {
     pruneLoginAttempts(state, cutoff);
-    const account = accountKey(username);
-    state.accounts[account] = [...(state.accounts[account] ?? []), now].slice(
-      -ACCOUNT_FAILURE_LIMIT,
-    );
-    if (clientKey) {
-      state.clients[clientKey] = [...(state.clients[clientKey] ?? []), now].slice(
-        -CLIENT_FAILURE_LIMIT,
-      );
-    }
+    pruneReservations(state, now);
+    if (
+      countWithinWindow(state.accounts[account], cutoff) +
+        countReservations(state.reservations, "account", account, now) >=
+      ACCOUNT_FAILURE_LIMIT
+    )
+      throw loginRateLimited();
+    if (
+      clientKey &&
+      countWithinWindow(state.clients[clientKey], cutoff) +
+        countReservations(state.reservations, "client", clientKey, now) >=
+      CLIENT_FAILURE_LIMIT
+    )
+      throw loginRateLimited();
+    const reservation: LoginReservation = {
+      id: randomUUID(),
+      account,
+      client: clientKey,
+      expiresAt: now + RESERVATION_TTL_MS,
+    };
+    state.reservations[reservation.id] = reservation;
+    return reservation;
   });
 }
 
-/** A successful login clears the account's failure history. */
-export function clearLoginFailures(username: string): void {
-  const cutoff = Date.now() - LOGIN_WINDOW_MS;
+/**
+ * Releases a reserved slot once verification finished.
+ *
+ * `failure` counts one invalid-credential rejection in both dimensions,
+ * `success` also clears the account's failure history, and `release` (any other
+ * error) frees the slot without counting, so successful and failed-by-other-
+ * means attempts never accumulate as failures.
+ */
+export function settleLoginAttempt(
+  reservation: LoginReservation,
+  outcome: LoginAttemptOutcome,
+): void {
+  const now = Date.now();
+  const cutoff = now - LOGIN_WINDOW_MS;
   updateLoginAttempts((state) => {
+    delete state.reservations[reservation.id];
     pruneLoginAttempts(state, cutoff);
-    delete state.accounts[accountKey(username)];
+    pruneReservations(state, now);
+    if (outcome === "release") return;
+    if (outcome === "success") {
+      delete state.accounts[reservation.account];
+      return;
+    }
+    state.accounts[reservation.account] = [
+      ...(state.accounts[reservation.account] ?? []),
+      now,
+    ].slice(-ACCOUNT_FAILURE_LIMIT);
+    if (reservation.client)
+      state.clients[reservation.client] = [...(state.clients[reservation.client] ?? []), now].slice(
+        -CLIENT_FAILURE_LIMIT,
+      );
   });
 }

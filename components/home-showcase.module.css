@@ -1,35 +1,84 @@
-/* Home showcase: a sticky editorial masthead over a scrolling narrative.
-   Swiss grid: warm canvas, hairline rules, mono meta labels, one counted hero
-   figure per segment, one lavender focus band. Real aggregates only. */
+/* An open, neural-grid introduction followed by the actual course data.
+   Artwork is illustrative; chart encodings and scope remain explicit. */
 
 .showcase {
   position: relative;
   min-height: 100dvh;
-  padding: clamp(72px, 9vh, 104px) clamp(20px, 4.5vw, 64px) clamp(72px, 9vh, 112px);
+  padding: 28px clamp(20px, 4.5vw, 64px) clamp(72px, 9vh, 112px);
   background: var(--background);
   color: var(--ink);
   font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
 }
 
-/* Lead: the masthead is pinned on the left while the narrative scrolls by.
-   Its type is capped by viewport height as well as width, so the whole block
-   always fits above the fold instead of sliding off a short screen. */
 .lead {
-  display: grid;
-  grid-template-columns: minmax(340px, 0.68fr) minmax(0, 1.32fr);
-  gap: clamp(32px, 4vw, 64px);
-  align-items: start;
-  max-width: 1320px;
-  margin: 0 auto clamp(48px, 7vh, 88px);
+  max-width: 1440px;
+  margin: 0 auto;
 }
 .hero {
-  position: sticky;
-  top: clamp(48px, 7vh, 88px);
-  align-self: start;
-  min-width: 0;
-  padding-top: 4px;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  align-items: center;
+  min-height: min(760px, 82svh);
+  padding: 48px 0 80px;
+  border-bottom: var(--rule);
+  background: var(--background);
 }
+.heroCopy { position: relative; z-index: 2; }
+.artwork {
+  position: absolute;
+  z-index: 0;
+  width: 66%;
+  right: 0;
+  top: 0;
+  height: 100%;
+  margin: 0;
+  mix-blend-mode: multiply;
+}
+.heroScope {
+  position: absolute;
+  z-index: 2;
+  top: 20px;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.heroScope strong { font-size: 56px; font-weight: 400; letter-spacing: -0.07em; line-height: 1; }
+.heroScope span { font-size: 12px; line-height: 1.7; color: var(--muted); }
+.heroFooter {
+  position: absolute;
+  z-index: 2;
+  inset: auto 0 22px;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+.exploreButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 40px;
+  min-height: 52px;
+  margin-top: 32px;
+  padding: 12px 18px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--ink);
+  color: var(--background);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 180ms ease, color 180ms ease;
+}
+.exploreButton span { font-size: 24px; line-height: 1; }
+.exploreButton:hover { background: var(--background); color: var(--ink); }
+.exploreButton:focus-visible { outline: 2px solid var(--accent); outline-offset: 5px; }
 .kicker {
   display: flex;
   gap: 12px;
@@ -52,46 +101,29 @@
   box-shadow: none;
   transform: rotate(45deg);
 }
-/* One weight, one sans: the headline is set as three solid lines and never
-   becomes a serif second line or a seven-line wall of Chinese. */
+/* The existing two-line title anchors the left edge of the optical composition. */
 .headline {
   margin: 0;
-  font-size: clamp(34px, min(5vw, 8.4vh), 72px);
+  font-size: clamp(52px, 6.8vw, 98px);
   font-weight: var(--weight-display);
   letter-spacing: var(--tracking-display);
-  line-height: 1;
+  line-height: 1.12;
 }
 .headlineLine {
   display: block;
 }
 .lede {
-  max-width: 40ch;
-  margin: 24px 0 0;
+  max-width: 29ch;
+  margin: 28px 0 0;
   color: var(--muted);
-  font-size: 15px;
-  line-height: 1.75;
-}
-.cue {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  margin: 26px 0 0;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: var(--type-meta);
-  font-weight: 500;
-  letter-spacing: var(--tracking-meta);
-  text-transform: uppercase;
-}
-.cueLine {
-  width: 28px;
-  height: 1px;
-  background: var(--line-strong);
+  font-size: 16px;
+  line-height: 1.85;
 }
 .narrative {
   display: grid;
-  gap: clamp(48px, 7vh, 88px);
+  gap: clamp(64px, 8vw, 112px);
   min-width: 0;
+  padding-top: 56px;
 }
 .statsSection {
   min-width: 0;
@@ -142,10 +174,10 @@
   line-height: 1.7;
 }
 
-/* Statistics chapter: one numbered segment per figure, joined by a real spine.
-   The spine thickens in the accent colour for whichever segment sits closest
-   to the middle of the viewport; the number itself stays full ink always. */
+/* A compact ledger keeps the data scope readable without another dashboard. */
 .stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   margin: 0;
   padding: 0;
   list-style: none;
@@ -158,8 +190,8 @@
   justify-content: space-between;
   gap: 10px;
   min-width: 0;
-  min-height: clamp(180px, 36vh, 290px);
-  padding: clamp(16px, 2.2vh, 24px) 0 clamp(18px, 2.4vh, 28px) clamp(16px, 1.6vw, 26px);
+  min-height: 225px;
+  padding: 22px 18px;
   border-top: var(--rule);
   container-type: inline-size;
 }
@@ -237,7 +269,7 @@
   align-items: baseline;
   margin: 0;
   color: var(--ink);
-  font-size: min(clamp(56px, 9vw, 120px), 24cqi);
+  font-size: min(68px, 25cqi);
   font-weight: var(--weight-display);
   letter-spacing: -0.055em;
   line-height: 0.84;
@@ -280,6 +312,11 @@
 .constellation {
   min-width: 0;
   margin: 0;
+  scroll-margin-top: 100px;
+}
+.constellation:focus-visible, .strips:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 8px;
 }
 .constellation .figHead {
   margin-top: 0;
@@ -352,14 +389,36 @@
 /* Metric strips: six rows, each a labeled rail with beads. */
 .strips {
   min-width: 0;
+  scroll-margin-top: 100px;
 }
 .strip {
   display: grid;
-  grid-template-columns: minmax(0, 240px) minmax(0, 1fr) auto;
-  gap: 16px 28px;
+  grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
+  gap: 4px 28px;
   align-items: center;
   padding: 20px 0;
   border-bottom: var(--rule);
+}
+/* The scale belongs to the rail, not to a third column: its ends have to sit
+   under the 0 and 100 ends of the track they label. */
+.stripLabel {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+.stripTrack {
+  grid-column: 2;
+  grid-row: 1;
+}
+.scale {
+  grid-column: 2;
+  grid-row: 2;
+}
+/* Each ruler animates in, and a filled animation leaves a stacking context
+   behind; the ruler holding an open stack has to rise above the next ones so
+   its list is not painted under their rails and labels. */
+.strip[data-open="true"] {
+  position: relative;
+  z-index: 6;
 }
 .stripLabel {
   margin: 0;
@@ -377,9 +436,22 @@
   letter-spacing: var(--tracking-meta);
 }
 .stripSvg {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.stripTrack {
+  position: relative;
+  min-width: 0;
   height: 40px;
+  z-index: 1;
+}
+/* An open stack draws its list above the next ruler in the document. */
+.stripTrack[data-open="true"] {
+  z-index: 5;
 }
 .rail {
   stroke: var(--line);
@@ -394,17 +466,156 @@
   stroke-width: 2;
   opacity: 0.4;
 }
-.bead {
+/* Every mark is a real button: a 24px target for a single course, and one
+   stacked target per overlapping group. Nothing moves off its measured value. */
+.bead,
+.cluster {
+  position: absolute;
+  top: 50%;
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  transform: translate(-50%, -50%);
   cursor: pointer;
-  outline: none;
 }
-.bead rect {
-  fill: var(--accent);
+.bead {
+  width: 24px;
+  height: 32px;
+}
+.bead::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 20px;
+  background: var(--accent);
   opacity: 0.7;
-  transition: opacity 180ms ease-out, fill 180ms ease-out;
+  transform: translate(-50%, -50%);
+  transition: opacity 180ms ease-out, background 180ms ease-out;
 }
-.bead:hover rect { opacity: 1; }
-.bead:focus-visible rect { opacity: 1; fill: var(--accent-ink); stroke: var(--ink); stroke-width: 1.5; }
+.bead:hover::before { opacity: 1; }
+.bead:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.bead:focus-visible::before {
+  opacity: 1;
+  background: var(--accent-ink);
+}
+.cluster {
+  min-width: 26px;
+  height: 34px;
+}
+.cluster:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.clusterDots {
+  position: absolute;
+  inset: 0;
+}
+.clusterDots i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  opacity: 0.7;
+  transform: translate(-50%, -50%);
+  transition: opacity 180ms ease-out, background 180ms ease-out;
+}
+.cluster:hover .clusterDots i { opacity: 1; }
+.cluster:focus-visible .clusterDots i {
+  opacity: 1;
+  background: var(--accent-ink);
+}
+.clusterCount {
+  position: absolute;
+  left: 50%;
+  top: -8px;
+  transform: translateX(-50%);
+  color: var(--accent-ink);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1;
+}
+/* The stack list: exact names and values, opened on click or Enter. */
+.groupPanel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  width: min(288px, 100%);
+  max-height: 264px;
+  border: 1px solid var(--line-strong);
+  border-radius: 0;
+  background: var(--surface-raised);
+  box-shadow: 0 18px 40px rgba(35, 35, 41, 0.12);
+}
+.groupNote {
+  display: flex;
+  flex: none;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
+  letter-spacing: var(--tracking-meta);
+}
+.groupList {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.groupOption {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 40px;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.groupOption:last-child { border-bottom: 0; }
+.groupOption small {
+  flex: none;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
+  letter-spacing: var(--tracking-meta);
+}
+.groupOption:hover { background: var(--accent-transparent); }
+.groupOption:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: var(--accent-transparent);
+}
 .scale {
   display: flex;
   justify-content: space-between;
@@ -419,9 +630,8 @@
    and ruler arms itself when it reaches the viewport, so scrolling — not one
    shared trigger — moves the story along. Only handles whose text can stay
    readable mid-transition blur; charts and figures move without blur. */
-.showcase[data-motion="on"] .hero > .kicker { animation: riseIn 360ms var(--ease-editorial) both; }
-.showcase[data-motion="on"] .hero > .lede { animation: riseIn 420ms var(--ease-editorial) 180ms both; }
-.showcase[data-motion="on"] .hero > .cue { animation: riseIn 420ms var(--ease-editorial) 280ms both; }
+.showcase[data-motion="on"] .heroCopy > .kicker { animation: riseIn 360ms var(--ease-editorial) both; }
+.showcase[data-motion="on"] .heroCopy > .lede { animation: riseIn 420ms var(--ease-editorial) 180ms both; }
 .showcase[data-motion="on"] .statsSection > .figHead { animation: riseIn 460ms var(--ease-editorial) 120ms both; }
 .showcase[data-motion="on"] .stat:not([data-visible="true"]) { opacity: 0; }
 .showcase[data-motion="on"] .stat[data-visible="true"] { animation: statIn 460ms var(--ease-editorial) both; }
@@ -441,43 +651,45 @@
 .showcase[data-motion="off"] * { animation: none !important; transition: none !important; }
 
 @media (max-width: 1180px) {
-  .lead { grid-template-columns: minmax(300px, 0.72fr) minmax(0, 1.28fr); }
-  .stat { min-height: clamp(176px, 34vh, 240px); }
+  .hero { min-height: 660px; }
+  .artwork { width: 70%; top: 0; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat { min-height: 210px; }
 }
 @media (max-width: 900px) {
-  .showcase { padding: 56px 20px 72px; }
-  .lead { grid-template-columns: minmax(0, 1fr); gap: 36px; margin-bottom: 44px; }
-  /* Parallax is disabled when sticky is also disabled. */
-  .hero { position: static; top: auto; transform: none !important; }
-  .headline { font-size: clamp(38px, 9.4vw, 56px); }
-  .lede { margin-top: 20px; }
-  .cue { margin-top: 20px; }
-  .narrative { gap: 44px; }
-  .figHead { margin-bottom: 16px; }
+  .showcase { padding: 28px 24px 72px; }
+  .hero { min-height: 620px; grid-template-columns: 1fr 1fr; align-items: start; padding-top: 64px; }
+  .headline { font-size: clamp(48px, 8vw, 72px); }
+  .artwork { width: 75%; height: 75%; top: 23%; }
+  .lede { font-size: 14px; }
+  .heroScope strong { font-size: 40px; }
+  .narrative { gap: 56px; padding-top: 40px; }
   .figHead strong { font-size: 19px; }
-  /* Phones keep the whole statistics story but tighten each segment. */
-  .stat { min-height: clamp(148px, 24vh, 190px); padding-left: 16px; }
-  .statValue { font-size: min(clamp(48px, 11vw, 88px), 26cqi); }
   .strip { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .stripLabel, .stripTrack, .scale { grid-column: 1; grid-row: auto; }
   .stripLabel { font-size: 15px; }
   .scale { margin-top: 4px; }
 }
-@media (max-width: 480px) {
-  .showcase { padding: 52px 18px 72px; }
-  .lead { gap: 28px; margin-bottom: 36px; }
-  .kicker { margin-bottom: 16px; }
-  .lede { margin-top: 18px; font-size: 14px; line-height: 1.65; }
-  .stat { min-height: 146px; padding: 14px 0 18px 14px; gap: 8px; }
-  .statValue { font-size: min(clamp(40px, 13vw, 64px), 30cqi); }
-  .statNote { font-size: 12.5px; }
-  .figHead { align-items: start; }
-  .figHead > span:last-child { font-size: 12px; }
+@media (max-width: 600px) {
+  .showcase { padding: 110px 18px 72px; }
+  .hero { display: block; min-height: 0; padding: 52px 0 58px; }
+  .heroScope { top: 0; }
+  .heroScope strong { font-size: 30px; }
+  .heroScope span { font-size: 10px; }
+  .kicker { margin-bottom: 20px; font-size: 10px; }
+  .headline { font-size: clamp(46px, 11vw, 66px); }
+  .lede { max-width: none; font-size: 14px; margin-top: 20px; }
+  .exploreButton { margin-top: 22px; }
+  .artwork { position: relative; width: 100%; height: min(78vw, 430px); top: auto; margin: 0; }
+  .heroFooter { font-size: 10px; letter-spacing: 0; bottom: 18px; }
+  .heroFooter span:last-child { max-width: 120px; text-align: right; }
+  .stats { grid-template-columns: minmax(0, 1fr); }
+  .stat { min-height: 185px; padding: 18px 16px; }
+  .statValue { font-size: 64px; }
+  .statNote { font-size: 13px; }
+  .figHead { align-items: start; gap: 8px 12px; }
+  .figHead > span:last-child { font-size: 13px; }
   .tick, .axis { font-size: 15px; }
-}
-/* Short screens: a sticky masthead cannot fit, so it scrolls with the page. */
-@media (max-height: 660px) {
-  .hero { position: static; top: auto; transform: none !important; }
-  .cue { margin-top: 18px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -495,8 +707,7 @@
 
 @media print {
   .showcase { padding: 32px 20px; min-height: 0; }
-  .hero { position: static; top: auto; transform: none !important; }
-  .cue { display: none; }
+  .hero { position: relative; top: auto; transform: none !important; }
   .kicker span { box-shadow: none; }
   .statValue { font-size: 48px; }
   .kicker, .statLabel, .index, .stripLabel small, .scale { font-size: 9px; }

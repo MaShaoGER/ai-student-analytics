@@ -885,8 +885,8 @@ export async function converseUnified(
                         前期均分: previous.value,
                         后期均分: row.value,
                         变化: Math.round((row.value - previous.value) * 100) / 100,
-                        前期人数: previous.sampleSize,
-                        后期人数: row.sampleSize,
+                        前期样本: previous.sampleSize,
+                        后期样本: row.sampleSize,
                       },
                     ]
                   : [];
@@ -907,13 +907,13 @@ export async function converseUnified(
               table: {
                 sortChange: "asc",
                 description: `${scope}；仅比较两期均满足人数阈值的同名课程，两期学生构成可能不同。`,
-                columns: ["课程", "前期均分", "后期均分", "变化", "前期人数", "后期人数"],
+                columns: ["课程", "前期均分", "后期均分", "变化", "前期样本", "后期样本"],
                 rows,
               },
             };
             artifacts.push(comparisonArtifact);
             const comparisonFact = rows.length
-              ? `${scope}：共有 ${rows.length} 门课程可比较。${largestDecline ? `${rows[0].课程}均分下降最多，下降 ${n(-rows[0].变化)} 分（${n(rows[0].前期均分)} → ${n(rows[0].后期均分)} 分）；两期分别 ${rows[0].前期人数}、${rows[0].后期人数} 人。` : "可比课程中没有均分下降的课程。"}`
+              ? `${scope}：共有 ${rows.length} 门课程可比较。${largestDecline ? `${rows[0].课程}均分下降最多，下降 ${n(-rows[0].变化)} 分（${n(rows[0].前期均分)} → ${n(rows[0].后期均分)} 分）；两期分别 ${rows[0].前期样本}、${rows[0].后期样本} 人。` : "可比课程中没有均分下降的课程。"}`
               : `${scope}：没有两期均满足样本要求的同名课程，无法比较。`;
             facts.push(comparisonFact);
             // The comparison sentence carries the verified numbers but lives in
@@ -949,7 +949,7 @@ export async function converseUnified(
                     value: row.前期均分,
                     unit: "分",
                     label: "前期均分",
-                    sample: row.前期人数,
+                    sample: row.前期样本,
                   },
                   {
                     role: "after",
@@ -957,7 +957,7 @@ export async function converseUnified(
                     value: row.后期均分,
                     unit: "分",
                     label: "后期均分",
-                    sample: row.后期人数,
+                    sample: row.后期样本,
                   },
                   {
                     role: "change",
@@ -980,18 +980,18 @@ export async function converseUnified(
                   {
                     role: "sample_size",
                     term: params.beforeTerm,
-                    value: row.前期人数,
+                    value: row.前期样本,
                     unit: "人",
                     label: "前期样本人数",
-                    sample: row.前期人数,
+                    sample: row.前期样本,
                   },
                   {
                     role: "sample_size",
                     term: params.afterTerm,
-                    value: row.后期人数,
+                    value: row.后期样本,
                     unit: "人",
                     label: "后期样本人数",
-                    sample: row.后期人数,
+                    sample: row.后期样本,
                   },
                 ];
                 for (const atom of atoms)
@@ -1140,21 +1140,27 @@ export async function converseUnified(
     });
     return response();
   } catch (error) {
-    // Partial-result recovery must never return artifacts after scope/role
+    // Partial-result recovery must never return results after scope/role
     // revocation. Recheck before every recovery branch, including timeouts.
     assertCurrentAccess(input.datasetId, "ai");
-    if (timedOut && !options.signal?.aborted && artifacts.length) {
+    // A cancelled request stays cancelled: the user stopped this turn, so no
+    // late result is returned even when steps had already completed.
+    if (options.signal?.aborted) throw new QueryExecutionError("CANCELLED", "分析请求已取消。");
+    // Completed results are artifacts and measured results without an
+    // attachment (absence statistics). Both were really computed and must
+    // survive a timeout or a later failing step.
+    const measured = artifacts.length > 0 || extraResults.length > 0;
+    if (timedOut && measured) {
       failureCode = "TIMEOUT";
       warning = "本轮达到总时间上限，已保留完成的结果；后续步骤尚未完成。";
       return response();
     }
-    if (options.signal?.aborted) throw new QueryExecutionError("CANCELLED", "分析请求已取消。");
     if (timedOut) throw new QueryExecutionError("TIMEOUT", "本轮对话达到总时间上限。");
-    if (error instanceof ChartClarification && !artifacts.length) {
+    if (error instanceof ChartClarification && !measured) {
       clarification = error.message;
       return response();
     }
-    if (artifacts.length || citations.size) {
+    if (measured || citations.size) {
       failureCode =
         error instanceof UnifiedConversationError
           ? error.code
@@ -1166,7 +1172,9 @@ export async function converseUnified(
           ? error.message
           : error instanceof BudgetExceededError
             ? "本轮预算不足，已保留完成的结果；后续步骤尚未完成。"
-            : "后续分析未完成，已保留此前完成的真实结果。";
+            : error instanceof ChartClarification
+              ? `已保留完成的统计结果。${error.message}`
+              : "后续分析未完成，已保留此前完成的真实结果。";
       return response();
     }
     throw error;

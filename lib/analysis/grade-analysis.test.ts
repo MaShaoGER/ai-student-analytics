@@ -90,6 +90,61 @@ describe("imported grade analysis uses typed immutable inputs", () => {
     );
     expect(result.rows).toEqual([{ dimension: "课程甲", value: 33.33, sampleSize: 3 }]);
   });
+  it("keeps groups separate when imported labels contain the display separator", async () => {
+    // Two two-person groups concatenate to the same "甲 / 乙 / 丙" label under a
+    // joined key, and two three-person groups do the same for "丁 / 戊 / 己".
+    // Grouping must follow the raw columns: the pairs stay hidden instead of
+    // becoming a visible four-person group, and the triples keep their own means.
+    writeFileSync(
+      state.path,
+      [
+        "id_student,code_module,code_presentation,score,completed",
+        "a1,甲 / 乙,丙,60,",
+        "a2,甲 / 乙,丙,70,",
+        "b1,甲,乙 / 丙,60,",
+        "b2,甲,乙 / 丙,70,",
+        "c1,丁 / 戊,己,60,",
+        "c2,丁 / 戊,己,70,",
+        "c3,丁 / 戊,己,80,",
+        "d1,丁,戊 / 己,70,",
+        "d2,丁,戊 / 己,80,",
+        "d3,丁,戊 / 己,90,",
+        'e1,"庚 ""引号""",辛,60,',
+        'e2,"庚 ""引号""",辛,70,',
+        'e3,"庚 ""引号""",辛,80,',
+        // Control group: an ordinary label keeps the plain "A / B" form.
+        "f1,普通,甲学期,60,",
+        "f2,普通,甲学期,70,",
+        "f3,普通,甲学期,80,",
+        // A slash without surrounding spaces is still part of the value: both
+        // groups would join to "A / / B" if only " / " were quoted.
+        "g1,A /,B,60,",
+        "g2,A /,B,70,",
+        "g3,A /,B,80,",
+        "h1,A,/ B,60,",
+        "h2,A,/ B,70,",
+        "h3,A,/ B,80,",
+      ].join("\n"),
+    );
+    const { result } = await runAnalysis({
+      ...createPlan({ datasetId: id, metric: "score", dimension: "course", chartType: "bar" }),
+      dimensions: ["course", "term"],
+      sort: { by: "dimension", direction: "asc" },
+    });
+    expect(result.filteredOutGroupCount).toBe(2);
+    const rows = new Map(result.rows.map((row) => [row.dimension, row]));
+    expect(rows.size).toBe(6);
+    expect(rows.get('"丁 / 戊" / 己')).toMatchObject({ value: 70, sampleSize: 3 });
+    expect(rows.get('丁 / "戊 / 己"')).toMatchObject({ value: 80, sampleSize: 3 });
+    // A value that itself contains a quote round-trips with doubled quotes.
+    expect(rows.get('"庚 ""引号""" / 辛')).toMatchObject({ value: 70, sampleSize: 3 });
+    // Ordinary labels keep the familiar unquoted form.
+    expect(rows.get("普通 / 甲学期")).toMatchObject({ value: 70, sampleSize: 3 });
+    // Slashes without surrounding spaces are still quoted, so the two groups
+    // stay distinct instead of merging into one six-person "A / / B" group.
+    expect(rows.get('"A /" / B')).toMatchObject({ value: 70, sampleSize: 3 });
+    expect(rows.get('A / "/ B"')).toMatchObject({ value: 70, sampleSize: 3 });
+  });
 });
 
 it("runs imported grades through the standard AI tool loop with versioned aggregate results", async () => {

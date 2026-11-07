@@ -58,6 +58,16 @@ export function conceptDrawings(location: ConceptLocation): readonly ConceptDraw
   if (location.scene === "course") return ["bars", "dots", "radar"];
   return CONCEPT_RELATIONS[location.metric].find(option => option.id === location.relation)!.drawings;
 }
+/**
+ * The identity of one visited topic. A drawing is another view of the same data;
+ * a term change is a range change of the same page, handled via replaceState in commit().
+ * Neither drawing nor term are part of the key.
+ */
+export function conceptTopicKey(location: ConceptLocation): string {
+  if (location.scene === "home") return "home";
+  if (location.scene === "course") return JSON.stringify(["course", location.course]);
+  return JSON.stringify(["metric", location.course, location.metric, location.relation]);
+}
 export function conceptTitle(location: ConceptLocation): string {
   if (location.scene === "home") return "课程全景";
   if (location.scene === "course") return location.course;
@@ -85,6 +95,17 @@ export function conceptHref(location: ConceptLocation, datasetId?: DataSource): 
   if (location.scene === "metric") { params.set("indicator", location.metric); params.set("relation", location.relation); }
   return `/?${params}`;
 }
+/**
+ * Native back/forward notifies every listener in the app. A browse address belongs
+ * to the explorer for this source only when it names the browse workspace and, if
+ * it names a source, that same source; anything else is another screen's entry.
+ */
+export function ownsBrowseLocation(input: string, datasetId: DataSource): boolean {
+  const workspace = new URL(input, "http://exploration.local").searchParams.get("workspace");
+  if (workspace && workspace !== "overview") return false;
+  const route = parseConceptLocation(input);
+  return route.status !== "valid" || !route.datasetId || route.datasetId === datasetId;
+}
 export function parseConceptLocation(input: string): ConceptRoute {
   const params = new URL(input, "http://exploration.local").searchParams;
   const fail = (): ConceptRoute => ({ status: "invalid", message: "这个探索地址无效，请回到课程全景重新开始。" });
@@ -94,16 +115,19 @@ export function parseConceptLocation(input: string): ConceptRoute {
   const dataset = params.has("dataset") ? dataSourceSchema.safeParse(params.get("dataset")) : null;
   if (dataset && !dataset.success) return fail();
   const datasetId = dataset?.success ? dataset.data : undefined;
-  const term = params.get("term") ?? undefined;
-  if (term !== undefined && (!term.trim() || term.length > 80)) return fail();
+  // Pasted links carry padding around values; the trimmed value is the only form the app writes back.
+  const rawTerm = params.get("term");
+  const term = rawTerm === null ? undefined : rawTerm.trim();
+  if (term !== undefined && (!term || term.length > 80)) return fail();
   const scene = params.get("browse") ?? "home";
   const drawing = params.get("drawing");
   if (scene === "home") {
     if (params.has("course") || params.has("indicator") || params.has("relation") || (drawing !== null && drawing !== "rank" && drawing !== "dots")) return fail();
     return { status: "valid", location: { scene: "home", drawing: drawing ?? "rank", term }, datasetId };
   }
-  const course = params.get("course");
-  if (!course?.trim() || course.length > 120) return fail();
+  const rawCourse = params.get("course");
+  const course = rawCourse === null ? undefined : rawCourse.trim();
+  if (!course || course.length > 120) return fail();
   if (scene === "course") {
     if (params.has("indicator") || params.has("relation") || (drawing !== null && !["bars", "dots", "radar"].includes(drawing))) return fail();
     return { status: "valid", location: { scene: "course", course, drawing: (drawing ?? "bars") as "bars" | "dots" | "radar", term }, datasetId };

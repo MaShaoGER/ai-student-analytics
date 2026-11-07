@@ -35,6 +35,7 @@ import {
   type ConversationDetail,
   type ConversationPage,
   type ConversationSummary,
+  type ConversationTurn,
   type CreateConversationInput,
   type FailTurnInput,
   type FailTurnResult,
@@ -207,11 +208,26 @@ function summary(conversation: StoredConversation, now: Date): ConversationSumma
 
 function detail(conversation: StoredConversation, now: Date): ConversationDetail {
   const clone = JSON.parse(JSON.stringify(conversation)) as StoredConversation;
-  for (const turn of clone.turns) turn.status = effectiveStatus(turn, now);
   return {
     conversation: summary(clone, now),
     messages: clone.messages,
-    turns: clone.turns,
+    // Explicit allowlist: lease identity, claim windows and the input digest
+    // are coordination state and must never reach an API response.
+    turns: clone.turns.map((turn) => {
+      const projected: ConversationTurn = {
+        id: turn.id,
+        question: turn.question,
+        resetContext: turn.resetContext,
+        status: effectiveStatus(turn, now),
+        revision: turn.revision,
+        createdAt: turn.createdAt,
+        updatedAt: turn.updatedAt,
+      };
+      if (turn.completedAt) projected.completedAt = turn.completedAt;
+      if (turn.response) projected.response = turn.response;
+      if (turn.error) projected.error = turn.error;
+      return projected;
+    }),
   };
 }
 

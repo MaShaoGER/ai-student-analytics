@@ -158,6 +158,49 @@ describe("absence statistics contract", () => {
     expect(data.totals.studentCourseCount).toBe(3);
   });
 
+  it("counts only valid absence records toward the eligible-group threshold", async () => {
+    // The per-course rows and the deduplicated total must apply the same
+    // predicate. Three students exist, but each of the split metrics has only
+    // two non-NULL records, so the group is below the threshold either way.
+    const mixed = mkdtempSync(path.join(tmpdir(), "absence-null-eligible-"));
+    const header =
+      "id_student,code_module,code_presentation,score,completed,scheduled_sessions,attended_sessions,present_sessions,late_sessions,early_leave_sessions,excused_sessions,absent_sessions,attendance_rate";
+    const rows = [
+      header,
+      "S1,数学,2025J,60,1,32,30,30,0,0,0,2,93",
+      // absent_sessions missing: unexcused has no valid record for S2.
+      "S2,数学,2025J,60,1,32,29,29,0,0,,3,90",
+      // excused_sessions missing: excused has no valid record for S3.
+      "S3,数学,2025J,60,1,32,32,32,0,0,1,,100",
+    ];
+    writeFileSync(path.join(mixed, "student_outcomes.csv"), rows.join("\n"));
+    writeFileSync(
+      path.join(mixed, "learning_activity.csv"),
+      "id_student,code_module,code_presentation,week,activity_count\nS1,数学,2025J,1,10\n",
+    );
+    vi.stubEnv("DEMO_DATA_DIR", mixed);
+    vi.resetModules();
+    const { absenceStats } = await import("./duckdb");
+    const unexcused = await absenceStats({ datasetId: "demo", term: "2025J", metric: "unexcused" });
+    const excused = await absenceStats({ datasetId: "demo", term: "2025J", metric: "excused" });
+    const absence = await absenceStats({ datasetId: "demo", term: "2025J", metric: "absence" });
+    vi.unstubAllEnvs();
+    vi.resetModules();
+    rmSync(mixed, { recursive: true, force: true });
+    // Two valid records each: hidden everywhere, including the deduplicated total.
+    expect(unexcused.rows).toEqual([]);
+    expect(unexcused.totals).toMatchObject({
+      sessions: 0,
+      studentCourseCount: 0,
+      distinctStudents: 0,
+    });
+    expect(excused.rows).toEqual([]);
+    expect(excused.totals.distinctStudents).toBe(0);
+    // `absence` COALESCEs both columns, so all three records are valid there.
+    expect(absence.rows).toEqual([{ course: "数学", sessions: 6, students: 3 }]);
+    expect(absence.totals.distinctStudents).toBe(3);
+  });
+
   it("scopes the term list to the actual filter", async () => {
     const scoped = await query({ datasetId: "demo", term: "2024J", metric: "absence" });
     expect(scoped.terms).toEqual(["2024J"]);

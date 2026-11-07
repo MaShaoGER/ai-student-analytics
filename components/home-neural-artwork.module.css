@@ -1,0 +1,47 @@
+.scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+.scene [data-part="cell"] {
+  transition: fill 480ms ease, opacity 520ms ease;
+}
+.scene [data-part="wire"],
+.scene [data-part="signal"],
+.scene [data-part="terminal"] {
+  transition: opacity 460ms ease, stroke 460ms ease;
+}
+.scene [data-part="wire"] { stroke: var(--accent); stroke-width: 0.8; }
+.scene [data-part="signal"] {
+  stroke: var(--accent);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-dasharray: 0.025 0.975;
+  animation: transfer 1600ms linear infinite;
+}
+.scene [data-part="terminal"] { fill: var(--accent); }
+.scene [data-part="grid"] { stroke: var(--ink); stroke-opacity: 0.15; stroke-width: 0.55; }
+.scene [data-part="edge"] { stroke: var(--ink); stroke-opacity: 0.26; stroke-width: 0.75; }
+.scene [data-part="cell"][data-hot="true"] { fill: var(--accent) !important; opacity: 0.92 !important; }
+.scene [data-part="wire"][data-hot="true"] { stroke-width: 1.5; opacity: 0.85 !important; }
+.scene [data-part="terminal"][data-hot="true"] { opacity: 0.85 !important; }
+
+.scene[data-running="false"] [data-part] { transition: none; }
+.scene[data-running="false"] [data-part="signal"] { animation: none; display: none; }
+
+@keyframes transfer {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene [data-part] { transition: none; }
+  .scene [data-part="signal"] { animation: none; display: none; }
+}
+@media print {
+  .scene [data-part] { transition: none; }
+  .scene [data-part="signal"] { animation: none; display: none; }
+}

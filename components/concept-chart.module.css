@@ -67,6 +67,10 @@
   stroke-width: 1;
   stroke-dasharray: 3 2;
 }
+/* Radar points are 12 units of ink on a sheet that a phone scales down; the transparent
+   36-unit disc around a published value is the pointer and touch target. Missing items never
+   get one. */
+.hitDot { fill: transparent; }
 
 /* Withheld tooltip: sheet type at 11px, warm paper, one accent hairline, square corners.
    Pointer only; a withheld datum shows its note as visible text instead of a native
@@ -117,7 +121,13 @@
 .datum[data-interactive]:focus-visible .label,
 .datum[data-interactive]:focus-visible .value { fill: var(--accent-ink, var(--accent)); font-weight: 600; }
 
-/* Wide charts scroll inside their own region on narrow screens; the page never overflows. */
+/* Wide charts scroll inside their own region on narrow screens; the page never overflows.
+   The hint sits above the scroller, not inside it, so it stays readable while the chart
+   itself is scrolled sideways. */
+.frame {
+  min-width: 0;
+  max-width: 100%;
+}
 .viewport {
   width: 100%;
   max-width: 100%;

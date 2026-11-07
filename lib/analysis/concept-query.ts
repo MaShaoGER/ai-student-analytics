@@ -444,17 +444,30 @@ export async function conceptExplorerData(
         FROM concept_scores
         WHERE code_presentation = ${literal(term)}
       `);
+      // The catalog shows at most COURSE_LIMIT courses, so every per-course
+      // aggregate must be bounded to that same selection: aggregating all
+      // courses would exceed the result-row safety limit on wide data sources
+      // (501 courses) even though only the first 100 are ever displayed.
+      // `totalCourses` still reports the real count for the term.
+      await sql(`
+        CREATE TEMP TABLE concept_courses AS
+        SELECT * FROM (
+          SELECT code_module AS course,
+                 COUNT(*) AS n,
+                 AVG(score) AS mean,
+                 COUNT(*) FILTER (WHERE score >= 60) AS passed,
+                 COUNT(*) FILTER (WHERE score < 60) AS failed
+          FROM concept_scores
+          WHERE code_presentation = ${literal(term)}
+          GROUP BY code_module
+          ORDER BY ${requestedCourse ? `(code_module = ${literal(requestedCourse)}) DESC, ` : ""}code_module ASC
+          LIMIT ${COURSE_LIMIT}
+        )
+      `);
       const courseRows = await sql(`
-        SELECT code_module AS course,
-               COUNT(*) AS n,
-               AVG(score) AS mean,
-               COUNT(*) FILTER (WHERE score >= 60) AS passed,
-               COUNT(*) FILTER (WHERE score < 60) AS failed
-        FROM concept_scores
-        WHERE code_presentation = ${literal(term)}
-        GROUP BY code_module
-        ORDER BY ${requestedCourse ? `(code_module = ${literal(requestedCourse)}) DESC, ` : ""}code_module ASC
-        LIMIT ${COURSE_LIMIT}
+        SELECT course, n, mean, passed, failed
+        FROM concept_courses
+        ORDER BY ${requestedCourse ? `(course = ${literal(requestedCourse)}) DESC, ` : ""}course ASC
       `);
 
       const attendanceByCourse = new Map<string, AttendanceAggregate>();
@@ -467,6 +480,7 @@ export async function conceptExplorerData(
             ON s.code_module = a.code_module
            AND s.code_presentation = a.code_presentation
            AND s.id_student = a.id_student
+          JOIN concept_courses sel ON sel.course = a.code_module
           WHERE a.code_presentation = ${literal(term)}
           GROUP BY a.code_module
         `);
@@ -489,6 +503,7 @@ export async function conceptExplorerData(
             ON s.code_module = c.code_module
            AND s.code_presentation = c.code_presentation
            AND s.id_student = c.id_student
+          JOIN concept_courses sel ON sel.course = c.code_module
           WHERE c.code_presentation = ${literal(term)}
             AND c.completed IN (0, 1)
           GROUP BY c.code_module
@@ -513,6 +528,7 @@ export async function conceptExplorerData(
             ON s.code_module = h.code_module
            AND s.code_presentation = h.code_presentation
            AND s.id_student = h.id_student
+          JOIN concept_courses sel ON sel.course = h.code_module
           WHERE h.code_presentation = ${literal(term)}
           GROUP BY h.code_module
         `);

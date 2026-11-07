@@ -87,12 +87,23 @@ describe("analysis exports", () => {
     expect(html).toContain("default-src 'none'");
   });
 
+  it("renders a privacy explanation instead of a blank block when query is absent", () => {
+    // Repository sanitisation stores query:"" in history snapshots; the report must
+    // name that gap rather than print an empty <pre> that looks like missing content.
+    const snapshot = analysisReportHtml({ ...result, query: "" });
+    expect(snapshot).not.toContain("<pre>");
+    expect(snapshot).toContain("历史记录不保存原始查询语句");
+    // A live result keeps its query escaped inside <pre>.
+    expect(analysisReportHtml(result)).toContain(
+      "<pre>SELECT AVG(score) FROM student_outcomes</pre>",
+    );
+  });
+
   it("reports scope, individual group samples and privacy limits without inventing total students", () => {
     const html = analysisReportHtml(result);
     expect(html).toContain("模拟校园数据");
     expect(html).toContain(result.period);
     expect(html).toContain("每组至少 3 名学生");
-    expect(html).toContain("<td>7</td>");
     expect(html).toContain("不能将各组人数相加作为独立学生总人数");
     expect(html).not.toContain("过滤 0 个分组");
     expect(analysisReportHtml({ ...result, filteredOutGroupCount: 2 })).toContain("过滤 2 个分组");

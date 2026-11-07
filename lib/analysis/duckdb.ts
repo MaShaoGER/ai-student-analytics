@@ -137,10 +137,30 @@ function datasetName(datasetId: DataSource): string {
       : "OULAD 本地数据";
 }
 
-function dimensionExpression(plan: AnalysisPlan, alias = "") {
+function dimensionColumns(plan: AnalysisPlan, alias = "") {
   const prefix = alias ? `${alias}.` : "";
-  const dimensions = plan.dimensions.map((dimension) => `${prefix}${DIMENSIONS[dimension].column}`);
-  return dimensions.length === 1 ? dimensions[0] : `concat_ws(' / ', ${dimensions.join(", ")})`;
+  return plan.dimensions.map((dimension) => `${prefix}${DIMENSIONS[dimension].column}`);
+}
+
+/**
+ * Imported labels may legitimately contain the `/` this display label joins
+ * on, in any position, or a quote. Quoting every part that contains either one
+ * keeps the label a distinguishable identity for each real group (for example
+ * `"A /" / B` versus `A / "/ B"`); ordinary values stay as they were imported.
+ */
+function dimensionLabelPart(value: string): string {
+  return value.includes("/") || value.includes('"')
+    ? `"${value.replaceAll('"', '""')}"`
+    : value;
+}
+
+/** Rebuild the same label from the raw grouping columns returned by the query. */
+function dimensionLabel(values: unknown[]): string {
+  if (values.length === 1) return String(values[0]);
+  return values
+    .filter((value) => value !== null && value !== undefined)
+    .map((value) => dimensionLabelPart(String(value)))
+    .join(" / ");
 }
 
 function whereClause(plan: AnalysisPlan, alias = "") {
@@ -155,12 +175,14 @@ function whereClause(plan: AnalysisPlan, alias = "") {
   return `WHERE ${clauses.join(" AND ")}`;
 }
 
-function orderClause(plan: AnalysisPlan): string {
+function orderClause(plan: AnalysisPlan, tiebreak: string): string {
   const direction = plan.sort.direction === "asc" ? "ASC" : "DESC";
-  if (plan.sort.by === "dimension") return `ORDER BY dimension ${direction}`;
   // Keep ties deterministic so golden cases and the UI do not depend on
-  // DuckDB's incidental grouping order.
-  return `ORDER BY value ${direction}, dimension ASC`;
+  // DuckDB's incidental grouping order. The raw grouping columns break ties
+  // between groups whose joined label is identical.
+  if (plan.sort.by === "dimension")
+    return `ORDER BY dimension ${direction}, ${tiebreak} ${direction}`;
+  return `ORDER BY value ${direction}, dimension ASC, ${tiebreak} ASC`;
 }
 
 /** All rows and scope metadata use this exact filtered source. */
@@ -216,18 +238,25 @@ function analysisSource(plan: AnalysisPlan): { source: string; aggregate: string
 
 function analysisQueries(plan: AnalysisPlan, prepared?: { source: string; aggregate: string }) {
   const { source, aggregate } = prepared ?? analysisSource(plan);
-  const dimension = dimensionExpression(plan);
+  // Group on the raw dimension columns, not on the joined display label: two
+  // real groups whose values merely concatenate to the same text (a value may
+  // itself contain " / ") must stay separate groups for the values, the
+  // sample-size threshold and the suppressed-group count.
+  const columns = dimensionColumns(plan);
+  const grouping = columns.join(", ");
+  const dimension = columns.length === 1 ? columns[0] : `concat_ws(' / ', ${grouping})`;
+  const keys = columns.map((column, index) => `${column} AS dim_${index}`).join(", ");
   return {
     query: `WITH analysis_source AS (${source})
-      SELECT ${dimension} AS dimension, ROUND(${aggregate}, 2) AS value,
+      SELECT ${dimension} AS dimension, ${keys}, ROUND(${aggregate}, 2) AS value,
              COUNT(DISTINCT id_student) AS sample_size
-      FROM analysis_source GROUP BY ALL
+      FROM analysis_source GROUP BY ${grouping}
       HAVING COUNT(DISTINCT id_student) >= 3
-      ${orderClause(plan)} LIMIT ${plan.limit}`,
+      ${orderClause(plan, columns.map((_, index) => `dim_${index}`).join(", "))} LIMIT ${plan.limit}`,
     // Count suppressed groups before LIMIT. A row limit is not privacy filtering.
     metadata: `WITH analysis_source AS (${source}), grouped AS (
-        SELECT ${dimension} AS dimension, COUNT(DISTINCT id_student) AS sample_size
-        FROM analysis_source GROUP BY ALL
+        SELECT COUNT(DISTINCT id_student) AS sample_size
+        FROM analysis_source GROUP BY ${grouping}
       ) SELECT
         (SELECT list_sort(list_distinct(list(code_presentation))) FROM analysis_source) AS terms,
         (SELECT COUNT(*) FROM grouped WHERE sample_size < 3) AS filtered_out_group_count`,
@@ -384,7 +413,7 @@ export async function runAnalysis(
       dimensions: plan.dimensions,
       chartType: plan.chartType,
       rows: rows.map((row) => ({
-        dimension: String(row.dimension),
+        dimension: dimensionLabel(plan.dimensions.map((_, index) => row[`dim_${index}`])),
         value: Number(row.value),
         sampleSize: Number(row.sample_size),
       })),
@@ -1045,7 +1074,7 @@ async function focusedStudioResults(
       dimensions: ["course"],
       chartType: plan.chartType,
       rows: rows.map((row) => ({
-        dimension: String(row.dimension),
+        dimension: dimensionLabel(plan.dimensions.map((_, index) => row[`dim_${index}`])),
         value: Number(row.value),
         sampleSize: Number(row.sample_size),
       })),
@@ -1613,8 +1642,12 @@ export async function absenceStats(
           FROM ${csv(DEMO_OUTCOMES)}
           ${where}
         ), eligible AS (
+          -- Same predicate as the per-course group threshold above: students
+          -- whose absence value is NULL are not valid records and must not be
+          -- counted toward the minimum sample size here either.
           SELECT code_module FROM outcomes
-          GROUP BY code_module HAVING COUNT(DISTINCT id_student) >= ${minSampleSize}
+          GROUP BY code_module
+          HAVING COUNT(DISTINCT id_student) FILTER (WHERE missed IS NOT NULL) >= ${minSampleSize}
         )
         SELECT COUNT(DISTINCT o.id_student) AS students
         FROM outcomes o JOIN eligible e USING (code_module)

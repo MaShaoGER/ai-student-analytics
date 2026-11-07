@@ -156,10 +156,28 @@ export type ConversationSummary = {
   } | null;
 };
 
+/**
+ * Public projection of a stored turn. Lease identity, claim windows and the
+ * input digest are internal coordination state and must never be serialized
+ * to a client; only these fields may leave the server.
+ */
+export type ConversationTurn = {
+  id: string;
+  question: string;
+  resetContext: boolean;
+  status: TurnStatus;
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+  response?: ChatResponseSnapshot;
+  error?: ConversationFailure;
+};
+
 export type ConversationDetail = {
   conversation: ConversationSummary;
   messages: StoredConversationMessage[];
-  turns: StoredConversationTurn[];
+  turns: ConversationTurn[];
 };
 
 export type ConversationPage = {

@@ -35,7 +35,10 @@ import { ConversationArtifactBoundary } from "./conversation-artifact-boundary";
 import { ConversationArtifact } from "./conversation-artifact";
 import { policyForArtifact } from "@/lib/analysis/presentation-policy";
 import { ConversationHistory, type ConversationHistoryProps } from "./conversation-history";
-import { useConversationScroll } from "./hooks/use-conversation-scroll";
+import {
+  useConversationScroll,
+  type ConversationScrollPosition,
+} from "./hooks/use-conversation-scroll";
 
 export type ConversationTurn = ChatMessage & {
   id: string;
@@ -230,11 +233,18 @@ export function ConversationWorkspace({
   sourceControl,
   onRetrySave,
   historyActivity,
+  readingPositions,
 }: {
   historyActivity?: ReactNode;
   onRetrySave: (id: string) => void;
   history: ConversationHistoryProps;
   conversationId: string | null;
+  /**
+   * Shared per-conversation reading positions owned by the workspace, so leaving
+   * and returning to a conversation restores the reader's place instead of the
+   * newest turn. The transcript hook reads and writes it.
+   */
+  readingPositions?: Map<string, ConversationScrollPosition>;
   sourceControl?: ReactNode;
   messages: ConversationTurn[];
   question: string;
@@ -266,9 +276,13 @@ export function ConversationWorkspace({
   const textarea = useRef<HTMLTextAreaElement>(null);
   const sendButton = useRef<HTMLButtonElement>(null);
   const expandButton = useRef<HTMLButtonElement>(null);
-  const scroll = useConversationScroll(conversationId ?? "new", messages.length, loading);
+  const scroll = useConversationScroll(
+    conversationId ?? "new",
+    messages.length,
+    loading,
+    readingPositions,
+  );
   const { newest, pending } = scroll;
-  const [clearConfirming, setClearConfirming] = useState(false);
   const [contextNotice, setContextNotice] = useState("");
   // Collapsing only hides controls: the draft lives in the parent's `question`
   // state, so the textarea keeps its value while folded away.
@@ -313,9 +327,8 @@ export function ConversationWorkspace({
   }, [loading]);
 
   useEffect(() => {
-    // A new turn re-establishes context and settles any pending clear action, so
-    // both the confirmation row and its announcement close themselves.
-    setClearConfirming(false);
+    // A new turn re-establishes context, so the cleared-scope announcement
+    // closes itself.
     setContextNotice("");
   }, [messages.length]);
 
@@ -333,7 +346,6 @@ export function ConversationWorkspace({
     };
   }, []);
 
-  const rounds = messages.filter((message) => message.role === "user").length;
   const isEmpty = messages.length === 0 && !loading;
   // Only the AI configuration notice is rephrased; save and transport failures
   // keep their own wording and retry actions.
@@ -784,50 +796,20 @@ export function ConversationWorkspace({
                   {aiReady && messages.length ? "继续追问" : "输入分析问题"}
                 </label>
                 <div data-workspace-part="composerTools" className={styles.composerTools}>
-                  {clearConfirming && messages.length > 0 ? (
-                    <div
-                      className={styles.clearConfirm}
-                      role="group"
-                      aria-label="新建对话确认"
-                      onKeyDown={(event) => {
-                        if (event.key === "Escape") {
-                          event.preventDefault();
-                          setClearConfirming(false);
-                        }
-                      }}
+                  {messages.length > 0 && (
+                    // The workspace owns one confirmation surface for drafts and
+                    // live conversations, so this click only requests the reset.
+                    <button
+                      type="button"
+                      className={styles.newConversation}
+                      aria-label="新对话"
+                      title="新对话"
+                      disabled={loading}
+                      onClick={onClear}
                     >
-                      <span>当前 {rounds} 轮已保存，可从历史继续</span>
-                      <button type="button" autoFocus onClick={() => setClearConfirming(false)}>
-                        取消
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.clearConfirmAction}
-                        onClick={() => {
-                          setClearConfirming(false);
-                          onClear();
-                          textarea.current?.focus({ preventScroll: true });
-                        }}
-                      >
-                        新建
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      {messages.length > 0 && (
-                        <button
-                          type="button"
-                          className={styles.newConversation}
-                          aria-label="新对话"
-                          title="新对话"
-                          disabled={loading}
-                          onClick={() => setClearConfirming(true)}
-                        >
-                          <Icon name="plus" size={13} />
-                          <span>新对话</span>
-                        </button>
-                      )}
-                    </>
+                      <Icon name="plus" size={13} />
+                      <span>新对话</span>
+                    </button>
                   )}
                   <button
                     type="button"
@@ -838,10 +820,7 @@ export function ConversationWorkspace({
                     aria-label="收起输入区"
                     title={loading ? "回复中不能收起输入区" : "收起输入区"}
                     disabled={loading}
-                    onClick={() => {
-                      setClearConfirming(false);
-                      foldComposer(true);
-                    }}
+                    onClick={() => foldComposer(true)}
                   >
                     <Icon name="chevron" size={13} />
                     <span className="sr-only">收起输入区</span>

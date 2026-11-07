@@ -2,7 +2,9 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash, randomUUID } from "node:crypto";
 import {
   closeSync,
+  constants as fsConstants,
   existsSync,
+  fstatSync,
   fsyncSync,
   lstatSync,
   mkdirSync,
@@ -75,6 +77,68 @@ function writePrivate(file: string, contents: string): void {
   } finally {
     closeSync(fd);
   }
+}
+/**
+ * A crash between the fsynced CSV write and the catalog commit leaves a complete
+ * but unreferenced version file behind. The version path is deterministic, so a
+ * retry must be able to adopt exactly that content instead of failing on the
+ * exclusive create. Anything else (a symlink, a non-regular file, different
+ * content, or a file the catalog already references) is never overwritten.
+ * Returns the path only when this call created the file.
+ */
+function writeVersionFile(state: Catalog, file: string, contents: string): string | undefined {
+  let descriptor: number;
+  try {
+    descriptor = openSync(file, "wx", 0o600);
+  } catch (error_) {
+    // Only an existing path can be a crashed predecessor's file; an access or
+    // resource failure never created one, so it must not be treated as ours.
+    if ((error_ as NodeJS.ErrnoException).code !== "EEXIST") throw error_;
+    return adoptVersionFile(state, file, contents);
+  }
+  // The exclusive create succeeded, so a partial file is ours to discard.
+  try {
+    writeFileSync(descriptor, contents, "utf8");
+    fsyncSync(descriptor);
+  } catch (error_) {
+    try {
+      closeSync(descriptor);
+    } catch {}
+    try {
+      unlinkSync(file);
+    } catch {}
+    throw error_;
+  }
+  closeSync(descriptor);
+  return file;
+}
+function adoptVersionFile(state: Catalog, file: string, contents: string): undefined {
+  if (
+    state.datasets.some((dataset) =>
+      dataset.versions.some((version) => versionPath(dataset.id, version.version) === file),
+    )
+  )
+    error(409, "DATASET_VERSION_CONFLICT", "该版本已存在，请刷新目录后重新校验发布。");
+  let descriptor: number;
+  try {
+    descriptor = openSync(file, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+  } catch {
+    error(503, "IMPORT_STORAGE_UNAVAILABLE", "成绩版本文件不可用，请联系管理员。");
+  }
+  try {
+    const stat = fstatSync(descriptor);
+    if (!stat.isFile())
+      error(503, "IMPORT_STORAGE_UNAVAILABLE", "成绩版本文件不可用，请联系管理员。");
+    if (stat.size !== Buffer.byteLength(contents) || readFileSync(descriptor, "utf8") !== contents)
+      error(
+        409,
+        "IMPORT_STORAGE_CONFLICT",
+        "已存在同名成绩文件但内容不一致，请联系管理员归档后再发布。",
+      );
+  } finally {
+    closeSync(descriptor);
+  }
+  return undefined;
 }
 function readPrivate(file: string, maxBytes: number): string {
   const stat = lstatSync(file);
@@ -320,8 +384,7 @@ export function publishGradeDraft(input: {
         versions: [...(existing?.versions ?? []), metadata],
       };
       const file = versionPath(id, version);
-      writePrivate(file, csv);
-      created = file;
+      created = writeVersionFile(state, file, csv);
       if (existing) state.datasets[state.datasets.indexOf(existing)] = dataset;
       else state.datasets.push(dataset);
       entry.receipt = { hash, dataset };

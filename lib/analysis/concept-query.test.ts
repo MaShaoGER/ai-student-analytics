@@ -83,4 +83,32 @@ describe("concept explorer real aggregates", () => {
     expect(result.courses.find(c => c.course === "主课")?.count).toBe(6);
     expect(result.detail?.course).toBe("主课");
   });
+
+  it("aggregates only the displayed catalog while reporting the real course total", async () => {
+    // 501 courses exceed the 500-row result cap if completion/attendance are
+    // aggregated for the whole term; only the 100 displayed courses matter.
+    const rows: string[] = [];
+    for (let i = 0; i < 501; i++) {
+      const code = `C${String(i).padStart(3, "0")}`;
+      for (let s = 0; s < 3; s++)
+        rows.push(`${code}p${s},${code},2023J,75,1,10,8,1,1,10,8,6,2,2`);
+    }
+    appendFileSync(path.join(directory, "student_outcomes.csv"), rows.join("\n") + "\n");
+    const catalog = await query("demo", { term: "2023J" });
+    expect(catalog.totalCourses).toBe(501);
+    expect(catalog.courses).toHaveLength(100);
+    expect(catalog.courses[0]).toMatchObject({
+      course: "C000",
+      count: 3,
+      metrics: { attendance: { value: 100, count: 3 }, completion: { value: 100, count: 3 } },
+    });
+    const selected = await query("demo", { term: "2023J", course: "C500" });
+    expect(selected.totalCourses).toBe(501);
+    expect(selected.courses).toHaveLength(100);
+    expect(selected.courses.find(c => c.course === "C500")).toMatchObject({
+      count: 3,
+      metrics: { completion: { value: 100, count: 3 } },
+    });
+    expect(selected.detail?.course).toBe("C500");
+  });
 });

@@ -78,23 +78,40 @@ export function replayConversationTurn(user: SessionUser, turn: ClaimTurnResult)
     persistence: "saved",
   };
 }
+/** A bare display request: it refers to the previous answer, not a new question. */
+const DISPLAY_SWITCH =
+  /^(?:改成|换成|切换到?|用)?(?:表格|数值表|图表|图形|原图|柱状图|条形图|折线图|饼图|环形图|热力图)(?:展示|显示)?[。！!？?\s]*$/;
+
 export function presentationFromHistory(
   user: SessionUser,
   turn: ClaimTurnResult,
   question: string,
 ): ChatResponse | null {
   if (!turn.history.length && !turn.context) return null;
-  if (
-    !/^(?:改成|换成|切换到?|用)?(?:表格|数值表|图表|图形|原图|柱状图|条形图|折线图|饼图|环形图|热力图)(?:展示|显示)?[。！!？?\s]*$/.test(
-      question,
-    )
-  )
-    return null;
+  if (!DISPLAY_SWITCH.test(question)) return null;
   const detail = getConversation(user.id, turn.claim.conversationId);
-  const last = [...detail.messages]
+  // Reuse exactly what this claim's history can still reach: an explicit
+  // "new context" turn is a hard boundary, and no turn at or after the claimed
+  // revision belongs to this question.
+  const revisions = new Map(detail.turns.map((item) => [item.id, item.revision]));
+  const before = turn.claim.revision;
+  const boundary = detail.turns.reduce(
+    (value, item) =>
+      item.resetContext && item.revision < before ? Math.max(value, item.revision) : value,
+    0,
+  );
+  const from = boundary || 1;
+  const [last] = detail.messages
+    .filter((item) => {
+      const revision = revisions.get(item.turnId) ?? 0;
+      return revision >= from && revision < before;
+    })
     .reverse()
-    .find((item) => item.role === "assistant" && item.response?.artifact)?.response;
-  if (!last) return null;
+    .flatMap((item) => (item.role === "assistant" && item.response ? [item.response] : []));
+  // The newest answer decides. A later answer without an attachment (aggregate
+  // prose, an absence result, a clarification) is the result the user is asking
+  // to re-display, so never fall back to an older chart behind it.
+  if (!last?.artifact) return null;
   const adjusted = applyResponsePresentation(last, question);
   return {
     ...adjusted,

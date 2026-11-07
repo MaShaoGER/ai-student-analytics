@@ -1,11 +1,13 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, writeFileSync, copyFileSync, rmSync } from "node:fs";
+import { once } from "node:events";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { converseUnified, type UnifiedDependencies } from "./unified";
 import type { ToolMessage, ToolTurn } from "./tool-provider";
 import type { AnalysisStep } from "./chat-types";
-import { executeChartTool } from "./chart-tools";
+import { ChartClarification, executeChartTool } from "./chart-tools";
+import type { AbsenceStats } from "../analysis/absence-stats";
 import { searchKnowledge } from "./knowledge";
 import { QueryExecutionError } from "../security/query-execution";
 import { BudgetExceededError } from "../security/ai-cost";
@@ -31,6 +33,21 @@ const directAnswer: ToolTurn = {
   },
 };
 const question = "比较2024B和2024J，找出均分下降最多的课程，再看它的成绩分布和比较口径";
+/** A supported absence measurement: a real result without a chart attachment. */
+const supportedAbsence: AbsenceStats = {
+  datasetId: "demo",
+  term: "2024J",
+  terms: ["2024J"],
+  course: null,
+  metric: "absence",
+  unit: "sessions",
+  supported: true,
+  unsupportedReason: null,
+  rows: [{ course: "AAA", sessions: 40, students: 4 }],
+  totals: { sessions: 40, studentCourseCount: 4, distinctStudents: 4, approvedLeaveDays: 7 },
+  minutesPerPeriod: 45,
+  minSampleSize: 3,
+};
 describe("controlled multi-step analysis with real DuckDB", () => {
   let directory: string;
   let real: typeof import("../analysis/duckdb");
@@ -92,8 +109,8 @@ describe("controlled multi-step analysis with real DuckDB", () => {
         前期均分: 80,
         后期均分: 50,
         变化: -30,
-        前期人数: 3,
-        后期人数: 3,
+        前期样本: 3,
+        后期样本: 3,
       });
       // The rich comparison sentence is exposed to the model as a citable fact,
       // so it can use `{{factId}}` instead of writing the numbers itself.
@@ -415,6 +432,99 @@ describe("controlled multi-step analysis with real DuckDB", () => {
     expect(numericFacts.length).toBeGreaterThan(0);
     // Every number-bearing sentence shown to the user must resolve to a factId.
     for (const fact of numericFacts) expect(texts.has(fact)).toBe(true);
+  });
+
+  it("keeps a completed absence result as partial output when a later step exceeds the budget", async () => {
+    vi.mocked(deps.absence).mockResolvedValueOnce(supportedAbsence);
+    sequence(call("absence_stats", { metric: "absence", unit: "sessions", term: "2024J" }));
+    vi.mocked(deps.generate).mockImplementationOnce(async () => {
+      throw new BudgetExceededError("单次请求", 0.2, 0.1);
+    });
+    const result = await converseUnified(
+      { question: "2024J 缺勤课时是多少？", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(result.completion).toBe("partial");
+    expect(result.failureCode).toBe("AI_BUDGET_EXCEEDED");
+    // The measurement really happened; only the later model step ran out of budget.
+    expect(result.artifacts).toHaveLength(0);
+    expect(result.resultRefs).toHaveLength(1);
+    expect(result.resultRefs![0].kind).toBe("absence");
+    expect(result.factRefs).toContainEqual(
+      expect.objectContaining({ numeric: expect.objectContaining({ value: 40, unit: "课时" }) }),
+    );
+  });
+
+  it("keeps a completed absence result when a later chart asks for clarification", async () => {
+    vi.mocked(deps.absence).mockResolvedValueOnce(supportedAbsence);
+    sequence(
+      call("absence_stats", { metric: "absence", unit: "sessions", term: "2024J" }),
+      call("advanced_chart", {
+        tool: "boxplot",
+        courses: [],
+        term: "2024J",
+        comparisonTerm: null,
+        threshold: 60,
+        view: "chart",
+      }),
+    );
+    vi.mocked(deps.chart).mockRejectedValueOnce(
+      new ChartClarification("所选课程在该学期没有达到样本要求的数据，请调整课程或学期。"),
+    );
+    const result = await converseUnified(
+      { question: "2024J 缺勤课时是多少？再看各课分布", datasetId: "demo" },
+      {},
+      deps,
+    );
+    // A clarification question must not erase the measured result already produced.
+    expect(result.kind).toBe("result");
+    expect(result.completion).toBe("partial");
+    expect(result.failureCode).toBe("ANALYSIS_FAILED");
+    expect(result.resultRefs).toHaveLength(1);
+    expect(result.resultRefs![0].kind).toBe("absence");
+    expect(result.factRefs).toContainEqual(
+      expect.objectContaining({ numeric: expect.objectContaining({ value: 40, unit: "课时" }) }),
+    );
+  });
+
+  it("keeps a completed absence result when the total time limit is reached", async () => {
+    deps.settings = () => ({ enabled: true, maxToolCalls: 6, timeoutSeconds: 0.3 });
+    vi.mocked(deps.absence).mockResolvedValueOnce(supportedAbsence);
+    sequence(call("absence_stats", { metric: "absence", unit: "sessions", term: "2024J" }));
+    vi.mocked(deps.generate).mockImplementationOnce(async (_messages, _tools, options) => {
+      await once(options!.signal!, "abort");
+      throw new QueryExecutionError("CANCELLED", "cancelled");
+    });
+    const result = await converseUnified(
+      { question: "2024J 缺勤课时是多少？", datasetId: "demo" },
+      {},
+      deps,
+    );
+    expect(result.completion).toBe("partial");
+    expect(result.failureCode).toBe("TIMEOUT");
+    expect(result.resultRefs).toHaveLength(1);
+    expect(result.resultRefs![0].kind).toBe("absence");
+    expect(result.factRefs).toContainEqual(
+      expect.objectContaining({ numeric: expect.objectContaining({ value: 40, unit: "课时" }) }),
+    );
+  });
+
+  it("still rejects a cancelled turn that had already produced absence results", async () => {
+    const abort = new AbortController();
+    vi.mocked(deps.absence).mockResolvedValueOnce(supportedAbsence);
+    sequence(call("absence_stats", { metric: "absence", unit: "sessions", term: "2024J" }));
+    vi.mocked(deps.generate).mockImplementationOnce(async () => {
+      abort.abort();
+      throw new QueryExecutionError("CANCELLED", "cancelled");
+    });
+    await expect(
+      converseUnified(
+        { question: "2024J 缺勤课时是多少？", datasetId: "demo" },
+        { signal: abort.signal },
+        deps,
+      ),
+    ).rejects.toMatchObject({ code: "CANCELLED" });
   });
 
   it("does not answer absence questions with activity data on OULAD", async () => {

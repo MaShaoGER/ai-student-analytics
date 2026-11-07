@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import type { KeyboardEvent, MouseEvent } from "react";
+import type { FocusEvent, KeyboardEvent, MouseEvent } from "react";
 import type { ConceptDrawing } from "@/lib/exploration/concepts";
 import type { PickAnchor } from "@/lib/exploration/selection";
 import styles from "./concept-chart.module.css";
@@ -55,6 +55,47 @@ function pickKeys(item: ChartItem) {
   return { tabIndex: 0, role: "button", "aria-haspopup": "dialog" as const, "aria-label": `${item.detail}，选择去向或画法`, "data-interactive": "", onClick, onKeyDown };
 }
 
+/** A chart wider than its region scrolls inside that region only. Chrome's own focus scroll
+ *  treats an SVG mark loosely (it left a clipped axis label 23px wide on a 390px screen), so
+ *  the reading is revealed here instead: horizontally, from the mark's ink and its text, never
+ *  from the page — the window keeps the reader's position. */
+function revealReading(scroller: HTMLElement, target: Element) {
+  const measure = (selector: string) => [...target.querySelectorAll(selector)]
+    .map((part) => part.getBoundingClientRect())
+    .filter((box) => box.width || box.height);
+  // Only painted words and marks count; the invisible hit geometry and the tooltip layer
+  // (a 360-unit foreignObject that may sit far from the mark) would drag the view elsewhere.
+  const ink = measure("text, circle");
+  if (!ink.length) return;
+  const values = measure('text[data-reading="value"]');
+  const frame = scroller.getBoundingClientRect();
+  const gutter = 20;
+  const left = Math.min(...ink.map((box) => box.left));
+  const right = Math.max(...ink.map((box) => box.right));
+  // A row puts its name and its number at opposite ends of a sheet wider than the region, so
+  // both can never fit at once. When the whole row overflows, the reading is the number.
+  const [targetLeft, targetRight] = values.length && right - left > frame.width - gutter * 2
+    ? [Math.min(...values.map((box) => box.left)), Math.max(...values.map((box) => box.right))]
+    : [left, right];
+  if (targetRight > frame.right - gutter) scroller.scrollLeft += targetRight - frame.right + gutter;
+  else if (targetLeft < frame.left + gutter) scroller.scrollLeft -= frame.left + gutter - targetLeft;
+}
+
+/** The mark the last focus move revealed. When the picker hands focus back to that same
+ *  mark, the region keeps the reader's scroll instead of re-centring a reading already read. */
+let lastRevealed: WeakRef<Element> | null = null;
+
+function revealFocused(event: FocusEvent<HTMLDivElement>) {
+  const scroller = event.currentTarget;
+  const target = event.target;
+  if (!(target instanceof Element) || target === scroller) return;
+  if (lastRevealed?.deref() === target) return;
+  lastRevealed = new WeakRef(target);
+  // A frame later: Chrome answers a focus by scrolling the region itself, and that scroll
+  // lands after microtasks — measuring any earlier means being overruled by it.
+  requestAnimationFrame(() => revealReading(scroller, target));
+}
+
 /** Null because the sample is too small to publish (n < 3) — withheld, not empty and not zero. */
 const withheld = (item: ChartItem) => item.value === null && /隐藏/.test(item.note ?? "");
 
@@ -104,7 +145,12 @@ export function ConceptChart({ data, drawing, label, compact = false }: { data: 
     : drawing === "radar" ? <Radar data={data} label={label} compact={compact} />
       : drawing === "stack" ? <Stack data={data} label={label} compact={compact} />
         : <Cartesian data={data} drawing={drawing} min={min} max={max} label={label} compact={compact} />;
-  return compact ? chart : <div className={styles.viewport} tabIndex={0} role="region" aria-label={`${label}，窄屏可横向滚动`}><p className={styles.scrollHint}>图表可在此区域内横向滚动</p>{chart}</div>;
+  return compact ? chart : (
+    <div className={styles.frame}>
+      <p className={styles.scrollHint}>图表可在此区域内横向滚动</p>
+      <div className={styles.viewport} tabIndex={0} role="region" aria-label={`${label}，窄屏可横向滚动`} onFocus={revealFocused}>{chart}</div>
+    </div>
+  );
 }
 
 function Rank({ data, max, label, compact }: { data: ChartData; max: number; label: string; compact: boolean }) {
@@ -128,7 +174,7 @@ function Rank({ data, max, label, compact }: { data: ChartData; max: number; lab
             ) : (
               <>
                 <rect className={styles.bar} x={L} y={y + row * 0.2} width={Math.max(2, x(item.value) - L)} height={row * 0.6} />
-                {!compact && <text className={styles.value} x={x(item.value) + 8} y={y + row / 2 + 4}>{fmt(item.value, data.unit)}</text>}
+                {!compact && <text className={styles.value} data-reading="value" x={x(item.value) + 8} y={y + row / 2 + 4}>{fmt(item.value, data.unit)}</text>}
               </>
             )}
             {!compact && withheld(item) && <SuppressedTip at={[L, y + row * 0.2]} text={item.note ?? "已隐藏"} />}
@@ -183,7 +229,7 @@ function Cartesian({ data, drawing, min, max, label, compact }: { data: ChartDat
               </>
             )}
             {!compact && cy !== null && (!crowded || drawing !== "line") && (
-              <text className={styles.value} x={cx} y={cy - 10} textAnchor="middle">{fmt(item.value!, data.unit)}</text>
+              <text className={styles.value} data-reading="value" x={cx} y={cy - 10} textAnchor="middle">{fmt(item.value!, data.unit)}</text>
             )}
             {!compact && (
               <text className={styles.tick} x={cx} y={B + 20} textAnchor={crowded ? "end" : "middle"} transform={crowded ? `rotate(-35 ${cx} ${B + 20})` : undefined}>{text}</text>
@@ -213,6 +259,10 @@ function Radar({ data, label, compact }: { data: ChartData; label: string; compa
         return (
           <g key={item.key} className={styles.datum} {...(compact ? {} : pickKeys(item))}>
             {(compact || !withheld(item)) && <title>{item.detail}</title>}
+            {/* A published point is 12 units of ink, and the sheet is scaled down on a phone:
+                this transparent 36-unit disc is the pointer and touch target. Missing items get
+                none, and labels sit at 1.18r, so no neighbour mark or label is swallowed. */}
+            {!compact && item.value !== null && <circle className={styles.hitDot} cx={x} cy={y} r={18} />}
             <circle className={item.value === null ? styles.voidDot : styles.dot} cx={x} cy={y} r={compact ? 7 : 6} />
             {withheld(item) && <circle className={styles.hatch} fill={hatch.fill} cx={x} cy={y} r={compact ? 7 : 6} />}
             {!compact && (

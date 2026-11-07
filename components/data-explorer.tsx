@@ -8,8 +8,10 @@ import { SpatialOverview, type OverviewPlane } from "./spatial-overview";
 import type { ConceptExplorerData, ConceptMetric, ConceptReading } from "@/lib/analysis/concept-explorer";
 import {
   parseConceptLocation,
+  ownsBrowseLocation,
   conceptHref,
   conceptTitle,
+  conceptTopicKey,
   conceptDrawings,
   conceptRelationReason,
   metricLocation,
@@ -26,7 +28,8 @@ import { CountUp, InkText, MaskRise } from "./ui/editorial-motion";
 import styles from "./data-explorer.module.css";
 
 type Api = (url: string, options?: RequestInit) => Promise<any>;
-type TrailEntry = { id: string; href: string; title: string; centre: string; views: ConceptDrawing[]; scroll: number };
+/** One visited topic: `key` is its identity, `href` the exact range and drawing it was last left on. */
+type TrailEntry = { id: string; key: string; href: string; title: string; centre: string; views: ConceptDrawing[]; scroll: number };
 type EntryState = { scope: string; id: string; scroll: number };
 type Remote = { key: string; data?: ConceptExplorerData; error?: string };
 /** A concept the reader clicked in the chart; it opens a secondary selection, never navigates by itself. */
@@ -40,6 +43,9 @@ type MotionKind = "topic" | "return" | "drawing" | "pager";
 
 const RECENT_TOPICS = 5;
 const HIDDEN = "样本 1–2 人，已隐藏";
+const HOME_LOCATION: ConceptLocation = { scene: "home", drawing: "rank" };
+/** The home page is one topic whatever its term: a term change is a range change of the same page. */
+const HOME_TOPIC = conceptTopicKey(HOME_LOCATION);
 const percent = (value: number, total: number) => (total ? ((value / total) * 100).toFixed(1) : "0.0");
 
 function formatReading(metric: ConceptMetric, reading: ConceptReading) {
@@ -65,15 +71,29 @@ function readTrail(key: string, datasetId: DataSource): TrailEntry[] {
   try {
     const stored: unknown = JSON.parse(sessionStorage.getItem(key) ?? "[]");
     if (!Array.isArray(stored)) return [];
-    return stored.flatMap((item): TrailEntry[] => {
-      if (!item || typeof item.id !== "string" || typeof item.href !== "string" || !Array.isArray(item.views)) return [];
+    const byTopic = new Map<string, TrailEntry>();
+    for (const item of stored) {
+      if (!item || typeof item.id !== "string" || typeof item.href !== "string" || !Array.isArray(item.views)) continue;
       const route = parseConceptLocation(item.href);
-      if (route.status !== "valid" || route.datasetId !== datasetId) return [];
+      if (route.status !== "valid" || route.datasetId !== datasetId) continue;
       const allowed = conceptDrawings(route.location);
       const views = item.views.filter((view: unknown): view is ConceptDrawing => allowed.includes(view as ConceptDrawing));
-      if (!views.length) return [];
-      return [{ id: item.id, href: conceptHref(route.location, datasetId), title: conceptTitle(route.location), centre: centreOf(route.location), views, scroll: Number.isFinite(item.scroll) && item.scroll >= 0 ? item.scroll : 0 }];
-    });
+      if (!views.length) continue;
+      // One topic owns one entry: older storage may hold the same page once per drawing or term.
+      const topic = conceptTopicKey(route.location);
+      const previous = byTopic.get(topic);
+      const href = conceptHref(route.location, datasetId);
+      byTopic.set(topic, {
+        id: previous?.id ?? item.id,
+        key: topic,
+        href,
+        title: conceptTitle(route.location),
+        centre: centreOf(route.location),
+        views: [...new Set([...(previous?.views ?? []), ...views])],
+        scroll: Number.isFinite(item.scroll) && item.scroll >= 0 ? item.scroll : previous?.scroll ?? 0,
+      });
+    }
+    return [...byTopic.values()];
   } catch { return []; }
 }
 
@@ -266,113 +286,115 @@ export function DataExplorer({
     try { sessionStorage.setItem(trailKey, JSON.stringify(next)); } catch {}
   }, [trailKey]);
 
-  /** Registers the current history entry as a trail topic, recording its drawing. */
+  /** Registers the topic of one history entry: a visited topic keeps its entry and merges the new drawing. */
   const record = useCallback((next: ConceptLocation, id: string, list: TrailEntry[]) => {
+    const key = conceptTopicKey(next);
     const href = conceptHref(next, datasetId);
-    const found = list.find((item) => item.id === id);
-    const updated = found
-      ? list.map((item) => item.id === id ? { ...item, href, views: item.views.includes(next.drawing) ? item.views : [...item.views, next.drawing] } : item)
-      : [...list, { id, href, title: conceptTitle(next), centre: centreOf(next), views: [next.drawing], scroll: 0 }];
-    saveTrail(updated);
+    const found = list.find((item) => item.key === key) ?? list.find((item) => item.id === id);
+    if (!found) {
+      saveTrail([...list, { id, key, href, title: conceptTitle(next), centre: centreOf(next), views: [next.drawing], scroll: 0 }]);
+      return;
+    }
+    const views = found.views.includes(next.drawing) ? found.views : [...found.views, next.drawing];
+    // A topic owns one entry: a stale twin under another id is folded into it instead of listed twice.
+    saveTrail(list
+      .filter((item) => item.id === found.id || (item.id !== id && item.key !== key))
+      .map((item) => item.id === found.id ? { ...item, key, href, title: conceptTitle(next), centre: centreOf(next), views } : item));
   }, [datasetId, saveTrail]);
 
-  // Restore from the URL on mount and on native back/forward. The scope check stops another account's state leaking in.
-  useEffect(() => {
-    const stored = readTrail(trailKey, datasetId);
-    const currentHref = window.location.href;
-    const currentSaved = window.history.state?.concept as EntryState | undefined;
-    const currentRoute = readLocation(datasetId);
-    const currentLocation = typeof currentRoute === "string" ? null : currentRoute;
-    const currentSavedHref = currentLocation ? conceptHref(currentLocation, datasetId) : currentHref;
-    const currentSavedEntry = stored.find((item) => item.href === currentSavedHref);
-    const currentId = currentSaved?.scope === scopeKey && currentSaved.id ? currentSaved.id : currentSavedEntry?.id ?? crypto.randomUUID();
-    const previousRestoration = window.history.scrollRestoration;
-    window.history.scrollRestoration = "manual";
-    // The scene the reader landed on owns exactly one trail entry: a cold load has no history state yet,
-    // so home and topic entries must already carry the id this mount will use instead of a fresh twin.
-    const homeStored = stored.filter((item) => item.href.includes("browse=home"));
-    const homeBase = (currentLocation?.scene === "home" ? homeStored.find((item) => item.id === currentId) : undefined) ?? homeStored[0];
-    const homeLocation: ConceptLocation = { scene: "home", drawing: "rank", term: currentLocation?.term };
-    const homeEntry: TrailEntry = homeBase
-      ? { ...homeBase, id: currentLocation?.scene === "home" ? currentId : homeBase.id }
-      : {
-        id: currentLocation?.scene === "home" ? currentId : crypto.randomUUID(),
-        href: conceptHref(homeLocation, datasetId), title: conceptTitle(homeLocation),
-        centre: centreOf(homeLocation), views: ["rank"], scroll: 0,
-      };
-
-    const topicsByHref = new Map<string, TrailEntry>();
-    for (const item of stored) {
-      if (item.href.includes("browse=home")) continue;
-      const route = parseConceptLocation(item.href);
-      if (route.status !== "valid") continue;
-      const topicHref = conceptHref({ ...route.location, drawing: "bars" } as ConceptLocation, datasetId)
-        .replace(/&drawing=bars(?=&|$)/, "");
-      const previous = topicsByHref.get(topicHref);
-      topicsByHref.set(topicHref, previous
-        ? { ...previous, views: [...new Set([...previous.views, ...item.views])] }
-        : { ...item, href: topicHref, views: [...item.views] });
+  /**
+   * The one restore path for the first load and every native back/forward: the landing topic
+   * resolves to its own trail entry, so a cold load never opens a twin of an already visited page.
+   */
+  const sync = useCallback((initial: boolean) => {
+    // Native back/forward reaches every listener in the app. Another workspace
+    // section (or another source's address) is not this explorer's entry to
+    // resolve: rewriting it as the browse home would replace that entry's URL
+    // before the workspace listener reads it, and would query data for a screen
+    // nobody opened.
+    if (!ownsBrowseLocation(window.location.href, datasetId)) return;
+    if (!initial && currentEntry.current) {
+      saveTrail(trailRef.current.map((item) => item.id === currentEntry.current ? { ...item, scroll: scrollPosition.current } : item));
     }
-    const orderedTopics = [...topicsByHref.values()];
-    const distinctTopics = [...new Map(orderedTopics.map((item) => [item.title === "课程全景" ? item.title : `${item.title}|${item.centre}`, item])).values()];
-    let initialTrail = [homeEntry, ...distinctTopics];
-    if (currentLocation && currentLocation.scene !== "home") {
-      const currentTopicHref = conceptHref({ ...currentLocation, drawing: "bars" } as ConceptLocation, datasetId)
-        .replace(/&drawing=bars(?=&|$)/, "");
-      const currentRecord = topicsByHref.get(currentTopicHref) ?? {
-        id: currentId, href: currentTopicHref, title: conceptTitle(currentLocation), centre: centreOf(currentLocation),
-        views: [currentLocation.drawing], scroll: currentSaved?.scroll ?? 0,
-      };
-      currentRecord.id = currentId;
-      currentRecord.views = [...new Set([...currentRecord.views, currentLocation.drawing])];
-      initialTrail = [homeEntry, ...[...topicsByHref.values()].filter((item) => item.href !== currentTopicHref), currentRecord];
-    }
-    trailRef.current = initialTrail;
-    try { sessionStorage.setItem(trailKey, JSON.stringify(initialTrail)); } catch {}
-    const sync = (initial: boolean, knownId?: string) => {
-      if (!initial && currentEntry.current) {
-        saveTrail(trailRef.current.map(item => item.id === currentEntry.current ? { ...item, scroll: scrollPosition.current } : item));
-      }
-      const next = readLocation(datasetId);
-      const saved = window.history.state?.concept as EntryState | undefined;
-      const id = saved?.scope === scopeKey && saved.id ? saved.id : knownId ?? crypto.randomUUID();
-      if (typeof next !== "string") {
-        const href = conceptHref(next, datasetId);
-        if (!saved || saved.scope !== scopeKey)
-          window.history.replaceState({ ...window.history.state, concept: { scope: scopeKey, id, scroll: 0 } }, "", href);
-        record(next, id, trailRef.current);
-        onLocationChange(href);
-      }
-      pendingScroll.current = saved?.scope === scopeKey ? trailRef.current.find(item => item.id === id)?.scroll ?? saved.scroll : 0;
-      currentEntry.current = id;
-      scrollPosition.current = pendingScroll.current ?? 0;
+    const restored = readLocation(datasetId);
+    const saved = window.history.state?.concept as EntryState | undefined;
+    if (typeof restored === "string") {
+      pendingScroll.current = 0;
+      currentEntry.current = "";
       focusAfter.current = !initial;
-      setTransition(initial ? "topic" : "return");
+      setTransition("topic");
       setSheet(null);
-      // A history move replaces the scene the pickers were opened from; a menu left over would offer the old topic.
       setRadial(null);
       setOverview(false);
       returnFocus.current = null;
-      setEntryId(id);
-      setLocation(next);
-    };
-    sync(true, currentId);
+      setEntryId("");
+      setLocation(restored);
+      return;
+    }
+    const key = conceptTopicKey(restored);
+    const known = trailRef.current.find((item) => item.key === key)
+      ?? (saved?.scope === scopeKey && saved.id ? trailRef.current.find((item) => item.id === saved.id) : undefined);
+    const id = known?.id ?? crypto.randomUUID();
+    const scroll = saved?.scope === scopeKey && saved.id === id ? saved.scroll : known?.scroll ?? 0;
+    const href = conceptHref(restored, datasetId);
+    // Address bar and history state must name this same entry, or back/forward would fork the topic.
+    const canonical = new URL(href, window.location.origin).searchParams;
+    const current = new URL(window.location.href).searchParams;
+    const sameSearch = canonical.size === current.size && [...canonical].every(([name, value]) => current.get(name) === value);
+    if (!saved || saved.scope !== scopeKey || saved.id !== id || !sameSearch)
+      window.history.replaceState({ ...window.history.state, concept: { scope: scopeKey, id, scroll } }, "", href);
+    record(restored, id, trailRef.current);
+    onLocationChange(href);
+    pendingScroll.current = scroll;
+    currentEntry.current = id;
+    scrollPosition.current = scroll;
+    focusAfter.current = !initial;
+    setTransition(initial ? "topic" : "return");
+    setSheet(null);
+    // A history move replaces the scene the pickers were opened from; a menu left over would offer the old topic.
+    setRadial(null);
+    setOverview(false);
+    returnFocus.current = null;
+    setEntryId(id);
+    setLocation(restored);
+  }, [datasetId, scopeKey, record, saveTrail, onLocationChange]);
+
+  // Mount: stored order plus the landing topic, with the home page leading the trail.
+  useEffect(() => {
+    const previousRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
+    saveTrail(readTrail(trailKey, datasetId));
+    sync(true);
+    const list = trailRef.current;
+    const homeIndex = list.findIndex((item) => item.key === HOME_TOPIC);
+    if (homeIndex < 0) {
+      const landing = readLocation(datasetId);
+      const home: ConceptLocation = { ...HOME_LOCATION, term: typeof landing === "string" ? undefined : landing.term };
+      saveTrail([
+        { id: crypto.randomUUID(), key: HOME_TOPIC, href: conceptHref(home, datasetId), title: conceptTitle(home), centre: centreOf(home), views: ["rank"], scroll: 0 },
+        ...list,
+      ]);
+    } else if (homeIndex > 0) {
+      saveTrail([list[homeIndex]!, ...list.filter((_, index) => index !== homeIndex)]);
+    }
     const onPop = () => sync(false);
     window.addEventListener("popstate", onPop);
     return () => {
       window.removeEventListener("popstate", onPop);
       window.history.scrollRestoration = previousRestoration;
     };
-  }, [datasetId, scopeKey, trailKey, record, saveTrail, onLocationChange]);
+  }, [datasetId, trailKey, saveTrail, sync]);
 
   const saveReading = useCallback(() => {
+    // Never write the browse entry into another screen's history state or trail.
+    if (!ownsBrowseLocation(window.location.href, datasetId)) return;
     const saved = window.history.state?.concept as EntryState | undefined;
     if (saved?.scope !== scopeKey) return;
     const scroll = window.scrollY;
     scrollPosition.current = scroll;
     window.history.replaceState({ ...window.history.state, concept: { ...saved, scroll } }, "", window.location.href);
     saveTrail(trailRef.current.map(item => item.id === saved.id ? { ...item, scroll } : item));
-  }, [scopeKey, saveTrail]);
+  }, [datasetId, scopeKey, saveTrail]);
   useEffect(() => {
     let timer: number;
     const scroll = () => {
@@ -438,12 +460,35 @@ export function DataExplorer({
     }
   }, [data, entryId]);
 
-  /** Explicit commits only: candidates and cancel never reach here, so they never change data, scroll or history. */
-  const go = useCallback((next: ConceptLocation, previous?: TrailEntry) => {
-    saveReading();
-    const id = previous?.id ?? crypto.randomUUID();
-    const scroll = previous?.scroll ?? 0;
+  /**
+   * The only writer of history and trail state. A new topic pushes one entry; another drawing of the
+   * page in front of you replaces that entry so the same page is never listed twice; asking for the
+   * page you are already on does nothing. Candidates and cancel never reach here.
+   */
+  const commit = useCallback((next: ConceptLocation, entry?: TrailEntry, kind?: MotionKind): "none" | "drawing" | "topic" => {
+    const key = conceptTopicKey(next);
     const href = conceptHref(next, datasetId);
+    if (valid && conceptTopicKey(valid) === key) {
+      // Same topic (same scene/course/metric/relation): drawing or term change → replaceState.
+      if (valid.drawing === next.drawing && valid.term === next.term) return "none";
+      window.history.replaceState(window.history.state, "", href);
+      record(next, entryId, trailRef.current);
+      onLocationChange(href);
+      // Term change is a range switch on the same page — use "topic" motion to signal data refresh.
+      setTransition(kind ?? (valid.term !== next.term ? "topic" : "drawing"));
+      setLocation(next);
+      setSheet(null);
+      setRadial(null);
+      const target = returnFocus.current ?? drawingButton.current;
+      returnFocus.current = null;
+      setOverview(false);
+      requestAnimationFrame(() => (target?.isConnected ? target : drawingButton.current)?.focus({ preventScroll: true }));
+      return "drawing";
+    }
+    saveReading();
+    const known = entry ?? trailRef.current.find((item) => item.key === key);
+    const id = known?.id ?? crypto.randomUUID();
+    const scroll = known?.scroll ?? 0;
     window.history.pushState({ ...window.history.state, concept: { scope: scopeKey, id, scroll } }, "", href);
     record(next, id, trailRef.current);
     onLocationChange(href);
@@ -452,30 +497,14 @@ export function DataExplorer({
     currentEntry.current = id;
     scrollPosition.current = scroll;
     returnFocus.current = null;
-    setTransition(previous ? "return" : "topic");
+    setTransition(kind ?? (known ? "return" : "topic"));
     setSheet(null);
     setRadial(null);
     setEntryId(id);
     setLocation(next);
     setOverview(false);
-  }, [datasetId, scopeKey, record, saveReading, onLocationChange]);
-
-  /** Same data, another drawing: replace the entry, then return focus to whatever opened the choice. */
-  const draw = useCallback((drawing: ConceptDrawing) => {
-    if (!valid) return;
-    const next = { ...valid, drawing } as ConceptLocation;
-    const href = conceptHref(next, datasetId);
-    window.history.replaceState(window.history.state, "", href);
-    record(next, entryId, trailRef.current);
-    onLocationChange(href);
-    setTransition("drawing");
-    setLocation(next);
-    setSheet(null);
-    setRadial(null);
-    const target = returnFocus.current ?? drawingButton.current;
-    returnFocus.current = null;
-    requestAnimationFrame(() => (target?.isConnected ? target : drawingButton.current)?.focus({ preventScroll: true }));
-  }, [valid, datasetId, record, entryId, onLocationChange]);
+    return "topic";
+  }, [valid, entryId, datasetId, scopeKey, record, saveReading, onLocationChange]);
 
   const openSheet = useCallback((next: Sheet) => {
     const active = document.activeElement;
@@ -520,9 +549,8 @@ export function DataExplorer({
   const openEntry = useCallback((item: TrailEntry, kind: MotionKind) => {
     const route = parseConceptLocation(item.href);
     if (route.status !== "valid") return;
-    go(route.location, item);
-    setTransition(kind);
-  }, [go]);
+    commit(route.location, item, kind);
+  }, [commit]);
 
   // Keep hooks unconditional, including while the URL is initializing or invalid.
   useEffect(() => {
@@ -542,7 +570,7 @@ export function DataExplorer({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [valid, data, sheet, radial, overview, previous, following, openEntry]);
 
-  const home = visible.find((item) => item.href.includes("browse=home"));
+  const home = visible.find((item) => item.key === HOME_TOPIC);
   const topics = visible.filter((item) => item !== home);
   const recent = topics.slice(-RECENT_TOPICS);
   const older = topics.slice(0, -RECENT_TOPICS);
@@ -579,6 +607,8 @@ export function DataExplorer({
   };
   const openOverview = () => {
     if (!shown.length) return;
+    const active = document.activeElement;
+    returnFocus.current = active instanceof HTMLElement || active instanceof SVGElement ? active : null;
     saveReading();
     setPlaneErrors((prev) => Object.keys(prev).length ? {} : prev);
     shown.forEach((item) => loadPlane(item, true));
@@ -587,10 +617,10 @@ export function DataExplorer({
 
   if (typeof location === "string") {
     return (
-      <div ref={root} className={styles.root}>
+      <div ref={root} className={styles.root} data-invalid="">
         <div className={styles.state} role="alert">
           <p>{location}</p>
-          <button type="button" className={styles.action} onClick={() => go({ scene: "home", drawing: "rank" })}>回到课程全景</button>
+          <button type="button" className={styles.action} onClick={() => commit(HOME_LOCATION)}>回到课程全景</button>
         </div>
       </div>
     );
@@ -602,10 +632,13 @@ export function DataExplorer({
   const course = data && valid.scene !== "home" ? data.courses.find((item) => item.course === valid.course) : undefined;
   const allScope = valid.scene === "metric" && CONCEPT_RELATIONS[valid.metric].find((option) => option.id === valid.relation)?.scope === "all";
   const termLabel = data?.term ?? valid.term ?? "最新学期";
+  /** The heading already names a course page, so its scope carries only the term and the contributing sample. */
   const scope = !data ? termLabel
     : valid.scene === "home" ? `${termLabel} · ${data.totalCourses} 门课程${data.totalCourses > data.courseLimit ? `，显示前 ${data.courseLimit} 门` : ""}`
       : allScope ? `${termLabel} · 共 ${data.totalCourses} 门课程${data.totalCourses > data.courses.length ? `，展示 ${data.courses.length} 门` : ""}（由「${valid.course}」显式扩展）`
-        : `${termLabel} · ${valid.course} · ${course?.count ?? "样本少于 3"} 人`;
+        : !course ? `${termLabel} · 当前学期没有这门课`
+          : course.suppressed ? `${termLabel} · 样本少于 3 人，已隐藏`
+            : `${termLabel} · ${course.count !== null ? `${course.count} 人` : "无有效样本"}`;
   /** The course page leads with its own mean score: six metrics mix 分, %, 课时 and 份, so no cross-metric maximum. */
   const scoreReading = course?.metrics.score;
   const heroValue = valid.scene === "course" ? scoreReading?.value ?? null : null;
@@ -643,7 +676,7 @@ export function DataExplorer({
   const drawingOptions: RadialOption[] = drawings.map((drawing) => ({
     key: drawing, kind: "drawing", label: DRAWING_LABELS[drawing],
     current: drawing === valid.drawing,
-    onSelect: () => draw(drawing),
+    onSelect: () => commit({ ...valid, drawing } as ConceptLocation),
   }));
   const relationOptions = (target: ConceptMetric): RadialOption[] => CONCEPT_RELATIONS[target].map((relation) => {
     const reason = data ? conceptRelationReason(target, relation.id, data) : null;
@@ -656,7 +689,7 @@ export function DataExplorer({
       current: valid.scene === "metric" && valid.metric === target && valid.relation === relation.id,
       onSelect: () => {
         if (valid.scene === "home") return;
-        go({ scene: "metric", course: valid.course, metric: target, relation: relation.id, drawing: relation.drawings[0], term: valid.term });
+        commit({ scene: "metric", course: valid.course, metric: target, relation: relation.id, drawing: relation.drawings[0], term: valid.term });
       },
     };
   });
@@ -680,7 +713,7 @@ export function DataExplorer({
             <section className={styles.group} aria-labelledby="sheet-terms">
               <h3 id="sheet-terms" className={styles.groupTitle}>学期</h3>
               <ul className={styles.options} data-inline>
-                {data.terms.map((term) => asRow({ key: term, kind: "topic", label: term, current: term === data.term, onSelect: () => go({ scene: "home", drawing: valid.drawing, term }) }))}
+                {data.terms.map((term) => asRow({ key: term, kind: "topic", label: term, current: term === data.term, onSelect: () => commit({ scene: "home", drawing: valid.drawing, term }) }))}
               </ul>
             </section>
           )}
@@ -688,7 +721,7 @@ export function DataExplorer({
             key: item.course, kind: "topic", label: item.course,
             note: item.suppressed ? "样本少于 3 人，已隐藏" : `${formatReading("score", item.metrics.score)} · ${item.count} 人`,
             disabled: item.suppressed,
-            onSelect: () => go({ scene: "course", course: item.course, drawing: "bars", term: data.term ?? undefined }),
+            onSelect: () => commit({ scene: "course", course: item.course, drawing: "bars", term: data.term ?? undefined }),
           })))}
         </>
       ) : valid.scene === "course" ? (
@@ -696,18 +729,18 @@ export function DataExplorer({
           {course && topicSection("从一项指标出发", CONCEPT_METRICS.map((metric) => {
             const next = metricLocation(valid.course, metric, valid.term, data);
             const usable = course.metrics[metric].value !== null && course.metrics[metric].count !== null && next;
-            return asRow({ key: metric, kind: "topic", label: CONCEPT_LABELS[metric].name, note: formatReading(metric, course.metrics[metric]), disabled: !usable, onSelect: () => next && go(next) });
+            return asRow({ key: metric, kind: "topic", label: CONCEPT_LABELS[metric].name, note: formatReading(metric, course.metrics[metric]), disabled: !usable, onSelect: () => next && commit(next) });
           }))}
-          {topicSection("离开这门课", asRow({ key: "home", kind: "topic", label: "课程全景", note: "全部课程的均分", onSelect: () => go({ scene: "home", drawing: "rank", term: valid.term }) }))}
+          {topicSection("离开这门课", asRow({ key: "home", kind: "topic", label: "课程全景", note: "全部课程的均分", onSelect: () => commit({ scene: "home", drawing: "rank", term: valid.term }) }))}
         </>
       ) : (
         <>
           {topicSection(`「${CONCEPT_LABELS[valid.metric].name}」的其他关联`, relationOptions(valid.metric).map(asRow))}
           {course && topicSection("换一个指标作为中心", CONCEPT_METRICS.filter((metric) => metric !== valid.metric).map((metric) => {
             const next = course.metrics[metric].value === null || course.metrics[metric].count === null ? null : metricLocation(valid.course, metric, valid.term, data);
-            return asRow({ key: metric, kind: "topic", label: CONCEPT_LABELS[metric].name, note: next ? formatReading(metric, course.metrics[metric]) : course.metrics[metric].reason ?? "无数据", disabled: !next, onSelect: () => next && go(next) });
+            return asRow({ key: metric, kind: "topic", label: CONCEPT_LABELS[metric].name, note: next ? formatReading(metric, course.metrics[metric]) : course.metrics[metric].reason ?? "无数据", disabled: !next, onSelect: () => next && commit(next) });
           }))}
-          {topicSection("回到上一层", asRow({ key: "course", kind: "topic", label: `课程「${valid.course}」`, note: "六项统一指标", onSelect: () => go({ scene: "course", course: valid.course, drawing: "bars", term: valid.term }) }))}
+          {topicSection("回到上一层", asRow({ key: "course", kind: "topic", label: `课程「${valid.course}」`, note: "六项统一指标", onSelect: () => commit({ scene: "course", course: valid.course, drawing: "bars", term: valid.term }) }))}
         </>
       );
     } else if (sheet.kind === "data") {
@@ -765,7 +798,7 @@ export function DataExplorer({
           options: picked ? [
             {
               key: "course", kind: "topic", label: `进入课程「${picked.course}」`, note: "六项统一指标",
-              onSelect: () => go({ scene: "course", course: picked.course, drawing: "bars", term: data.term ?? undefined }),
+              onSelect: () => commit({ scene: "course", course: picked.course, drawing: "bars", term: data.term ?? undefined }),
             },
             ...(valid.scene === "metric" ? [{
               key: "metric", kind: "topic" as const,
@@ -773,7 +806,7 @@ export function DataExplorer({
               note: next ? undefined : "这门课没有可用关联",
               disabled: !next,
               current: picked.course === valid.course && valid.relation !== "subject",
-              onSelect: () => next && go(next),
+              onSelect: () => next && commit(next),
             }] : []),
             ...drawingOptions,
           ] : drawingOptions,
@@ -809,14 +842,16 @@ export function DataExplorer({
       currentDrawing: item.id === entryId ? valid.drawing : undefined,
     }];
   });
-  /** Entering a plane reuses the trail entry's own history state, scroll and restore path. */
+  /**
+   * Entering a plane reuses the trail entry's own history state and scroll. Another drawing of the
+   * plane in front of you replaces that entry; entering the plane you are already on changes nothing.
+   */
   const enterPlane = (id: string, drawing: ConceptDrawing) => {
     const item = trailRef.current.find((candidate) => candidate.id === id);
     if (!item) return;
     const route = parseConceptLocation(item.href);
     if (route.status !== "valid") return;
-    go({ ...route.location, drawing } as ConceptLocation, item);
-    setTransition("return");
+    if (commit({ ...route.location, drawing } as ConceptLocation, item, "return") === "none") closeOverview();
   };
 
   return (
@@ -874,14 +909,24 @@ export function DataExplorer({
             <div className={styles.state} role="alert">
               <p>{error}</p>
               <button type="button" className={styles.action} onClick={() => setRetry((value) => value + 1)}>重试</button>
-              {valid.scene !== "home" && <button type="button" className={styles.ghost} onClick={() => go({ scene: "home", drawing: "rank", term: valid.term })}>回到课程全景</button>}
+              {/* A failed range must have a way out: the latest term is the one the home page can always load. */}
+              {valid.scene === "home"
+                ? valid.term !== undefined && <button type="button" className={styles.ghost} onClick={() => commit(HOME_LOCATION)}>回到最新学期</button>
+                : <button type="button" className={styles.ghost} onClick={() => commit(HOME_LOCATION)}>回到课程全景</button>}
             </div>
           ) : !data ? (
             <p className={styles.state} role="status"><span className={styles.loader} aria-hidden />正在读取{valid.scene === "home" ? "课程目录" : `「${valid.course}」`}的聚合数据…</p>
           ) : (
             <figure className={styles.figure} key={`figure:${entryId}:${valid.drawing}`} data-navigation-motion>
               {typeof plot === "string" || !plot
-                ? <p className={styles.state}>{plot ?? "没有数据"}</p>
+                ? (
+                  <div className={styles.state}>
+                    <p>{plot ?? "没有数据"}</p>
+                    {valid.scene === "home"
+                      ? valid.term !== undefined && <button type="button" className={styles.action} onClick={() => commit(HOME_LOCATION)}>回到最新学期</button>
+                      : <button type="button" className={styles.action} onClick={() => commit(HOME_LOCATION)}>回到课程全景</button>}
+                  </div>
+                )
                 : <ConceptChart data={plot} drawing={valid.drawing} label={`${title} · ${DRAWING_LABELS[valid.drawing]}`} />}
               <InkText as="figcaption" className={styles.caption} step={14} delay={120}
                 text={`${DRAWING_LABELS[valid.drawing]}${valid.scene === "course" ? " · 均分单位：分；其余指标：%" : ""} · 样本少于 3 人的组隐藏，缺失不补 0。`} />
@@ -925,8 +970,9 @@ export function DataExplorer({
           全览{visible.length > 1 ? ` · ${visible.length}` : ""}
         </button>
         <button type="button" className={styles.ghost} aria-current={valid.scene === "home" || undefined} onClick={() => {
+          if (valid.scene === "home") return;
           const route = home ? parseConceptLocation(home.href) : null;
-          go(route?.status === "valid" ? route.location : { scene: "home", drawing: "rank", term: valid.term }, home);
+          commit(route?.status === "valid" ? route.location : { ...HOME_LOCATION, term: valid.term }, home);
         }}>首页</button>
       </nav>
       {canUseAI && (

@@ -581,6 +581,81 @@ describe("account isolation and permissions", () => {
   });
 });
 
+describe("public detail projection", () => {
+  it("publishes a fixed turn allowlist without lease or input identity", () => {
+    const created = createConversation(OWNER, { datasetId: "demo", now: T0 });
+    const turn = claim(created.id, "19191919-1919-4919-8919-191919191919");
+    const running = getConversation(OWNER, created.id, { now: at(1000) });
+    expect(Object.keys(running.turns[0]).sort()).toEqual([
+      "createdAt",
+      "id",
+      "question",
+      "resetContext",
+      "revision",
+      "status",
+      "updatedAt",
+    ]);
+    expect(running.turns[0].status).toBe("running");
+    // Internal coordination still reads the stored lease; only the projection hides it.
+    expect(() =>
+      assertTurnActive(OWNER, turn.claim, { now: at(1000), datasetId: "demo" }),
+    ).not.toThrow();
+    expect(readFileSync(bucketPath(OWNER), "utf8")).toContain("leaseOwner");
+
+    finishTurn(OWNER, {
+      conversationId: created.id,
+      turnId: turn.claim.turnId,
+      revision: turn.claim.revision,
+      response: response("已完成"),
+      now: at(2000),
+    });
+    const completed = getConversation(OWNER, created.id, { now: at(3000) }).turns[0];
+    expect(Object.keys(completed).sort()).toEqual([
+      "completedAt",
+      "createdAt",
+      "id",
+      "question",
+      "resetContext",
+      "response",
+      "revision",
+      "status",
+      "updatedAt",
+    ]);
+
+    const next = claimTurn(OWNER, {
+      conversationId: created.id,
+      turnId: "20202020-2020-4020-8020-202020202021",
+      question: "这一问会失败",
+      datasetId: "demo",
+      expectedRevision: completed.revision,
+      now: at(4000),
+    });
+    failTurn(OWNER, {
+      conversationId: created.id,
+      turnId: next.claim.turnId,
+      revision: next.claim.revision,
+      status: "failed",
+      now: at(5000),
+    });
+    const failedTurn = getConversation(OWNER, created.id, { now: at(6000) }).turns[1];
+    expect(Object.keys(failedTurn).sort()).toEqual([
+      "completedAt",
+      "createdAt",
+      "error",
+      "id",
+      "question",
+      "resetContext",
+      "revision",
+      "status",
+      "updatedAt",
+    ]);
+
+    const serialized = JSON.stringify(getConversation(OWNER, created.id, { now: at(6000) }));
+    for (const key of ["leaseOwner", "inputDigest", "claimedAt", "leaseExpiresAt"])
+      expect(serialized).not.toContain(key);
+  });
+});
+
 describe("restart, interruption and storage damage", () => {
   it("marks a dead process lease interrupted without rerunning it", () => {
     const created = createConversation(OWNER, { datasetId: "demo", now: T0 });

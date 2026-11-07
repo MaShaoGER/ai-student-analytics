@@ -284,32 +284,6 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-/* Inline "new conversation" confirmation: replaces the tool row, so the action
-   stays where the click happened and is reachable by keyboard. */
-.clearConfirm {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px 8px;
-  font-size: 12px;
-  color: var(--instrument-muted);
-}
-.clearConfirm > button {
-  min-height: 32px;
-  padding: 4px 10px;
-  font: inherit;
-  font-size: 12px;
-  color: var(--instrument-ink);
-  background: transparent;
-  border: 1px solid var(--instrument-line);
-  cursor: pointer;
-}
-.clearConfirm > .clearConfirmAction {
-  background: var(--accent-soft);
-  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
-  color: var(--accent-ink);
-}
 /* Follow-up scope chip above the textarea. Clearing it only affects the next
    questions, which the chip itself and the live status line make explicit. */
 .contextRow {
@@ -714,8 +688,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   .stop {
     min-height: 40px;
   }
-  .composerTools > button,
-  .clearConfirm > button {
+  .composerTools > button {
     min-height: 40px;
   }
   .contextChip > button {

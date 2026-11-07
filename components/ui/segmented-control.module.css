@@ -65,7 +65,7 @@
 
 .control .button:focus-visible {
   outline: 2px solid var(--interaction, var(--accent));
-  outline-offset: 2px;
+  outline-offset: -4px;
 }
 
 .control .button:disabled {

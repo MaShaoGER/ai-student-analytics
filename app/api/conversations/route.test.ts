@@ -240,6 +240,40 @@ describe("conversation history routes", () => {
     expect(await missing.json()).toMatchObject({ idle: true });
   });
 
+  it("never serializes lease or input identity in a conversation detail", async () => {
+    const { body } = await createConversation();
+    const id = body.conversation.id;
+    const ownerId = (
+      JSON.parse(readFileSync(join(directory, "accounts.json"), "utf8")).users as {
+        id: string;
+        username: string;
+      }[]
+    ).find((user) => user.username === "fixture-owner")!.id;
+    claimTurn(ownerId, {
+      conversationId: id,
+      turnId: "23232323-2323-4323-8323-232323232323",
+      question: "比较各课程平均成绩",
+      datasetId: "demo",
+      expectedRevision: 0,
+    });
+    const detail = await (
+      await GET_DETAIL(request("GET", `/api/conversations/${id}`), params(id))
+    ).json();
+    expect(Object.keys(detail.turns[0]).sort()).toEqual([
+      "createdAt",
+      "id",
+      "question",
+      "resetContext",
+      "revision",
+      "status",
+      "updatedAt",
+    ]);
+    for (const key of ["leaseOwner", "inputDigest", "claimedAt", "leaseExpiresAt"]) {
+      expect(detail.turns[0]).not.toHaveProperty(key);
+      expect(JSON.stringify(detail)).not.toContain(key);
+    }
+  });
+
   it("serves detail only after the current dataset grant is verified", async () => {
     const { body } = await createConversation("oulad");
     const id = body.conversation.id;

@@ -13,7 +13,8 @@ import { POST } from "../../app/api/chat/route";
 import * as repository from "../conversations/repository";
 import { retryConversationSave } from "./conversation-session";
 import { converse } from "./conversation";
-import type { ChatResponse } from "./chat-types";
+import { describeResponseArtifacts } from "./artifact-results";
+import type { ChatArtifact, ChatResponse } from "./chat-types";
 
 vi.mock("./conversation", () => ({ converse: vi.fn() }));
 const result: ChatResponse = {
@@ -25,6 +26,37 @@ const result: ChatResponse = {
   artifact: null,
   planning: { source: "local", rationale: "fixture", model: null },
 };
+const chartArtifact: ChatArtifact = {
+  kind: "studio",
+  tool: "dumbbell",
+  term: "2024J",
+  comparisonTerm: "2024B",
+  view: "chart",
+  courses: ["AAA"],
+  datasetId: "demo",
+  table: {
+    columns: ["课程", "前期均分", "后期均分", "变化", "前期样本", "后期样本"],
+    rows: [{ 课程: "AAA", 前期均分: 80, 后期均分: 50, 变化: -30, 前期样本: 3, 后期样本: 3 }],
+    description: "2024B → 2024J；仅比较两期均满足人数阈值的同名课程。",
+    sortChange: "asc",
+  },
+};
+/** A chart answer whose result/fact identity comes from the same artifact. */
+function chartResponse(generatedAt: string): ChatResponse {
+  const described = describeResponseArtifacts([chartArtifact], "demo");
+  return {
+    ...result,
+    kind: "result",
+    answer: "2024B → 2024J：AAA 均分下降最多，下降 30 分。",
+    facts: ["2024B → 2024J：AAA 均分下降最多。"],
+    artifact: chartArtifact,
+    artifacts: [chartArtifact],
+    presentation: "chart",
+    generatedAt,
+    resultRefs: described.resultRefs,
+    factRefs: described.factRefs,
+  };
+}
 let directory: string;
 let ownerId: string;
 let cookie: string;
@@ -192,6 +224,68 @@ describe("durable chat transport (fixture model, real account repository)", () =
     );
     expect(vi.mocked(converse).mock.calls.at(-1)![0]).toMatchObject({ history: [], context: null });
   });
+  it("re-renders the newest result without a model call and keeps its identity and time", async () => {
+    const session = createConversation(ownerId, { datasetId: "demo" });
+    const chart = chartResponse("2026-11-05T08:00:00.000Z");
+    vi.mocked(converse).mockResolvedValueOnce(chart);
+    await POST(request(input(session.id)));
+    const revision = getConversation(ownerId, session.id).conversation.revision;
+    const body = input(session.id, revision, "改成表格");
+    const reply = await POST(request(body));
+    expect(reply.status).toBe(200);
+    const payload = await reply.json();
+    expect(converse).toHaveBeenCalledTimes(1);
+    expect(payload).toMatchObject({
+      conversation: { id: session.id, turnId: body.turnId },
+      presentation: "table",
+      generatedAt: chart.generatedAt,
+      persistence: "saved",
+    });
+    // Same statistics, same evidence: only the view changed.
+    expect(payload.artifact.view).toBe("table");
+    expect(payload.resultRefs).toEqual(chart.resultRefs);
+    expect(payload.factRefs).toEqual(chart.factRefs);
+    expect(payload.facts).toEqual(chart.facts);
+  });
+
+  it("never reuses a result from before an explicit context reset", async () => {
+    const session = createConversation(ownerId, { datasetId: "demo" });
+    vi.mocked(converse).mockResolvedValueOnce(chartResponse("2026-11-05T08:00:00.000Z"));
+    await POST(request(input(session.id)));
+    const revision = getConversation(ownerId, session.id).conversation.revision;
+    // The reset turn fails, so it stores no answer to re-display; the chart from
+    // before the reset must stay out of reach because the boundary moved.
+    vi.mocked(converse).mockRejectedValueOnce(new Error("simulated failure"));
+    expect(
+      (await POST(request({ ...input(session.id, revision, "换个问题"), resetContext: true })))
+        .status,
+    ).toBeGreaterThanOrEqual(400);
+    const after = getConversation(ownerId, session.id).conversation.revision;
+    const reply = await POST(request(input(session.id, after, "改成表格")));
+    expect(reply.status).toBe(200);
+    const payload = await reply.json();
+    expect(converse).toHaveBeenCalledTimes(3);
+    expect(payload.answer).toBe(result.answer);
+    expect(payload.artifact).toBeNull();
+    expect(payload.resultRefs).toBeUndefined();
+  });
+
+  it("does not revive an older chart behind a newer chart-less answer", async () => {
+    const session = createConversation(ownerId, { datasetId: "demo" });
+    vi.mocked(converse).mockResolvedValueOnce(chartResponse("2026-11-05T08:00:00.000Z"));
+    await POST(request(input(session.id)));
+    // A newer measured answer without an attachment is what "改成表格" refers to.
+    const second = getConversation(ownerId, session.id).conversation.revision;
+    await POST(request(input(session.id, second, "缺勤课时是多少")));
+    const third = getConversation(ownerId, session.id).conversation.revision;
+    const reply = await POST(request(input(session.id, third, "改成表格")));
+    const payload = await reply.json();
+    expect(converse).toHaveBeenCalledTimes(3);
+    expect(payload.answer).toBe(result.answer);
+    expect(payload.artifact).toBeNull();
+    expect(payload).not.toHaveProperty("resultRefs");
+  });
+
   it("refuses a result when account dataset permissions are revoked during analysis", async () => {
     // Admins have implicit dataset access; use an ordinary analyst for revocation.
     const analyst = await createUser({
