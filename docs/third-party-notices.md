@@ -24,7 +24,7 @@
 - **固定来源版本**：[swamimalode07/rare-ui@9633fcfa81c212a0ba48507e9c56be4869d61928](https://github.com/swamimalode07/rare-ui/blob/9633fcfa81c212a0ba48507e9c56be4869d61928/components/ui/ai-status.tsx)。版权为 `Copyright (c) 2026 Swami Malode`，保留在改编文件头部；[许可证全文](../licenses/rare-ui-LICENSE.txt)按该提交原样保存。
 - **本地适配**：项目 CSS Modules 与主题色代替 Tailwind；增加取消、部分完成终态；状态依真实执行事件映射；改用 200ms 透明度和位移过渡，不引入原版的文字宽度测量、全组件模糊、计时器或自动演示时间线。新增 `motion` 运行时依赖，没有安装名为 Rare UI 的运行时包，也没有引入 `react-use-measure`、Tailwind 或 shadcn。
 - **交互参考、本地实现**：分析依据的来源图标展开和卡片依次呈现参考 Web Search；执行记录结构参考 shadcn/ui Task。没有复制这两个组件的源码，也没有启用 Web Search 的拟真搜索进度、正文逐字动画或远程 favicon 请求。
-- **可发现署名**：README 和 `/preview/ai-motion` 提供 Rare UI 链接。后续复制、发行该适配代码时继续保留上述版权与许可文件；postbuild 会将许可证全文复制进 standalone 目录，Docker 镜像随该目录一并携带。
+- **可发现署名**：README 和正式对话历史栏保留 Rare UI 链接。开发环境的 `/preview/ai-motion` 同时提供来源说明，但生产署名不依赖预览页。复制、发行该适配代码时继续保留上述版权与许可文件；构建准备脚本会将许可证全文复制进 standalone，Docker 镜像随该目录一并携带。
 
 ### Rare UI 的许可要求
 

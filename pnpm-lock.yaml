@@ -25,7 +25,7 @@ importers:
         version: 16.4.2(@types/node@24.13.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       openai:
         specifier: ^7.20.0
-        version: 7.20.0(zod@4.6.5)
+        version: 7.20.0(zod@4.6.6)
       react:
         specifier: ^19.2.0
         version: 19.3.0
@@ -36,8 +36,8 @@ importers:
         specifier: 9.3.12
         version: 9.3.12
       zod:
-        specifier: ^4.1.12
-        version: 4.6.5
+        specifier: ^4.6.6
+        version: 4.6.6
     devDependencies:
       '@types/node':
         specifier: ^24.8.0
@@ -1081,8 +1081,8 @@ packages:
     resolution: {integrity: sha512-7z5K5z4x++FykhpDTfriT/dOu7CmSap9BBv38DVFU3CD38obopq+DoFH75yBV3butpGm+OeqR9BKdSvYJSnUfQ==}
     engines: {node: '>=12'}
 
-  zod@4.6.5:
-    resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
+  zod@4.6.6:
+    resolution: {integrity: sha512-4UmzQUF5fxvfcYHlbjBmejU+w+hbDnWFx4aS8kBx7nPBHcO2SqPbpAG8snbdg+Xse4pRefR98hgjFgIMCI/UhA==}
 
   zrender@6.1.0:
     resolution: {integrity: sha512-oEGMDB6pOP2S6OwRR4PdVv610zrjnA3Bh+JnSG12fYJlBKjtNAoEb5fSUoCOOINlH96I2fU38/A2UpRKs67xYQ==}
@@ -1638,9 +1638,9 @@ snapshots:
 
   node-int64@0.4.0: {}
 
-  openai@7.20.0(zod@4.6.5):
+  openai@7.20.0(zod@4.6.6):
     optionalDependencies:
-      zod: 4.6.5
+      zod: 4.6.6
 
   pathe@2.0.3: {}
 
@@ -1877,7 +1877,7 @@ snapshots:
 
   worker-f@0.1.20: {}
 
-  zod@4.6.5: {}
+  zod@4.6.6: {}
 
   zrender@6.1.0:
     dependencies:

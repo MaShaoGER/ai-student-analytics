@@ -1,28 +1,39 @@
 #!/usr/bin/env node
 /**
- * Copy the DuckDB shared library next to `duckdb.node` in the standalone output.
+ * Prepare the standalone output for a complete release.
  *
- * `next build` traces `duckdb.node` into `.next/standalone`, but the addon
- * resolves its shared library through `@loader_path`; Next does not follow that
- * runtime dependency, so `libduckdb.dylib` (macOS) / `libduckdb.so` (Linux) is
- * missing and every DuckDB call fails with "library not loaded". The Dockerfile
- * performs the equivalent copy for Linux inside the image build; this script
- * keeps local `pnpm build` output runnable on macOS (and on Linux without Docker).
+ * Runs as `postbuild` after `next build` (output: "standalone") and performs
+ * the steps file tracing does not cover:
+ *
+ * 1. Assets: copy `${DIST_DIR}/static` into the standalone tree at the same
+ *    relative dist path (the standalone server.js reads static assets from
+ *    its own dist directory, which is not always `.next`) and copy the
+ *    runtime public assets (skipping the design-only public/previews/ subtree
+ *    and the unreferenced legacy public/learning-folio.jpg; source files are
+ *    never deleted). This runs on every platform, including Windows.
+ * 2. License: ship the complete upstream Rare UI license with standalone
+ *    releases (including the Docker image). Client bundling can strip source
+ *    comments, so the license file is copied verbatim.
+ * 3. DuckDB native library: `next build` traces `duckdb.node` into the
+ *    standalone tree, but the addon resolves its shared library through
+ *    `@loader_path`, which tracing does not follow. Copy
+ *    `libduckdb.dylib` (macOS) / `libduckdb.so` (Linux) next to it, or the
+ *    container/host fails with "library not loaded" on every DuckDB call.
+ *    Windows bundles the library inside duckdb.node, so it needs no copy.
  *
  * Usage: node scripts/prepare-standalone-native.mjs [distDir]
  * distDir defaults to NEXT_DIST_DIR, then `.next` (same resolution as next.config.ts).
  */
-import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync, unlinkSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
 const DIST_DIR = process.argv[2] || process.env.NEXT_DIST_DIR || ".next";
+const DIST_REL = relative(process.cwd(), resolve(process.cwd(), DIST_DIR));
 const STANDALONE_DIR = resolve(process.cwd(), DIST_DIR, "standalone");
 const PROJECT_PNPM_DIR = resolve(process.cwd(), "node_modules", ".pnpm");
 
-const PLATFORM_LIBRARY = {
-  darwin: "libduckdb.dylib",
-  linux: "libduckdb.so",
-};
+const PUBLIC_DESIGN_EXCLUDES = new Set(["previews", "learning-folio.jpg"]);
 
 function log(message) {
   console.log(`[prepare-standalone-native] ${message}`);
@@ -30,8 +41,76 @@ function log(message) {
 
 function fail(message) {
   console.error(`[prepare-standalone-native] ERROR: ${message}`);
-  process.exitCode = 1;
+  process.exit(1);
 }
+
+if (isAbsolute(DIST_REL) || DIST_REL.startsWith("..") || resolve(DIST_REL) === process.cwd()) {
+  fail(`distDir ${DIST_DIR} must resolve to a directory inside the project.`);
+}
+
+if (!existsSync(STANDALONE_DIR)) {
+  fail(`No standalone output at ${STANDALONE_DIR}; run "pnpm build" first.`);
+}
+if (realpathSync(STANDALONE_DIR) !== STANDALONE_DIR || !existsSync(join(STANDALONE_DIR, "server.js"))) {
+  fail("Standalone output must be a generated build directory, not a symbolic link.");
+}
+
+// Next applies outputFileTracingExcludes to page entries, but not every
+// instrumentation dependency. Enforce the same serialized policy on its
+// generated copies; never delete the original project or runtime files.
+const buildRoot = resolve(process.cwd(), DIST_REL);
+const traceExcludes = JSON.parse(
+  readFileSync(join(buildRoot, "required-server-files.json"), "utf8"),
+).config.outputFileTracingExcludes["/*"];
+if (!Array.isArray(traceExcludes)) fail("Missing release file exclusion policy.");
+const excluded = createRequire(import.meta.url)("next/dist/compiled/picomatch")(
+  traceExcludes, { dot: true },
+);
+const instrumentationTrace = join(buildRoot, "server", "instrumentation.js.nft.json");
+if (existsSync(instrumentationTrace)) {
+  const trace = JSON.parse(readFileSync(instrumentationTrace, "utf8"));
+  let removed = 0;
+  for (const file of trace.files) {
+    const projectPath = relative(process.cwd(), resolve(dirname(instrumentationTrace), file));
+    if (!projectPath || isAbsolute(projectPath) || projectPath.startsWith("..") || !excluded(projectPath.replaceAll("\\", "/"))) continue;
+    const copy = resolve(STANDALONE_DIR, projectPath);
+    if (existsSync(copy)) {
+      const ownedPath = relative(realpathSync(STANDALONE_DIR), realpathSync(copy));
+      if (!ownedPath || isAbsolute(ownedPath) || ownedPath.startsWith("..")) fail("Trace escaped the standalone directory.");
+      unlinkSync(copy);
+      removed++;
+    }
+  }
+  log(`Removed ${removed} excluded instrumentation file(s) from the release copy.`);
+}
+
+// 1. Assets: static files must live inside the standalone tree at the same
+// relative dist path the isolated server.js reads from; public assets are
+// served from ./public next to server.js.
+const STATIC_SOURCE = resolve(process.cwd(), DIST_REL, "static");
+const STATIC_TARGET = join(STANDALONE_DIR, DIST_REL, "static");
+if (!existsSync(STATIC_SOURCE)) {
+  fail(`Missing build output ${STATIC_SOURCE}; cannot assemble standalone static assets.`);
+}
+cpSync(STATIC_SOURCE, STATIC_TARGET, { recursive: true });
+log(`Copied ${STATIC_SOURCE} -> ${STATIC_TARGET}`);
+
+const PUBLIC_SOURCE = resolve(process.cwd(), "public");
+if (existsSync(PUBLIC_SOURCE)) {
+  const PUBLIC_TARGET = join(STANDALONE_DIR, "public");
+  for (const entry of readdirSync(PUBLIC_SOURCE)) {
+    if (PUBLIC_DESIGN_EXCLUDES.has(entry)) continue;
+    cpSync(join(PUBLIC_SOURCE, entry), join(PUBLIC_TARGET, entry), { recursive: true });
+  }
+  log(`Copied public assets (minus design-only entries) -> ${PUBLIC_TARGET}`);
+} else {
+  log("No public/ directory; skipping public assets.");
+}
+
+const PLATFORM_LIBRARY = {
+  darwin: "libduckdb.dylib",
+  linux: "libduckdb.so",
+};
 
 function platformAddonDirs(pnpmDir) {
   if (!existsSync(pnpmDir)) return [];
@@ -63,38 +142,34 @@ function sameFile(a, b) {
   }
 }
 
-// Client bundling can strip source comments. Ship the complete upstream license
-// with standalone releases (including the Docker image), on every platform.
-if (existsSync(STANDALONE_DIR)) {
+// 2. License: ship the complete upstream license with every standalone
+// release (including the Docker image), on every platform.
+{
   const licenseDir = join(STANDALONE_DIR, "licenses");
   mkdirSync(licenseDir, { recursive: true });
   copyFileSync(
     resolve(process.cwd(), "licenses", "rare-ui-LICENSE.txt"),
     join(licenseDir, "rare-ui-LICENSE.txt"),
   );
+  log(`Copied licenses/rare-ui-LICENSE.txt -> ${licenseDir}`);
 }
 
+// 3. DuckDB native library. Windows bundles it inside duckdb.node.
 if (process.platform === "win32") {
-  log("Windows bundles the library inside duckdb.node; nothing to copy. Skipping.");
+  log("Windows bundles the library inside duckdb.node; nothing to copy. Done.");
   process.exit(0);
 }
 
 const libraryName = PLATFORM_LIBRARY[process.platform];
 if (!libraryName) {
-  log(`Unsupported platform "${process.platform}"; nothing to copy. Skipping.`);
-  process.exit(0);
-}
-
-if (!existsSync(STANDALONE_DIR)) {
-  log(`No standalone output at ${STANDALONE_DIR}; run "pnpm build" first. Skipping.`);
+  log(`Unsupported platform "${process.platform}"; nothing to copy. Done.`);
   process.exit(0);
 }
 
 // Only copy for addons that actually landed in the standalone tree.
 const targets = platformAddonDirs(join(STANDALONE_DIR, "node_modules", ".pnpm"));
 if (targets.length === 0) {
-  log(`No ${process.platform} duckdb.node found under ${STANDALONE_DIR}; nothing to copy.`);
-  process.exit(0);
+  fail(`No ${process.platform} duckdb.node found under ${STANDALONE_DIR}; the standalone output would fail at runtime.`);
 }
 
 const sources = platformAddonDirs(PROJECT_PNPM_DIR);
@@ -106,12 +181,10 @@ for (const target of targets) {
   const source = sources.find((dir) => dir.endsWith(packageName));
   if (!source) {
     fail(`Cannot find ${packageName} in node_modules/.pnpm; reinstall dependencies.`);
-    continue;
   }
   const sourceLibrary = join(source, libraryName);
   if (!existsSync(sourceLibrary)) {
     fail(`Missing ${libraryName} inside ${source}.`);
-    continue;
   }
   const targetLibrary = join(target, libraryName);
   if (sameFile(sourceLibrary, targetLibrary)) {
@@ -122,11 +195,6 @@ for (const target of targets) {
   copyFileSync(sourceLibrary, targetLibrary);
   copied += 1;
   log(`Copied ${sourceLibrary} -> ${targetLibrary}`);
-}
-
-if (process.exitCode) {
-  console.error("[prepare-standalone-native] Standalone output would fail at runtime.");
-  process.exit(process.exitCode);
 }
 
 log(`Done (${copied} copied, ${upToDate} already present, ${targets.length} addon dir(s)).`);

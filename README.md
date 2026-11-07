@@ -1,6 +1,6 @@
 # 学析台 · AI 学生学习数据分析
 
-面向教师的学习分析工作台，属于传智杯 AI Web 网页开发挑战赛的“AI 数据分析与可视化”方向。当前在原有 Next.js + DuckDB 项目上持续改进，不以独立设计原型替换正式业务。
+面向教师的学习分析工作台，属于传智杯 AI Web 网页开发挑战赛的“AI 数据分析与可视化”方向。正式交付版本为 1.0.0，基于 Next.js + DuckDB；正式功能使用受权限控制的统计查询与账号历史，不以设计原型或固定演示回包代替业务。
 
 ## 当前能力
 
@@ -10,7 +10,7 @@
 - **结果交付**：聚合 CSV、HTML 报告预览与下载、打印另存 PDF；报告中心与对话历史的保存范围不同，详见使用指南。
 - **系统管理**：账号、数据集授权、AI 配置与预算、用量和操作日志。
 
-本地能力不等于已部署能力；验收数量与记录均带日期。本轮概念循环已接入正式 Next.js + DuckDB 工作台，证据见[工作台指南的验证章节](docs/workspace-guide.md#验证)；较早的数据浏览 v3 记录保留为历史。真实模型效果、部署环境和真机体验需分别验收。
+正式功能、数据真实性和部署验收是三件事：内置模拟校园数据明确标为合成数据，OULAD 与管理员导入的成绩按各自来源展示；正式版本号不代表数据自动成为真实教学记录，也不代表远程环境已更新。验证证据见[工作台指南](docs/workspace-guide.md#验证)，实际部署条件见[部署指南](docs/deployment.md)。
 
 ## 从这里开始
 
@@ -28,9 +28,9 @@
 
 | 路径 | 职责与保留方式 |
 | --- | --- |
-| `app/`、`components/`、`lib/` | 正式页面、组件、服务端业务与测试；保留现有业务，在此集成概念浏览 |
-| `app/preview/`、`public/previews/` | 运行时预览和静态设计样例，不等于已接入的正式功能 |
-| `data/sample/`、`data/schema/`、`data/fixtures/` | 演示数据、数据口径和测试资料 |
+| `app/`、`components/`、`lib/` | 正式页面、组件、服务端业务与测试 |
+| `app/preview/`、`public/previews/` | 仅开发环境可访问的设计样例；生产请求返回 404，静态预览不进入发行资源 |
+| `data/sample/`、`data/schema/`、`data/fixtures/` | 合成数据、数据口径和隔离测试资料；测试资料不进入发行物 |
 | `scripts/`、`.github/` | 管理、验收、恢复工具与协作配置 |
 | `docs/`、`licenses/` | 分类文档、设计资料和第三方许可 |
 | `records/`、`.env.local` | 私有运行状态和配置，Git 忽略；不可作为缓存清理 |
@@ -52,6 +52,15 @@ pnpm dev
 首次运行 `pnpm admin:init`，在终端设置管理员账号和至少 12 个字符的密码。浏览器打开 `http://localhost:3000`，登录后默认进入数据浏览，主导航仅有“数据浏览”和“AI 对话”；数据源与字段说明在工具中按需展开，账号、系统管理及导入作为从属工具按权限开放。项目默认包含 `data/sample/`，本地 OULAD 是否可用取决于 CSV 文件和账号授权；管理员还可发布并授权独立成绩数据集。
 
 未配置 AI 时，可运行已验证的预设问题和本地统计工具，但不保证任意自然语言问题可用。要启用自由提问，复制 `.env.example` 为 `.env.local` 并设置 `APP_SETTINGS_KEY`（32 字节 base64），之后在管理员的“系统管理 → AI 配置”中选择 Responses 或兼容 Chat Completions 协议，保存 API 基础地址、模型、密钥、估算单价和调用预算。地址留空使用 OpenAI 官方 API；保存后立即生效。也兼容服务端 `OPENAI_API_KEY` / `OPENAI_MODEL` 初始化。模型通过受控工具请求分析，不能提供文件路径或执行任意 SQL。
+
+### 本地运行正式版本
+
+```bash
+pnpm build
+pnpm start:standalone
+```
+
+`pnpm build` 同时准备可独立运行的 standalone：包含页面静态资源、正式公开资源、第三方许可证和 DuckDB 原生库。默认入口为 `.next/standalone/server.js`；可通过 `PORT`、`HOSTNAME` 设置监听地址。账号、密钥与私有数据必须通过运行环境和持久化目录配置，不打进发行物；从独立目录启动时必须使用持久化目录的绝对路径。开发服务仍用 `pnpm dev`，仅开发环境开放设计预览。
 
 当前已真实验证百炼 `qwen3.7-flash` 的连接与受限分析计划输出；在 AI 配置中使用 Chat Completions 协议，填写百炼地址、密钥、模型及换算成 USD 的估算单价。`qwen3.7-flash` 与 `qwen3.8-flash` 均适配 JSON 输出和关闭思考模式，步骤见 [百炼接入指南](docs/bailian-qwen.md)。
 
@@ -114,11 +123,11 @@ docker compose up --build
 
 ## 第三方来源与许可
 
-AI 状态提示改编自 [Rare UI](https://rareui.com) 的 [Inline AI Status](https://www.rareui.com/components/aistatus) 源码，使用 Motion 驱动阶段图标和状态过渡；分析依据卡片交互参考其 Web Search，执行记录结构参考 shadcn/ui Task。Rare UI 采用 MIT + Commons Clause + Attribution，已保留原作者版权和[许可证全文](licenses/rare-ui-LICENSE.txt)。来源版本、改编范围和后续参赛材料要求见[第三方来源与许可说明](docs/third-party-notices.md)。本地启动后可访问 `/preview/ai-motion` 查看共用正式组件的动效演示。
+AI 状态提示改编自 [Rare UI](https://rareui.com) 的 [Inline AI Status](https://www.rareui.com/components/aistatus) 源码，使用 Motion 驱动阶段图标和状态过渡；分析依据卡片交互参考其 Web Search，执行记录结构参考 shadcn/ui Task。Rare UI 采用 MIT + Commons Clause + Attribution，已保留原作者版权和[许可证全文](licenses/rare-ui-LICENSE.txt)，正式历史栏保留来源链接。来源版本、改编范围和后续参赛材料要求见[第三方来源与许可说明](docs/third-party-notices.md)。开发环境可访问 `/preview/ai-motion` 查看共用正式组件的动效样例，生产环境不开放该路径。
 
 ## 正式 AI 对话体验与账号历史
 
-「一句话分析」已接入账号隔离的服务端历史、最后消息更新后 10 天清理、可信图表／表格切换与可打断阅读跟随。使用方法见 [正式体验说明](docs/ai-conversation-experience.md)，持久化、停机／重启及清理方式见 [历史存储说明](docs/ai-conversation-storage.md)，验证边界见 [本地验收记录](docs/ai-conversation-experience-acceptance.md)。预览 `/preview/ai-experience` 继续使用明确标注的固定演示数据。
+「一句话分析」已接入账号隔离的服务端历史、最后消息更新后 10 天清理、可信图表／表格切换与可打断阅读跟随。使用方法见 [正式体验说明](docs/ai-conversation-experience.md)，持久化、停机／重启及清理方式见 [历史存储说明](docs/ai-conversation-storage.md)，验证边界见 [本地验收记录](docs/ai-conversation-experience-acceptance.md)。固定演示 `/preview/ai-experience` 只作为开发资料保留，不再从正式历史栏进入，也不在生产环境开放。
 
 ## 概念驱动的数据浏览
 

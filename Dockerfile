@@ -9,38 +9,17 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
 COPY . .
-# .dockerignore keeps oulad_raw/*.csv out of the context, so the build is small;
-# the CSVs reach the container through the read-only mount in docker-compose.yml.
+# .dockerignore keeps oulad_raw/*.csv and design material out of the context,
+# so the build is small; the CSVs reach the container through the read-only
+# mount in docker-compose.yml.
 # Memory-constrained hosts can opt into Next.js's Webpack builder with
 # --build-arg NEXT_BUILD_ARGS=--webpack; the default remains Turbopack.
+# `pnpm build` runs the postbuild script, which assembles the complete
+# standalone tree: static assets at the dist-relative path, runtime public
+# assets (minus design-only files), the Rare UI license, and the DuckDB
+# shared library next to duckdb.node.
 ARG NEXT_BUILD_ARGS=""
 RUN pnpm build ${NEXT_BUILD_ARGS}
-
-# Output file tracing follows require("@duckdb/node-bindings") to duckdb.node but
-# stops there, so the shared library next to it never lands in .next/standalone.
-# duckdb.node resolves it through @loader_path, so without this every analysis
-# request in the container fails with "library not loaded". Copy it into the same
-# directory the addon occupies in the standalone output. The arch is not hardcoded:
-# pnpm installs whichever variant matches the container (linux-arm64 on Apple
-# Silicon, linux-x64 on Intel/amd64 hosts), so match them all.
-RUN set -eux; \
-    for d in node_modules/.pnpm/@duckdb+node-bindings-linux-*/node_modules/@duckdb/node-bindings-linux-*; do \
-      [ -d "$d" ] || continue; \
-      [ -f "$d/libduckdb.so" ] || { echo "no libduckdb.so inside $d"; exit 1; }; \
-      dest=".next/standalone/$d"; \
-      mkdir -p "$dest"; \
-      cp "$d/libduckdb.so" "$dest/"; \
-    done; \
-    found=0; \
-    for addon in .next/standalone/node_modules/.pnpm/@duckdb+node-bindings-linux-*/node_modules/@duckdb/node-bindings-linux-*/duckdb.node; do \
-      [ -f "$addon" ] || continue; \
-      dir=$(dirname "$addon"); \
-      [ -f "$dir/libduckdb.so" ] || { echo "libduckdb.so missing next to $addon - the container would fail at runtime"; exit 1; }; \
-      found=$((found + 1)); \
-    done; \
-    [ "$found" -gt 0 ] || { echo "no linux duckdb addon found in standalone output"; exit 1; }; \
-    echo "verified libduckdb.so beside duckdb.node in $found addon dir(s)"; \
-    find .next/standalone -name 'libduckdb.so' -print
 
 FROM node:22-bookworm-slim AS runner
 
@@ -51,9 +30,10 @@ WORKDIR /app
 # server.js calls process.chdir(__dirname), so the app's working directory is
 # wherever server.js sits. Copying the standalone tree to /app keeps it at /app,
 # which is the path the data lookups and the compose volume mounts both expect
-# (oulad_raw, data, records). Its bundled node_modules is all the runtime needs.
+# (oulad_raw, data, records). Its bundled node_modules is all the runtime needs;
+# static assets, public assets, license and the DuckDB library are already
+# inside the tree thanks to the postbuild step.
 COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
 
 # OULAD.names keeps the dataset's provenance alongside the mounted CSVs.
 COPY --from=builder /app/oulad_raw/OULAD.names ./oulad_raw/OULAD.names

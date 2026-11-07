@@ -585,7 +585,7 @@ summary {
   background: var(--paper);
   color: var(--ink);
   opacity: 0;
-  transform: translateX(-12px);
+  transform: translateX(12px);
   transition:
     transform var(--motion-standard) var(--ease-drawer),
     opacity var(--motion-fast) var(--ease-out),
@@ -604,7 +604,7 @@ summary {
 @starting-style {
   .workbench-drawer:popover-open {
     opacity: 0;
-    transform: translateX(-12px);
+    transform: translateX(12px);
   }
 }
 .drawer-heading {

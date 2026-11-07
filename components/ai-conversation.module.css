@@ -50,14 +50,6 @@
   color: var(--ink);
   text-underline-offset: 3px;
 }
-.availability {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 20px;
-  color: var(--muted);
-  font-size: 12px;
-}
 .transcript {
   min-width: 0;
   min-height: 120px;
@@ -155,14 +147,34 @@
   right: calc(var(--rail-start) + 28px);
   bottom: calc(20px + env(safe-area-inset-bottom, 0px) + var(--chat-keyboard-inset, 0px));
 }
-.composerDock > :global(.notice) {
-  margin: 0 0 8px;
-}
 .composer {
   padding: 12px 16px;
   background: var(--instrument-bg);
   color: var(--instrument-ink);
   border: 1px solid var(--line);
+}
+/* Depth at the reading boundary, with no glass fill or colour treatment. */
+.composerFade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 52px;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 100%);
+  mask-image: linear-gradient(to top, #000 0%, transparent 100%);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .composerFade {
+    display: none;
+  }
+}
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .composerFade {
+    display: none;
+  }
 }
 .composerHeading {
   position: relative;
@@ -788,9 +800,6 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   margin: 0 auto;
   padding-top: 4px;
 }
-.availability {
-  font-size: 12px;
-}
 .empty {
   padding: 8px 0 32px;
   border: 0;
@@ -926,53 +935,6 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   overflow: clip;
   padding: 0 clamp(16px, 3vw, 36px);
 }
-.formalHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex: 0 0 auto;
-  padding: 12px 0 8px;
-  border-bottom: 1px solid var(--line);
-}
-/* The floating history trigger owns the top-right corner below 900px; keep the
-   source picker clear of it instead of letting the button cover its arrow. */
-@media (max-width: 900px) {
-  .formalHeader {
-    padding-right: 104px;
-  }
-}
-.formalHeader > div {
-  min-width: 0;
-}
-.formalHeader > div > span {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-}
-.formalHeader h1 {
-  font-size: 21px;
-  line-height: 1.3;
-  margin: 4px 0;
-  font-weight: 600;
-  letter-spacing: -0.6px;
-}
-.formalHeader p {
-  font-size: 12px;
-  color: var(--muted);
-  margin: 4px 0;
-}
-.formalHeader :global(.workbench-source) {
-  max-width: 240px;
-  margin: 0;
-  padding: 4px;
-}
-.availability {
-  flex: 0 0 auto;
-  min-height: 32px;
-  margin: 0;
-}
 .transcript {
   /* Keep positioned chart layers and sticky cells inside the scrolling clip. */
   position: relative;
@@ -995,6 +957,29 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   min-height: 0;
   min-width: 0;
   overflow: clip;
+}
+.readingArea::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 32px;
+  z-index: 3;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  -webkit-mask-image: linear-gradient(#000, transparent);
+  mask-image: linear-gradient(#000, transparent);
+}
+.readingArea:has(.empty)::after,
+.readingArea:has(:focus-visible)::after {
+  display: none;
+}
+@media (max-width: 600px) {
+  .readingArea::after { height: 20px; }
+}
+@media (prefers-reduced-transparency: reduce), print {
+  .readingArea::after,
+  .composerFade { display: none; }
 }
 .readingArea > .transcript {
   height: 100%;
@@ -1164,35 +1149,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 .chartAttachment {
   background: var(--paper);
 }
-@media (max-width: 900px) {
-  .readingArea {
-    margin-top: 52px;
-  }
-  .formalHeader {
-    padding-top: 10px;
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-  .formalHeader :global(.workbench-source) {
-    max-width: 100%;
-    font-size: 12px;
-  }
-  .formalHeader p {
-    display: none;
-  }
-}
 @media (max-width: 600px) {
-  .formalHeader h1 {
-    font-size: 18px;
-  }
-  .formalHeader :global(.workbench-source) > span {
-    display: none;
-  }
-  .formalHeader :global(.workbench-source) select {
-    max-width: 150px;
-    min-height: var(--ui-control-height);
-    font-size: 12px;
-  }
   .messageText {
     font-size: 14px;
   }
@@ -1258,27 +1215,6 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   box-shadow: none;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-}
-:global(.glass-workspace) .formalHeader {
-  border: 0;
-  padding: 0 0 16px;
-}
-:global(.glass-workspace) .formalHeader h1 {
-  font-size: clamp(32px, 3.8vw, 56px);
-  font-weight: var(--weight-display);
-  letter-spacing: var(--tracking-display);
-  margin: 6px 0;
-}
-:global(.glass-workspace) .formalHeader > div > span {
-  font-weight: 500;
-  font-size: 12px;
-  letter-spacing: 0.02em;
-}
-:global(.glass-workspace) .formalHeader p {
-  font-size: 12px;
-}
-:global(.glass-workspace) .availability {
-  font-size: 12px;
 }
 :global(.glass-workspace) .transcript {
   scrollbar-width: thin;
@@ -1412,9 +1348,6 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 :global(.glass-workspace) .composerDock[data-collapsed="false"] .composer textarea {
   background: transparent;
 }
-:global(.glass-workspace) .composerDock > :global(.notice) {
-  border-radius: 0;
-}
 :global(.glass-workspace) .composerDock .note {
   margin: 0 0 8px;
   padding: 0 2px 8px;
@@ -1478,13 +1411,10 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   margin-right: 1px;
   border-radius: 0;
 }
-@media (max-width: 600px) {
+@media (max-width: 760px) {
   :global(.glass-workspace) .conversation {
     --conversation-inset: 14px;
     padding: 12px var(--conversation-inset) 0;
-  }
-  :global(.glass-workspace) .formalHeader h1 {
-    font-size: 18px;
   }
   :global(.glass-workspace) .message[data-role="user"] {
     max-width: 94%;
@@ -1537,13 +1467,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
    questions must be visible (and tappable) without scrolling or being covered
    by the dock. Each block below trims vertical rhythm rather than hiding the
    questions; the privacy footnote goes entirely. */
-@media (max-width: 600px) {
-  :global(.glass-workspace) .formalHeader > div > span {
-    display: none;
-  }
-  :global(.glass-workspace) .availability {
-    margin-bottom: 8px;
-  }
+@media (max-width: 760px) {
   :global(.glass-workspace) .readingArea {
     margin-top: 0;
   }
@@ -1603,24 +1527,10 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 /* 320-wide screens have ~50px less reading height: drop the decorative mark and
    the suggestion caption so all three questions still clear the input card. */
 @media (max-width: 380px) {
-  /* The compact hero already says what the page does; keep the h1 for screen
-     readers only so the recommended questions clear the dock. */
-  :global(.glass-workspace) .formalHeader h1 {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
   :global(.glass-workspace) .suggestionHeading {
     display: none;
   }
-  /* The availability line above already explains the model state; at 320 the
-     description would push the last question under the dock. */
+  /* The compact hero already introduces the page; omit duplicate description. */
   :global(.glass-workspace) .empty > p {
     display: none;
   }
@@ -1630,18 +1540,8 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   :global(.glass-workspace) .empty {
     padding-bottom: 6px;
   }
-  :global(.glass-workspace) .availability {
-    min-height: 24px;
-  }
 }
 
-/* Keep the source picker clear of the floating history trigger on narrow
-   layouts (later media blocks reset the header padding, so win here). */
-@media (max-width: 900px) {
-  .conversation .formalHeader {
-    padding-right: 104px;
-  }
-}
 
 /* A single right-anchored surface morphs into the compact input handle. */
 :global(.glass-workspace) .composerDock[data-collapsed] {
@@ -1718,11 +1618,57 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
     display: none;
   }
 }
-@media (max-width: 600px) {
-  .conversation .formalHeader {
-    padding-right: 52px;
-  }
+@media (max-width: 760px) {
   :global(.glass-workspace) .scrollRuler {
     flex-basis: 22px;
   }
+}
+
+/* Phone input stays in normal flow. Bound long errors and drafts so they
+   cannot consume the transcript's entire viewport. */
+@media (max-width: 760px) {
+  :global(.glass-workspace) .conversation {
+    padding-top: 4px;
+    gap: 8px;
+  }
+  :global(.glass-workspace) .readingArea {
+    margin-bottom: 0;
+  }
+  :global(.glass-workspace) .composerDock[data-collapsed] {
+    position: relative;
+    inset: auto;
+    flex: 0 0 auto;
+    align-self: flex-end;
+    width: 100%;
+    max-height: 38%;
+    overflow-y: auto;
+    padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  }
+  :global(.glass-workspace) .composerDock[data-collapsed="true"] {
+    width: 46px;
+    padding: 0;
+  }
+  :global(.glass-workspace) .composerFields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 10px;
+  }
+  :global(.glass-workspace) .composerFields[hidden] {
+    display: none;
+  }
+  .composerHeading, .contextRow, .fieldError {
+    grid-column: 1 / -1;
+  }
+  :global(.glass-workspace) .composer textarea {
+    min-height: 44px;
+    max-height: 72px;
+    margin: 4px 0;
+  }
+  .composerActions {
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 2px;
+  }
+  .shortcut { display: none; }
+  .composerFade { display: none; }
 }

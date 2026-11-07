@@ -9,7 +9,6 @@ import dynamic from "next/dynamic";
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -18,7 +17,12 @@ import {
 import { Icon } from "@/components/app-icons";
 import { conceptHref, parseConceptLocation, type ConceptLocation } from "@/lib/exploration/concepts";
 import { LoginScreen } from "@/components/login-screen";
-import { ThemeToggle, useTheme } from "@/components/ui/theme-provider";
+import { BootScreen, WorkspaceSkeleton } from "@/components/workspace-loading";
+import { AccountPanel } from "@/components/workspace-account-panel";
+import { DataSourceDetails } from "@/components/workspace-data-source-details";
+import { NETWORK_ERROR_MESSAGE, requestMessage } from "@/components/workspace-request";
+import { ReportCenter, type SessionAnalysis } from "@/components/workspace-report-center";
+import { ThemeToggle } from "@/components/ui/theme-provider";
 import { ConversationWorkspace, type ConversationTurn } from "@/components/ai-conversation";
 import type { ConversationScrollPosition } from "@/components/hooks/use-conversation-scroll";
 import experienceStyles from "@/components/conversation-experience.module.css";
@@ -38,12 +42,6 @@ import type {
 } from "@/lib/conversations/types";
 import { readChatStream } from "@/lib/ai/chat-stream";
 import { describeChatContext } from "@/lib/ai/context-label";
-import {
-  analysisDimensionLabel,
-  analysisReportHtml,
-  analysisSourceLabel,
-  downloadAnalysisFile,
-} from "@/lib/exports/analysis";
 import type { AnalysisResult, DataSource, DatasetProfile } from "@/lib/analysis/types";
 import {
   capabilitiesFor,
@@ -66,7 +64,7 @@ const AdminPanel = dynamic(
 );
 const DataExplorer = dynamic(
   () => import("@/components/data-explorer").then((module) => module.DataExplorer),
-  { loading: () => <p role="status">正在打开数据浏览…</p> },
+  { loading: () => <WorkspaceSkeleton label="正在打开数据浏览…" /> },
 );
 type View = "overview" | "analysis" | "reports" | "admin" | "account";
 /** Two primary workspaces; subordinate pages inherit the primary that opened them. */
@@ -74,7 +72,7 @@ type Primary = "explore" | "conversation";
 /** Direction of the workspace transition shared with CSS. */
 type ViewTransition = "primary-forward" | "primary-back" | "deeper" | "back";
 type AIStatus = { configured: boolean; enabled: boolean; model: string | null };
-type SessionAnalysis = { key: string; result: AnalysisResult };
+
 type FailedAsk = { question: string; code: string | null; retryable: boolean };
 /**
  * A history/新建 request held back until the reader decides what happens to the
@@ -104,7 +102,6 @@ const analysisKey = (result: AnalysisResult) =>
     result.dimensions ?? [result.dimension],
     result.query,
   ]);
-const NETWORK_ERROR_MESSAGE = "网络连接失败，请检查网络后重试。";
 
 /** Carries the server's code/retryable/Retry-After out of `api()` so the notice
  *  can offer a retry instead of a dead end. */
@@ -132,13 +129,6 @@ function retryAfterSeconds(headers: Headers): number | null {
   }
   return null;
 }
-/** Keep fetch noise out of Chinese notices: cancellation stays silent, server
- *  messages pass through, and network failures get one actionable sentence. */
-function requestMessage(error: unknown, fallback: string): string {
-  if (error instanceof DOMException && error.name === "AbortError") return "";
-  if (error instanceof TypeError) return NETWORK_ERROR_MESSAGE;
-  return error instanceof Error && error.message ? error.message : fallback;
-}
 const pageInfo: Record<View, { title: string; description: string }> = {
   overview: { title: "数据浏览", description: "从真实图表出发，逐层查看学习数据。" },
   analysis: { title: "AI 对话", description: "连续提问、核对数据，把教学线索追问清楚。" },
@@ -146,111 +136,6 @@ const pageInfo: Record<View, { title: string; description: string }> = {
   admin: { title: "系统管理", description: "配置 AI 连接、使用预算与工作台账号。" },
   account: { title: "设置", description: "查看账号信息，管理登录密码与工作台偏好。" },
 };
-const tableNames: Record<string, string> = {
-  learning_activity: "学习活动记录",
-  student_outcomes: "课程学习结果",
-  students: "学生基本档案",
-  student_residences: "学期住宿信息",
-  leave_requests: "请假申请记录",
-  attendance_weekly: "逐周出勤记录",
-  assignment_submissions: "作业提交明细",
-  student_term_summary: "学生学期汇总",
-  studentInfo: "学生课程信息",
-  studentVle: "学习资源访问记录",
-  studentAssessment: "考核成绩记录",
-  assessments: "课程考核信息",
-  courses: "课程信息",
-};
-const formatNumber = (value: number) => value.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
-
-function DataSourceDetails({ profile }: { profile?: DatasetProfile }) {
-  if (!profile) return null;
-  return (
-    <details
-      className="panel source-details"
-      data-enter="panel"
-      style={{ "--enter-delay": "220ms" } as CSSProperties}
-    >
-      <summary>
-        <span className="feature-icon">
-          <Icon name="database" size={19} />
-        </span>
-        <div>
-          <strong>了解这份数据</strong>
-          <p>{profile.name} · 数据表、字段和数据质量</p>
-        </div>
-        <Icon name="chevron" size={18} />
-      </summary>
-      <div className="source-details-body">
-        <p className="muted">{profile.description}</p>
-        {profile.enabled === false && (
-          <div className="notice notice-warning" role="status">
-            <Icon name="info" size={17} />
-            <span>此数据集已停用。账号仍保留读取授权，但工作台不会发起数据查询。</span>
-          </div>
-        )}
-        {profile.enabled !== false && !profile.available && (
-          <div className="notice notice-warning" role="status">
-            <Icon name="info" size={17} />
-            <span>
-              {profile.unavailableReason || "源文件暂不可用"}。请联系管理员检查数据文件或启用状态。
-            </span>
-          </div>
-        )}
-        <div className="source-tables">
-          {profile.tables.map((table) => (
-            <article key={table.name}>
-              <div className="source-table-title">
-                <strong>{tableNames[table.name] ?? table.name}</strong>
-                <span
-                  className={`badge ${table.status === "ready" ? "badge-teal" : "badge-planned"}`}
-                >
-                  {table.status === "ready" ? "可用" : "未导入"}
-                </span>
-              </div>
-              <p>
-                {table.rows === null ? "暂无统计" : `${formatNumber(table.rows)} 条记录`}
-                {table.fields && ` · ${table.fields.length} 个字段`}
-              </p>
-              <details className="field-details">
-                <summary>查看字段与专业说明</summary>
-                <p>
-                  表名：{table.name}
-                  <br />
-                  记录粒度：{table.grain}
-                </p>
-                {table.fields && (
-                  <div className="table-wrap">
-                    <table className="field-table">
-                      <caption>字段质量</caption>
-                      <thead>
-                        <tr>
-                          <th>字段</th>
-                          <th>类型</th>
-                          <th>缺失数量</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {table.fields.map((field) => (
-                          <tr key={field.name}>
-                            <td>{field.name}</td>
-                            <td>{field.type}</td>
-                            <td>{field.missing}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </details>
-            </article>
-          ))}
-        </div>
-        <p className="technical-note">来源：{profile.source}</p>
-      </div>
-    </details>
-  );
-}
 
 function sourceStatusLabel(profile: DatasetProfile): string {
   if (profile.enabled === false && !profile.available) return "（已停用 · 源文件不可用）";
@@ -264,337 +149,6 @@ function sameSessionPresentation(left: SessionUser, right: SessionUser): boolean
     sessionScopeKey(left) === sessionScopeKey(right) &&
     left.username === right.username &&
     left.displayName === right.displayName
-  );
-}
-
-function PasswordField({
-  id,
-  label,
-  value,
-  onChange,
-  autoComplete,
-  minLength,
-  maxLength,
-  help,
-  clearError,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  autoComplete: string;
-  minLength?: number;
-  maxLength?: number;
-  help?: string;
-  clearError: () => void;
-}) {
-  const [visible, setVisible] = useState(false);
-  return (
-    <label className="form-field" htmlFor={id}>
-      {label}
-      <span className="password-input-wrap">
-        <input
-          autoComplete={autoComplete}
-          id={id}
-          minLength={minLength}
-          maxLength={maxLength}
-          onChange={(event) => {
-            onChange(event.target.value);
-            clearError();
-          }}
-          required
-          type={visible ? "text" : "password"}
-          value={value}
-        />
-        <button
-          type="button"
-          className="account-password-toggle"
-          aria-label={visible ? "隐藏密码" : "显示密码"}
-          aria-pressed={visible}
-          onClick={() => setVisible((current) => !current)}
-        >
-          <Icon name={visible ? "eyeOff" : "eye"} size={16} />
-        </button>
-      </span>
-      {help && <span className="form-help">{help}</span>}
-    </label>
-  );
-}
-
-function AccountPanel({
-  user,
-  passwordChangeRequired,
-  onPasswordChanged,
-  onSessionExpired,
-}: {
-  user: SessionUser;
-  passwordChangeRequired: boolean;
-  onPasswordChanged: () => void;
-  onSessionExpired: () => void;
-}) {
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
-  const active = useRef(true);
-  const pending = useRef<AbortController | null>(null);
-  useEffect(() => {
-    active.current = true;
-    return () => {
-      active.current = false;
-      pending.current?.abort();
-    };
-  }, []);
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    if (newPassword !== confirmPassword) {
-      setError("两次输入的新密码不一致。");
-      return;
-    }
-    setSaving(true);
-    const controller = new AbortController();
-    pending.current = controller;
-    try {
-      const response = await fetch("/api/auth/password", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
-        signal: controller.signal,
-      });
-      if (!active.current || controller.signal.aborted) return;
-      if (response.status === 401) {
-        onSessionExpired();
-        return;
-      }
-      const payload = await response.json();
-      if (!active.current || controller.signal.aborted) return;
-      if (!response.ok) throw new Error(payload.error ?? "密码修改失败。");
-      onPasswordChanged();
-    } catch (e) {
-      if (active.current && !controller.signal.aborted)
-        setError(requestMessage(e, "密码修改失败。"));
-    } finally {
-      if (active.current && !controller.signal.aborted) setSaving(false);
-    }
-  }
-  return (
-    <div
-      className="account-grid"
-      data-enter-group="rise"
-      style={{ "--enter-group-delay": "80ms" } as CSSProperties}
-    >
-      <section className="panel account-card">
-        <span className="avatar avatar-large">{user.displayName.slice(0, 1)}</span>
-        <h2>{user.displayName}</h2>
-        <p>{user.username}</p>
-        <span className="badge badge-teal">
-          {user.role === "admin" ? "管理员" : user.role === "readonly" ? "只读用户" : "分析用户"}
-        </span>
-        <div className="account-note">
-          <Icon name="shield" size={19} />
-          <span>你的账号权限由管理员统一管理。</span>
-        </div>
-        <div className="account-appearance">
-          <h3>外观与动效</h3>
-          <ThemeToggle />
-          <MotionToggle />
-        </div>
-      </section>
-      <section className="panel password-panel">
-        {passwordChangeRequired && (
-          <div className="notice notice-warning" role="alert">
-            <Icon name="lock" size={18} />
-            <span>当前使用的是临时密码。请先在这里设置新密码，再使用学习分析工作台。</span>
-          </div>
-        )}
-        <div className="section-heading">
-          <div>
-            <h2>修改登录密码</h2>
-            <p>更新后需要重新登录。</p>
-          </div>
-          <Icon name="lock" size={22} />
-        </div>
-        <form onSubmit={submit} className="password-form">
-          <PasswordField
-            id="current-password"
-            label="当前密码"
-            value={currentPassword}
-            onChange={setCurrentPassword}
-            autoComplete="current-password"
-            clearError={() => setError("")}
-          />
-          <PasswordField
-            id="new-password"
-            label="新密码"
-            value={newPassword}
-            onChange={setNewPassword}
-            autoComplete="new-password"
-            minLength={12}
-            maxLength={128}
-            help="至少 12 个字符，建议混合字母、数字和符号。"
-            clearError={() => setError("")}
-          />
-          <PasswordField
-            id="confirm-password"
-            label="再次输入新密码"
-            value={confirmPassword}
-            onChange={setConfirmPassword}
-            autoComplete="new-password"
-            clearError={() => setError("")}
-          />
-          {error && (
-            <div className="notice notice-error" role="alert">
-              {error}
-            </div>
-          )}
-          <button className="primary-button" disabled={saving} type="submit">
-            {saving ? "正在更新…" : "更新密码"}
-            <Icon name="arrow" size={16} />
-          </button>
-        </form>
-      </section>
-    </div>
-  );
-}
-
-function ReportCenter({
-  analyses,
-  selectedKey,
-  onSelect,
-  onStart,
-  canExport,
-}: {
-  analyses: SessionAnalysis[];
-  selectedKey: string;
-  onSelect: (key: string) => void;
-  onStart: () => void;
-  canExport: boolean;
-}) {
-  const frame = useRef<HTMLIFrameElement>(null);
-  const [loadedHtml, setLoadedHtml] = useState("");
-  const [printError, setPrintError] = useState("");
-  const selected = analyses.find((entry) => entry.key === selectedKey) ?? analyses[0];
-  const result = selected?.result;
-  const { theme } = useTheme();
-  const html = useMemo(() => (result ? analysisReportHtml(result, theme) : ""), [result, theme]);
-  function printReport() {
-    if (!canExport) return;
-    setPrintError("");
-    try {
-      const reportWindow = frame.current?.contentWindow;
-      if (!reportWindow || loadedHtml !== html) return;
-      reportWindow.focus();
-      reportWindow.print();
-    } catch {
-      setPrintError("浏览器暂时无法打印预览。请下载 HTML 报告后打开，再使用浏览器打印。");
-    }
-  }
-  if (!result)
-    return (
-      <section
-        className="panel report-empty"
-        data-enter="rise"
-        style={{ "--enter-delay": "80ms" } as CSSProperties}
-      >
-        <span className="feature-icon">
-          <Icon name="file" size={26} />
-        </span>
-        <h2>先完成一次分析，再预览报告</h2>
-        <p>
-          报告预览包含真实结论、分组数据、样本人数和计算说明。本次会话还没有可用的分析结果。
-        </p>
-        <button className="primary-button" onClick={onStart} type="button">
-          开始分析
-          <Icon name="arrow" size={16} />
-        </button>
-      </section>
-    );
-  return (
-    <section
-      className="panel report-workspace"
-      data-enter="panel"
-      style={{ "--enter-delay": "80ms" } as CSSProperties}
-    >
-      <div
-        className="report-controls"
-        data-enter-group="rise"
-        style={{ "--enter-group-delay": "60ms" } as CSSProperties}
-      >
-        <div>
-          <span className="section-kicker">ANALYSIS REPORT</span>
-          <h2>本次会话的分析报告</h2>
-          <p>从已完成的分析中选择一份预览；刷新页面或退出后会清空此列表。</p>
-        </div>
-        <label className="form-field" htmlFor="report-analysis">
-          选择分析结果
-          <select
-            id="report-analysis"
-            value={selected.key}
-            onChange={(event) => onSelect(event.target.value)}
-          >
-            {analyses.map((entry) => (
-              <option key={entry.key} value={entry.key}>
-                {analysisSourceLabel(entry.result)} · {entry.result.metricLabel} · 按
-                {analysisDimensionLabel(entry.result)} · {entry.result.rows.length} 组
-              </option>
-            ))}
-          </select>
-        </label>
-        {canExport ? (
-          <>
-            <div className="report-actions">
-              <button
-                className="primary-button"
-                disabled={loadedHtml !== html}
-                onClick={printReport}
-                type="button"
-              >
-                <Icon name="file" size={16} />
-                打印 / 另存 PDF
-              </button>
-              <button
-                className="secondary-button"
-                onClick={() => downloadAnalysisFile(result, "html")}
-                type="button"
-              >
-                <Icon name="download" size={16} />
-                下载 HTML 报告
-              </button>
-              <button
-                className="secondary-button"
-                onClick={() => downloadAnalysisFile(result, "csv")}
-                type="button"
-              >
-                <Icon name="download" size={16} />
-                下载 CSV 数据
-              </button>
-            </div>
-            <p className="report-help">
-              点击打印后，在浏览器的打印窗口中选择“另存为 PDF”。HTML 报告可下载后独立打开。
-            </p>
-          </>
-        ) : (
-          <p className="muted">只读账号可以预览报告，浏览器导出已关闭。</p>
-        )}
-        {printError && (
-          <p className="notice notice-error" role="alert">
-            {printError}
-          </p>
-        )}
-      </div>
-      <iframe
-        className="report-frame"
-        data-enter="fade"
-        style={{ "--enter-delay": "280ms" } as CSSProperties}
-        ref={frame}
-        sandbox={canExport ? "allow-same-origin allow-modals" : "allow-same-origin"}
-        srcDoc={html}
-        title={`${result.metricLabel}分析报告预览`}
-        onLoad={() => setLoadedHtml(html)}
-      />
-    </section>
   );
 }
 
@@ -1912,16 +1466,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
     if (latestArtifact?.id === id && chatContext && artifactIndex === contextArtifactIndex)
       setChatContext(intentWithView(chatContext, chart));
   }
-  if (bootLoading)
-    return (
-      <main className="boot-screen">
-        <span className="brand-symbol">
-          <Icon name="chart" size={25} />
-        </span>
-        <span className="spinner" />
-        <p>正在打开学析台…</p>
-      </main>
-    );
+  if (bootLoading) return <BootScreen />;
   if (bootError)
     return (
       <main className="boot-screen">
@@ -2393,9 +1938,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
                     </button>
                   </div>
                 ) : profilesLoading ? (
-                  <p className="exploration-state" role="status">
-                    正在读取授权数据源…
-                  </p>
+                  <WorkspaceSkeleton label="正在读取授权数据源…" />
                 ) : canRun && eligibleDatasetId && selectedProfile ? (
                   <DataExplorer
                     key={`${sessionScopeKey(user)}:${eligibleDatasetId}:${selectedProfile.datasetVersion ?? ""}`}
@@ -2466,7 +2009,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
                   }
                   onRetrySave={(id) => void retryConversationPersistence(id)}
                   conversationId={conversation?.id ?? null}
-                  sourceControl={sourcePicker}
                   history={{
                     entries: conversationHistory.map((entry) => ({
                       ...entry,
@@ -2492,10 +2034,10 @@ export function Workspace({ initialConversation = false }: { initialConversation
                   pendingQuestion={pendingQuestion}
                   pendingSteps={pendingSteps}
                   aiReady={aiReady}
+                  datasetId={eligibleDatasetId}
                   aiAllowed={capabilities.canUseAI}
                   canRun={canRun}
                   canExport={capabilities.canExport}
-                  model={aiStatus.model}
                   contextLabel={browseContext?.datasetId === eligibleDatasetId ? `当前浏览 · ${browseContext.label}` : describeChatContext(chatContext)}
                   inputError={inputError}
                   expandedChartId={expandedChartId}

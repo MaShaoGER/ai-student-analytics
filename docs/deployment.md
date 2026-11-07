@@ -1,5 +1,14 @@
 # 部署指南
 
+## 当前正式发行约定（2026-11-07）
+
+- 应用版本为 1.0.0，运行环境要求 Node.js 22+、pnpm 11.19.0；Next.js 版本以锁文件为准。版本号不代表下方旧 VPS 实例已更新，线上记录均按原日期保留。
+- 开发使用 `pnpm dev`；正式本地运行使用 `pnpm build` 后的 `pnpm start:standalone`。构建的 postbuild 将静态资源、正式公开资源、Rare UI 许可证与 DuckDB 原生库统一放入 `.next/standalone/`，Docker 也只消费这份准备好的应用树；镜像另保留三个账号 CLI 及 OULAD 来源说明。
+- 可将整个 standalone 目录复制到独立位置，用 `node server.js` 启动，无需原仓库的 `node_modules`。通过运行环境配置 `PORT`、`HOSTNAME`、准确的 `APP_ORIGIN`、绝对路径 `APP_STATE_DIR`／`ANALYSIS_RECORDS_DIR` 和持久保存的 `APP_SETTINGS_KEY`；OULAD 仍需另行挂载原始 CSV，不将已有真实账号和运行记录复制进构建产物。
+- `/preview`、`/previews` 及子路径仅在开发环境放行；生产环境返回 404，不提供可在生产重新打开的开关。设计源文件保留，静态预览和旧首页设计图不进入公开发行资源。数据源仍如实标注合成／外部／导入来源，不把模拟数据改名为真实数据。
+- 依赖审计发现的 [Zod 约束集合内存消耗公告](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5) 通过 4.6.5 → 4.6.6 补丁更新处理；保留入口请求体和查询资源限制，不以升级依赖代替边界控制。
+- 发行前执行 `pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm audit --prod`，再在隔离账号与运行目录中启动实际产物，检查首页、静态资源、DuckDB、权限及预览 404。Docker/Linux、真实外部模型、可信 HTTPS、备份恢复及远程上线须在对应环境单独验收；下方历史结果不自动成为当前版本证据。
+
 ## 当前 VPS 测试预览（2026-10-20）
 
 入口：[学析台测试预览](https://64.81.112.189:3443/)，仍使用已有应用账号与自签名测试证书。当前镜像为 `chuanzhi-student-analytics-test:grade-import-20261020T123213`，应用源码提交为 `c9805c7`。本次将成绩导入分支快进合并到 `main`；构建时修复了管理页 CSS Module 的纯选择器错误。

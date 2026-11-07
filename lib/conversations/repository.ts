@@ -1030,8 +1030,9 @@ export function cleanupConversations(now: Date = new Date()): {
   interrupted: number;
 } {
   const directory = resolve(getStateDirectory(), "conversations");
-  if (!existsSync(directory)) return { scanned: 0, removed: 0, interrupted: 0 };
-  const files = readdirSync(directory).filter((name) => /^[a-f0-9]{64}\.json$/.test(name));
+  // History buckets belong to the runtime volume, never the release snapshot.
+  if (!existsSync(/* turbopackIgnore: true */ directory)) return { scanned: 0, removed: 0, interrupted: 0 };
+  const files = readdirSync(/* turbopackIgnore: true */ directory).filter((name) => /^[a-f0-9]{64}\.json$/.test(name));
   let scanned = 0;
   let removed = 0;
   let interrupted = 0;

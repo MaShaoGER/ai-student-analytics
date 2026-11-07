@@ -1,6 +1,6 @@
 # 当前架构
 
-维护说明更新于 2026-11-02。当前项目沿用 Next.js + DuckDB，包含数据浏览、受控 AI 工具、账号历史、三角色权限、成绩导入和导出。使用方式见[工作台指南](workspace-guide.md)，专题契约见[文档导航](README.md)。根目录开发路线图属于历史规划，不作为当前架构的完整说明。
+维护说明更新于 2026-11-07。当前项目沿用 Next.js + DuckDB，包含数据浏览、受控 AI 工具、账号历史、三角色权限、成绩导入和导出。使用方式见[工作台指南](workspace-guide.md)，专题契约见[文档导航](README.md)。根目录开发路线图属于历史规划，不作为当前架构的完整说明。
 
 ```text
 浏览器
@@ -22,15 +22,38 @@
 
 | 路径 | 主要职责 |
 | --- | --- |
-| `components/workspace.tsx` | 双主入口、从属层及 URL／返回关系、账号与 AI 会话客户端编排；无独立指标分析或数据页及其自动查询 |
+| `components/workspace.tsx` | 双主入口、从属层及 URL／返回关系、账号与 AI 会话客户端编排；不承载独立面板的渲染实现 |
+| `components/workspace-data-source-details.tsx` | 数据表、字段及数据质量说明 |
+| `components/workspace-account-panel.tsx` | 账号展示、外观偏好与修改密码表单 |
+| `components/workspace-report-center.tsx` | 本次会话分析结果的报告选择、预览及导出 |
+| `components/workspace-request.ts` | 工作台及账号表单共用的请求错误文案转换；不发请求、不持有会话状态 |
+| `components/ai-conversation.tsx` | 对话阅读、附件展开、输入与历史入口；会话状态由工作台编排 |
+| `components/conversation-result.tsx` | 对话附件按既有展示策略渲染；成绩分布搜索及图／表展示 |
 | `components/data-explorer.tsx`、`lib/exploration/concepts.ts` | 课程／指标／关系中心、同数据画法、URL、双轴全览与阅读恢复 |
+| `components/data-explorer-chart-data.ts` | 将概念聚合数据转换为图表项，包含小样本与缺失展示；不查询数据、不写历史 |
 | `lib/analysis/` | 受限计划、统计查询、图表结构与结果展示策略 |
 | `lib/analysis/concept-explorer.ts`、`concept-query.ts` | 概念浏览类型契约、真实目录与课内聚合，复用DuckDB来源和访问边界 |
 | `lib/ai/`、`lib/conversations/` | 受控工具、模型调用、可信对话上下文及账号历史 |
 | `lib/auth/`、`lib/admin/`、`lib/security/` | 身份、权限、管理、预算与安全边界 |
 | `lib/datasets/`、`lib/exports/` | 数据目录、成绩版本、报告和 CSV 导出 |
+| `proxy.ts` | 只匹配设计预览路径；开发环境放行并禁止索引，非开发环境返回 404，不参与业务鉴权 |
+| `scripts/prepare-standalone-native.mjs` | 统一准备 standalone 静态／公开资源、许可与 DuckDB 原生库；Docker 复用相同发行树 |
 
 概念浏览按课程→指标→关系循环，选择跨学科关系才显式扩大范围；换画法不换课程、分母或数据。旧自动交集菜单已退出默认界面，受控统计工具仍可复用原群体查询能力。目录、课内成绩、出勤分组、周记录与作业聚合在服务端返回，缺失／小样本不补零、不输出学生ID，详见[连续探索](workspace-guide.md#连续探索)。正式AI历史仍按账号隔离，展示切换不调用模型、不创建对话；浏览参考可移除且保留草稿。会话主体契约见[会话说明](ai-conversation-experience.md#接口与代码边界)与[存储说明](ai-conversation-storage.md)。
+
+### 客户端职责边界
+
+- `workspace.tsx` 保留登录范围、数据请求、会话生命周期及跨入口导航。账号、报告和数据说明面板直接接收其所需的已有数据与回调，不反向导入工作台，也不另建一套状态。
+- 图表数据适配器属于 UI 层，使用 `concept-chart` 的类型，不移入服务端统计模块。真实统计口径仍由 `lib/analysis/` 负责。
+- 对话结果渲染与对话输入、滚动分离，继续复用既有 `ConversationArtifact`、展示策略和图表组件。重型工具结果保留原动态加载方式。
+- 组件直接导入职责模块，不设集中转发文件或兼容重导出；CSS、API、URL、存储契约和设计预览路径不随拆分改变。
+
+### 正式入口与独立分析接口
+
+- 正式页面不链接固定演示，`app/preview/` 和 `public/previews/` 仅是开发资料；生产拒绝访问这两类路径。`docs/design/` 和旧视觉素材原样保留，不因版本收口删除。
+- `/api/concept-explorer` 和 `/api/chat` 服务正式浏览／对话；`/api/analysis`、`/api/ask`、`/api/chart-studio`、`/api/course-relations`、`/api/course-panorama`、`/api/score-distribution` 保留为受认证、数据授权及资源限制保护的独立分析接口。当前页面未直接调用不代表固定演示或空实现，本轮不以“没有按钮”为由删除 API 契约。
+- 推荐问题同时按当前数据源与模型可用性筛选，不向没有出勤字段的 OULAD 或导入成绩推荐缺勤关系。导出文件名使用数据源展示名称并清洗非法文件字符，内部数据集 ID、权限和存储关系不变。
+- 普通页面追踪使用发行排除表；运行期成绩版本与历史桶在文件访问点明确排除构建追踪，避免 instrumentation 将私有文件打包。组装脚本复用构建配置中的排除表清理 instrumentation 遗留的非运行文件，只处理独立产物副本。API 显式携带已登记的校园 CSV 和摘要，设计、测试、原始压缩数据及私有状态不随应用树分发。
 
 ## 边界
 

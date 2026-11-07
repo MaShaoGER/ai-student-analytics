@@ -657,8 +657,9 @@ html[data-motion="off"] .glass-workspace :is(.workspace-scene, .workspace-subord
 }
 /* Tools drawer: workspace utilities (source picker, data details) and settings. */
 .glass-workspace .workbench-drawer {
-  left: 28px;
-  top: 104px;
+  inset: calc(var(--workspace-header-height, 76px) + 8px) clamp(16px, 3vw, 48px) auto auto;
+  width: min(340px, calc(100vw - 32px));
+  margin: 0;
   background: var(--surface-raised);
   color: var(--ink);
   border: 1px solid var(--line);
@@ -741,6 +742,9 @@ html[data-motion="off"] .glass-workspace :is(.workspace-scene, .workspace-subord
     padding: 0;
     gap: 0;
   }
+  .glass-workspace {
+    --workspace-header-height: 112px;
+  }
   .glass-workspace .workbench-header.glass-topbar {
     grid-template-columns: 1fr auto auto;
     grid-template-rows: auto auto;
@@ -801,9 +805,8 @@ html[data-motion="off"] .glass-workspace :is(.workspace-scene, .workspace-subord
     grid-template-columns: minmax(0, 1fr);
   }
   .glass-workspace .workbench-drawer {
-    left: 12px;
-    top: 128px;
-    max-width: calc(100vw - 24px);
+    top: calc(var(--workspace-header-height, 112px) + 8px);
+    max-width: calc(100vw - 32px);
   }
 }
 
@@ -817,7 +820,7 @@ html[data-motion="off"] .glass-workspace :is(.workspace-scene, .workspace-subord
 }
 .glass-workspace .workbench-drawer {
   height: auto;
-  max-height: calc(100dvh - 128px);
+  max-height: calc(100dvh - var(--workspace-header-height, 76px) - 24px);
   bottom: auto;
   overflow-y: auto;
 }
@@ -1098,6 +1101,37 @@ html[data-motion="off"] .glass-workspace :is(.workspace-scene, .workspace-subord
   background: transparent;
   pointer-events: none;
 }
+/* Depth, not glass: sample the document behind the fixed navigation without
+   adding a fill, highlight or border. Anchoring to the header follows both rows. */
+.glass-workspace[data-exploration="true"] .workbench-header.glass-topbar::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 -40px;
+  z-index: -1;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  -webkit-mask-image: linear-gradient(#000 0%, #000 38%, transparent 100%);
+  mask-image: linear-gradient(#000 0%, #000 38%, transparent 100%);
+}
+.glass-workspace[data-exploration="true"]:has(:focus-visible) .workbench-header::before {
+  display: none;
+}
+@media (max-width: 760px) {
+  .glass-workspace[data-exploration="true"] .workbench-header.glass-topbar::before {
+    bottom: -24px;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass-workspace[data-exploration="true"] .workbench-header.glass-topbar::before {
+    display: none;
+  }
+}
+@media print {
+  .glass-workspace[data-exploration="true"] .workbench-header.glass-topbar::before {
+    display: none;
+  }
+}
 .glass-workspace[data-exploration="true"] :is(.glass-brand, .glass-mode-switch, .glass-tools) {
   pointer-events: auto;
 }
@@ -1163,14 +1197,14 @@ html[data-motion="off"] .glass-workspace :is(.workspace-scene, .workspace-subord
 .glass-workspace[data-exploration="true"] .workbench-footer {
   display: none;
 }
-.glass-workspace[data-exploration="true"] .workbench-drawer {
-  inset: 84px clamp(16px, 3vw, 48px) auto auto;
-  width: min(340px, calc(100vw - 32px));
-  max-height: calc(100svh - 108px);
-  margin: 0;
-  overflow-y: auto;
-}
 .glass-workspace[data-exploration="true"] .workbench-drawer::backdrop {
   background: transparent;
-  backdrop-filter: none;
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+@media (prefers-reduced-transparency: reduce), print {
+  .glass-workspace[data-exploration="true"] .workbench-drawer::backdrop {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }

@@ -153,7 +153,6 @@ describe("analysis exports", () => {
     try {
       downloadAnalysisFile(result, "csv");
       expect(createUrl.mock.calls[0][0]).toBeInstanceOf(Blob);
-      expect(link.download).toBe("demo-平均成绩-课程.csv");
       expect(click).toHaveBeenCalledOnce();
       expect(remove).toHaveBeenCalledOnce();
       expect(revokeUrl).not.toHaveBeenCalled();
@@ -163,6 +162,15 @@ describe("analysis exports", () => {
       vi.unstubAllGlobals();
       vi.restoreAllMocks();
     }
+  });
+
+  it("uses the source name rather than an internal dataset identifier in downloads", () => {
+    expect(analysisExportFilename(result, "csv")).toBe("模拟校园数据-平均成绩-课程.csv");
+    expect(analysisExportFilename({
+      ...result,
+      datasetId: "grades_00000000-0000-4000-8000-000000000001",
+      datasetName: "教学成绩/2025:秋",
+    }, "html")).toBe("教学成绩_2025_秋-平均成绩-课程.html");
   });
 
   it("creates safe bounded export filenames", () => {

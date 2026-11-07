@@ -167,7 +167,7 @@ export function analysisReportHtml(
 }
 
 export function analysisExportFilename(result: AnalysisResult, extension: "csv" | "html"): string {
-  const name = `${result.datasetId}-${result.metricLabel}-${analysisDimensionLabel(result)}`;
+  const name = `${analysisSourceLabel(result)}-${result.metricLabel}-${analysisDimensionLabel(result)}`;
   return `${name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_").slice(0, 90)}.${extension}`;
 }
 

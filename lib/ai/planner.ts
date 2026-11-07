@@ -330,7 +330,7 @@ export async function planQuestion(
     return {
       plan: planForDataset(goldenCase, parsed.datasetId),
       source: "golden_case",
-      rationale: "命中已验证的 MVP 固定问题，使用对应的金标准分析计划。",
+      rationale: "命中已验证的常用分析问题，使用对应的金标准分析计划。",
       matchedCaseId: goldenCase.id,
       model: null,
     };

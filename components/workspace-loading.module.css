@@ -1,0 +1,144 @@
+/* Loading states: one language for boot and for in-page waits. A small brand
+   mark, a status line, and a bar of travelling light. Nothing here imitates the
+   destination page, so no placeholder can jump when the real content lands. */
+
+.boot,
+.inline {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  background: var(--background);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+.boot {
+  min-height: 100dvh;
+  gap: 18px;
+  padding: 32px;
+}
+
+/* The fixed top bar owns the top ~120px on phones; centring below it keeps the
+   bar of light in the optical middle of the remaining pane. */
+.inline {
+  min-height: 100dvh;
+  gap: 14px;
+  padding: 140px 24px 96px;
+  animation: loading-in 280ms var(--ease-editorial, ease) both;
+}
+
+.mark,
+.markCompact {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line-strong);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  animation: mark-breathe 2.4s var(--ease-editorial, ease) infinite;
+}
+
+.mark {
+  width: 44px;
+  height: 44px;
+}
+
+.markCompact {
+  width: 36px;
+  height: 36px;
+  animation-duration: 2.8s;
+}
+
+.label {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--type-meta);
+  font-weight: 500;
+  letter-spacing: var(--tracking-meta);
+  text-transform: uppercase;
+}
+
+/* Two beams half a cycle apart: one is always crossing the rail, so the
+   waiting state never looks frozen between sweeps. */
+.progress {
+  position: relative;
+  overflow: hidden;
+  width: 168px;
+  height: 1px;
+  background: var(--line-strong);
+}
+
+.beam {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 46%;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: beam-sweep 1.6s linear infinite;
+}
+
+.beamTrail {
+  animation-delay: -0.8s;
+}
+
+@keyframes beam-sweep {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(260%);
+  }
+}
+
+@keyframes loading-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes mark-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Reduced motion: a still bar of light, parked where it reads as a segment
+   rather than a full-width block. The trailing beam is dropped so the two do
+   not pile up at the left edge. */
+@media (prefers-reduced-motion: reduce) {
+  .mark,
+  .markCompact,
+  .beam,
+  .inline {
+    animation: none;
+  }
+
+  .beam {
+    width: 40%;
+    transform: translateX(30%);
+  }
+
+  .beamTrail {
+    display: none;
+  }
+}
+
+html[data-motion="off"] .mark,
+html[data-motion="off"] .markCompact,
+html[data-motion="off"] .beam,
+html[data-motion="off"] .inline {
+  animation: none;
+}
+
+html[data-motion="off"] .beam {
+  width: 40%;
+  transform: translateX(30%);
+}
+
+html[data-motion="off"] .beamTrail {
+  display: none;
+}

@@ -1,3 +1,5 @@
+import type { DataSource } from "@/lib/analysis/types";
+
 /**
  * The single source of recommended questions for every entry point: the
  * conversation empty state, the composer preset menu and the home "试着问问"
@@ -19,14 +21,14 @@ export const SUGGESTED_QUESTIONS: readonly SuggestedQuestion[] = [
   { id: "absence-relationship", question: "缺勤次数和成绩有关系吗？", requiresAI: false },
 ];
 
-/** Without a configured AI, hide rather than disable the questions that need it. */
+/** Hide questions that the current data source or model connection cannot answer. */
 export function suggestedQuestionsFor(
   aiReady: boolean,
-  datasetId?: string,
+  datasetId: DataSource | null,
 ): readonly SuggestedQuestion[] {
   return SUGGESTED_QUESTIONS.filter(
     (item) =>
       (aiReady || !item.requiresAI) &&
-      (!datasetId?.startsWith("grades_") || item.id !== "absence-relationship"),
+      (item.id !== "absence-relationship" || datasetId === "demo"),
   );
 }

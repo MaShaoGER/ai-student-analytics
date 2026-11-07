@@ -10,6 +10,35 @@ const securityHeaders = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
 ];
 
+// Keep source material and private runtime state out of page traces.
+// Runtime-owned paths in instrumentation must also be excluded at their
+// filesystem access sites, since they are not ordinary page trace entries.
+const outputFileTracingExcludes = [
+  ".env",
+  ".env.*",
+  "records/**/*",
+  "**/*.test.ts",
+  "**/*.test.tsx",
+  "oulad.zip",
+  "oulad_raw/**",
+  "output/**",
+  "docs/**",
+  "scripts/**",
+  "*.md",
+  ".interface-design/**",
+  "tsconfig.tsbuildinfo",
+  "data/fixtures/**",
+  "data/sample/learning-process-v1/**",
+  // Design/source material that is never served at runtime.
+  "public/previews/**",
+  "public/learning-folio.jpg",
+  "参考/**",
+  "参考.af",
+  "docker-compose.yml",
+  "Dockerfile",
+  ".dockerignore",
+];
+
 const nextConfig: NextConfig = {
   // Keep isolated HTTP/build verification from taking the active dev server's lock.
   distDir: process.env.NEXT_DIST_DIR || ".next",
@@ -24,26 +53,11 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
-  // Keep datasets, local artifacts, secrets and tooling out of the standalone
-  // image. data/sample/ is intentionally NOT excluded: demo mode reads those
-  // CSVs from the app working directory at runtime.
+  outputFileTracingIncludes: {
+    "/api/*": ["data/sample/*.csv", "data/sample/summary.json"],
+  },
   outputFileTracingExcludes: {
-    "/*": [
-      ".env",
-      ".env.*",
-      "records/**/*",
-      "**/*.test.ts",
-      "**/*.test.tsx",
-      "oulad.zip",
-      "oulad_raw/**",
-      "output/**",
-      "docs/**",
-      "scripts/**",
-      "*.md",
-      ".interface-design/**",
-      "tsconfig.tsbuildinfo",
-      "data/fixtures/**",
-    ],
+    "/*": outputFileTracingExcludes,
   },
 };
 

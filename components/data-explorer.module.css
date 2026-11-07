@@ -17,6 +17,27 @@
 .root *::after {
   border-radius: 0;
 }
+/* The document leaves focus near the bottom controls; the controls themselves
+   sit above this transparent sampling layer. Keyboard focus remains sharp. */
+.root::after {
+  content: "";
+  position: fixed;
+  inset: auto 0 0;
+  height: 96px;
+  z-index: 20;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  -webkit-mask-image: linear-gradient(transparent, #000);
+  mask-image: linear-gradient(transparent, #000);
+}
+.root:has(:focus-visible)::after { display: none; }
+@media (max-width: 640px) {
+  .root::after { height: 64px; }
+}
+@media (prefers-reduced-transparency: reduce), print {
+  .root::after { display: none; }
+}
 
 /* Decorative peripheral blur: fixed, pointer-transparent, never over the reading centre. */
 .periphery {
@@ -715,9 +736,13 @@ button.page:hover > strong { color: var(--accent-ink); }
 @keyframes redraw { from { opacity: 0.3; filter: blur(4px); } }
 .root[data-motion="on"] .sheet[open] { animation: sheetIn 280ms var(--ease-show); }
 .root[data-motion="on"] .homeShowcase + .poster { animation: rise 320ms var(--ease-show) 120ms both; }
+/* Hand-off from the loading skeleton: the placeholder unmounts in one frame, so
+   the real hero fades in over the same paper instead of snapping into place. */
+.root[data-motion="on"] .homeShowcase { animation: showcaseIn 360ms var(--ease-show) both; }
 /* Peripheral blur breathes slightly stronger while a scene is arriving. */
 .root[data-motion="on"]:has(.poster[aria-busy="true"]) .periphery::after { animation: fogPulse 1.6s ease-in-out infinite alternate; }
 @keyframes rise { from { opacity: 0; transform: translateY(8px); filter: blur(4px); } }
+@keyframes showcaseIn { from { opacity: 0; } }
 @keyframes sheetIn { from { opacity: 0; transform: translateX(20px); filter: blur(4px); } }
 @keyframes fogPulse { to { -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px); } }
 .root[data-motion="off"] *,

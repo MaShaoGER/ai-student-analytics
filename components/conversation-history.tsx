@@ -183,7 +183,6 @@ export function ConversationHistory(
         <a href="https://www.rareui.com/" target="_blank" rel="noreferrer">
           Rare UI 组件来源 ↗
         </a>
-        <a href="/preview/ai-experience">打开无 AI 调用的体验预览</a>
       </div>
     </>
   );

@@ -11,6 +11,9 @@ test-results
 .github
 .interface-design
 参考.af
+参考
+public/previews
+public/learning-folio.jpg
 *.log
 *.tsbuildinfo
 

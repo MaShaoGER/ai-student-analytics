@@ -421,7 +421,8 @@ export function publishGradeDraft(input: {
           d.versions.some((v) => versionPath(d.id, v.version) === created),
         );
       } catch {}
-      if (!committed && existsSync(created)) unlinkSync(created);
+      // Private versions are created at runtime, never application build dependencies.
+      if (!committed && existsSync(/* turbopackIgnore: true */ created)) unlinkSync(created);
     }
     throw e;
   }

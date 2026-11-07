@@ -1,6 +1,6 @@
 # 文档导航与文件分类
 
-更新日期：2026-11-05。本页负责“去哪里找”，功能操作以对应指南为准，不另维护一份重复的功能状态表。
+更新日期：2026-11-07。本页负责“去哪里找”，功能操作以对应指南为准，不另维护一份重复的功能状态表。
 
 ## 阅读顺序
 
@@ -50,7 +50,7 @@
 
 | 资料 | 定位 |
 | --- | --- |
-| [2026-11-03 AI 视觉改造实施说明](design/ai-implementation-brief-2026-11-03.md) | 最新已确认风格：以学习过程图表页面改造项目；含执行规则、代码落点、数据接入边界与验收要求，正式改造尚待实施 |
+| [AI 实施说明与正式版边界](design/ai-implementation-brief-2026-11-03.md) | 顶部为最新正式版执行要求；旧视觉提案与分阶段记录按日期保留，实际实现及验证见工作台指南 |
 | [AI 前端参考库](design/ai-frontend-reference.md) · [全站设计语言](design/ai-frontend-reference/design-language.md) | 用户素材与设想的持续记录：黑白、光感玻璃、色散、主题色、边缘模糊，以及视频关键帧和提示词 |
 | [白色像素展示方案](design/white-pixel-showcase.md) · [配套资料](design/white-pixel-showcase/) | 设计候选与参考，不按整份方案认定已实施 |
 | [连续图表叙事](design/connected-chart-story.md) · [静态样例](design/connected-chart-demo/index.html) | 连线构图探索；静态样例不证明真实业务接通 |
@@ -60,7 +60,7 @@
 | [玻璃参考](liquid-glass-design-references.md) · [早期设计改进](design-improvements.md) | 历史方向与参考，不覆盖当前使用指南 |
 | [AI 预览说明](ai-experience-preview.md) | 固定片段与真实数据、真实模型的差别 |
 
-`app/preview/` 是 Next.js 预览路由，`public/previews/` 是静态预览工作文件，`docs/design/` 保存设计说明及阶段快照。三者职责不同，本轮不迁移代码、不去重或删除素材。
+`app/preview/` 是开发用 Next.js 预览路由，`public/previews/` 是静态设计工作文件，`docs/design/` 保存设计说明及阶段快照。来源文件保留，不迁移、不去重或删除；前两类路径在生产环境返回 404，静态设计资料不作为发行资源，正式工作台不再提供固定演示入口。
 
 ## 历史路线与阶段记录
 
