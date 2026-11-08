@@ -9,6 +9,13 @@
 - 依赖审计发现的 [Zod 约束集合内存消耗公告](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5) 通过 4.6.5 → 4.6.6 补丁更新处理；保留入口请求体和查询资源限制，不以升级依赖代替边界控制。
 - 发行前执行 `pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm audit --prod`，再在隔离账号与运行目录中启动实际产物，检查首页、静态资源、DuckDB、权限及预览 404。Docker/Linux、真实外部模型、可信 HTTPS、备份恢复及远程上线须在对应环境单独验收；下方历史结果不自动成为当前版本证据。
 
+## 当前 VPS 部署（2026-11-08）
+
+- `main` 提交 `87aff75`（`fix: 统一顶栏菜单并保留数据说明阅读交互`）已推送。版本提交前通过 `pnpm typecheck`、完整 Vitest（828 通过、73 按既有开关跳过）、`pnpm audit --prod`；VPS Linux x64 Docker 默认 Turbopack 生产构建及 postbuild 通过。VPS Webpack 尝试受内存限制被 SIGKILL，未用于发布。
+- 公网入口仍为 [学析台测试预览](https://64.81.112.189:3443/)，自签名证书。当前镜像 `chuanzhi-student-analytics-test:menu-20261108-87aff75`，容器健康。首页、匿名 session、图标、首页引用的 16 个 CSS/JS 资源均返回 200；`/preview/*`、`/previews/*` 返回 404。
+- 部署沿用原 `chuanzhi-test_records` 卷、`/opt/chuanzhi-student-analytics-test/source/oulad_raw` 只读挂载及原 `runtime.env`；环境文件备份哈希一致。线上原有 3 个账号、管理员 1 个、审计文件大小 119,506 bytes；其他 VPS 容器部署前后保持运行。发布前卷归档与部署配置备份位于 `backups/release-20261108/`，旧镜像保留 `rollback-release-20261108` 标签。候选使用线上 records 副本并通过健康、静态资源和预览封锁检查；候选服务及副本卷已清理。
+- **认证烟测未执行**：未取得可复用的应用账号凭据；线上 smoke 会创建／注销会话并追加审计，因此没有改动账号或在线上运行该脚本。候选匿名运行既有固定统计 smoke 因未登录返回 401，未产生审计写入。登录、Secure cookie、角色权限矩阵、统计金标准、Origin 防护和审计归属均不据此宣称已验收；真实外部 AI 未调用。公网匿名验收不等于完整业务验收。
+- 发布后冒烟摘要：`/opt/chuanzhi-student-analytics-test/releases/release-20261108/candidate-smoke.txt`。本地原 3000 开发服务保留；设计预览、参考素材等既有未跟踪文件未纳入提交。
 ## 当前 VPS 测试预览（2026-10-20）
 
 入口：[学析台测试预览](https://64.81.112.189:3443/)，仍使用已有应用账号与自签名测试证书。当前镜像为 `chuanzhi-student-analytics-test:grade-import-20261020T123213`，应用源码提交为 `c9805c7`。本次将成绩导入分支快进合并到 `main`；构建时修复了管理页 CSS Module 的纯选择器错误。
