@@ -63,7 +63,7 @@
 }
 .glass-workspace
   :is(.form-field, .control-field, .result-filter, .result-filter-fields, .workbench-source)
-  :is(input, select, textarea):focus-visible {
+  :is(input[type="text"], input[type="search"], input[type="email"], input[type="password"], input[type="number"], input[type="url"], textarea):focus-visible {
   border-bottom-color: var(--accent);
   box-shadow: inset 0 -1px 0 var(--accent);
 }
@@ -86,10 +86,6 @@
 }
 .glass-workspace :is(input[type="checkbox"], input[type="radio"]) {
   accent-color: var(--accent-ink);
-}
-.glass-workspace :is(button, a, input, select, textarea, summary):focus-visible {
-  outline: 2px solid var(--ui-focus);
-  outline-offset: 2px;
 }
 .glass-workspace .badge {
   border-radius: 0;

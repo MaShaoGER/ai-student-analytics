@@ -282,11 +282,6 @@
   transition: border-color var(--motion-fast, 120ms) ease;
 }
 
-.searchField:focus-within {
-  border-bottom-color: var(--accent);
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
 
 :global(.glass-workspace) .searchField input {
   width: 100%;
@@ -332,11 +327,6 @@
   line-height: 1.5;
 }
 
-:global(.glass-workspace) .compactField select:focus-visible,
-:global(.glass-workspace) .pagination select:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
 
 /* Tables scroll inside their own frame so the page never widens. */
 .tableScroll {

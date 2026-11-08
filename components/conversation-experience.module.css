@@ -348,10 +348,6 @@
   color: var(--ink);
   cursor: pointer;
 }
-.layout :is(button, a):focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
 @media (hover: hover) and (pointer: fine) {
   .historyRow:hover:not([data-active="true"]) {
     background: color-mix(in srgb, var(--surface-inset) 70%, transparent);

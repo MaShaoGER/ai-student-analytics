@@ -63,10 +63,6 @@
   color: var(--paper);
 }
 
-.control .button:focus-visible {
-  outline: 2px solid var(--interaction, var(--accent));
-  outline-offset: -4px;
-}
 
 .control .button:disabled {
   cursor: default;

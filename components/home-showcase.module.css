@@ -104,7 +104,6 @@
 }
 .exploreButton span { font-size: 24px; line-height: 1; }
 .exploreButton:hover { background: var(--background); color: var(--ink); }
-.exploreButton:focus-visible { outline: 2px solid var(--accent); outline-offset: 5px; }
 .kicker {
   display: flex;
   gap: 12px;
@@ -340,10 +339,6 @@
   margin: 0;
   scroll-margin-top: 100px;
 }
-.constellation:focus-visible, .strips:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 8px;
-}
 .constellation .figHead {
   margin-top: 0;
 }
@@ -397,18 +392,11 @@
   transition: stroke-width 280ms ease-out, stroke 280ms ease-out,
     fill 280ms ease-out, transform 280ms ease-out;
 }
-/* Hovering a star widens its halo and nudges the core, never the resting state. */
+/* Hovering a star widens its halo and nudges the core. */
 .star:hover .halo,
-.star:focus-visible .halo { opacity: 0.8; }
 .star:hover .core {
   stroke: var(--accent);
   stroke-width: 2.5;
-  transform: scale(1.08);
-}
-.star:focus-visible .core {
-  stroke: var(--ink);
-  stroke-width: 2.5;
-  fill: rgba(118, 102, 204, 0.18);
   transform: scale(1.08);
 }
 
@@ -526,21 +514,9 @@
   transition: opacity 180ms ease-out, background 180ms ease-out;
 }
 .bead:hover::before { opacity: 1; }
-.bead:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-.bead:focus-visible::before {
-  opacity: 1;
-  background: var(--accent-ink);
-}
 .cluster {
   min-width: 26px;
   height: 34px;
-}
-.cluster:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }
 .clusterDots {
   position: absolute;
@@ -559,10 +535,6 @@
   transition: opacity 180ms ease-out, background 180ms ease-out;
 }
 .cluster:hover .clusterDots i { opacity: 1; }
-.cluster:focus-visible .clusterDots i {
-  opacity: 1;
-  background: var(--accent-ink);
-}
 .clusterCount {
   position: absolute;
   left: 50%;
@@ -637,11 +609,6 @@
   letter-spacing: var(--tracking-meta);
 }
 .groupOption:hover { background: var(--accent-transparent); }
-.groupOption:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-  background: var(--accent-transparent);
-}
 .scale {
   display: flex;
   justify-content: space-between;

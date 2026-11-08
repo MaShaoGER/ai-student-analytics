@@ -181,14 +181,6 @@ textarea {
 button {
   position: relative;
 }
-button:focus-visible,
-a:focus-visible,
-summary:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline-color: var(--accent);
-}
 .panel {
   position: relative;
   background: transparent;
@@ -305,10 +297,6 @@ summary {
 }
 .instrument-rail .rail-brand {
   border-color: transparent;
-}
-.instrument-rail button:focus-visible {
-  outline: 2px solid var(--button-ink);
-  outline-offset: 2px;
 }
 .instrument-rail .rail-menu[aria-expanded="true"] {
   background: var(--paper);
@@ -1153,10 +1141,6 @@ summary {
 }
 .overview-terminal input::placeholder {
   color: var(--instrument-muted);
-}
-.overview-terminal:focus-within {
-  outline: 1px solid var(--accent);
-  outline-offset: 3px;
 }
 .overview-terminal .ask-card-button {
   flex-shrink: 0;

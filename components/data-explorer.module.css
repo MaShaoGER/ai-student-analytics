@@ -131,10 +131,7 @@
   letter-spacing: var(--tracking-display);
   overflow-wrap: anywhere;
 }
-.title:focus { outline: none; }
-.title:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; }
-/* The mask is a span inside the heading, so it only needs leading room for ink;
-   the focus ring sits on the heading and is never clipped by the mask. */
+/* The mask keeps room for its ink without adding focus decoration. */
 .title > .titleMask {
   padding-top: 0.12em;
   padding-bottom: 0.14em;
@@ -266,15 +263,6 @@
   color: var(--accent-ink);
   transition: color 160ms ease-out;
 }
-.entry:focus-visible {
-  background: var(--ink);
-  color: var(--surface-raised);
-}
-.entry:focus-visible::before { background: var(--accent-light); }
-.entry:focus-visible > span { color: rgba(255, 255, 255, 0.7); }
-.entry:focus-visible > strong::after { color: var(--accent-light); }
-/* Focus band: only the neighbouring auxiliary rows fade; chart readings never blur. */
-.entries:has(.entry:focus-visible) .entry:not(:focus-visible) { opacity: 0.5; }
 @media (hover: hover) {
   .entry:hover {
     background: var(--ink);
@@ -693,29 +681,6 @@ button.page:hover > strong { color: var(--accent-ink); }
   border-top: var(--rule);
 }
 
-/* Focus ring shared by every control. */
-.entry:focus-visible,
-.action:focus-visible,
-.ghost:focus-visible,
-.page:focus-visible,
-.option:focus-visible,
-.trailMark:focus-visible,
-.cornerLeft .ghost:focus-visible,
-.cornerRight:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-  box-shadow: 0 0 0 6px var(--accent-transparent);
-}
-/* Inverted rows need a light ring, not accent-on-ink. */
-.entries .entry:focus-visible {
-  outline-color: var(--accent-light);
-  box-shadow: 0 0 0 6px rgba(220, 214, 238, 0.24);
-}
-/* The strip scrolls, so its ring sits inside the button and is never clipped. */
-.trail .trailMark:focus-visible {
-  outline-offset: -2px;
-  box-shadow: none;
-}
 
 /* Semantic transitions: short progressive blur (240–360ms) so data never stays soft;
    the head sets its own type (MaskRise/InkText), so it is never doubled here; only

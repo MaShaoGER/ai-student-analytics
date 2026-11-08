@@ -253,10 +253,6 @@
 .composer .collapseToggle:hover:not(:disabled) {
   background: var(--instrument-inset);
 }
-.composer .collapseToggle:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
 .collapsedHint {
   min-width: 0;
   margin: 0;
@@ -288,9 +284,6 @@
 }
 .composer textarea::placeholder {
   color: var(--instrument-muted);
-}
-.composer:focus-within {
-  border-color: var(--accent);
 }
 .composer textarea:focus-visible {
   outline: 2px solid var(--accent);
@@ -404,11 +397,6 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
-.composer button:focus-visible,
-.chartToggle:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
 .results {
   display: grid;
   gap: 16px;
@@ -446,11 +434,6 @@
 }
 .facts[open] summary::after {
   content: "收起";
-}
-.facts summary:focus-visible {
-  outline: 2px solid var(--accent-ink);
-  outline-offset: 3px;
-  border-radius: 0;
 }
 .facts strong {
   font-size: 13px;
@@ -873,10 +856,6 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 .welcomeSuggestions button:disabled {
   opacity: 0.5;
   cursor: default;
-}
-.welcomeSuggestions button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
 }
 .empty .privacy {
   display: flex;
@@ -1334,9 +1313,6 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   padding: 10px 16px max(10px, env(safe-area-inset-bottom, 0px));
   pointer-events: auto;
 }
-:global(.glass-workspace) .composerDock[data-collapsed="false"]:focus-within {
-  border-top-color: var(--accent);
-}
 /* The panel owns the surface; the form stays a bare layout container. */
 :global(.glass-workspace) .composerDock[data-collapsed="false"] .composer {
   border: 0;
@@ -1557,10 +1533,6 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   border-radius: 0;
   background: var(--surface-raised);
   box-shadow: none;
-}
-:global(.glass-workspace) .composerDock[data-collapsed="true"]:focus-within {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
 }
 :global(.glass-workspace) .composerDock[data-collapsed="true"] .composer {
   width: 100%;

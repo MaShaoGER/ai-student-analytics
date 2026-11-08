@@ -4,6 +4,16 @@
    these tokens instead of inventing palettes. Interface shapes are square:
    every radius token resolves to 0. Glass belongs to floating surfaces only —
    reading surfaces stay flat and are separated by hairlines and whitespace. */
+:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+input:is([type="text"], [type="search"], [type="email"], [type="password"], [type="number"], [type="url"]):focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px;
+  box-shadow: var(--focus-glow, 0 0 0 3px rgba(118, 102, 204, 0.15)) !important;
+}
 :root {
   --exploration-background: #f5f5f2;
 }

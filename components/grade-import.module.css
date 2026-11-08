@@ -196,17 +196,19 @@
 }
 
 .dropZone:hover,
-.dropZone:focus-within,
 .dropZone[data-dragging="true"] {
   border-style: solid;
   border-color: var(--accent);
   background: var(--accent-transparent);
 }
-
 .dropZone:focus-within {
-  outline: 2px solid var(--accent);
+  border-style: solid;
+  border-color: var(--ink);
+  background: rgba(35, 35, 41, 0.04);
+  outline: 1px solid var(--ink);
   outline-offset: 2px;
 }
+
 
 .dropZone[data-has-file="true"] {
   border-style: solid;

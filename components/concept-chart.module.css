@@ -77,8 +77,7 @@
    <title>, so no second browser bubble stacks on top of this one. Compact previews,
    which print no note text, keep their <title>. */
 .tipFrame { overflow: hidden; opacity: 0; pointer-events: none; transition: opacity 150ms ease-out; }
-.datum:hover > .tipFrame,
-.datum:focus-within > .tipFrame { opacity: 1; }
+.datum:hover > .tipFrame { opacity: 1; }
 .tip {
   display: block;
   box-sizing: border-box;
@@ -106,20 +105,15 @@
 .dot[data-tone="c"] { stroke: #a8a8b4; }
 .area { fill: var(--accent); fill-opacity: 0.12; stroke: var(--accent); stroke-width: 1.5; }
 
-/* Hover and keyboard focus are transient feedback on the graphic itself only:
-   hit boxes stay invisible, text never gets a stroke. */
-.datum[data-interactive]:hover .track:not([data-void]),
-.datum[data-interactive]:focus-visible .track:not([data-void]) { fill: rgba(118, 102, 204, 0.07); }
+/* Hover is pointer feedback; keyboard focus uses an ink outline, never accent fill. */
+.datum[data-interactive]:hover .track:not([data-void]) { fill: rgba(118, 102, 204, 0.07); }
+.datum[data-interactive]:focus-visible .track:not([data-void]) { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 3 2; }
+.datum[data-interactive]:focus-visible .bar { stroke: var(--ink); stroke-width: 1.5; }
+.datum[data-interactive]:focus-visible .dot { stroke: var(--ink); stroke-width: 2.5; }
 .datum[data-interactive]:hover .bar { opacity: 1; filter: drop-shadow(0 0 4px rgba(118, 102, 204, 0.35)); }
 .datum[data-interactive]:hover .dot { fill: rgba(118, 102, 204, 0.18); filter: drop-shadow(0 0 4px rgba(118, 102, 204, 0.4)); }
 .datum[data-interactive]:hover .label,
 .datum[data-interactive]:hover .value { fill: var(--accent-ink, var(--accent)); }
-/* Keyboard focus: unmistakable ink ring on the mark plus accent text. */
-.datum[data-interactive]:focus-visible .bar { opacity: 1; stroke: var(--ink); stroke-width: 1.5; }
-.datum[data-interactive]:focus-visible .dot { fill: var(--accent); stroke: var(--ink); stroke-width: 2; }
-.datum[data-interactive]:focus-visible .track:not([data-void]) { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 2; }
-.datum[data-interactive]:focus-visible .label,
-.datum[data-interactive]:focus-visible .value { fill: var(--accent-ink, var(--accent)); font-weight: 600; }
 
 /* Wide charts scroll inside their own region on narrow screens; the page never overflows.
    The hint sits above the scroller, not inside it, so it stays readable while the chart
@@ -135,7 +129,6 @@
   overscroll-behavior-x: contain;
 }
 .viewport > .chart { min-width: 640px; }
-.viewport:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 .scrollHint { display: none; margin: 0 0 12px; color: var(--muted); font-size: 12px; }
 @media (max-width: 720px) {
   .scrollHint { display: block; }

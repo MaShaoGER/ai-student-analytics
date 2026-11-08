@@ -225,7 +225,6 @@
     0 50px 90px -30px rgba(40, 36, 70, 0.32);
 }
 .plane[data-focused] .face::before { opacity: 1; }
-.face:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; }
 
 .meta {
   display: flex;
@@ -290,7 +289,6 @@
 }
 .dock button:hover:not(:disabled) { color: var(--accent-ink); }
 .dock button:disabled { color: var(--muted); opacity: 0.5; cursor: default; }
-.dock button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .dock .enter { background: var(--ink); color: #fff; }
 .dock .enter:hover { background: var(--accent-ink); color: #fff; }
 .dock p {
