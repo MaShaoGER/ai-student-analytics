@@ -566,47 +566,6 @@ summary {
   letter-spacing: 3px;
   margin-right: 12px;
 }
-.workbench-drawer {
-  position: fixed;
-  inset: 0 auto 0 calc(var(--rail-start) + var(--rail-width));
-  width: min(288px, calc(100vw - var(--rail-width)));
-  height: 100dvh;
-  max-height: 100dvh;
-  box-sizing: border-box;
-  margin: 0;
-  display: none;
-  flex-direction: column;
-  gap: 24px;
-  padding: 20px;
-  overflow-y: auto;
-  border: 0;
-  border-top: 3px solid var(--accent);
-  border-right: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--ink);
-  opacity: 0;
-  transform: translateX(12px);
-  transition:
-    transform var(--motion-standard) var(--ease-drawer),
-    opacity var(--motion-fast) var(--ease-out),
-    display var(--motion-standard) allow-discrete,
-    overlay var(--motion-standard) allow-discrete;
-}
-.workbench-drawer:popover-open {
-  display: flex;
-  opacity: 1;
-  transform: translateX(0);
-}
-.workbench-drawer::backdrop {
-  background: transparent;
-  pointer-events: none;
-}
-@starting-style {
-  .workbench-drawer:popover-open {
-    opacity: 0;
-    transform: translateX(12px);
-  }
-}
 .drawer-heading {
   display: flex;
   align-items: center;
@@ -622,25 +581,6 @@ summary {
 .drawer-label {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   letter-spacing: 0.08em;
-}
-.workbench-drawer .workspace-nav {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  justify-content: stretch;
-  width: 100%;
-}
-.workbench-drawer .workspace-nav button {
-  width: 100%;
-  justify-content: flex-start;
-  padding: 14px 12px;
-  border-bottom: 1px solid var(--line);
-}
-.workbench-drawer .workspace-nav button[aria-current="page"] {
-  border-left: 3px solid var(--accent);
-  background: var(--sage-soft);
-}
-.workbench-drawer .navigation-indicator {
-  display: none;
 }
 .drawer-footnote {
   display: flex;
@@ -2165,7 +2105,6 @@ html[data-motion="off"] button:active {
       .skip-link,
       .workbench-header,
       .glass-data-sidebar,
-      .workbench-drawer,
       .workbench-page-heading,
       nav[aria-label="探索前后页"],
       nav[aria-label="探索"],

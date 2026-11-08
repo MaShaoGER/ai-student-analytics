@@ -250,8 +250,7 @@
   backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-shadow), 0 8px 24px color-mix(in srgb, var(--ink) 8%, transparent);
 }
-.glass-workspace .logout-confirmation,
-.glass-workspace .workbench-drawer {
+.glass-workspace .logout-confirmation {
   border-radius: 0;
   background: var(--glass-fill-dense);
   border: 1px solid var(--glass-border);

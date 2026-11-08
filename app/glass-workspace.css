@@ -203,7 +203,7 @@
 
 .glass-workspace .glass-tools {
   gap: 8px;
-  padding: 4px 8px;
+  padding: 0;
   --glass-radius: 0px;
   flex-shrink: 0;
 }
@@ -214,19 +214,19 @@
 }
 .glass-tools .icon-button {
   border: 0;
-  min-width: 36px;
-  width: 36px;
+  min-width: 40px;
+  width: 40px;
   min-height: 40px;
 }
 .glass-demo-tag {
   font-size: 10px;
   color: var(--muted);
-  border-right: 1px solid var(--line);
-  padding: 0 12px 0 6px;
+  padding: 0 12px 0 0;
 }
 .glass-account {
   gap: 8px;
-  padding: 4px 8px;
+  min-height: 40px;
+  padding: 4px;
   background: transparent;
   border: 0;
   color: var(--ink);
@@ -243,11 +243,16 @@
   color: var(--paper);
   font: 600 13px/1 var(--font-sans);
 }
-/* Account menu: identity, appearance and session actions in one place. */
-.glass-workspace .account-menu {
+/* Header dropdowns share placement, surface and opening motion. */
+.glass-menu { anchor-name: --workspace-tools; }
+.glass-account { anchor-name: --workspace-account; }
+.glass-workspace .workspace-header-popover {
   position: fixed;
-  inset: 96px 28px auto auto;
-  width: 252px;
+  inset: calc(var(--workspace-header-height, 76px) + 8px) clamp(20px, 4vw, 64px) auto auto;
+  box-sizing: border-box;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - var(--workspace-header-height, 76px) - 24px);
+  overflow-y: auto;
   margin: 0;
   padding: 6px;
   border: 1px solid var(--glass-border);
@@ -260,10 +265,29 @@
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
 }
-.glass-workspace .account-menu:popover-open {
+.glass-workspace .workspace-header-popover:popover-open {
   display: grid;
   gap: 2px;
   animation: account-menu-in 160ms var(--ease-out);
+}
+.glass-workspace .account-menu { width: 268px; }
+.glass-workspace .workspace-tools-menu { width: 320px; }
+@supports (top: anchor(bottom)) {
+  .glass-workspace .workspace-header-popover {
+    top: calc(anchor(bottom) + 8px);
+    right: max(12px, anchor(right));
+  }
+  .account-menu { position-anchor: --workspace-account; }
+  .workspace-tools-menu { position-anchor: --workspace-tools; }
+}
+html[data-motion="off"] .workspace-header-popover:popover-open {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .glass-workspace .workspace-header-popover:popover-open { animation: none; }
+}
+@media print {
+  .glass-workspace .workspace-header-popover { display: none !important; }
 }
 @keyframes account-menu-in {
   from {
@@ -317,11 +341,21 @@
   font-size: 13px;
 }
 @media (max-width: 760px) {
-  .glass-workspace .account-menu {
-    /* The top bar wraps to two rows here; open below the tools row. */
-    inset: 124px 12px auto auto;
-  }
+  .glass-workspace .workspace-header-popover { right: 12px; }
 }
+.account-menu-motion { padding: 4px 10px; }
+.account-menu-motion .motion-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 36px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+}
+.account-menu-motion p { margin: 4px 0; color: var(--muted); font-size: 11px; }
 .glass-user-name {
   max-width: 100px;
   overflow: hidden;
@@ -396,12 +430,11 @@
   display: none;
 }
 
-/* Workspace utilities: data source picker and details in the tools drawer. */
+/* Data controls live in the compact tools dropdown. */
 .workspace-utilities {
   display: grid;
-  gap: 16px;
-  padding: 0 8px 20px;
-  border-bottom: 1px solid var(--line);
+  gap: 12px;
+  padding: 12px 10px;
 }
 .workspace-utilities .workbench-source {
   min-width: 0;
@@ -655,17 +688,6 @@ html[data-motion="off"] .glass-workspace :is(.workspace-scene, .workspace-subord
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
-/* Tools drawer: workspace utilities (source picker, data details) and settings. */
-.glass-workspace .workbench-drawer {
-  inset: calc(var(--workspace-header-height, 76px) + 8px) clamp(16px, 3vw, 48px) auto auto;
-  width: min(340px, calc(100vw - 32px));
-  margin: 0;
-  background: var(--surface-raised);
-  color: var(--ink);
-  border: 1px solid var(--line);
-  border-radius: 0;
-  box-shadow: 0 16px 40px color-mix(in srgb, var(--ink) 20%, transparent);
-}
 .glass-workspace .logout-confirmation {
   color: var(--ink);
   background: var(--surface-raised);
@@ -804,31 +826,17 @@ html[data-motion="off"] .glass-workspace :is(.workspace-scene, .workspace-subord
   .glass-workspace .overview-secondary {
     grid-template-columns: minmax(0, 1fr);
   }
-  .glass-workspace .workbench-drawer {
-    top: calc(var(--workspace-header-height, 112px) + 8px);
-    max-width: calc(100vw - 32px);
-  }
 }
 
-.glass-workspace .workbench-drawer > .workbench-source {
-  margin: 20px 0;
-  max-width: none;
-}
 .glass-workspace .overview-metric:first-child .overview-metric-value {
   letter-spacing: -0.8px;
   font-weight: 500;
-}
-.glass-workspace .workbench-drawer {
-  height: auto;
-  max-height: calc(100dvh - var(--workspace-header-height, 76px) - 24px);
-  bottom: auto;
-  overflow-y: auto;
 }
 .drawer-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 16px 12px;
+  padding: 4px 10px 8px;
   border-bottom: 1px solid var(--line);
 }
 .drawer-label {
@@ -843,50 +851,11 @@ html[data-motion="off"] .glass-workspace :is(.workspace-scene, .workspace-subord
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 16px 12px;
+  padding: 10px;
   border-top: 1px solid var(--line);
   color: var(--muted);
   font-size: 10px;
   line-height: 1.6;
-}
-.canvas-menu-settings {
-  display: grid;
-  gap: 12px;
-  padding: 18px 12px;
-  border-top: 1px solid var(--line);
-}
-.canvas-menu-settings p {
-  margin: 0;
-  font-size: 12px;
-  color: var(--muted);
-}
-.canvas-menu-settings > button,
-.canvas-menu-settings .text-button {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 40px;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--ink);
-  font-size: 13px;
-  text-align: left;
-  justify-content: flex-start;
-}
-.canvas-menu-settings > button:hover,
-.canvas-menu-settings .text-button:hover {
-  background: var(--surface-inset);
-}
-.canvas-menu-preferences {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 10px;
-  font-size: 13px;
-  color: var(--ink);
 }
 
 
@@ -1025,17 +994,6 @@ html[data-motion="off"] .glass-workspace :is(.workspace-scene, .workspace-subord
   }
 }
 
-/* Drawer reads as a modal layer: dim + frost behind it, and the page beneath
-   stops scrolling while it is open. */
-.workbench-drawer:popover-open::backdrop {
-  background: color-mix(in srgb, var(--ink) 26%, transparent);
-  -webkit-backdrop-filter: blur(2px);
-  backdrop-filter: blur(2px);
-}
-.glass-workspace[data-drawer-open="true"] .workbench-main,
-.glass-workspace[data-drawer-open="true"] .workbench-content {
-  overflow: hidden;
-}
 /* A disabled control must look disabled, especially in the forced-password
    state where the mode switch is intentionally unreachable. */
 .glass-mode-switch button:disabled {
@@ -1196,15 +1154,4 @@ html[data-motion="off"] .glass-workspace :is(.workspace-scene, .workspace-subord
 }
 .glass-workspace[data-exploration="true"] .workbench-footer {
   display: none;
-}
-.glass-workspace[data-exploration="true"] .workbench-drawer::backdrop {
-  background: transparent;
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
-}
-@media (prefers-reduced-transparency: reduce), print {
-  .glass-workspace[data-exploration="true"] .workbench-drawer::backdrop {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
 }

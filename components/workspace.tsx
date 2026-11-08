@@ -185,7 +185,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
   const logoutDialog = useRef<HTMLDialogElement>(null);
   const accountTrigger = useRef<HTMLButtonElement>(null);
   const accountMenu = useRef<HTMLDivElement>(null);
-  const drawerClose = useRef<HTMLButtonElement>(null);
+  const toolsTrigger = useRef<HTMLButtonElement>(null);
   const draftGuardDialog = useRef<HTMLDialogElement>(null);
   /** The control that opened the draft confirmation, so cancelling returns there. */
   const draftGuardTrigger = useRef<HTMLElement | null>(null);
@@ -851,19 +851,14 @@ export function Workspace({ initialConversation = false }: { initialConversation
       )
       ?.focus({ preventScroll: true });
   }
-  /** Open the tool drawer, with focus on the close button or the data source. */
-  function openTools(focus: "close" | "dataset" = "close") {
-    const drawer = sidebar.current;
-    if (!drawer) return;
-    const target =
-      focus === "dataset"
-        ? drawer.querySelector<HTMLElement>('select[aria-label="选择当前数据源"]')
-        : drawerClose.current;
-    if (!drawer.matches(":popover-open")) drawer.showPopover();
-    setSidebarOpen(true);
-    // The drawer is always mounted, so its `autoFocus` only ever fired on the
-    // first page render. Focus the requested control once it is displayed.
-    requestAnimationFrame(() => target?.focus({ preventScroll: true }));
+  /** Alternate entry points open the same dropdown and focus its first control. */
+  function openTools() {
+    const menu = sidebar.current;
+    if (!menu) return;
+    if (!menu.matches(":popover-open")) menu.showPopover();
+    requestAnimationFrame(() =>
+      menu.querySelector<HTMLElement>('select, button:not([disabled])')?.focus({ preventScroll: true }),
+    );
   }
   function accountMenuItems() {
     const menu = accountMenu.current;
@@ -1665,7 +1660,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
       data-exploration={view === "overview" || undefined}
       data-navigation-motion={transition ? "" : undefined}
       data-transition={transition ?? undefined}
-      data-drawer-open={sidebarOpen || undefined}
     >
       <a className="skip-link" href="#main-content">
         跳到主要内容
@@ -1697,11 +1691,14 @@ export function Workspace({ initialConversation = false }: { initialConversation
             aria-label={sidebarOpen ? "收起工具" : "打开工具"}
             aria-expanded={sidebarOpen}
             aria-controls="workspace-navigation"
+            aria-haspopup="dialog"
+            ref={toolsTrigger}
+            popoverTarget="workspace-navigation"
             onClick={() => {
-              const drawer = sidebar.current;
-              if (!drawer) return;
-              if (drawer.matches(":popover-open")) drawer.hidePopover();
-              else openTools("close");
+              if (sidebar.current?.matches(":popover-open")) return;
+              requestAnimationFrame(() =>
+                sidebar.current?.querySelector<HTMLElement>('select, button:not([disabled])')?.focus({ preventScroll: true }),
+              );
             }}
           >
             <Icon name="menu" size={18} />
@@ -1730,12 +1727,18 @@ export function Workspace({ initialConversation = false }: { initialConversation
           <div
             id="account-menu"
             ref={accountMenu}
-            className="account-menu"
+            className="account-menu workspace-header-popover"
             popover="auto"
             role="menu"
             aria-label="账号与偏好"
             onKeyDown={handleAccountMenuKey}
             onToggle={(event) => setAccountMenuOpen(event.newState === "open")}
+            onBlur={(event) => {
+              if (event.relatedTarget instanceof Node &&
+                  event.relatedTarget !== accountTrigger.current &&
+                  !event.currentTarget.contains(event.relatedTarget))
+                event.currentTarget.hidePopover();
+            }}
           >
             <div className="account-menu-head">
               <strong>{user.displayName || user.username}</strong>
@@ -1773,6 +1776,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
               <span>外观</span>
               <ThemeToggle />
             </div>
+            <div className="account-menu-motion"><MotionToggle /></div>
             <button
               type="button"
               role="menuitemcheckbox"
@@ -1810,24 +1814,21 @@ export function Workspace({ initialConversation = false }: { initialConversation
       <aside
         id="workspace-navigation"
         ref={sidebar}
-        className="workbench-drawer"
+        className="workspace-tools-menu workspace-header-popover"
         popover="auto"
         onToggle={(event) => setSidebarOpen(event.newState === "open")}
+        role="dialog"
         onKeyDown={(event) => {
-          if (event.key !== "Tab") return;
-          const focusables = sidebar.current?.querySelectorAll<HTMLElement>(
-            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-          );
-          if (!focusables?.length) return;
-          const first = focusables[0];
-          const last = focusables[focusables.length - 1];
-          if (event.shiftKey && document.activeElement === first) {
-            event.preventDefault();
-            last.focus();
-          } else if (!event.shiftKey && document.activeElement === last) {
-            event.preventDefault();
-            first.focus();
-          }
+          if (event.key !== "Escape" || event.defaultPrevented) return;
+          event.preventDefault();
+          sidebar.current?.hidePopover();
+          toolsTrigger.current?.focus({ preventScroll: true });
+        }}
+        onBlur={(event) => {
+          if (event.relatedTarget instanceof Node &&
+              event.relatedTarget !== toolsTrigger.current &&
+              !event.currentTarget.contains(event.relatedTarget))
+            event.currentTarget.hidePopover();
         }}
         aria-label="工作台工具"
       >
@@ -1836,7 +1837,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
           <button
             type="button"
             className="icon-button"
-            ref={drawerClose}
             aria-label="关闭工具"
             popoverTarget="workspace-navigation"
             popoverTargetAction="hide"
@@ -1846,33 +1846,11 @@ export function Workspace({ initialConversation = false }: { initialConversation
         </div>
         {!passwordChangeRequired && (
           <div className="workspace-utilities">
-            <span className="drawer-label">当前数据</span>
+            <span className="drawer-label">数据源与口径</span>
             {sourcePicker}
             <DataSourceDetails profile={selectedProfile} />
           </div>
         )}
-        <div className="canvas-menu-settings">
-          <p>{user.displayName || user.username}</p>
-          <div className="canvas-menu-preferences">
-            <span>其它页面外观（浏览固定浅色）</span>
-            <ThemeToggle />
-          </div>
-          <MotionToggle />
-          <button type="button" className="text-button" onClick={() => navigate("account")}>
-            我的账号
-          </button>
-          {user.role === "admin" && !passwordChangeRequired && (
-            <button type="button" className="text-button" onClick={() => {
-              setAdminInitialTab(undefined);
-              navigate("admin");
-            }}>
-              系统管理与数据导入
-            </button>
-          )}
-          <button type="button" className="text-button" onClick={requestLogout}>
-            退出登录
-          </button>
-        </div>
         <div className="drawer-footnote">
           <Icon name="shield" size={14} />
           <span>学析台 · 学习数据分析</span>
@@ -1971,7 +1949,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
                       className="text-button"
                       aria-expanded={sidebarOpen}
                       aria-controls="workspace-navigation"
-                      onClick={() => openTools("dataset")}
+                      onClick={() => openTools()}
                     >
                       打开数据源工具
                     </button>
