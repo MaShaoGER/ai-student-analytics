@@ -35,7 +35,33 @@
   top: 0;
   height: 100%;
   margin: 0;
-  mix-blend-mode: multiply;
+  isolation: isolate;
+}
+.artwork::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* Barely-there radial wash that dies out before the box edge: no band,
+     no mask, and the grid is painted above it so it never greys the lines. */
+  background: radial-gradient(
+    closest-side at 60% 52%,
+    color-mix(in srgb, var(--accent) 7%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 4%, transparent) 45%,
+    color-mix(in srgb, var(--accent) 1.5%, transparent) 75%,
+    transparent 100%
+  );
+  z-index: -1;
+  pointer-events: none;
+}
+.artwork > :global(svg),
+.artwork > .edgeFade { position: absolute; inset: 0; width: 100%; height: 100%; }
+.artwork > :global(svg) { z-index: 0; }
+.artwork > .edgeFade { z-index: 1; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .artwork > .edgeFade { display: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .artwork::before { background: transparent; }
 }
 .heroScope {
   position: absolute;

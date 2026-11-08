@@ -478,12 +478,7 @@ export function HomeShowcase({ courses, term, totalCourses, onPick }: {
           <figure className={styles.artwork} aria-hidden="true">
             {/* Pure decoration, never a live metric encoding. */}
             <HomeNeuralArtwork animated={enabled && !reduced} />
-            {/* The grid stays sharp at its core; only its edges frost over so the
-                copy and figure separate without an opaque divider. */}
-            <div
-              className="edge-fade"
-              style={{ ["--edge-fade-blur" as string]: "5px", ["--edge-fade-size" as string]: "58%" }}
-            />
+            <div className={`edge-fade ${styles.edgeFade}`} />
           </figure>
           <div className={styles.heroScope}><strong>{totalCourses.toLocaleString("zh-CN")}</strong><span>门课程<br />值得走近的学习切面</span></div>
           <div className={styles.heroFooter}><span>从数字的表面，向里看。</span><span>{term} / 课程 · 过程 · 关联</span></div>

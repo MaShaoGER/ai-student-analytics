@@ -195,27 +195,21 @@ table caption {
 .tabular {
   font-variant-numeric: tabular-nums;
 }
-/* Optical edge fade for decorative overlays: a pointer-transparent layer that
-   blurs only the canvas beneath it, never the readable content itself. Put it
-   inside a positioned container; the centre stays sharp. */
-.edge-fade {
-  position: absolute;
-  inset: var(--edge-fade-inset, 0);
-  z-index: var(--edge-fade-layer, 1);
-  pointer-events: none;
-  border-radius: inherit;
-  -webkit-backdrop-filter: blur(var(--edge-fade-blur, 4px));
-  backdrop-filter: blur(var(--edge-fade-blur, 4px));
-  -webkit-mask-image: radial-gradient(
-    ellipse at center,
-    transparent var(--edge-fade-size, 60%),
-    #000 105%
-  );
-  mask-image: radial-gradient(
-    ellipse at center,
-    transparent var(--edge-fade-size, 60%),
-    #000 105%
-  );
+/* Optical Gaussian feather for decorative overlays. Multi-stop alpha levels
+   soften the mask ramp; the browser keeps applying a real backdrop Gaussian
+   blur underneath it. The clear centre protects foreground detail. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .edge-fade {
+    position: absolute;
+    inset: var(--edge-fade-inset, 0);
+    z-index: var(--edge-fade-layer, 1);
+    border-radius: inherit;
+    pointer-events: none;
+    -webkit-backdrop-filter: blur(var(--edge-fade-blur));
+    backdrop-filter: blur(var(--edge-fade-blur));
+    -webkit-mask-image: var(--edge-fade-mask);
+    mask-image: var(--edge-fade-mask);
+  }
 }
 @media (prefers-reduced-transparency: reduce) {
   .edge-fade {

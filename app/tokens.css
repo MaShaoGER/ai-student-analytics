@@ -143,8 +143,20 @@
   --transition-focus: 200ms ease-out;
   --focus-ring: 2px solid var(--accent);
   --focus-glow: 0 0 0 3px var(--accent-transparent);
-  --edge-fade-blur: 4px;
+  --edge-fade-blur: 6px;
   --edge-fade-size: 60%;
+  /* One feather curve for every peripheral backdrop blur: alpha follows a
+     smoothstep-like ramp so the blur's reach fades without a visible ring. */
+  --edge-fade-mask: radial-gradient(
+    ellipse at center,
+    transparent calc(var(--edge-fade-size) - 4%),
+    rgb(0 0 0 / 4%) calc(var(--edge-fade-size) + 4%),
+    rgb(0 0 0 / 16%) calc(var(--edge-fade-size) + 12%),
+    rgb(0 0 0 / 40%) calc(var(--edge-fade-size) + 20%),
+    rgb(0 0 0 / 68%) calc(var(--edge-fade-size) + 28%),
+    rgb(0 0 0 / 90%) calc(var(--edge-fade-size) + 36%),
+    #000 calc(var(--edge-fade-size) + 44%)
+  );
 
   color-scheme: light;
   font-family: var(--font-sans);
