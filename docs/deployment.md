@@ -13,18 +13,17 @@
 
 - `main` 提交 `87aff75`（`fix: 统一顶栏菜单并保留数据说明阅读交互`）已推送。版本提交前通过 `pnpm typecheck`、完整 Vitest（828 通过、73 按既有开关跳过）、`pnpm audit --prod`；VPS Linux x64 Docker 默认 Turbopack 生产构建及 postbuild 通过。VPS Webpack 尝试受内存限制被 SIGKILL，未用于发布。
 - 公网入口仍为 [学析台测试预览](https://64.81.112.189:3443/)，自签名证书。当前镜像 `chuanzhi-student-analytics-test:menu-20261108-87aff75`，容器健康。首页、匿名 session、图标、首页引用的 16 个 CSS/JS 资源均返回 200；`/preview/*`、`/previews/*` 返回 404。
-- 部署沿用原 `chuanzhi-test_records` 卷、`/opt/chuanzhi-student-analytics-test/source/oulad_raw` 只读挂载及原 `runtime.env`；环境文件备份哈希一致。线上原有 3 个账号、管理员 1 个、审计文件大小 119,506 bytes；其他 VPS 容器部署前后保持运行。发布前卷归档与部署配置备份位于 `backups/release-20261108/`，旧镜像保留 `rollback-release-20261108` 标签。候选使用线上 records 副本并通过健康、静态资源和预览封锁检查；候选服务及副本卷已清理。
+- 部署沿用原 `chuanzhi-test_records` 卷、`/opt/chuanzhi-student-analytics-test/source/oulad_raw` 只读挂载及原 `runtime.env`；环境文件备份哈希一致。线上原有 3 个账号、管理员 1 个、审计文件大小 119,506 bytes；其他 VPS 容器部署前后保持运行。发布前卷归档与部署配置备份位于 `backups/release-20261108/`，旧镜像 `grade-import-20261020T123213` 保留在本机，回退配置见 `backups/release-20261108/deploy/compose.yml`（将 app 镜像恢复后执行 `docker compose up -d --no-deps app`）。候选使用线上 records 副本并通过健康、静态资源和预览封锁检查；候选服务及副本卷已清理。
 - **认证烟测未执行**：未取得可复用的应用账号凭据；线上 smoke 会创建／注销会话并追加审计，因此没有改动账号或在线上运行该脚本。候选匿名运行既有固定统计 smoke 因未登录返回 401，未产生审计写入。登录、Secure cookie、角色权限矩阵、统计金标准、Origin 防护和审计归属均不据此宣称已验收；真实外部 AI 未调用。公网匿名验收不等于完整业务验收。
-- 发布后冒烟摘要：`/opt/chuanzhi-student-analytics-test/releases/release-20261108/candidate-smoke.txt`。本地原 3000 开发服务保留；设计预览、参考素材等既有未跟踪文件未纳入提交。
-## 当前 VPS 测试预览（2026-10-20）
+## 历史 VPS 部署（2026-10-20）
 
-入口：[学析台测试预览](https://64.81.112.189:3443/)，仍使用已有应用账号与自签名测试证书。当前镜像为 `chuanzhi-student-analytics-test:grade-import-20261020T123213`，应用源码提交为 `c9805c7`。本次将成绩导入分支快进合并到 `main`；构建时修复了管理页 CSS Module 的纯选择器错误。
+- 历史镜像为 `chuanzhi-student-analytics-test:grade-import-20261020T123213`，源码提交为 `c9805c7`。本次将成绩导入分支快进合并到 `main`；构建时修复了管理页 CSS Module 的纯选择器错误。
 
 发布前通过 652 项单元/路由测试、37 项隔离 HTTP 测试、类型检查、本地与 VPS Linux x64 Webpack 生产构建。VPS 隔离候选使用线上 records 副本，通过 69 项 smoke 检查，1 项真实 AI 请求因可能产生费用而跳过；另在候选中验证了成绩上传、校验、发布、版本化聚合查询与容器重启后的版本恢复。公网切换后通过 51 项 smoke 检查，3 项分别因真实 AI、线上无普通测试账号和不直接读取线上审计文件而跳过。
 
-服务器根目录 `/opt/chuanzhi-student-analytics-test` 下的发布前配置及 records 备份为 `backups/grade-import-20261020T123213`，旧镜像有 `rollback-grade-import-20261020T123213` 标签。保留原 records 卷和运行时密钥；发布后已核对旧分析记录逐字节前缀、其他业务容器 ID 与运行状态。候选容器及候选卷已清理。未在公网验证真实模型效果、手机真机或实际 PDF 保存；新成绩数据的候选副本重启验证不等于线上数据恢复演练。
+- 历史服务器根目录 `/opt/chuanzhi-student-analytics-test` 下，发布前配置及 records 备份为 `backups/grade-import-20261020T123213`，旧镜像当时有 `rollback-grade-import-20261020T123213` 标签。保留原 records 卷和运行时密钥；发布后已核对旧分析记录逐字节前缀、其他业务容器 ID 与运行状态。候选容器及候选卷已清理。未在公网验证真实模型效果、手机真机或实际 PDF 保存；新成绩数据的候选副本重启验证不等于线上数据恢复演练。
 
-## 当前 VPS 预览（2026-10-16）
+## 历史 VPS 部署（2026-10-16）
 
 入口：[学析台测试预览](https://64.81.112.189:3443/)，继续使用已有应用账号。当前镜像 `chuanzhi-student-analytics-test:lemon-20261016T192633` 包含浅深主题、扩展图表和八张模拟校园数据表；仍使用自签名测试证书，首次访问可能显示证书提示。
 
