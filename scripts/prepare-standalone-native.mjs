@@ -8,9 +8,8 @@
  * 1. Assets: copy `${DIST_DIR}/static` into the standalone tree at the same
  *    relative dist path (the standalone server.js reads static assets from
  *    its own dist directory, which is not always `.next`) and copy the
- *    runtime public assets (skipping the design-only public/previews/ subtree
- *    and the unreferenced legacy public/learning-folio.jpg; source files are
- *    never deleted). This runs on every platform, including Windows.
+ *    runtime public assets (skipping the design-only public/previews/ subtree;
+ *    source files are never deleted). This runs on every platform, including Windows.
  * 2. License: ship the complete upstream Rare UI license with standalone
  *    releases (including the Docker image). Client bundling can strip source
  *    comments, so the license file is copied verbatim.
@@ -33,7 +32,7 @@ const DIST_REL = relative(process.cwd(), resolve(process.cwd(), DIST_DIR));
 const STANDALONE_DIR = resolve(process.cwd(), DIST_DIR, "standalone");
 const PROJECT_PNPM_DIR = resolve(process.cwd(), "node_modules", ".pnpm");
 
-const PUBLIC_DESIGN_EXCLUDES = new Set(["previews", "learning-folio.jpg"]);
+const PUBLIC_DESIGN_EXCLUDES = new Set(["previews"]);
 
 function log(message) {
   console.log(`[prepare-standalone-native] ${message}`);
