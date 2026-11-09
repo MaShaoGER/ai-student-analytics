@@ -394,11 +394,15 @@
 .trailGap {
   justify-content: center;
   min-width: 24px;
-  padding-top: 17px;
+  padding-top: 3px;
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1;
+}
+.trail li + li.trailGap::before,
+.trail li.trailGap + li::before {
+  background: transparent;
 }
 .trailMark {
   position: relative;
