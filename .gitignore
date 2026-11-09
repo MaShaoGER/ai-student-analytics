@@ -44,3 +44,19 @@ oulad_raw/*.csv
 
 # Local visual QA / demo artifacts
 output/
+
+# Design explorations and visual reference archives (large binary assets)
+docs/design/art-suites/
+docs/design/art-suites-v2/
+docs/design/art-home-study/
+docs/design/home-style-study/
+docs/design/home-style-study-v2/
+docs/design/home-hero-previews-2026-11-07/
+docs/design/ai-summary-preview-2026-11-08*.html
+docs/design/ai-summary-preview-2026-11-08*.png
+
+# Local design source files and reference assets
+参考/
+
+# Development-only preview pages (not served in production)
+public/previews/

@@ -24,6 +24,7 @@ import {
   type ConceptDrawing,
 } from "@/lib/exploration/concepts";
 import { CONCEPT_METRICS } from "@/lib/analysis/concept-explorer";
+import { conceptSummary } from "@/lib/exploration/concept-summary";
 import type { DataSource, DatasetProfile } from "@/lib/analysis/types";
 import { useMotionPreferences } from "./ui/motion-preferences";
 import { CountUp, InkText, MaskRise } from "./ui/editorial-motion";
@@ -143,6 +144,7 @@ export function DataExplorer({
   const trailStrip = useRef<HTMLOListElement>(null);
   const returnFocus = useRef<HTMLElement | SVGElement | null>(null);
   const [transition, setTransition] = useState<MotionKind>("topic");
+  const [summaryEntryId, setSummaryEntryId] = useState<string | null>(null);
   const { enabled, reduced } = useMotionPreferences();
   const motion = enabled && !reduced;
   const pendingScroll = useRef<number | null>(null);
@@ -216,7 +218,7 @@ export function DataExplorer({
     pendingScroll.current = scroll;
     currentEntry.current = id;
     scrollPosition.current = scroll;
-    focusAfter.current = !initial;
+    setSummaryEntryId(initial && restored.scene !== "home" ? id : null);
     setTransition(initial ? "topic" : "return");
     setSheet(null);
     // A history move replaces the scene the pickers were opened from; a menu left over would offer the old topic.
@@ -327,6 +329,11 @@ export function DataExplorer({
       root.current?.querySelector<HTMLElement>("[data-scene-heading]")?.focus({ preventScroll: true });
     }
   }, [data, entryId]);
+  useEffect(() => {
+    if (!data || summaryEntryId !== entryId) return;
+    const timeout = window.setTimeout(() => setSummaryEntryId(null), 650);
+    return () => window.clearTimeout(timeout);
+  }, [summaryEntryId, entryId]);
 
   /**
    * The only writer of history and trail state. A new topic pushes one entry; another drawing of the
@@ -365,7 +372,9 @@ export function DataExplorer({
     currentEntry.current = id;
     scrollPosition.current = scroll;
     returnFocus.current = null;
-    setTransition(kind ?? (known ? "return" : "topic"));
+    const nextTransition = kind ?? (known ? "return" : "topic");
+    setTransition(nextTransition);
+    setSummaryEntryId(nextTransition === "topic" ? id : null);
     setSheet(null);
     setRadial(null);
     setEntryId(id);
@@ -535,6 +544,17 @@ export function DataExplorer({
         : `课程均分：${scoreReading?.reason ?? "这学期没有可用成绩记录"}`
     : null;
   const title = conceptTitle(valid);
+  const summaryMode = valid.scene === "course" ? "profile"
+    : valid.scene === "metric" && typeof plot === "object" && plot ? plot.kind === "courses" ? "rank"
+      : valid.relation === "subject" ? "rank"
+        : valid.relation === "trend" ? "trend"
+          : valid.relation === "dist" ? "distribution"
+            : ["band-score", "band-pass"].includes(valid.relation) ? "extremes"
+              : "parts"
+      : "profile";
+  const pageSummary = data && valid.scene !== "home" && typeof plot === "object" && plot
+    ? conceptSummary(valid.scene, title, summaryMode, plot.items.map(({ label, value, detail, note }) => ({ label, value, detail, note })))
+    : null;
   const href = conceptHref(valid, datasetId);
   /** Compact trail: real two-digit ordinals; past six entries only the home page and the neighbourhood stay visible. */
   const trailMarks = visible
@@ -800,7 +820,8 @@ export function DataExplorer({
           ) : !data ? (
             <p className={styles.state} role="status"><span className={styles.loader} aria-hidden />正在读取{valid.scene === "home" ? "课程目录" : `「${valid.course}」`}的聚合数据…</p>
           ) : (
-            <figure className={styles.figure} key={`figure:${entryId}:${valid.drawing}`} data-navigation-motion>
+            <>
+              <figure className={styles.figure} key={`figure:${entryId}:${valid.drawing}`} data-navigation-motion>
               {typeof plot === "string" || !plot
                 ? (
                   <div className={styles.state}>
@@ -813,7 +834,12 @@ export function DataExplorer({
                 : <ConceptChart data={plot} drawing={valid.drawing} label={`${title} · ${DRAWING_LABELS[valid.drawing]}`} />}
               <InkText as="figcaption" className={styles.caption} step={14} delay={120}
                 text={`${DRAWING_LABELS[valid.drawing]}${valid.scene === "course" ? " · 均分单位：分；其余指标：%" : ""} · 样本少于 3 人的组隐藏，缺失不补 0。`} />
-            </figure>
+              </figure>
+              {pageSummary && <section className={styles.aiSummary} aria-labelledby="ai-summary-title" key={entryId} data-navigation-motion={summaryEntryId === entryId ? "enter" : undefined}>
+                <div className={styles.aiSummaryHead}><span className={styles.aiSummaryMark} aria-hidden="true">✳</span><h2 id="ai-summary-title">AI 总结</h2><span className={styles.aiSummaryContext}>根据当前页聚合读数</span></div>
+                <p className={styles.summary}>{pageSummary}</p>
+              </section>}
+            </>
           )}
         </section>
 

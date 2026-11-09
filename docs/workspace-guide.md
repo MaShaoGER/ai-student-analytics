@@ -443,11 +443,20 @@ pnpm build
 - 用户要求移除按钮、链接、下拉、图表与其他非输入位置的紫色快速聚焦效果，只在可输入文字的控件上启用。共享 `app/tokens.css` 将 `:focus-visible` 轮廓和外扩阴影统一关闭，仅为文本类 input 与 textarea 恢复紫色提示；菜单、导航和输入坞容器不再叠加紫色焦点装饰。浏览数据和键盘操作本身未改。
 - 真实 Chrome / 3000 页面计算样式核验：数据浏览导航按钮和数据源 select 无轮廓、无阴影；textarea 保留紫色提示。概念图表图元键盘聚焦时使用中性墨色描边，不再有紫色填色；导入拖放区的 `:focus-within` 使用中性墨色轮廓与底色，鼠标悬停和拖入状态仍使用原有强调色。未提交、推送或部署；开发服务保留。
 
-### 2026-11-08：数据浏览预生成 AI 总结规划与静态预览
+### 2026-11-08：非首页数据主题页摘要接入
 
-- 仅规划和静态构图，不接入 AI、API、存储或正式 UI。概念浏览只有 home、course、metric 三类；16 种指标关系分 10 种课程内关系与 6 种全课程 subject 关系。包括画法在内共有 37 个画法入口，但同一主题画法复用相同聚合 payload，摘要不应按画法重复生成。证据：`lib/exploration/concepts.ts` 主题/关系表，`components/data-explorer-chart-data.ts` 单 payload 映射，`components/concept-chart.tsx` 同主题画法共用条目。
-- 覆盖应以真实 dataset + version + 已解析 term + topic 关系为键；drawing 不入键。term 必须显式纳入（home 的旧 topic key 固定为常量）；subject 关系可按数据源/版本/学期/指标去重，因为它们展示同一全课程集合。枚举来源应使用服务端实际课程×学期配对和数据源能力，而非猜 URL 组合或只依赖最多 100 门的首页目录。
-- 生成分两层：先为每个数据源/数据版本/学期取得聚合 payload，再以 payload 批量生成首页、课程与关系页段落，subject 每组只生成一份。内置源的全量聚合请求估算为 demo 76、OULAD 26；demo 去除 subject 重复后 820 条可见主题文案，OULAD 104 条。导入数据按最近学期优先、设置批量预算，远期不足额部分应明确标为未预生成而非在 GET 请求时临时调用模型。
-- 生产实现建议：纯函数归一化 scope/筛事实；批量任务重用 `/api/concept-explorer` 的聚合计算及当前结构化 AI 预算、事实引用与答案质量校验；文件级原子批量存储；只读 GET 每次复核 view 权限并返回缓存，绝不在 GET 调模型或写文件。数据版本、数据文件签名、提示词/模式版本与 `MIN_SAMPLE=3`、目录上限等口径策略变化都应使摘要失效。只使用聚合事实，绝不写入学生级明细；unsupported、缺失及 `<3` 抑制沿用固定政策文案，不从 null 推断为 0。详细边界已由只读代码切片核对：能力缺失、空明细、学期/课程不存在、截断范围、混合单位与选课人次口径都需单独守住。
-- 视觉预览采用真实 2025J 数据结构课程页：摘要位于右栏图注下方的页面流内，使用“AI 读法 / 示意 · 未接入模型”短标签与两行正文，不做卡片/抽屉；实测 1440×1040 下主图 `x=549.3, y=145.6, w=826.7` 未因摘要改变。预览 PNG 为浏览器登录后的真实渲染叠加，1800×1300；示意明确来自 `demo` 合成数据且未接模型。
-- 本次用户新需求：没有授权开始正式摘要功能实施；不调用真实外部 AI、不提交／推送／部署。
+- 数据浏览非首页主题页在图表图注下方显示一段确定性读数摘要；不接入 AI、API 或存储，也不增加请求。文案直接来自当前页面的 chart items：最多列 3 项，其余提示见图表；隐藏组、无记录和缺失项不写入数值，也不推断为 0。摘要仅陈述数值，不跨单位比较、推断因果或将不同分母的指标排序。
+- 手机端保持页面单列内容顺序，摘要自然接在图注后、分页前；无横向溢出。静态页面构图参考为 `docs/design/ai-summary-preview-2026-11-08-in-page.png`，它是静态重绘，不是真实登录页截图。
+- 该实现是从已加载聚合数据得到的事实摘录，不是模型生成的自然语言洞察，也不是持久化的离线预生成文本。未调用外部模型；没有请求/API/存储改动。Vitest 全套 835 通过、73 项既有跳过，TypeScript 检查通过；390px 浏览器实测摘要显示、首页无摘要、页面宽度无横向溢出，修复后新加载页面未出现 pageerror。未提交、推送或部署。
+- 后续调整明确显示“AI 总结”标题，并用 `aria-labelledby` 关联摘要区；正文段落不附无效的 `aria-label`。新主题到达时摘要短促淡入上移一次，同条目绘图变化/重试不重播，减少动态偏好下静止显示。关系摘要按图表语义挑选：趋势取首末点（边界缺失时不冒充起止），课程排序限定当前展示课程，成绩分布取人数最多区间；隐藏值依赖抑制标记过滤。定向逻辑和概念导航测试 19 项、TypeScript 检查通过；桌面实际渲染见浏览器，390px 下无横向溢出且 reduced-motion 计算动画为 none。
+
+### 2026-11-08：边缘模糊 bug 修复与渲染层清理
+
+- 用户报告课程详情页顶部和底部出现不自然的模糊消失效果。
+- **底部 96px 景深带**（`data-explorer.module.css` 的 `.root::after`，`position: fixed; height: 96px; z-index: 20; backdrop-filter: blur(6px)` + 线性渐变遮罩）已删除。该层直接压在 `.poster` pager 上方，把"← 上一页 / 下一页 →"文字和分页器糊掉；底部浮动入口自身已有玻璃表面，无需额外景深层。旧文档"底部操作区后方增加 96px 景深带"的描述现已作废。
+- **顶部导航 `::before` 溢出**：`glass-workspace.css` 的 `.workbench-header.glass-topbar::before` 原先 `inset: 0 0 -40px`，模糊盒向内容区溢出 40px；已收回到 `inset: 0`，模糊仅在顶栏盒内羽化。窄屏 `bottom: -24px` 覆盖一并移除。
+- **`periphery::after` 全屏模糊已删除**：该层 `z-index: 0` 只能采样到 `.root` 纯色背景，模糊纯色无视觉产出，同时是常驻全视口 `backdrop-filter`。`fogPulse` 动画引用一并清除。`periphery::before` 竖线纹理保留。
+- **导航过渡 transform 导致 `fixed` 入口错位**：`glass-workspace.css` 的 `primary-forward / primary-back / back` 过渡用了 `translateX`，过渡期间 `.root` 获得 transform，所有 `position: fixed` 后代（`.cornerLeft`/`.cornerRight`）的包含块从视口退化为 `.root`，按钮在过渡期间跳位。在 `data-exploration="true"` 模式下覆盖三条规则，改为只做 `opacity: 0.5 → 1`（`explore-enter` keyframe），消除 transform。
+- **`cornerRight` 材质统一使用 token**：从 `rgba(255,255,255,0.82/0.4)` 字面量改为 `var(--glass-fill)` / `var(--glass-border)` / `var(--glass-blur)`，与其他悬浮层一致。
+- **矮屏（`max-height: 600px`）降级后去掉 blur**：两角入口 `position: static` 落入文档流后，`.cornerRight` 已补 `backdrop-filter: none; background: transparent; box-shadow: none; border-color: var(--line)`，与 `.cornerLeft` 对齐，不再对静态页脚行做毛玻璃。
+- 真实 Chrome 浏览器已验证顶部和底部边缘干净，分页器文字清晰可见，浮动按钮在导航切换时不再跳位（需在浏览器中实测导航过渡确认）。未提交、推送或部署。

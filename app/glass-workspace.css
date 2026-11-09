@@ -1053,21 +1053,16 @@ html[data-motion="off"] .glass-workspace :is(.workspace-scene, .workspace-subord
 .glass-workspace[data-exploration="true"] .workbench-header.glass-topbar::before {
   content: "";
   position: absolute;
-  inset: 0 0 -40px;
+  inset: 0;
   z-index: -1;
   pointer-events: none;
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
-  -webkit-mask-image: linear-gradient(#000 0%, #000 38%, transparent 100%);
-  mask-image: linear-gradient(#000 0%, #000 38%, transparent 100%);
+  -webkit-mask-image: linear-gradient(#000 0%, #000 78%, transparent 100%);
+  mask-image: linear-gradient(#000 0%, #000 78%, transparent 100%);
 }
 .glass-workspace[data-exploration="true"]:has(:focus-visible) .workbench-header::before {
   display: none;
-}
-@media (max-width: 760px) {
-  .glass-workspace[data-exploration="true"] .workbench-header.glass-topbar::before {
-    bottom: -24px;
-  }
 }
 @media (prefers-reduced-transparency: reduce) {
   .glass-workspace[data-exploration="true"] .workbench-header.glass-topbar::before {
@@ -1143,4 +1138,25 @@ html[data-motion="off"] .glass-workspace :is(.workspace-scene, .workspace-subord
 }
 .glass-workspace[data-exploration="true"] .workbench-footer {
   display: none;
+}
+
+/* Exploration (data-explorer) mode: the root element carries fixed children (corner
+   buttons, AI entry). Any transform on an ancestor creates a new containing block and
+   breaks position:fixed — the fixed descendants move with the animated element instead
+   of staying at their viewport coordinates. Override the primary / back transitions to
+   opacity-only so fixed elements never lose their containing block during navigation. */
+.glass-workspace[data-exploration="true"][data-navigation-motion][data-transition="primary-forward"]
+  .workspace-primary-scene > :not([data-workspace-part="layout"]) {
+  animation: explore-enter 340ms cubic-bezier(0.32, 0, 0.2, 1);
+}
+.glass-workspace[data-exploration="true"][data-navigation-motion][data-transition="primary-back"]
+  .workspace-primary-scene > :not([data-workspace-part="layout"]) {
+  animation: explore-enter 340ms cubic-bezier(0.32, 0, 0.2, 1);
+}
+.glass-workspace[data-exploration="true"][data-navigation-motion][data-transition="back"]
+  .workspace-primary-scene > :not([data-workspace-part="layout"]) {
+  animation: explore-enter 280ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes explore-enter {
+  from { opacity: 0.5; }
 }

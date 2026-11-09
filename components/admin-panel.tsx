@@ -103,16 +103,13 @@ function AnimatedCost({ value }: { value?: string }) {
 export function AdminPanel({
   user,
   onSessionExpired,
-  initialTab,
+  tabRequest,
 }: {
   user: SessionUser;
   onSessionExpired: () => void;
-  /** Optional landing section, e.g. "ai" from the chat "去设置" shortcut. */
-  initialTab?: AdminTab;
+  tabRequest: { tab: AdminTab; sequence: number };
 }) {
-  const [tab, setTab] = useState<AdminTab>(
-    () => initialTab ?? (user.role === "admin" ? "overview" : "account"),
-  );
+  const [tab, setTab] = useState<AdminTab>(() => tabRequest.tab);
   const [config, setConfig] = useState<AIConfig | null>(null);
   const [draft, setDraft] = useState<ConfigDraft | null>(null);
   const [stats, setStats] = useState<AICostStats | null>(null);
@@ -131,11 +128,10 @@ export function AdminPanel({
     sessionExpired.current = onSessionExpired;
   }, [onSessionExpired]);
 
-  // Honour a changed landing section (e.g. a second "去设置" press) without
-  // overriding later in-page tab choices.
+  // Repeated menu selections apply without overriding later in-page tab choices.
   useEffect(() => {
-    if (initialTab) setTab(initialTab);
-  }, [initialTab]);
+    setTab(tabRequest.tab);
+  }, [tabRequest.tab, tabRequest.sequence]);
 
   // Layout setup runs before passive child fetches. This closes the Strict Mode
   // replay window where AdminManagement could observe the parent's cleanup flag.

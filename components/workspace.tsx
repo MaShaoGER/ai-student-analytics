@@ -178,7 +178,10 @@ export function Workspace({ initialConversation = false }: { initialConversation
   const [primary, setPrimary] = useState<Primary>("explore");
   const [transition, setTransition] = useState<ViewTransition | null>(null);
   const transitionTimer = useRef<number | null>(null);
-  const [adminInitialTab, setAdminInitialTab] = useState<"overview" | "ai" | undefined>(undefined);
+  const [adminTabRequest, setAdminTabRequest] = useState<{
+    tab: "overview" | "ai" | "account";
+    sequence: number;
+  }>({ tab: "overview", sequence: 0 });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebar = useRef<HTMLElement>(null);
   const pageHeading = useRef<HTMLHeadingElement>(null);
@@ -1751,7 +1754,15 @@ export function Workspace({ initialConversation = false }: { initialConversation
               role="menuitem"
               onClick={() => {
                 accountMenu.current?.hidePopover();
-                navigate("account");
+                if (user.role === "admin" && !passwordChangeRequired) {
+                  setAdminTabRequest((current) => ({
+                    tab: "account",
+                    sequence: current.sequence + 1,
+                  }));
+                  navigate("admin");
+                } else {
+                  navigate("account");
+                }
               }}
             >
               <Icon name="users" size={16} />
@@ -1763,7 +1774,10 @@ export function Workspace({ initialConversation = false }: { initialConversation
                 role="menuitem"
                 onClick={() => {
                   accountMenu.current?.hidePopover();
-                  setAdminInitialTab(undefined);
+                  setAdminTabRequest((current) => ({
+                    tab: "overview",
+                    sequence: current.sequence + 1,
+                  }));
                   navigate("admin");
                 }}
               >
@@ -2030,7 +2044,10 @@ export function Workspace({ initialConversation = false }: { initialConversation
                   onConfigure={
                     user.role === "admin"
                       ? () => {
-                          setAdminInitialTab("ai");
+                          setAdminTabRequest((current) => ({
+                            tab: "ai",
+                            sequence: current.sequence + 1,
+                          }));
                           navigate("admin");
                         }
                       : undefined
@@ -2065,7 +2082,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
                 {view === "admin" && user.role === "admin" && (
                   <AdminPanel
                     user={user}
-                    initialTab={adminInitialTab}
+                    tabRequest={adminTabRequest}
                     onSessionExpired={() => expire("登录已过期，请重新登录。")}
                   />
                 )}
