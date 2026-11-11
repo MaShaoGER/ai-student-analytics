@@ -784,15 +784,35 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   padding-top: 4px;
 }
 .empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(100%, 860px);
+  margin: 0 auto;
   padding: 8px 0 32px;
   border: 0;
+  text-align: center;
+}
+.welcomeMark {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 12px;
+  color: var(--accent-ink);
+}
+.welcomeEyebrow {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
 }
 .empty h2 {
-  font-size: clamp(26px, 2.8vw, 32px);
+  font-size: 32px;
   font-weight: 600;
   line-height: 1.3;
   letter-spacing: -0.02em;
-  margin: 12px 0;
+  margin: 12px 0 8px;
 }
 .empty h2 em {
   font-style: normal;
@@ -954,11 +974,15 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   display: none;
 }
 @media (max-width: 600px) {
-  .readingArea::after { height: 20px; }
+  .readingArea::after {
+    height: 20px;
+  }
 }
 @media (prefers-reduced-transparency: reduce), print {
   .readingArea::after,
-  .composerFade { display: none; }
+  .composerFade {
+    display: none;
+  }
 }
 .readingArea > .transcript {
   height: 100%;
@@ -1503,6 +1527,9 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 /* 320-wide screens have ~50px less reading height: drop the decorative mark and
    the suggestion caption so all three questions still clear the input card. */
 @media (max-width: 380px) {
+  :global(.glass-workspace) .welcomeMark {
+    display: none;
+  }
   :global(.glass-workspace) .suggestionHeading {
     display: none;
   }
@@ -1517,7 +1544,6 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
     padding-bottom: 6px;
   }
 }
-
 
 /* A single right-anchored surface morphs into the compact input handle. */
 :global(.glass-workspace) .composerDock[data-collapsed] {
@@ -1628,7 +1654,9 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   :global(.glass-workspace) .composerFields[hidden] {
     display: none;
   }
-  .composerHeading, .contextRow, .fieldError {
+  .composerHeading,
+  .contextRow,
+  .fieldError {
     grid-column: 1 / -1;
   }
   :global(.glass-workspace) .composer textarea {
@@ -1641,6 +1669,10 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
     justify-content: flex-end;
     gap: 2px;
   }
-  .shortcut { display: none; }
-  .composerFade { display: none; }
+  .shortcut {
+    display: none;
+  }
+  .composerFade {
+    display: none;
+  }
 }

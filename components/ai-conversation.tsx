@@ -274,6 +274,41 @@ export function ConversationWorkspace({
   const [historyCollapsed, setHistoryCollapsed] = useState(true);
   const wasCollapsed = useRef(false);
   const stopRequested = useRef(false);
+  const [animatedResponseId, setAnimatedResponseId] = useState<string | null>(null);
+  const wasLoading = useRef(false);
+  const responseBaseline = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (loading) {
+      if (!wasLoading.current) {
+        responseBaseline.current =
+          [...messages].reverse().find((message) => message.role === "assistant")?.id ?? null;
+      }
+      wasLoading.current = true;
+      return;
+    }
+    if (!wasLoading.current) return;
+    wasLoading.current = false;
+    const response = [...messages]
+      .reverse()
+      .find(
+        (message) =>
+          message.role === "assistant" &&
+          message.response &&
+          !message.restored &&
+          message.id !== responseBaseline.current,
+      );
+    responseBaseline.current = null;
+    setAnimatedResponseId(response?.id ?? null);
+  }, [loading, messages]);
+
+  useEffect(() => {
+    setAnimatedResponseId(null);
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (!motionEnabled || reducedMotion) setAnimatedResponseId(null);
+  }, [motionEnabled, reducedMotion]);
 
   const foldComposer = (collapsed: boolean) => {
     foldFrom.current = composer.current?.getBoundingClientRect() ?? null;
@@ -449,7 +484,13 @@ export function ConversationWorkspace({
                 data-enter="rise-sm"
                 style={{ "--enter-delay": "400ms" } as CSSProperties}
               >
-                <h2>从你关心的问题开始</h2>
+                <div className={styles.welcomeMark} aria-hidden="true">
+                  <Icon name="sparkles" size={24} />
+                </div>
+                <span className={styles.welcomeEyebrow} aria-hidden="true">
+                  LEARNING ANALYSIS ASSISTANT
+                </span>
+                <h2>今天想看清什么？</h2>
                 <p>
                   {aiAllowed
                     ? aiReady
@@ -530,12 +571,12 @@ export function ConversationWorkspace({
                   className={styles.message}
                   data-role={message.role}
                   data-system={message.system ? "true" : undefined}
-                  data-enter="rise-sm"
-                  style={
-                    {
-                      "--enter-delay": index === messages.length - 1 ? "70ms" : "0ms",
-                    } as CSSProperties
+                  data-enter={
+                    message.id === animatedResponseId && response && !reducedMotion
+                      ? "rise-sm"
+                      : undefined
                   }
+                  style={{ "--enter-delay": "70ms", "--enter-dur": "340ms" } as CSSProperties}
                 >
                   <Speaker role={message.role} />
                   {message.role === "assistant" ? (
@@ -582,7 +623,21 @@ export function ConversationWorkspace({
                       const expanded = expandedChartId === attachmentId;
                       const chartId = `conversation-chart-${attachmentId}`;
                       return (
-                        <div key={attachmentId} className={styles.chartAttachment}>
+                        <div
+                          key={attachmentId}
+                          className={styles.chartAttachment}
+                          data-enter={
+                            message.id === animatedResponseId && !reducedMotion
+                              ? "rise-sm"
+                              : undefined
+                          }
+                          style={
+                            {
+                              "--enter-delay": `${120 + artifactIndex * 70}ms`,
+                              "--enter-dur": "340ms",
+                            } as CSSProperties
+                          }
+                        >
                           <button
                             type="button"
                             className={styles.chartToggle}
@@ -618,8 +673,10 @@ export function ConversationWorkspace({
                     <div
                       className={styles.suggestions}
                       aria-label="继续探索"
-                      data-enter="fade"
-                      style={{ "--enter-delay": "240ms" } as CSSProperties}
+                      data-enter={
+                        message.id === animatedResponseId && !reducedMotion ? "fade" : undefined
+                      }
+                      style={{ "--enter-delay": "240ms", "--enter-dur": "220ms" } as CSSProperties}
                     >
                       {response.suggestions.map((suggestion) => (
                         <button

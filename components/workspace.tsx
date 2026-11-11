@@ -284,6 +284,13 @@ export function Workspace({ initialConversation = false }: { initialConversation
     );
   }, []);
 
+  function invalidateConversationHistory() {
+    historyGeneration.current++;
+    historySelectionPending.current = false;
+    setHistorySelecting(false);
+    setHistoryLoading(false);
+  }
+
   const expire = useCallback((notice: string | null = null) => {
     explorationLocation.current = "/?workspace=overview";
     explorationState.current = null;
@@ -313,9 +320,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
     conversationRef.current = null;
     setConversation(null);
     pendingTurn.current = null;
-    historyGeneration.current++;
-    historySelectionPending.current = false;
-    setHistorySelecting(false);
+    invalidateConversationHistory();
     setChatMessages([]);
     setPendingQuestion("");
     setPendingSteps([]);
@@ -366,9 +371,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
       conversationRef.current = null;
       setConversation(null);
       pendingTurn.current = null;
-      historyGeneration.current++;
-      historySelectionPending.current = false;
-      setHistorySelecting(false);
+      invalidateConversationHistory();
       setChatMessages([]);
       setPendingQuestion("");
       setPendingSteps([]);
@@ -735,7 +738,8 @@ export function Workspace({ initialConversation = false }: { initialConversation
     askPending.current = null;
     generation.current++;
     conversationEpoch.current++;
-    const current = ++historyGeneration.current;
+    invalidateConversationHistory();
+    const current = historyGeneration.current;
     const scope = userScope.current;
     historySelectionPending.current = true;
     setHistorySelecting(true);
@@ -782,9 +786,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
     askPending.current = null;
     generation.current++;
     conversationEpoch.current++;
-    historyGeneration.current++;
-    historySelectionPending.current = false;
-    setHistorySelecting(false);
+    invalidateConversationHistory();
     conversationRef.current = null;
     setConversation(null);
     pendingTurn.current = null;
@@ -941,9 +943,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
           conversationRef.current = null;
           setConversation(null);
           pendingTurn.current = null;
-          historyGeneration.current++;
-          historySelectionPending.current = false;
-          setHistorySelecting(false);
+          invalidateConversationHistory();
           setChatMessages([]);
           setPendingQuestion("");
           setPendingSteps([]);
@@ -1042,9 +1042,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
     conversationRef.current = null;
     setConversation(null);
     pendingTurn.current = null;
-    historyGeneration.current++;
-    historySelectionPending.current = false;
-    setHistorySelecting(false);
+    invalidateConversationHistory();
     setChatMessages([]);
     setPendingSteps([]);
     setChatContext(null);
@@ -1190,9 +1188,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
       conversationRef.current = null;
       setConversation(null);
       pendingTurn.current = null;
-      historyGeneration.current++;
-      historySelectionPending.current = false;
-      setHistorySelecting(false);
+      invalidateConversationHistory();
       setChatMessages([]);
       setChatContext(null);
       setBrowseContext(null);

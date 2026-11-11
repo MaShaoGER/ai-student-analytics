@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>学析台 · 互动 AI 对话设计预览</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19V10M10 19V4M16 19v-7M22 19V7"/></svg>
+      学析台 <span class="prototype-tag">交互预览</span>
+    </div>
+    <nav class="top-center" aria-label="工作区">
+      <span class="mode"><svg class="icon" viewBox="0 0 24 24"><path d="M4 19V9M10 19V4M16 19v-6M22 19V7"/></svg>数据浏览</span>
+      <span class="mode active"><svg class="icon" viewBox="0 0 24 24"><path d="m12 3 1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7L12 3Z"/></svg>AI 对话</span>
+    </nav>
+    <div class="top-actions"><span class="dataset">模拟演示数据 · 无 API</span><div class="account"><span class="avatar">系</span><span class="account-name">系统管理员</span></div></div>
+  </header>
+
+  <main class="focus-shell">
+    <div id="generationProgress" class="generation-progress" aria-hidden="true"></div>
+    <button id="historyOpen" class="history-launch" type="button" aria-expanded="false" aria-controls="historyDrawer"><svg class="icon" viewBox="0 0 24 24"><path d="M5 5h14v14H5zM9 5v14"/></svg><span>历史对话</span></button>
+    <button id="replayButton" class="report-link" type="button" disabled><svg class="icon" viewBox="0 0 24 24"><path d="M5 8V3m0 0h5M5 3l3.5 3.5A7 7 0 1 1 5.1 14"/></svg><span>重播动画</span></button>
+
+    <div id="threadScroll" class="thread-scroll"><div id="thread" class="thread" aria-live="off"></div></div>
+    <span id="liveAnnouncement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></span>
+
+    <section id="emptyState" class="empty-state">
+      <div class="empty-inner">
+        <div class="empty-mark" aria-hidden="true"><svg viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="1.25"><path d="m22 3 4.1 14.9L41 22l-14.9 4.1L22 41l-4.1-14.9L3 22l14.9-4.1L22 3Z"/><path class="orbit orbit-a" d="M7 10h4v4H7zM34 31h4v4h-4z"/><path class="orbit orbit-b" d="M34 8h3v3h-3zM6 33h3v3H6z"/></svg></div>
+        <p class="empty-kicker">LEARNING ANALYSIS ASSISTANT</p>
+        <h1>今天想看清什么？</h1>
+        <p class="empty-copy">选一个学习分析问题，看看回答、证据与图表如何一起展开。</p>
+        <div class="starter-list">
+          <button class="starter" type="button" data-preset="course" style="--order:0"><span class="starter-type">课程成绩</span><strong>比较各课程平均成绩</strong><svg class="icon" viewBox="0 0 24 24"><path d="M5 19 19 5M8 5h11v11"/></svg></button>
+          <button class="starter" type="button" data-preset="term" style="--order:1"><span class="starter-type">学期变化</span><strong>各学期平均成绩如何</strong><svg class="icon" viewBox="0 0 24 24"><path d="M5 19 19 5M8 5h11v11"/></svg></button>
+          <button class="starter" type="button" data-preset="distribution" style="--order:2"><span class="starter-type">成绩分布</span><strong>各科成绩分布如何</strong><svg class="icon" viewBox="0 0 24 24"><path d="M5 19 19 5M8 5h11v11"/></svg></button>
+          <button class="starter" type="button" data-preset="attendance" style="--order:3"><span class="starter-type">出勤关联</span><strong>缺勤次数和成绩有关系吗</strong><svg class="icon" viewBox="0 0 24 24"><path d="M5 19 19 5M8 5h11v11"/></svg></button>
+        </div>
+        <div class="empty-note"><span>本地预设回答</span><span>群体统计演示</span><span>条形图可悬停查看、按分数重排</span></div>
+      </div>
+    </section>
+
+    <div class="privacy">仅分析群体统计 · 所有内容均为静态演示</div>
+    <form id="composer" class="composer">
+      <div class="scope"><span id="scopeText" class="scope-chip">限定：全部学期 · 全部课程 · 平均成绩</span><span>仅影响后续追问</span></div>
+      <div class="composer-main">
+        <textarea id="promptInput" rows="1" maxlength="500" placeholder="输入分析问题，或选择上方预设…" aria-label="输入分析问题"></textarea>
+        <div class="composer-foot"><span class="composer-note">Enter 发送 · Shift + Enter 换行 · <span id="charCount">0/500</span></span><button id="sendButton" class="send" type="submit" disabled aria-label="发送"><svg class="icon" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></div>
+      </div>
+    </form>
+  </main>
+  <button id="historyScrim" class="history-scrim" type="button" aria-label="关闭历史对话" aria-hidden="true" tabindex="-1"></button>
+  <aside id="historyDrawer" class="history-drawer" role="dialog" aria-modal="true" aria-labelledby="historyTitle" aria-hidden="true" inert>
+    <div class="drawer-head"><div><span class="meta">ARCHIVE</span><h2 id="historyTitle">历史对话</h2></div><button id="historyClose" class="icon-button" type="button" aria-label="关闭"><svg class="icon" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+    <button id="newChat" class="new-chat" type="button">＋ 新建对话</button>
+    <p class="retention">这里保存四个本地演示场景。切换历史不会发送网络请求。</p>
+    <div class="history-list">
+      <button class="history-item" type="button" data-history="course"><span class="history-index">01</span><span><strong>比较各课程平均成绩。</strong><small>课程成绩 · 条形图</small></span></button>
+      <button class="history-item" type="button" data-history="term"><span class="history-index">02</span><span><strong>各学期平均成绩如何？</strong><small>学期变化 · 折线图</small></span></button>
+      <button class="history-item" type="button" data-history="distribution"><span class="history-index">03</span><span><strong>各科成绩分布如何？</strong><small>成绩分布 · 直方图</small></span></button>
+      <button class="history-item" type="button" data-history="attendance"><span class="history-index">04</span><span><strong>缺勤次数和成绩有关系吗？</strong><small>出勤关联 · 分组比较</small></span></button>
+    </div>
+    <div class="history-foot">聚合分析 · 数字可追溯<br>静态交互设计预览</div>
+  </aside>
+  <div id="chartTooltip" class="chart-tooltip" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
