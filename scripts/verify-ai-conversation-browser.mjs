@@ -107,6 +107,36 @@ try {
   await browser("press", "Escape");
   await until(() => evaluate('!document.querySelector("#conversation-history-drawer[open]")'), "mobile history did not close");
   checks.push("移动历史抽屉打开及Escape关闭");
+
+  // Delay only the synthetic account's chat transport; never call a model.
+  await browser("set", "viewport", "320", "480");
+  await evaluate(`(() => {
+    const original = window.fetch.bind(window);
+    window.__releaseOriginalFetch = original;
+    window.fetch = (input, init) => {
+      const url = typeof input === "string" ? input : input.url;
+      if (String(url).includes("/api/chat")) {
+        return new Promise((resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(new DOMException("Cancelled", "AbortError")), {once:true});
+        });
+      }
+      return original(input, init);
+    };
+  })()`);
+  await browser("fill", "#analysis-question", "比较各课程平均成绩。");
+  await browser("click", "button[aria-label=发送]");
+  await until(() => evaluate('Array.from(document.querySelectorAll("button")).some(e=>e.textContent==="停止回复")'), "loading stop action missing");
+  const stopVisible = await evaluate(`(() => {
+    const button = Array.from(document.querySelectorAll("button")).find(e=>e.textContent==="停止回复");
+    const rect = button.getBoundingClientRect();
+    return rect.top >= 0 && rect.bottom <= innerHeight && rect.right <= innerWidth && button.scrollWidth <= button.clientWidth;
+  })()`);
+  assert.ok(stopVisible, "stop action clips or wraps outside short-phone viewport");
+  await browser("screenshot", join(output, "loading-320.png"));
+  await browser("find", "role", "button", "click", "--name", "停止回复", "--exact");
+  await until(() => evaluate('!Array.from(document.querySelectorAll("button")).some(e=>e.textContent==="停止回复")'), "stop action did not cancel");
+  await evaluate("window.fetch = window.__releaseOriginalFetch; delete window.__releaseOriginalFetch");
+  checks.push("320×480加载时停止回复完整可见且可实际取消（延迟合成请求，无模型调用）");
   const errors = await browser("errors");
   assert.ok(!errors.errors?.length, JSON.stringify(errors));
   const report = {passed:true, base, checks, limitations:["触屏为浏览器仿真，未做手机软键盘真机验收", "未调用真实外部AI模型"]};

@@ -1681,7 +1681,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
    send action stays visible without scrolling inside the input surface. */
 @media (max-width: 760px) and (max-height: 600px) {
   :global(.glass-workspace) .composerFields {
-    grid-template-columns: minmax(0, 1fr) 44px 44px;
+    grid-template-columns: minmax(0, 1fr) 44px minmax(44px, max-content);
     gap: 0 6px;
   }
   .composerHeading {
@@ -1706,5 +1706,8 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   .composerActions {
     grid-column: 3;
     grid-row: 2;
+  }
+  .composerActions .stop {
+    white-space: nowrap;
   }
 }
