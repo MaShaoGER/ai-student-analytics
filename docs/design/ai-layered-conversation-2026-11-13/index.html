@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN" data-navigation-motion="none">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>学析台 · 对话分层预览</title>
+<style>
+:root{--paper:#f5f5f2;--ink:#232329;--accent:#7666cc;--muted:#74747b;--line:color-mix(in srgb,var(--ink) 13%,transparent);--soft:color-mix(in srgb,var(--accent) 12%,var(--paper));font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--paper);font-variant-numeric:tabular-nums}
+*{box-sizing:border-box}body{margin:0}button,textarea{font:inherit;color:inherit}button{cursor:pointer;border:0;background:none}button:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}button:focus-visible,summary:focus-visible{outline:1px solid var(--ink);outline-offset:4px}button:disabled{cursor:default;opacity:.4}svg{display:block}.icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.45;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}[hidden]{display:none!important}
+.topbar{position:fixed;inset:0 0 auto;height:76px;z-index:30;display:flex;align-items:center;gap:30px;padding:0 4.25%;background:color-mix(in srgb,var(--paper) 94%,transparent);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}.brand{font-size:23px;letter-spacing:1px;font-weight:650;display:flex;align-items:center;gap:16px;white-space:nowrap}.brand svg{width:24px;height:26px}.navigation{margin-left:auto;display:flex;gap:12px;align-items:center;font-size:13px}.nav-item{display:flex;align-items:center;gap:8px;padding:14px 18px;white-space:nowrap;color:var(--muted)}.nav-item.active{color:var(--paper);background:var(--ink)}.topbar .report{display:flex;gap:7px;align-items:center;padding:12px;font-size:13px}.top-meta{font-size:11px;color:var(--muted);white-space:nowrap}.account{display:flex;align-items:center;gap:10px;font-size:13px;white-space:nowrap}.avatar{display:grid;place-items:center;width:32px;height:32px;background:var(--ink);color:var(--paper)}.divider{height:22px;width:1px;background:var(--line)}
+.conversation{position:fixed;inset:0;z-index:0;overflow:auto;scrollbar-width:thin;scroll-padding:108px 0 210px;overscroll-behavior:contain}.thread{width:min(1100px,calc(100% - 160px));margin:auto;padding:118px 0 230px}.question{display:flex;justify-content:flex-end;margin:0 0 34px}.question p{margin:0;background:var(--soft);padding:15px 20px;font-size:17px;line-height:1.6}.answer-meta{display:flex;align-items:center;gap:10px;font-size:13px;margin-bottom:17px}.answer-meta .icon{color:var(--accent)}.answer-meta strong{font-weight:600}.answer-meta small{font-size:11px;color:var(--muted)}.answer p{font-size:17px;line-height:1.95;margin:0 0 14px;max-width:1040px}.answer .secondary{font-size:14px;color:var(--muted);line-height:1.8;margin-bottom:25px}.chart{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:23px 0 18px;margin-top:25px}.chart-heading{display:flex;align-items:center;justify-content:space-between;gap:20px}.chart-heading h2{font-size:20px;font-weight:600;margin:0 0 7px}.chart-heading p{font-size:12px;color:var(--muted);margin:0;line-height:1.6}.chart-toggle{padding:10px 0 10px 15px;display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12px;white-space:nowrap}.chart-body{margin-top:24px}.plot{width:100%;height:auto;display:block;overflow:visible}.plot text{font-family:inherit;fill:var(--muted);font-size:12px}.plot .axis-title{fill:var(--ink);font-size:13px}.chart-caption{display:flex;justify-content:space-between;gap:16px;font-size:11px;color:var(--muted);margin-top:4px}.evidence{margin-top:22px;font-size:12px;color:var(--muted)}.evidence summary{cursor:pointer;width:fit-content;padding:5px 0}.evidence p{font-size:13px;line-height:1.8;margin-top:10px}.followup{margin-top:35px;padding-top:24px}.followup h3{font-size:15px;font-weight:500;margin:0 0 14px}.followup .suggestion{padding:11px 14px;border:1px solid var(--line);font-size:13px;margin:0 8px 8px 0}.endnote{font-size:11px!important;color:var(--muted);margin-top:25px!important}
+.history-launch{position:fixed;z-index:20;top:96px;left:24px;display:flex;align-items:center;gap:9px;height:40px;padding:0 12px;background:color-mix(in srgb,var(--paper) 90%,transparent);backdrop-filter:blur(12px);border:1px solid var(--line);font-size:12px}.history-launch[aria-expanded="true"]{background:var(--ink);color:var(--paper)}.history{position:fixed;z-index:21;left:24px;top:148px;width:288px;max-height:calc(100dvh - 172px);overflow:auto;padding:20px;background:color-mix(in srgb,var(--paper) 94%,transparent);backdrop-filter:blur(18px);box-shadow:0 10px 40px #23232912;border:1px solid var(--line)}.history-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;font-size:13px}.history-head button{padding:5px;color:var(--muted)}.new-chat{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--ink);color:var(--paper);font-size:12px}.new-chat:hover{background:var(--ink);opacity:.85}.history-note{font-size:11px;color:var(--muted);line-height:1.8;margin:17px 0}.history-entry{padding:15px 12px;display:block;width:100%;text-align:left;border-top:1px solid var(--line)}.history-entry.active{background:var(--soft);border-left:2px solid var(--accent);border-top-color:transparent}.history-entry strong{display:block;font-size:13px;font-weight:500;line-height:1.7}.history-entry small{display:block;font-size:11px;color:var(--muted);margin-top:8px}.history-foot{font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:18px;margin-top:18px}
+.composer{position:fixed;z-index:20;bottom:24px;left:50%;transform:translateX(-50%);width:min(920px,calc(100% - 96px));border:1px solid color-mix(in srgb,var(--ink) 22%,transparent);background:color-mix(in srgb,var(--paper) 94%,transparent);backdrop-filter:blur(18px);box-shadow:0 8px 32px #2323290c;padding:13px 18px 12px}.composer:focus-within{border-color:var(--accent)}.context{display:flex;align-items:center;gap:9px;font-size:11px;color:var(--muted)}.scope{color:var(--accent);display:flex;gap:7px;align-items:center}.scope .icon{width:14px;height:14px}.context .fold{margin-left:auto;padding:3px}.input-row{display:flex;align-items:flex-end;gap:16px;margin:12px 0 7px}.input-row textarea{width:100%;height:43px;min-height:43px;max-height:140px;resize:vertical;border:0;background:transparent;outline:0;line-height:1.7;font-size:15px;padding:0}.input-row textarea::placeholder{color:var(--muted)}.send{width:36px;height:36px;background:var(--ink);color:var(--paper);display:grid;place-items:center;flex-shrink:0}.send:hover{background:var(--ink);opacity:.85}.input-meta{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);gap:12px}.composer[data-collapsed="true"]{width:min(560px,calc(100% - 96px));padding:12px 16px}.composer[data-collapsed="true"] .input-row,.composer[data-collapsed="true"] .input-meta{display:none}.composer[data-collapsed="true"] .fold .icon{rotate:180deg}.toast{position:fixed;z-index:25;bottom:190px;left:50%;transform:translateX(-50%);padding:12px 18px;background:var(--ink);color:var(--paper);font-size:12px;max-width:calc(100% - 40px);line-height:1.7}
+dialog{border:1px solid var(--line);background:var(--paper);color:var(--ink);width:min(580px,calc(100% - 32px));padding:28px}dialog::backdrop{background:#23232945;backdrop-filter:blur(3px)}.report-head{display:flex;justify-content:space-between;align-items:center}.report-head h2{font-size:20px;margin:0}dialog p{font-size:14px;line-height:1.9}dialog small{color:var(--muted);line-height:1.8}
+@media(min-width:1700px){.thread{width:min(1160px,calc(100% - 220px))}}
+@media(max-width:1100px){.topbar{gap:18px;padding:0 24px}.navigation{gap:4px}.nav-item{padding:12px}.account .account-name,.divider,.top-meta{display:none}.thread{width:calc(100% - 112px)}.history-launch{left:16px;padding:0 10px}.history-label{display:none}.history{left:16px}.composer{width:calc(100% - 112px)}}
+@media(max-width:600px){.topbar{height:60px;padding:0 16px;gap:12px}.brand{font-size:18px;gap:8px}.brand svg{width:19px}.navigation{gap:0}.nav-item{font-size:11px;padding:9px 10px}.nav-item:not(.active),.account,.topbar .report{display:none}.thread{width:calc(100% - 40px);padding:127px 0 220px}.question{margin-bottom:26px}.question p{font-size:15px;padding:12px 15px}.answer p{font-size:15px;line-height:1.9}.answer-meta small{font-size:10px}.answer .secondary{font-size:12px}.chart-heading h2{font-size:17px}.chart-heading p{font-size:10px}.chart-toggle{font-size:11px}.chart-body{margin-top:20px}.chart-caption{font-size:10px}.chart-caption span:last-child{display:none}.history-launch{top:76px;left:20px;height:33px}.history-label{display:inline}.history{top:119px;left:20px;width:min(288px,calc(100% - 40px));max-height:calc(100dvh - 145px)}.composer{bottom:14px;width:calc(100% - 32px);padding:12px 13px 10px}.context{font-size:10px;gap:6px}.context-note{display:none}.input-row{margin-top:14px}.input-row textarea{font-size:14px;height:43px}.input-meta{font-size:9px}.input-meta .keyboard{display:none}.composer[data-collapsed="true"]{width:calc(100% - 32px)}.toast{bottom:180px;width:max-content}.followup .suggestion{font-size:12px}.answer p.endnote{font-size:10px!important}}
+</style>
+</head>
+<body>
+<svg aria-hidden="true" style="position:absolute;width:0;height:0"><defs>
+<symbol id="spark" viewBox="0 0 24 24"><path d="m12 3 2.1 6.9L21 12l-6.9 2.1L12 21l-2.1-6.9L3 12l6.9-2.1L12 3Z"/></symbol>
+<symbol id="bars" viewBox="0 0 24 24"><path d="M3 20h18M6 17V9m5 8V4m5 13v-6m5 6V7"/></symbol>
+<symbol id="history" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM9 5v14m4-9h4m-4 4h4"/></symbol>
+<symbol id="arrow" viewBox="0 0 24 24"><path d="M12 19V5m-6 6 6-6 6 6"/></symbol>
+<symbol id="chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+<symbol id="file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6m-6 4h6"/></symbol>
+</defs></svg>
+<header class="topbar">
+<div class="brand"><svg class="icon"><use href="#bars"/></svg>学析台</div>
+<nav class="navigation" aria-label="工作区"><span class="nav-item"><svg class="icon"><use href="#bars"/></svg>数据浏览</span><span class="nav-item active" aria-current="page"><svg class="icon"><use href="#spark"/></svg>AI 对话</span></nav>
+<span class="top-meta">布局预览 · 模拟数据</span>
+<button class="report" id="open-report"><svg class="icon"><use href="#file"/></svg>分析报告</button><span class="divider"></span>
+<div class="account"><span class="avatar">系</span><span class="account-name">系统管理员</span></div>
+</header>
+<main class="conversation" id="conversation" aria-label="对话内容">
+<div class="thread">
+<div class="question"><p>缺勤次数和成绩有关系吗？</p></div>
+<section class="answer" aria-label="学析台的回答">
+<div class="answer-meta"><svg class="icon"><use href="#spark"/></svg><strong>学析台</strong><small>2025J · 模拟校园数据</small></div>
+<p>按可见分档数据估算，缺勤课时与成绩的相关系数约为 <strong>−0.73</strong>，呈负向关联，不代表因果。</p>
+<p class="secondary">缺勤按课时统计，包含请假缺席和旷课。以下为布局演示，图中分箱与读数均为示例。</p>
+<section class="chart" aria-labelledby="chart-title">
+<div class="chart-heading"><div><h2 id="chart-title">缺勤与成绩的联合分布</h2><p>2025J · 全部课程 · 联合分档密度图</p></div><button class="chart-toggle" id="chart-toggle" aria-expanded="true" aria-controls="chart-body">收起图表<svg class="icon"><use href="#chevron"/></svg></button></div>
+<div class="chart-body" id="chart-body">
+<svg class="plot" viewBox="0 0 1080 350" role="img" aria-label="示意密度图：随着缺勤课时增多，成绩分布整体下移。分箱仅用于布局演示。">
+<text class="axis-title" x="54" y="16">成绩</text>
+<g id="grid"></g><g id="bins"></g>
+<path d="M72 38V292H1012" fill="none" stroke="#232329" stroke-opacity=".22"/>
+<text x="54" y="57" text-anchor="end">100</text><text x="54" y="116" text-anchor="end">80</text><text x="54" y="176" text-anchor="end">60</text><text x="54" y="236" text-anchor="end">40</text><text x="54" y="295" text-anchor="end">20</text>
+<text x="72" y="315" text-anchor="middle">0</text><text x="260" y="315" text-anchor="middle">10</text><text x="448" y="315" text-anchor="middle">20</text><text x="636" y="315" text-anchor="middle">30</text><text x="824" y="315" text-anchor="middle">40</text><text x="1012" y="315" text-anchor="middle">50</text><text class="axis-title" x="1012" y="342" text-anchor="end">缺勤课时</text>
+<g transform="translate(820 6)"><text x="0" y="10">频数</text><rect x="39" y="0" width="22" height="12" fill="#7666cc" opacity=".1"/><rect x="63" y="0" width="22" height="12" fill="#7666cc" opacity=".25"/><rect x="87" y="0" width="22" height="12" fill="#7666cc" opacity=".45"/><rect x="111" y="0" width="22" height="12" fill="#7666cc" opacity=".7"/><rect x="135" y="0" width="22" height="12" fill="#7666cc" opacity=".9"/><text x="165" y="10">高</text></g>
+</svg>
+<div class="chart-caption"><span>颜色越深，示例分箱中的记录越集中；空白不表示零。</span><span>示意分箱 · 非真实统计</span></div>
+</div>
+</section>
+<details class="evidence"><summary>分析依据与统计口径</summary><p>此预览沿用截图中的提问和示例结论，仅展示界面层级。图中分箱为合成示意，不连接数据源，不调用 AI。正式分析仍需保留分组抑制、统计口径和结论溯源。</p></details>
+<div class="followup"><h3>继续看看</h3><button class="suggestion" data-question="按课程分别比较这种关系">按课程分别比较</button><button class="suggestion" data-question="查看不同缺勤区间的平均成绩">查看各缺勤区间的平均成绩</button></div>
+<p class="endnote">布局交互预览 · 不发送问题、不写入历史 · 对话内容可完整滚动</p>
+</section>
+</div>
+</main>
+<button class="history-launch" id="history-toggle" aria-controls="history-panel" aria-expanded="false"><svg class="icon"><use href="#history"/></svg><span class="history-label">历史对话</span></button>
+<aside class="history" id="history-panel" aria-label="历史对话浮层" hidden>
+<div class="history-head"><span>历史对话</span><button id="history-close" aria-label="关闭历史对话"><svg class="icon"><use href="#close"/></svg></button></div>
+<button class="new-chat" id="new-chat"><svg class="icon"><use href="#plus"/></svg>新建对话</button>
+<p class="history-note">最后一条消息更新后保留 10 天。<br>浏览与切换图表不续期。</p>
+<button class="history-entry active" data-history="current"><strong>缺勤次数和成绩有关系吗？</strong><small>今天 15:29 · 模拟校园数据</small></button>
+<button class="history-entry" data-history="sample"><strong>比较各课程平均成绩。</strong><small>11/08 18:33 · 模拟校园数据</small></button>
+<div class="history-foot">布局示例 · 历史在上层展开，不挤压正文</div>
+</aside>
+<form class="composer" id="composer" data-collapsed="false">
+<div class="context"><span class="scope"><svg class="icon"><use href="#bars"/></svg>2025J · 全部课程 · 缺勤与成绩</span><span class="context-note">仅影响后续追问</span><button type="button" class="fold" id="fold" aria-label="收起输入框" aria-expanded="true"><svg class="icon"><use href="#chevron"/></svg></button></div>
+<div class="input-row"><textarea id="question" maxlength="500" rows="2" aria-label="输入分析问题" placeholder="继续追问这组数据…"></textarea><button class="send" id="send" aria-label="发送预览问题" disabled><svg class="icon"><use href="#arrow"/></svg></button></div>
+<div class="input-meta"><span>预览模式 · 不会发送至 AI</span><span><span id="count">0</span>/500 <span class="keyboard"> · Enter 发送，Shift + Enter 换行</span></span></div>
+</form>
+<div class="toast" id="toast" role="status" hidden></div>
+<dialog id="report"><div class="report-head"><h2>分析报告 · 预览</h2><button id="close-report" aria-label="关闭报告"><svg class="icon"><use href="#close"/></svg></button></div><p>缺勤课时与成绩呈负向关联，不代表因果。</p><small>此处仅演示报告入口已并入顶部栏，不再单独占用正文上方的一条区域。示例文字和图表不用于实际教学判断。</small></dialog>
+<script>
+const $=s=>document.querySelector(s);
+const ns='http://www.w3.org/2000/svg';
+for(let row=0;row<8;row++){
+ const line=document.createElementNS(ns,'path');line.setAttribute('d',`M72 ${38+row*36.3}H1012`);line.setAttribute('stroke','#232329');line.setAttribute('stroke-opacity','.065');$('#grid').append(line);
+ for(let col=0;col<20;col++){
+  const center=1+col*.24;const density=Math.exp(-Math.pow(row-center,2)/2.6)*Math.exp(-col*.125)*(.6+.4*(Math.sin(col*3.4+row*2.1)+1)/2);
+  if(density<.05)continue;
+  const rect=document.createElementNS(ns,'rect');rect.setAttribute('x',72+col*47);rect.setAttribute('y',39+row*31.5);rect.setAttribute('width','46');rect.setAttribute('height','30.5');rect.setAttribute('fill','#7666cc');rect.setAttribute('opacity',Math.min(.9,density).toFixed(3));$('#bins').append(rect);
+ }
+}
+function history(open){$('#history-panel').hidden=!open;$('#history-toggle').setAttribute('aria-expanded',String(open))}
+$('#history-toggle').addEventListener('click',()=>history($('#history-panel').hidden));
+$('#history-close').addEventListener('click',()=>{history(false);$('#history-toggle').focus()});
+document.addEventListener('click',e=>{if(!e.target.closest('.history,.history-launch'))history(false)});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#history-panel').hidden){history(false);$('#history-toggle').focus()}});
+let timer;function notify(message){clearTimeout(timer);$('#toast').textContent=message;$('#toast').hidden=false;timer=setTimeout(()=>$('#toast').hidden=true,4000)}
+function update(){ $('#count').textContent=$('#question').value.length;$('#send').disabled=!$('#question').value.trim() }
+$('#question').addEventListener('input',update);
+$('#composer').addEventListener('submit',e=>{e.preventDefault();if($('#question').value.trim())notify('这是布局预览：草稿已保留，未发送问题。')});
+$('#question').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();$('#composer').requestSubmit()}});
+$('#fold').addEventListener('click',()=>{const folded=$('#composer').dataset.collapsed!=='true';$('#composer').dataset.collapsed=String(folded);$('#fold').setAttribute('aria-expanded',String(!folded));$('#fold').setAttribute('aria-label',folded?'展开输入框':'收起输入框');if(!folded)$('#question').focus()});
+$('#chart-toggle').addEventListener('click',()=>{const open=$('#chart-body').hidden;$('#chart-body').hidden=!open;$('#chart-toggle').setAttribute('aria-expanded',String(open));$('#chart-toggle').firstChild.textContent=open?'收起图表':'展开图表'});
+document.querySelectorAll('[data-question]').forEach(button=>button.addEventListener('click',()=>{$('#composer').dataset.collapsed='false';$('#fold').setAttribute('aria-expanded','true');$('#fold').setAttribute('aria-label','收起输入框');$('#question').value=button.dataset.question;update();$('#question').focus()}));
+$('#new-chat').addEventListener('click',()=>notify('本版仅预览浮层布局，不创建或清空真实对话。'));
+document.querySelectorAll('[data-history]').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.history==='current'){history(false);$('#conversation').scrollTo({top:0})}else notify('此条是历史列表样例，不加载或修改真实会话。')}));
+$('#open-report').addEventListener('click',()=>$('#report').showModal());$('#close-report').addEventListener('click',()=>$('#report').close());
+</script>
+</body>
+</html>

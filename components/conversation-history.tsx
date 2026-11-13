@@ -38,35 +38,40 @@ export function ConversationHistory(
     onToggle: () => void;
   },
 ) {
-  const drawer = useRef<HTMLDialogElement>(null);
-  const mobileTrigger = useRef<HTMLButtonElement>(null);
-  const desktopToggle = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   const toggle = useRef(props.onToggle);
   toggle.current = props.onToggle;
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  // The desktop rail is a real column, not a modal overlay: Escape is the one
-  // shortcut that closes it, and it hands focus back to the toggle that stays
-  // put at the reading edge. Open dialogs keep their own Escape handling.
   useEffect(() => {
-    if (props.collapsed) return;
+    if (props.collapsed) {
+      setDeleting(null);
+      return;
+    }
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
-      if (!window.matchMedia("(min-width: 901px)").matches) return;
-      if (document.querySelector("dialog[open]")) return;
+      if (document.querySelector("dialog[open], [popover]:popover-open")) return;
       event.preventDefault();
       toggle.current();
-      desktopToggle.current?.focus({ preventScroll: true });
+      trigger.current?.focus({ preventScroll: true });
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      if (!(event.target instanceof Node)) return;
+      if (panel.current?.contains(event.target) || trigger.current?.contains(event.target)) return;
+      toggle.current();
     };
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
   }, [props.collapsed]);
 
-  // Closing first keeps the drawer out of the way of whatever the callback
-  // opens next (the unsent-draft guard is itself a native modal dialog).
-  const closeDrawer = () => {
-    const dialog = drawer.current;
-    if (dialog?.open) dialog.close();
+  const closeHistory = () => {
+    if (!props.collapsed) props.onToggle();
+    trigger.current?.focus({ preventScroll: true });
   };
 
   const content = (
@@ -76,13 +81,16 @@ export function ConversationHistory(
         <button type="button" aria-label="刷新历史" onClick={props.onRefresh}>
           <Icon name="refresh" size={15} />
         </button>
+        <button type="button" aria-label="关闭历史对话" onClick={closeHistory}>
+          <Icon name="close" size={15} />
+        </button>
       </div>
       <button
         data-workspace-part="newChat"
         className={styles.newChat}
         type="button"
         onClick={() => {
-          closeDrawer();
+          closeHistory();
           props.onNew();
         }}
       >
@@ -123,7 +131,7 @@ export function ConversationHistory(
               className={styles.historyItem}
               aria-current={entry.id === props.selectedId ? "page" : undefined}
               onClick={() => {
-                closeDrawer();
+                closeHistory();
                 props.onSelect(entry.id);
               }}
             >
@@ -189,79 +197,34 @@ export function ConversationHistory(
   return (
     <>
       <button
-        ref={desktopToggle}
+        ref={trigger}
         type="button"
         data-workspace-part="historyToggle"
         className={styles.historyToggle}
-        aria-label={props.collapsed ? "展开账号历史" : "向左收起账号历史"}
-        title={props.collapsed ? "展开账号历史" : "向左收起账号历史"}
+        aria-label={props.collapsed ? "展开账号历史" : "收起账号历史"}
+        title="历史对话"
         aria-expanded={!props.collapsed}
-        aria-controls="desktop-conversation-history"
+        aria-controls="conversation-history-panel"
         onClick={props.onToggle}
       >
-        <Icon name="chevron" size={16} />
+        <Icon name="messages" size={16} />
+        <span>历史对话</span>
       </button>
-      <div data-workspace-part="historyRail" className={styles.historyRail}>
+      <div
+        ref={panel}
+        data-workspace-part="historyRail"
+        className={styles.historyRail}
+        hidden={props.collapsed}
+      >
         <aside
-          id="desktop-conversation-history"
+          id="conversation-history-panel"
           data-workspace-part="history"
           className={styles.history}
           aria-label="账号历史对话"
-          aria-hidden={props.collapsed}
-          inert={props.collapsed}
         >
           {content}
         </aside>
       </div>
-      <button
-        ref={mobileTrigger}
-        data-workspace-part="historyTrigger"
-        className={styles.mobileHistory}
-        type="button"
-        aria-label="历史对话"
-        title="历史对话"
-        aria-haspopup="dialog"
-        onClick={() => {
-          const dialog = drawer.current;
-          if (dialog && !dialog.open) dialog.showModal();
-        }}
-      >
-        <Icon name="menu" size={16} />
-        <span>历史对话</span>
-      </button>
-      <dialog
-        ref={drawer}
-        id="conversation-history-drawer"
-        className={styles.historyDrawer}
-        aria-label="账号历史对话"
-        onClose={() => {
-          setDeleting(null);
-          // `dialog.close()` normally returns focus to the trigger; this only
-          // rescues the case where nothing took it back.
-          const trigger = mobileTrigger.current;
-          if (!trigger?.isConnected) return;
-          const active = document.activeElement;
-          if (active && active !== document.body && active !== document.documentElement) return;
-          trigger.focus({ preventScroll: true });
-        }}
-        onClick={(event) => {
-          // A modal dialog receives the backdrop click on itself; only a click
-          // outside the panel's own box should dismiss it.
-          if (event.target !== drawer.current) return;
-          const rect = event.currentTarget.getBoundingClientRect();
-          const outside =
-            event.clientX < rect.left ||
-            event.clientX > rect.right ||
-            event.clientY < rect.top ||
-            event.clientY > rect.bottom;
-          if (outside) closeDrawer();
-        }}
-      >
-        <button type="button" className={styles.drawerClose} onClick={closeDrawer}>
-          关闭历史
-        </button>
-        {content}
-      </dialog>
     </>
   );
 }

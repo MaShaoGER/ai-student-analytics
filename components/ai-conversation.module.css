@@ -153,29 +153,6 @@
   color: var(--instrument-ink);
   border: 1px solid var(--line);
 }
-/* Depth at the reading boundary, with no glass fill or colour treatment. */
-.composerFade {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 100%;
-  height: 52px;
-  pointer-events: none;
-  -webkit-backdrop-filter: blur(7px);
-  backdrop-filter: blur(7px);
-  -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 100%);
-  mask-image: linear-gradient(to top, #000 0%, transparent 100%);
-}
-@media (prefers-reduced-transparency: reduce) {
-  .composerFade {
-    display: none;
-  }
-}
-@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .composerFade {
-    display: none;
-  }
-}
 .composerHeading {
   position: relative;
   display: flex;
@@ -727,31 +704,6 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   }
 }
 
-/* Conversation workspace heading with report trigger. */
-.workspaceHeading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  width: 100%;
-  margin: 0;
-  padding: 16px clamp(24px, 4.5vw, 64px);
-  border-bottom: 0;
-}
-.workspaceHeading h1 {
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  margin: 0;
-  color: var(--ink);
-}
-@media (max-width: 600px) {
-  .workspaceHeading {
-    flex-direction: row;
-    justify-content: flex-end;
-    padding: 12px 16px;
-  }
-}
 /* Reduced motion: the chevron swap is instant; folding itself is a plain
    show/hide with no entrance or layout animation. */
 @media (prefers-reduced-motion: reduce) {
@@ -760,24 +712,6 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   }
 }
 
-/* Desktop conversation lives inside the existing workbench shell. */
-.workspaceHeading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 0;
-}
-.workspaceHeading :global(.page-introduction) h1 {
-  font-size: 19px;
-  letter-spacing: -0.5px;
-  margin: 6px 0;
-}
-.workspaceHeading :global(.page-introduction) p {
-  display: none;
-}
-.workspaceHeading :global(.page-eyebrow) {
-  font-size: 12px;
-}
 .conversation {
   max-width: 1000px;
   margin: 0 auto;
@@ -918,11 +852,8 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   margin-bottom: 12px;
 }
 
-.conversationFooter {
-  display: none;
-}
 
-/* Approved experience layout: bounded reading region and always visible input. */
+/* Full-height reading surface; trailing padding keeps the final turn reachable. */
 .conversation {
   position: relative;
   display: flex;
@@ -957,58 +888,40 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   min-width: 0;
   overflow: clip;
 }
-.readingArea::after {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
-  height: 32px;
-  z-index: 3;
-  pointer-events: none;
-  -webkit-backdrop-filter: blur(5px);
-  backdrop-filter: blur(5px);
-  -webkit-mask-image: linear-gradient(#000, transparent);
-  mask-image: linear-gradient(#000, transparent);
-}
-.readingArea:has(.empty)::after,
-.readingArea:has(:focus-visible)::after {
-  display: none;
-}
-@media (max-width: 600px) {
-  .readingArea::after {
-    height: 20px;
-  }
-}
-@media (prefers-reduced-transparency: reduce), print {
-  .readingArea::after,
-  .composerFade {
-    display: none;
-  }
-}
 .readingArea > .transcript {
   height: 100%;
-  padding-right: 12px;
+}
+.turnNavigation {
+  margin-top: 24px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.turnNavigation > summary {
+  width: fit-content;
+  padding: 10px 0;
+  cursor: pointer;
+}
+.scrollRuler,
+.roundTicks {
+  display: flex;
+  gap: 4px;
 }
 .scrollRuler {
-  display: flex;
-  flex-direction: column;
-  align-self: center;
-  flex: 0 0 36px;
-  max-height: 80%;
-  border-left: 1px solid var(--line);
+  max-width: 100%;
+  padding-top: 8px;
+  overflow-x: auto;
 }
 .roundTicks {
-  overflow-y: auto;
-  min-height: 0;
-  scrollbar-width: thin;
+  flex: 0 0 auto;
 }
 .scrollRuler button {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 3px;
-  width: 100%;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 36px;
   min-height: 36px;
-  padding: 0 2px;
+  padding: 0 10px;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -1018,20 +931,10 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
-.scrollRuler button::after {
-  content: "";
-  width: 8px;
-  height: 1px;
-  background: currentColor;
-}
 .scrollRuler button[aria-current],
 .scrollRuler button[data-unread="true"] {
   color: var(--accent-ink);
   background: var(--accent-soft);
-}
-.scrollRuler button[aria-current]::after {
-  width: 13px;
-  height: 2px;
 }
 .scrollRuler button > svg {
   rotate: 90deg;
@@ -1068,9 +971,6 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 @media (max-width: 600px) {
   .composerDock[data-collapsed="true"] .composer {
     margin-right: 11px;
-  }
-  .scrollRuler {
-    flex-basis: 28px;
   }
   .scrollRuler button {
     min-height: 44px;
@@ -1209,11 +1109,10 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 /* The conversation reads on the flat page surface: 14px reading text, a 22px
    title and hairlines; the only raised element is the composer dock. */
 :global(.glass-workspace) .conversation {
-  --conversation-inset: clamp(24px, 4.5vw, 64px);
-  --history-offset: 0px;
+  --conversation-inset: max(48px, calc((100% - 1100px) / 2));
   border: 0;
   border-radius: 0;
-  padding: 20px var(--conversation-inset) 0;
+  padding: 0;
   background: var(--paper);
   box-shadow: none;
   -webkit-backdrop-filter: none;
@@ -1222,13 +1121,10 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 :global(.glass-workspace) .transcript {
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
-  padding-bottom: 24px;
-  scroll-padding-bottom: 24px;
-}
-:global(.glass-workspace) .readingArea {
-  /* The transcript ends above the dock: text and charts must never travel
-     behind the input or reappear in the gap below it. */
-  margin-bottom: calc(var(--composer-clearance, 220px) + 28px);
+  padding: calc(var(--workspace-header-height, 76px) + 72px) var(--conversation-inset)
+    calc(var(--composer-clearance, 180px) + 56px);
+  scroll-padding-top: calc(var(--workspace-header-height, 76px) + 24px);
+  scroll-padding-bottom: calc(var(--composer-clearance, 180px) + 56px);
 }
 :global(.glass-workspace) .empty {
   padding: 28px 0;
@@ -1247,17 +1143,16 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   padding: 20px 0;
 }
 :global(.glass-workspace) .message[data-role="user"] {
-  width: auto;
-  max-width: 100%;
-  margin: 16px 0;
-  padding: 4px 0 16px 16px;
+  width: fit-content;
+  max-width: 85%;
+  margin: 0 0 24px auto;
+  padding: 14px 20px;
   border: 0;
-  border-left: 2px solid var(--line-strong);
   border-radius: 0;
-  background: transparent;
+  background: var(--accent-soft);
 }
 :global(.glass-workspace) .message[data-role="user"] .speaker {
-  justify-content: flex-start;
+  display: none;
 }
 :global(.glass-workspace) .message[data-role="user"] .avatar {
   display: none;
@@ -1309,17 +1204,15 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   font-size: 12px;
   background: var(--ui-control-bg);
 }
-:global(.glass-workspace) .scrollRuler {
-  border-left-color: var(--line);
-  flex-basis: 28px;
-}
 :global(.glass-workspace) .composerDock {
   position: absolute;
-  z-index: 3;
-  left: calc(var(--history-offset) + var(--conversation-inset));
-  right: var(--conversation-inset);
-  bottom: 16px;
-  width: auto;
+  z-index: 20;
+  left: auto;
+  right: max(48px, calc((100% - 920px) / 2));
+  bottom: 24px;
+  width: min(920px, calc(100% - 96px));
+  max-height: calc(100% - var(--workspace-header-height, 76px) - 96px);
+  overflow-y: auto;
   padding-bottom: env(safe-area-inset-bottom, 0px);
   pointer-events: none;
 }
@@ -1327,12 +1220,11 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   pointer-events: auto;
 }
 :global(.glass-workspace) .composerDock[data-collapsed="false"] {
-  /* The dock stays opaque over the transcript, but reads as the page's input
-     band: one rule on top, no card frame, no floating shadow. */
-  border: 0;
-  border-top: 1px solid var(--line-strong);
+  border: 1px solid var(--line-strong);
   border-radius: 0;
-  background: var(--paper);
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
   box-shadow: none;
   padding: 10px 16px max(10px, env(safe-area-inset-bottom, 0px));
   pointer-events: auto;
@@ -1548,8 +1440,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 /* A single right-anchored surface morphs into the compact input handle. */
 :global(.glass-workspace) .composerDock[data-collapsed] {
   left: auto;
-  width: calc(100% - var(--history-offset) - 2 * var(--conversation-inset));
-  overflow: clip;
+  width: min(920px, calc(100% - 96px));
 }
 :global(.glass-workspace) .composerDock[data-collapsed="true"] {
   width: 46px;
@@ -1616,64 +1507,87 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
     display: none;
   }
 }
-@media (max-width: 760px) {
-  :global(.glass-workspace) .scrollRuler {
-    flex-basis: 22px;
+
+/* The same compact floating input is used at every width. */
+:global(.glass-workspace) .composerFields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(44px, max-content);
+  gap: 0 10px;
+}
+:global(.glass-workspace) .composerFields[hidden] {
+  display: none;
+}
+:global(.glass-workspace) .composerHeading {
+  grid-column: 2;
+  grid-row: 1;
+  justify-content: flex-end;
+}
+:global(.glass-workspace) .composerHeading > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+.contextRow {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  margin: 0;
+}
+.fieldError,
+.contextNotice {
+  grid-column: 1 / -1;
+}
+.fieldError {
+  grid-row: 3;
+}
+.contextNotice {
+  grid-row: 4;
+}
+:global(.glass-workspace) .composer textarea {
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 44px;
+  max-height: 104px;
+  margin: 8px 0 4px;
+}
+.composerActions {
+  grid-column: 2;
+  grid-row: 2;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 2px;
+}
+.shortcut {
+  display: none;
+}
+@media (prefers-reduced-transparency: reduce) {
+  :global(.glass-workspace) .composerDock[data-collapsed="false"] {
+    background: var(--paper);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 }
-
-/* Phone input stays in normal flow. Bound long errors and drafts so they
-   cannot consume the transcript's entire viewport. */
 @media (max-width: 760px) {
   :global(.glass-workspace) .conversation {
-    padding-top: 4px;
-    gap: 8px;
-  }
-  :global(.glass-workspace) .readingArea {
-    margin-bottom: 0;
+    --conversation-inset: 20px;
+    padding: 0;
   }
   :global(.glass-workspace) .composerDock[data-collapsed] {
-    position: relative;
-    inset: auto;
-    flex: 0 0 auto;
-    align-self: flex-end;
-    width: 100%;
-    max-height: 38%;
+    position: absolute;
+    right: 16px;
+    bottom: 14px;
+    width: calc(100% - 32px);
+    max-height: 45%;
     overflow-y: auto;
-    padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
   }
   :global(.glass-workspace) .composerDock[data-collapsed="true"] {
     width: 46px;
-    padding: 0;
-  }
-  :global(.glass-workspace) .composerFields {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    column-gap: 10px;
-  }
-  :global(.glass-workspace) .composerFields[hidden] {
-    display: none;
-  }
-  .composerHeading,
-  .contextRow,
-  .fieldError {
-    grid-column: 1 / -1;
-  }
-  :global(.glass-workspace) .composer textarea {
-    min-height: 44px;
-    max-height: 72px;
-    margin: 4px 0;
-  }
-  .composerActions {
-    flex-direction: column;
-    justify-content: flex-end;
-    gap: 2px;
-  }
-  .shortcut {
-    display: none;
-  }
-  .composerFade {
-    display: none;
   }
 }
 
@@ -1684,7 +1598,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
     grid-template-columns: minmax(0, 1fr) 44px minmax(44px, max-content);
     gap: 0 6px;
   }
-  .composerHeading {
+  :global(.glass-workspace) .composerHeading {
     grid-column: 2 / -1;
     grid-row: 1;
     margin: 0;

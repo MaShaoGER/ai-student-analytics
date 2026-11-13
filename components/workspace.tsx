@@ -26,7 +26,6 @@ import { ThemeToggle } from "@/components/ui/theme-provider";
 import { ConversationWorkspace, type ConversationTurn } from "@/components/ai-conversation";
 import type { ConversationScrollPosition } from "@/components/hooks/use-conversation-scroll";
 import experienceStyles from "@/components/conversation-experience.module.css";
-import conversationStyles from "@/components/ai-conversation.module.css";
 import {
   artifactWithView,
   intentWithView,
@@ -1682,6 +1681,18 @@ export function Workspace({ initialConversation = false }: { initialConversation
           {eligibleDatasetId === "demo" && (
             <span className="glass-demo-tag">模拟演示数据</span>
           )}
+          {view === "analysis" && (
+            <button
+              type="button"
+              className="workspace-report-trigger"
+              aria-label="分析报告"
+              onClick={() => navigate("reports", { origin: "conversation" })}
+            >
+              <Icon name="file" size={15} />
+              <span>分析报告</span>
+              {sessionAnalyses.length > 0 && <small>{sessionAnalyses.length}</small>}
+            </button>
+          )}
           <button
             type="button"
             className="icon-button glass-menu"
@@ -1869,18 +1880,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
                 </button>
               )}
               {pageHeader}
-            </div>
-          ) : view === "analysis" ? (
-            <div className={`workbench-page-heading ${conversationStyles.workspaceHeading}`}>
-              <button
-                type="button"
-                className="workspace-report-trigger"
-                onClick={() => navigate("reports", { origin: "conversation" })}
-              >
-                <Icon name="file" size={15} />
-                分析报告
-                {sessionAnalyses.length > 0 && <small>{sessionAnalyses.length}</small>}
-              </button>
             </div>
           ) : null}
           <div className="workspace-scene" data-scene={view} data-primary={primary}>
@@ -2077,9 +2076,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
               </div>
             )}
           </div>
-          <footer
-            className={`workbench-footer ${view === "analysis" ? conversationStyles.conversationFooter : ""}`}
-          >
+          <footer className="workbench-footer">
             <span>学析台 · 学习数据分析</span>
             <span>
               <Icon name="shield" size={13} />

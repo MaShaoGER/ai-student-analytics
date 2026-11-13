@@ -387,8 +387,7 @@ export function ConversationWorkspace({
     const dock = composer.current;
     const surface = root.current;
     if (!dock || !surface) return;
-    // Size the reading region above the dock so the final answer stays clear
-    // of both the expanded input and its compact handle.
+    // Reserve scrollable trailing space, not a shorter reading viewport.
     const measure = () =>
       surface.style.setProperty("--composer-clearance", `${dock.offsetHeight}px`);
     const observer = new ResizeObserver(measure);
@@ -722,8 +721,9 @@ export function ConversationWorkspace({
             ) : (
               !composerCollapsed && notice
             )}
-          </div>
           {messages.length > 0 || loading ? (
+            <details className={styles.turnNavigation}>
+              <summary>对话导航</summary>
             <nav className={styles.scrollRuler} aria-label="对话刻度导航">
               <button
                 type="button"
@@ -759,7 +759,9 @@ export function ConversationWorkspace({
                 <Icon name="arrow" size={14} />
               </button>
             </nav>
+            </details>
           ) : null}
+          </div>
         </div>
         <div
           ref={composer}
@@ -948,7 +950,6 @@ export function ConversationWorkspace({
               </div>
             ) : null}
           </form>
-          <div className={styles.composerFade} aria-hidden="true" />
         </div>
       </div>
     </div>

@@ -59,7 +59,7 @@ export function useConversationScroll(
   const updateActive = useCallback(() => {
     const region = transcript.current;
     if (!region) return;
-    const top = region.getBoundingClientRect().top + 40;
+    const top = region.getBoundingClientRect().top + parseFloat(getComputedStyle(region).scrollPaddingTop) + 24;
     const rounds = Array.from(region.querySelectorAll<HTMLElement>('article[data-role="user"]'));
     const current = rounds.filter((node) => node.getBoundingClientRect().top <= top).at(-1);
     setActiveId(current?.dataset.messageId ?? null);
@@ -227,7 +227,7 @@ export function useConversationScroll(
               region.scrollTop +
               anchor.getBoundingClientRect().top -
               region.getBoundingClientRect().top -
-              16
+              parseFloat(getComputedStyle(region).scrollPaddingTop)
           : 0,
         instant,
       );

@@ -70,12 +70,14 @@ try {
 
   await browser("set", "viewport", "1440", "1000");
   await browser("fill", "#analysis-question", "保留这条草稿");
+  const readingWidth = await evaluate('document.querySelector("[aria-label=分析对话]").clientWidth');
   await browser("click", 'button[aria-label="展开账号历史"]');
-  await browser("click", "#desktop-conversation-history > button");
+  assert.equal(await evaluate('document.querySelector("[aria-label=分析对话]").clientWidth'), readingWidth, "history squeezed the transcript");
+  await browser("click", "#conversation-history-panel [data-workspace-part=newChat]");
   await until(() => evaluate('!!document.querySelector("dialog[open] #draft-guard-title")'), "draft guard missing");
   await browser("find", "role", "button", "click", "--name", "保留草稿", "--exact");
   assert.equal(await evaluate('document.querySelector("#analysis-question").value'), "保留这条草稿");
-  await browser("click", 'button[aria-label="向左收起账号历史"]');
+  assert.equal(await evaluate('document.querySelector("[data-workspace-part=historyToggle]").getAttribute("aria-expanded")'), "false");
   await browser("click", 'button[aria-label="收起输入区"]');
   await until(() => evaluate('document.activeElement===document.querySelector("button[aria-label=展开输入区]")'), "fold focus failed");
   await browser("press", "Enter");
@@ -96,17 +98,17 @@ try {
     await until(() => evaluate('document.documentElement.scrollWidth<=innerWidth+1'), `horizontal overflow at ${width}`);
     if (height <= 600) {
       await until(() => evaluate('document.querySelector("button[aria-label=发送]")?.getBoundingClientRect().bottom<=innerHeight'), "send action clipped on short phone");
-      assert.ok(await evaluate('document.querySelector("[aria-label=分析对话]").clientHeight>=180'), "short phone lost reading area");
+      assert.ok(await evaluate('document.querySelector("[data-workspace-part=composerDock]").getBoundingClientRect().top-document.querySelector(".workbench-header").getBoundingClientRect().bottom>=180'), "short phone lost unobstructed reading area");
     }
     await browser("screenshot", join(output, `conversation-${width}.png`));
   }
   checks.push("1440/768/390/320无横溢，320×480发送完整可见且保留阅读区");
   await browser("set", "viewport", "390", "844");
-  await browser("click", 'button[aria-label="历史对话"]');
-  await until(() => evaluate('!!document.querySelector("#conversation-history-drawer[open]")'), "mobile history missing");
+  await browser("click", 'button[aria-label="展开账号历史"]');
+  await until(() => evaluate('!document.querySelector("[data-workspace-part=historyRail]").hidden'), "mobile history missing");
   await browser("press", "Escape");
-  await until(() => evaluate('!document.querySelector("#conversation-history-drawer[open]")'), "mobile history did not close");
-  checks.push("移动历史抽屉打开及Escape关闭");
+  await until(() => evaluate('document.querySelector("[data-workspace-part=historyRail]").hidden'), "mobile history did not close");
+  checks.push("手机历史浮层打开及Escape关闭，历史不占用正文宽度");
 
   // Delay only the synthetic account's chat transport; never call a model.
   await browser("set", "viewport", "320", "480");

@@ -1,23 +1,28 @@
-/* Conversation adopts the unified canvas: same four-corner alignment as data
-   exploration, no persistent left sidebar. History becomes an on-demand rail or
-   edge drawer, maintaining reading center focus and consistent horizontal margins. */
-
+/* The transcript fills the viewport; history and input float below the header. */
 .shell:global(.workbench-shell)[data-conversation="true"] {
+  position: relative;
   height: var(--conversation-viewport-height, 100dvh);
   min-height: 0;
   overflow: hidden;
   --workspace-header-height: 76px;
-  grid-template-rows: auto minmax(0, 1fr);
 }
-@media (max-width: 760px) {
-  .shell:global(.workbench-shell)[data-conversation="true"] {
-    --workspace-header-height: 112px;
-    grid-template-rows: auto minmax(0, 1fr);
-  }
+.shell[data-conversation="true"] :global(.workbench-header.glass-topbar) {
+  position: relative;
+  z-index: 30;
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+.shell[data-conversation="true"] :global(.workbench-main) {
+  position: absolute;
+  inset: 0;
+  grid-row: 1 / -1;
+  z-index: 0;
 }
 .shell[data-conversation="true"] :global(.workbench-main),
 .shell[data-conversation="true"] :global(.workbench-content),
-.shell[data-conversation="true"] :global([data-primary-scene="conversation"]) {
+.shell[data-conversation="true"] :global([data-primary-scene="conversation"]),
+.shell[data-conversation="true"] :global(.workspace-scene) {
   min-height: 0;
   height: 100%;
   overflow: clip;
@@ -28,119 +33,77 @@
   max-width: none;
   padding: 0;
 }
-.shell[data-conversation="true"] :global(.workspace-scene) {
-  min-height: 0;
-}
-.shell[data-conversation="true"] :global(.workbench-page-heading) {
-  display: flex;
-  justify-content: flex-end;
-  width: 100%;
-  margin: 0;
-  padding: 16px clamp(24px, 4.5vw, 64px);
-  border: 0;
-}
 .shell[data-conversation="true"] :global(.workbench-footer) {
   display: none;
 }
-
-/* Main conversation layout: full-width reading surface, with the desktop
-   history rail as a real grid column. The rail therefore takes space from the
-   transcript and the composer instead of floating over them. */
-.layout {
-  --history-rail-width: 0px;
-  --history-rail-panel: 288px;
-  height: 100%;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: var(--history-rail-width) minmax(0, 1fr);
-  transition: grid-template-columns 280ms var(--ease-drawer, cubic-bezier(0.32, 0.72, 0, 1));
-  overflow: clip;
-  isolation: isolate;
+.shell[data-conversation="true"] :global(.workspace-report-trigger) {
+  min-height: 40px;
   border: 0;
-  border-radius: 0;
-  background: transparent;
-  position: relative;
+  font-family: inherit;
+  letter-spacing: normal;
+  white-space: nowrap;
 }
-
-/* Wide-screen rail: a bounded column whose interior keeps its own width while
-   the track animates, so entry titles never reflow mid-transition. */
-.historyRail {
+.layout {
   position: relative;
-  width: auto;
-  min-width: 0;
   height: 100%;
   min-height: 0;
-  overflow: clip;
-  z-index: 1;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 180ms ease-out;
-  border-right: 1px solid var(--line);
-  background: color-mix(in srgb, var(--surface-inset) 92%, var(--paper));
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  isolation: isolate;
 }
-.historyRail .history {
-  width: var(--history-rail-panel);
-  height: 100%;
-  padding: 20px 14px 20px;
+.historyRail {
+  position: absolute;
+  top: calc(var(--workspace-header-height, 76px) + 72px);
+  left: 24px;
+  z-index: 21;
+  width: min(288px, calc(100% - 48px));
+  max-height: calc(100% - var(--workspace-header-height, 76px) - 96px);
   overflow-y: auto;
   overscroll-behavior: contain;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
 }
-
+.historyRail[hidden] {
+  display: none;
+}
+.history {
+  padding: 20px 16px;
+}
 .historyToggle {
-  position: fixed;
-  top: calc(var(--workspace-header-height, 76px) + 16px);
-  left: clamp(24px, 4.5vw, 64px);
-  z-index: 11;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
+  position: absolute;
+  top: calc(var(--workspace-header-height, 76px) + 20px);
+  left: 24px;
+  z-index: 21;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px;
   border: 1px solid var(--line);
   border-radius: 0;
-  background: var(--surface-raised);
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
   color: var(--muted);
+  font-size: 12px;
   cursor: pointer;
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
 .historyToggle:hover {
   border-color: var(--line-strong);
   color: var(--ink);
-  background: var(--paper);
 }
-.layout[data-history-collapsed="false"] .historyToggle svg {
-  rotate: 180deg;
-}
-@media (min-width: 901px) {
-  .layout[data-history-collapsed="false"] {
-    --history-rail-width: var(--history-rail-panel);
-  }
-  .layout[data-history-collapsed="false"] .historyRail {
-    opacity: 1;
-    visibility: visible;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .layout {
-    transition: none !important;
-  }
+.historyToggle[aria-expanded="true"] {
+  background: var(--ink);
+  color: var(--paper);
 }
 @media (prefers-reduced-transparency: reduce) {
-  .historyRail {
-    background: var(--surface-raised);
+  .historyRail,
+  .historyToggle,
+  .shell[data-conversation="true"] :global(.workbench-header.glass-topbar) {
+    background: var(--paper);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
-  .historyToggle {
-    background: var(--surface-raised);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-}
-:global(html[data-motion="off"]) .layout {
-  transition: none;
 }
 /* History list styling. */
 .history {
@@ -311,43 +274,6 @@
 .historyFoot a:hover {
   color: var(--accent-ink);
 }
-.mobileHistory,
-.historyDrawer {
-  display: none;
-}
-/* Narrow-screen drawer: a native modal dialog, so focus is trapped by the
-   platform (Tab cannot reach the page behind), Escape closes it, the backdrop
-   makes the modal state visible, and closing returns focus to the trigger. */
-.historyDrawer[open] {
-  display: flex;
-  flex-direction: column;
-  position: fixed;
-  inset: 0 auto 0 0;
-  width: min(310px, 90vw);
-  max-width: none;
-  height: 100dvh;
-  max-height: none;
-  margin: 0;
-  padding: 20px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  border: 0;
-  border-right: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--surface-raised);
-  color: var(--ink);
-}
-.historyDrawer::backdrop {
-  background: color-mix(in srgb, var(--ink) 28%, transparent);
-}
-.drawerClose {
-  align-self: flex-end;
-  min-height: 44px;
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  cursor: pointer;
-}
 @media (hover: hover) and (pointer: fine) {
   .historyRow:hover:not([data-active="true"]) {
     background: color-mix(in srgb, var(--surface-inset) 70%, transparent);
@@ -356,55 +282,27 @@
     color: var(--accent-ink);
   }
 }
-@media (max-width: 900px) {
-  .layout {
-    grid-template-columns: minmax(0, 1fr);
+@media (max-width: 760px) {
+  .shell:global(.workbench-shell)[data-conversation="true"] {
+    --workspace-header-height: 112px;
+  }
+  .historyToggle,
+  .historyRail {
+    left: 16px;
   }
   .historyRail {
+    width: min(288px, calc(100% - 32px));
+  }
+  .shell[data-conversation="true"] :global(.glass-demo-tag) {
     display: none;
   }
-  .historyToggle {
-    display: none;
-  }
-  .mobileHistory {
-    display: inline-flex;
-    position: fixed;
-    z-index: 2;
-    left: clamp(24px, 4.5vw, 64px);
-    top: calc(var(--workspace-header-height, 76px) + 16px);
-    gap: 6px;
-    align-items: center;
-    min-height: 36px;
-    padding: 8px 12px;
-    border: 1px solid var(--line);
-    border-radius: 0;
-    background: var(--surface-raised);
-    color: var(--muted);
-    font-size: 12px;
-    cursor: pointer;
-    -webkit-backdrop-filter: blur(8px);
-    backdrop-filter: blur(8px);
-  }
-  .mobileHistory:hover {
-    border-color: var(--line-strong);
-    color: var(--ink);
-  }
-}
-@media (max-width: 760px) {
-  .shell[data-conversation="true"] :global(.workbench-page-heading) {
-    padding: 8px 14px;
-  }
-  .mobileHistory {
-    top: calc(var(--workspace-header-height, 112px) + 8px);
-    left: 14px;
-  }
-  .mobileHistory {
-    width: 40px;
-    height: 40px;
+  .shell[data-conversation="true"] :global(.workspace-report-trigger) {
+    width: 36px;
     padding: 0;
     justify-content: center;
   }
-  .mobileHistory > span {
+  .shell[data-conversation="true"] :global(.workspace-report-trigger > span),
+  .shell[data-conversation="true"] :global(.workspace-report-trigger > small) {
     display: none;
   }
 }
