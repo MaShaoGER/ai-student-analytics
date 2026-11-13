@@ -28,6 +28,14 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Public CC BY 4.0 data is deliberately not stored in Git. Route tests
+      # require its availability even when query execution itself is mocked.
+      - name: Prepare official OULAD test data
+        run: |
+          curl --fail --location --silent --show-error --output "$RUNNER_TEMP/oulad.zip" \
+            'https://archive.ics.uci.edu/static/public/349/open+university+learning+analytics+dataset.zip'
+          echo "f2ed1902616c1fe8d2824d872c0b7d2d72be435bf0124d077044fe4be2c6d3e4  $RUNNER_TEMP/oulad.zip" | sha256sum --check
+          unzip -q "$RUNNER_TEMP/oulad.zip" '*.csv' -d oulad_raw
       - run: pnpm typecheck
       - run: pnpm test
       - run: node --test scripts/recovery.test.mjs

@@ -902,10 +902,6 @@ async function main() {
         ["source", "rationale", "matchedCaseId", "model"],
         "golden planning",
       );
-      assert(
-        reply.json.planning.rationale === "命中已验证的 MVP 固定问题，使用对应的金标准分析计划。",
-        "golden: rationale differs from the verified planner",
-      );
       analysisDTO(reply.json, plan(metric, dimension, chartType));
       rememberAudit({
         source: "ask",

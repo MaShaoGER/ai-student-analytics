@@ -484,7 +484,7 @@ export function HomeShowcase({ courses, term, totalCourses, onPick }: {
           <div className={styles.heroFooter}><span>从数字的表面，向里看。</span><span>{term} / 课程 · 过程 · 关联</span></div>
         </div>
 
-        <div className={styles.narrative}>
+        <div className={styles.narrative} data-has-constellation={paired.length > 1 ? "true" : "false"}>
           <section className={styles.statsSection} aria-label="数据规模">
             <header className={styles.figHead}>
               <span className={styles.index}>01</span>

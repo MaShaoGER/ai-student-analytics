@@ -94,7 +94,6 @@ const RETRYABLE_CODES = new Set([
 ]);
 const DATA_SOURCE_UNAVAILABLE_MESSAGE =
   "当前数据源读取失败，请换一个数据源，或联系管理员检查数据文件。";
-const STOPPED_MESSAGE = "已停止本轮回复，问题已保留，可直接重发。";
 const analysisKey = (result: AnalysisResult) =>
   JSON.stringify([
     result.datasetId,
@@ -153,7 +152,6 @@ function sameSessionPresentation(left: SessionUser, right: SessionUser): boolean
 }
 
 export function Workspace({ initialConversation = false }: { initialConversation?: boolean } = {}) {
-  const [glassPaused, setGlassPaused] = useState(false);
   const motionPreference = useMotionPreferences();
   const explorationLocation = useRef("/?workspace=overview");
   const explorationState = useRef<Record<string, unknown> | null>(null);
@@ -1665,7 +1663,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
       </a>
       {view !== "overview" && (
         <LightField
-          drifting={!glassPaused && motionPreference.enabled && !motionPreference.reduced}
+          drifting={motionPreference.enabled && !motionPreference.reduced}
         />
       )}
       <header className="workbench-header glass-topbar">
@@ -1787,25 +1785,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
               <ThemeToggle />
             </div>
             <div className="account-menu-motion"><MotionToggle /></div>
-            <button
-              type="button"
-              role="menuitemcheckbox"
-              aria-checked={!glassPaused && motionPreference.enabled && !motionPreference.reduced}
-              disabled={motionPreference.reduced}
-              onClick={() => {
-                if (!motionPreference.enabled) {
-                  motionPreference.setEnabled(true);
-                  setGlassPaused(false);
-                } else setGlassPaused((value) => !value);
-              }}
-            >
-              <Icon name="activity" size={16} />
-              {motionPreference.reduced
-                ? "光场跟随系统静止"
-                : !glassPaused && motionPreference.enabled
-                  ? "停止光场漂移"
-                  : "光场漂移"}
-            </button>
             <hr />
             <button
               type="button"

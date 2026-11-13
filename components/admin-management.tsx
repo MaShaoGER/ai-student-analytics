@@ -158,47 +158,48 @@ const actionLabels: Record<string, string> = {
   "dataset.publish": "发布成绩数据版本",
   "ai-config.update": "更新 AI 配置",
   "analysis-settings.update": "更新分析设置",
+  "analysis-capability.update": "更新分析能力",
 };
-const knownSummaryFields = new Set([
-  "rowCount",
-  "studentCount",
-  "courseCount",
-  "termCount",
-  "missingScores",
-  "versionNumber",
-  "role",
-  "beforeRole",
-  "disabled",
-  "beforeDisabled",
-  "enabled",
-  "beforeEnabled",
-  "datasetIds",
-  "beforeDatasetIds",
-  "nameChanged",
-  "changedFields",
-  "keyChanged",
-  "mustChangePassword",
-  "model",
-  "beforeModel",
-  "apiFormat",
-  "beforeApiFormat",
-  "perRequest",
-  "beforePerRequest",
-  "perHour",
-  "beforePerHour",
-  "perDay",
-  "beforePerDay",
-  "perMonth",
-  "beforePerMonth",
-  "inputPerMillion",
-  "beforeInputPerMillion",
-  "outputPerMillion",
-  "beforeOutputPerMillion",
-  "maxToolCalls",
-  "beforeMaxToolCalls",
-  "timeoutSeconds",
-  "beforeTimeoutSeconds",
-]);
+const summaryFieldLabels: Record<string, string> = {
+  rowCount: "记录数",
+  studentCount: "学生数",
+  courseCount: "课程数",
+  termCount: "学期数",
+  missingScores: "缺失成绩",
+  versionNumber: "版本序号",
+  role: "角色",
+  beforeRole: "原角色",
+  disabled: "停用",
+  beforeDisabled: "原停用",
+  enabled: "启用",
+  beforeEnabled: "原启用",
+  datasetIds: "数据集",
+  beforeDatasetIds: "原数据集",
+  nameChanged: "修改名称",
+  changedFields: "变更字段",
+  keyChanged: "密钥变更",
+  mustChangePassword: "强制改密",
+  model: "模型",
+  beforeModel: "原模型",
+  apiFormat: "接口协议",
+  beforeApiFormat: "原接口协议",
+  perRequest: "单次预算",
+  beforePerRequest: "原单次预算",
+  perHour: "每小时预算",
+  beforePerHour: "原每小时预算",
+  perDay: "每日预算",
+  beforePerDay: "原每日预算",
+  perMonth: "每月预算",
+  beforePerMonth: "原每月预算",
+  inputPerMillion: "输入单价／百万 token",
+  beforeInputPerMillion: "原输入单价／百万 token",
+  outputPerMillion: "输出单价／百万 token",
+  beforeOutputPerMillion: "原输出单价／百万 token",
+  maxToolCalls: "最多工具调用",
+  beforeMaxToolCalls: "原最多工具调用",
+  timeoutSeconds: "超时秒数",
+  beforeTimeoutSeconds: "原超时秒数",
+};
 
 function contractError(path: string): never {
   throw new Error(`服务返回的数据无法识别（${path}），请刷新后重试。`);
@@ -2291,31 +2292,9 @@ function summaryValue(key: string, value: string | number | boolean | null): str
 
 function summaryParts(log: AuditLog): string[] {
   return Object.entries(log.summary)
-    .filter(([key]) => knownSummaryFields.has(key))
+    .filter(([key]) => Object.hasOwn(summaryFieldLabels, key))
     .slice(0, 8)
-    .map(([key, value]) => {
-      const label: Record<string, string> = {
-        rowCount: "记录数",
-        studentCount: "学生数",
-        courseCount: "课程数",
-        termCount: "学期数",
-        missingScores: "缺失成绩",
-        versionNumber: "版本序号",
-        role: "角色",
-        beforeRole: "原角色",
-        disabled: "停用",
-        beforeDisabled: "原停用",
-        enabled: "启用",
-        beforeEnabled: "原启用",
-        datasetIds: "数据集",
-        beforeDatasetIds: "原数据集",
-        nameChanged: "修改名称",
-        changedFields: "变更字段",
-        keyChanged: "密钥变更",
-        mustChangePassword: "强制改密",
-      };
-      return `${label[key] ?? key}：${summaryValue(key, value)}`;
-    });
+    .map(([key, value]) => `${summaryFieldLabels[key]}：${summaryValue(key, value)}`);
 }
 
 /** IDs stay available as a `title`, but rows read as names rather than UUIDs. */

@@ -1676,3 +1676,35 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
     display: none;
   }
 }
+
+/* On short phones, share the scope row with the two toolbar controls so the
+   send action stays visible without scrolling inside the input surface. */
+@media (max-width: 760px) and (max-height: 600px) {
+  :global(.glass-workspace) .composerFields {
+    grid-template-columns: minmax(0, 1fr) 44px 44px;
+    gap: 0 6px;
+  }
+  .composerHeading {
+    grid-column: 2 / -1;
+    grid-row: 1;
+    margin: 0;
+  }
+  .contextRow {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    margin: 0;
+  }
+  .contextChip {
+    min-width: 0;
+    max-width: 100%;
+  }
+  :global(.glass-workspace) .composer textarea {
+    grid-column: 1 / 3;
+    grid-row: 2;
+  }
+  .composerActions {
+    grid-column: 3;
+    grid-row: 2;
+  }
+}

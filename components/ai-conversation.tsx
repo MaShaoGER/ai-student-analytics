@@ -14,7 +14,6 @@ import { Icon } from "./app-icons";
 import { ConversationEvidence, ExecutionSteps } from "./conversation-evidence";
 import { useMotionPreferences } from "./ui/motion-preferences";
 import type { AnalysisResult, DataSource } from "@/lib/analysis/types";
-import type { ChartViewType } from "@/lib/analysis/visualization";
 import type {
   ChatArtifact,
   ChatMessage,
@@ -34,6 +33,7 @@ import {
   useConversationScroll,
   type ConversationScrollPosition,
 } from "./hooks/use-conversation-scroll";
+import { responseIdToAnimate } from "./hooks/conversation-response-motion";
 
 export type ConversationTurn = ChatMessage & {
   id: string;
@@ -289,17 +289,8 @@ export function ConversationWorkspace({
     }
     if (!wasLoading.current) return;
     wasLoading.current = false;
-    const response = [...messages]
-      .reverse()
-      .find(
-        (message) =>
-          message.role === "assistant" &&
-          message.response &&
-          !message.restored &&
-          message.id !== responseBaseline.current,
-      );
+    setAnimatedResponseId(responseIdToAnimate(messages, responseBaseline.current));
     responseBaseline.current = null;
-    setAnimatedResponseId(response?.id ?? null);
   }, [loading, messages]);
 
   useEffect(() => {
@@ -726,7 +717,6 @@ export function ConversationWorkspace({
               composerCollapsed ? null : (
                 <p className={styles.localNotice} role="alert">
                   {FREE_CHAT_OFF_HINT}
-                  {rawNotice.includes("上次成功的结果仍可查看") ? "上次成功的结果仍可查看。" : ""}
                 </p>
               )
             ) : (
