@@ -9,7 +9,16 @@
 - 依赖审计发现的 [Zod 约束集合内存消耗公告](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5) 通过 4.6.5 → 4.6.6 补丁更新处理；保留入口请求体和查询资源限制，不以升级依赖代替边界控制。
 - 发行前执行 `pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm audit --prod`，再在隔离账号与运行目录中启动实际产物，检查首页、静态资源、DuckDB、权限及预览 404。Docker/Linux、真实外部模型、可信 HTTPS、备份恢复及远程上线须在对应环境单独验收；下方历史结果不自动成为当前版本证据。
 
-## 当前 VPS 部署（2026-11-08）
+## 当前 VPS 部署（2026-11-13）
+
+- 已发布源码 [`f5adcaa`](https://github.com/MaShaoGER/ai-student-analytics/commit/f5adcaa29a086db7f7b78fd72beadcafffc93758)，包括首页与手机布局收尾、矮屏发送／停止回复、旧回复动画修复、实验入口清理、管理日志标签及 CI 数据准备。GitHub 正常合并远端新增文档后推送，未改写历史；[该源码 CI](https://github.com/MaShaoGER/ai-student-analytics/actions/runs/43370489198) 的类型检查／测试／构建和 HTTP 集成均成功，手动外部 AI 任务按设计不执行。
+- VPS 使用 Linux x64 镜像 `chuanzhi-student-analytics-test:release-20261113-f5adcaa`，镜像 ID `sha256:b82e0ba5de002dd5241cd827e2a3d5faae08bac1bb7af540d0695ca2b701b956`；OCI revision 为上述完整源码 SHA。线上仅替换 `app`，等待健康后重新加载既有 Nginx 网关；其他原有服务容器 ID 保持不变。入口仍为 [学析台](https://64.81.112.189:3443/)，沿用已有账号和自签名证书。
+- 发布前完成 843 项 Vitest（73 项既有跳过）、37 项 HTTP 集成与重启恢复、16 项恢复工具测试、类型检查、依赖审计、真实浏览器路径以及本地和 Linux 生产构建。Linux 候选使用全新临时 records 和合成账号，不读取线上凭据，通过 69 项烟测；因不含旧格式历史夹具，明确跳过 1 项旧历史保留检查。证据：服务器 `releases/f5adcaa/candidate-smoke.txt`。
+- 正式切换前停止应用进行一致性卷备份，配置及备份位于 `/opt/chuanzhi-student-analytics-test/backups/release-20261113-wrapup/`，权限限于所有者。`records-final.tgz` 保留原 records；`records-before.sha256` 与 `records-after.sha256` 比较完全一致，原 `runtime.env` 的哈希也与备份一致。继续挂载原 `chuanzhi-test_records` 和 `source/oulad_raw:ro`，未重置账号、密钥、会话或配置。候选容器及临时卷已清除。
+- 公网匿名验证：首页、JS、CSS 和会话探测 200，未登录 profile／账号管理／会话列表 401，`/preview/ai-home`、`/previews/ai-home` 为 404；安全响应头与配置一致（`nosniff`、`SAMEORIGIN`）。没有使用真实线上账号登录、写入分析或调用外部模型；手机软键盘真机、真实模型效果和可信 CA HTTPS 仍未据此验收。
+- 回滚：在服务器项目根目录将 `backups/release-20261113-wrapup/deploy/compose.yml` 复制回 `deploy/compose.yml`，执行 `docker compose -f deploy/compose.yml up -d --no-deps --wait app`，再执行 `docker exec chuanzhi-test-gateway-1 nginx -s reload`。旧镜像 `summary-20261109-c63a7f0` 和原配置均保留；正常回滚只切应用镜像，不覆盖已经继续产生的 records。
+
+## 历史 VPS 部署（2026-11-08）
 
 - `main` 提交 `87aff75`（`fix: 统一顶栏菜单并保留数据说明阅读交互`）已推送。版本提交前通过 `pnpm typecheck`、完整 Vitest（828 通过、73 按既有开关跳过）、`pnpm audit --prod`；VPS Linux x64 Docker 默认 Turbopack 生产构建及 postbuild 通过。VPS Webpack 尝试受内存限制被 SIGKILL，未用于发布。
 - 部署沿用原 `chuanzhi-test_records` 卷、`/opt/chuanzhi-student-analytics-test/source/oulad_raw` 只读挂载及原 `runtime.env`；环境文件备份哈希一致。线上原有 3 个账号、管理员 1 个、审计文件大小 119,506 bytes；其他 VPS 容器部署前后保持运行。发布前卷归档与部署配置备份位于 `backups/release-20261108/`，旧镜像 `grade-import-20261020T123213` 保留在本机，回退配置见 `backups/release-20261108/deploy/compose.yml`（将 app 镜像恢复后执行 `docker compose up -d --no-deps app`）。候选使用线上 records 副本并通过健康、静态资源和预览封锁检查；候选服务及副本卷已清理。
