@@ -90,16 +90,16 @@ textarea:focus-visible {
   --sage-soft: #f0f0ec;
   --live: #2f8a5b;
 
-  /* Data-encoding colours keep their established meaning. */
-  --score: #4f6956;
-  --score-soft: #edf3ee;
-  --score-bar: #7c9580;
-  --activity: #455b75;
-  --activity-soft: #edf2f8;
-  --activity-bar: #8ba2be;
-  --completion: #42676a;
-  --completion-soft: #edf5f5;
-  --completion-bar: #83a7aa;
+  /* Metric labels carry semantics; ink and lavender carry visual hierarchy. */
+  --score: var(--ink);
+  --score-soft: var(--surface-inset);
+  --score-bar: var(--accent);
+  --activity: var(--accent-ink);
+  --activity-soft: var(--accent-soft);
+  --activity-bar: var(--ink);
+  --completion: var(--muted);
+  --completion-soft: var(--surface-inset);
+  --completion-bar: var(--muted);
 
   --instrument-bg: transparent;
   --instrument-ink: var(--ink);
@@ -113,7 +113,7 @@ textarea:focus-visible {
   --instrument-tooltip-line: var(--line-strong);
 
   --chart-primary: var(--accent);
-  --chart-secondary: var(--score-bar);
+  --chart-secondary: var(--ink);
   --chart-text: var(--ink);
   --chart-muted: var(--muted);
   --chart-grid: #24243614;
@@ -201,15 +201,6 @@ textarea:focus-visible {
   --sage-soft: #26262c;
   --live: #6fcf97;
 
-  --score: #bdd5c4;
-  --score-soft: #182d26;
-  --score-bar: #83a98f;
-  --activity: #c3d5ee;
-  --activity-soft: #192b43;
-  --activity-bar: #8ba9cd;
-  --completion: #bddbdb;
-  --completion-soft: #173136;
-  --completion-bar: #84b5b8;
 
   --instrument-grid: #ecebe614;
   --chart-grid: #ecebe614;

@@ -122,12 +122,7 @@ export function analysisReportHtml(
     : "本次分析没有可展示的分组。";
   const filtered = analysisSuppressionNote(result);
   const max = Math.max(...result.rows.map((row) => row.value), 1);
-  const metricColors =
-    result.unit === "%"
-      ? ["#386454", "#d5e2d4", "#a3d8c3", "#193e37"]
-      : result.unit === "次"
-        ? ["#835131", "#e8dfce", "#ffbc8f", "#3e2b24"]
-        : ["#304b38", "#dbe4d4", "#afdbd9", "#193e45"];
+  const metricColors = ["#7666cc", "#e6e1f4", "#9d8fe6", "#2c2840"];
   // A restored history snapshot keeps `query` as an empty string on purpose,
   // so the report must explain that gap instead of printing a blank block.
   const query = (result.query ?? "").trim();

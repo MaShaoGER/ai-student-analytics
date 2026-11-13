@@ -1,6 +1,6 @@
 # 当前架构
 
-维护说明更新于 2026-11-07。当前项目沿用 Next.js + DuckDB，包含数据浏览、受控 AI 工具、账号历史、三角色权限、成绩导入和导出。使用方式见[工作台指南](workspace-guide.md)，专题契约见[文档导航](README.md)。根目录开发路线图属于历史规划，不作为当前架构的完整说明。
+维护说明更新于 2026-11-13。当前项目沿用 Next.js + DuckDB，包含数据浏览、受控 AI 工具、账号历史、三角色权限、成绩导入和导出。使用方式见[工作台指南](workspace-guide.md)，专题契约见[文档导航](README.md)。根目录开发路线图属于历史规划，不作为当前架构的完整说明。
 
 ```text
 浏览器
@@ -23,6 +23,7 @@
 | 路径 | 主要职责 |
 | --- | --- |
 | `components/workspace.tsx` | 双主入口、从属层及 URL／返回关系、账号与 AI 会话客户端编排；不承载独立面板的渲染实现 |
+| `lib/navigation.ts`、`next.config.ts` | 公开页面路径与工作台状态的唯一转换边界；精确 rewrite 复用工作台，未知路径不兜底 |
 | `components/workspace-data-source-details.tsx` | 数据表、字段及数据质量说明 |
 | `components/workspace-account-panel.tsx` | 账号展示、外观偏好与修改密码表单 |
 | `components/workspace-report-center.tsx` | 本次会话分析结果的报告选择、预览及导出 |
@@ -40,6 +41,8 @@
 | `scripts/prepare-standalone-native.mjs` | 统一准备 standalone 静态／公开资源、许可与 DuckDB 原生库；Docker 复用相同发行树 |
 
 概念浏览按课程→指标→关系循环，选择跨学科关系才显式扩大范围；换画法不换课程、分母或数据。旧自动交集菜单已退出默认界面，受控统计工具仍可复用原群体查询能力。目录、课内成绩、出勤分组、周记录与作业聚合在服务端返回，缺失／小样本不补零、不输出学生ID，详见[连续探索](workspace-guide.md#连续探索)。正式AI历史仍按账号隔离，展示切换不调用模型、不创建对话；浏览参考可移除且保留草稿。会话主体契约见[会话说明](ai-conversation-experience.md#接口与代码边界)与[存储说明](ai-conversation-storage.md)。
+
+公开 URL 使用 `/explore`、`/explore/course`、`/explore/metric`、`/chat`、`/reports`、`/settings`、`/admin`。`workspaceParams` 同时解析公开路径和旧收藏参数，保留冲突供调用方拒绝；`workspaceHref` 与 `conceptHref` 只写新地址。`source=sample` 在概念地址边界解析为内部稳定 ID，API、授权与持久化契约不变。默认画法按当前关系的 `conceptDrawings` 决定，不能统一当成柱形；地址规范化包含 pathname 和查询参数，使用替换而不是新增历史。
 
 ### 客户端职责边界
 

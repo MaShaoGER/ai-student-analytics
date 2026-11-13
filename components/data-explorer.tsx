@@ -211,7 +211,7 @@ export function DataExplorer({
     const canonical = new URL(href, window.location.origin).searchParams;
     const current = new URL(window.location.href).searchParams;
     const sameSearch = canonical.size === current.size && [...canonical].every(([name, value]) => current.get(name) === value);
-    if (!saved || saved.scope !== scopeKey || saved.id !== id || !sameSearch)
+    if (!saved || saved.scope !== scopeKey || saved.id !== id || !sameSearch || window.location.pathname !== new URL(href, window.location.origin).pathname)
       window.history.replaceState({ ...window.history.state, concept: { scope: scopeKey, id, scroll } }, "", href);
     record(restored, id, trailRef.current);
     onLocationChange(href);
@@ -677,7 +677,7 @@ export function DataExplorer({
           ) : null}
           {valid.scene === "metric" && <p className={styles.definition}>{CONCEPT_LABELS[valid.metric].name}：{CONCEPT_LABELS[valid.metric].definition}</p>}
           {valid.scene === "home" && <p className={styles.definition}>均分：{CONCEPT_LABELS.score.definition}</p>}
-          <p className={styles.groupHint}>样本少于 3 人的组隐藏，缺失不补 0。数据源：{profile.name}{data.synthetic ? "（演示合成数据）" : ""}。</p>
+          <p className={styles.groupHint}>样本少于 3 人的组隐藏，缺失不补 0。数据源：{profile.name}{data.synthetic ? "（合成数据，非真实学生记录）" : ""}。</p>
         </>
       );
     }
@@ -772,7 +772,7 @@ export function DataExplorer({
           {valid.scene === "home" && data
             ? <h2 className={styles.title} tabIndex={-1} data-scene-heading><MaskRise className={styles.titleMask}>{title}</MaskRise></h2>
             : <h1 className={styles.title} tabIndex={-1} data-scene-heading><MaskRise className={styles.titleMask}>{title}</MaskRise></h1>}
-          <InkText text={`${scope}${data?.synthetic ? " · 演示合成数据" : ""}`} as="p" className={styles.scope} step={18} delay={40} />
+          <InkText text={`${scope}${data?.synthetic ? " · 合成数据" : ""}`} as="p" className={styles.scope} step={18} delay={40} />
           {data && !error && <InkText text={hint} as="p" className={styles.hint} step={16} delay={120} />}
           {heroVisible && heroValue !== null && heroCount !== null ? (
             <div className={styles.lead} data-navigation-motion>

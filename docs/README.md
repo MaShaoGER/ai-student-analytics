@@ -16,7 +16,7 @@
 
 | 文档 | 用途 |
 | --- | --- |
-| [工作台指南](workspace-guide.md) | 数据浏览、同群体探索、图表、报告与账号入口 |
+| [工作台指南](workspace-guide.md) | 正式页面地址与分享、数据浏览、图表、报告与账号入口 |
 | [正式 AI 对话体验](ai-conversation-experience.md) | 连续追问、历史、阅读跟随、图表和数值表 |
 | [对话历史存储](ai-conversation-storage.md) | 账号隔离、保留期限、重启和持久化边界 |
 | [后台管理](admin-management.md) | 三角色、账号、数据集授权、系统总览和日志 |

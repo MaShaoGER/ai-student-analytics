@@ -1,5 +1,6 @@
 import { dataSourceSchema, type DataSource } from "../analysis/types";
 import type { ConceptExplorerData, ConceptMetric } from "../analysis/concept-explorer";
+import { workspaceParams } from "../navigation";
 
 export type ConceptDrawing = "rank" | "bars" | "dots" | "radar" | "line" | "stack";
 export type ConceptRelation = "band-score" | "band-pass" | "trend" | "subject" | "dist" | "split-pass" | "split-done" | "work";
@@ -88,12 +89,14 @@ export function metricLocation(course: string, metric: ConceptMetric, term: stri
   return relation ? { scene: "metric", course, metric, relation: relation.id, drawing: relation.drawings[0], term } : null;
 }
 export function conceptHref(location: ConceptLocation, datasetId?: DataSource): string {
-  const params = new URLSearchParams({ workspace: "overview", browse: location.scene, drawing: location.drawing });
-  if (datasetId) params.set("dataset", datasetId);
+  const params = new URLSearchParams();
+  if (datasetId) params.set("source", datasetId === "demo" ? "sample" : datasetId);
   if (location.term) params.set("term", location.term);
   if (location.scene !== "home") params.set("course", location.course);
   if (location.scene === "metric") { params.set("indicator", location.metric); params.set("relation", location.relation); }
-  return `/?${params}`;
+  if (location.drawing !== conceptDrawings(location)[0]) params.set("drawing", location.drawing);
+  const path = location.scene === "home" ? "/explore" : `/explore/${location.scene}`;
+  return params.size ? `${path}?${params}` : path;
 }
 /**
  * Native back/forward notifies every listener in the app. A browse address belongs
@@ -101,18 +104,22 @@ export function conceptHref(location: ConceptLocation, datasetId?: DataSource): 
  * it names a source, that same source; anything else is another screen's entry.
  */
 export function ownsBrowseLocation(input: string, datasetId: DataSource): boolean {
-  const workspace = new URL(input, "http://exploration.local").searchParams.get("workspace");
+  const workspace = workspaceParams(input).get("workspace");
   if (workspace && workspace !== "overview") return false;
   const route = parseConceptLocation(input);
   return route.status !== "valid" || !route.datasetId || route.datasetId === datasetId;
 }
 export function parseConceptLocation(input: string): ConceptRoute {
-  const params = new URL(input, "http://exploration.local").searchParams;
+  const params = workspaceParams(input);
   const fail = (): ConceptRoute => ({ status: "invalid", message: "这个探索地址无效，请回到课程全景重新开始。" });
-  const keys = ["browse", "drawing", "term", "course", "indicator", "relation", "dataset"];
+  const keys = ["workspace", "browse", "drawing", "term", "course", "indicator", "relation", "dataset", "source"];
   if (keys.some(key => params.getAll(key).length > 1)) return fail();
-  if (["focus", "draft", "lens", "source", "target"].some(key => params.has(key))) return fail();
-  const dataset = params.has("dataset") ? dataSourceSchema.safeParse(params.get("dataset")) : null;
+  if (["focus", "draft", "lens", "target"].some(key => params.has(key))) return fail();
+  if (params.has("source") && params.has("dataset")) return fail();
+  const source = params.get("source");
+  if (source === "demo") return fail();
+  const rawDataset = source === "sample" ? "demo" : source ?? params.get("dataset");
+  const dataset = rawDataset !== null ? dataSourceSchema.safeParse(rawDataset) : null;
   if (dataset && !dataset.success) return fail();
   const datasetId = dataset?.success ? dataset.data : undefined;
   // Pasted links carry padding around values; the trimmed value is the only form the app writes back.

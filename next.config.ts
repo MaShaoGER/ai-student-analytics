@@ -53,6 +53,11 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
+  async rewrites() {
+    // Exact public pages share the workspace; unknown paths still return 404.
+    return ["/explore", "/explore/course", "/explore/metric", "/chat", "/reports", "/settings", "/admin"]
+      .map(source => ({ source, destination: "/" }));
+  },
   outputFileTracingIncludes: {
     "/api/*": ["data/sample/*.csv", "data/sample/summary.json"],
   },

@@ -263,7 +263,7 @@
   background: var(--accent);
 }
 .petal[data-kind="drawing"] .node {
-  border-color: #b98a3c;
+  border-color: var(--ink);
   background: transparent;
 }
 .petal button:disabled .node {
@@ -336,7 +336,7 @@
   background: var(--accent);
 }
 .legend i[data-kind="drawing"] {
-  border-color: #b98a3c;
+  border-color: var(--ink);
   background: transparent;
 }
 

@@ -31,8 +31,8 @@
 
 .bar { fill: var(--accent); opacity: 0.78; transition: opacity 150ms ease-out; }
 .bar[data-tone="a"] { fill: var(--accent); }
-.bar[data-tone="b"] { fill: #b98a3c; }
-.bar[data-tone="c"] { fill: #a8a8b4; }
+.bar[data-tone="b"] { fill: var(--ink); }
+.bar[data-tone="c"] { fill: var(--muted); }
 
 .grid { stroke: var(--line); stroke-width: 1; }
 .tick,
@@ -100,12 +100,12 @@
 }
 .tipFrame[data-side="left"] .tip { margin-left: auto; }
 
-.glowLine { fill: none; stroke: var(--accent); stroke-width: 6; opacity: 0.14; filter: blur(4px); }
+.glowLine { fill: none; stroke: var(--accent); stroke-width: 6; opacity: 0.08; }
 .line { fill: none; stroke: var(--accent); stroke-width: 2; }
 .stem { stroke: var(--accent); stroke-width: 1; opacity: 0.3; }
-.dot { fill: #fff; stroke: var(--accent); stroke-width: 2; transition: fill 150ms ease-out, stroke-width 150ms ease-out; }
-.dot[data-tone="b"] { stroke: #b98a3c; }
-.dot[data-tone="c"] { stroke: #a8a8b4; }
+.dot { fill: var(--paper); stroke: var(--accent); stroke-width: 2; transition: fill 150ms ease-out, stroke-width 150ms ease-out; }
+.dot[data-tone="b"] { stroke: var(--ink); }
+.dot[data-tone="c"] { stroke: var(--muted); }
 .area { fill: var(--accent); fill-opacity: 0.12; stroke: var(--accent); stroke-width: 1.5; }
 
 /* Hover is pointer feedback; keyboard focus uses an ink outline, never accent fill. */
@@ -113,9 +113,9 @@
 .datum[data-interactive]:focus-visible .track:not([data-void]) { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 3 2; }
 .datum[data-interactive]:focus-visible .bar { stroke: var(--ink); stroke-width: 1.5; }
 .datum[data-interactive]:focus-visible .dot { stroke: var(--ink); stroke-width: 2.5; }
-/* Hover: bar fully opaque, mild glow, labels go accent */
-.datum[data-interactive]:hover .bar { opacity: 1; filter: drop-shadow(0 0 5px rgba(118, 102, 204, 0.3)); }
-.datum[data-interactive]:hover .dot { fill: rgba(118, 102, 204, 0.18); filter: drop-shadow(0 0 4px rgba(118, 102, 204, 0.4)); }
+/* Hover strengthens the mark without blurring data or labels. */
+.datum[data-interactive]:hover .bar { opacity: 1; }
+.datum[data-interactive]:hover .dot { fill: var(--accent-soft); stroke-width: 3; }
 .datum[data-interactive]:hover .label,
 .datum[data-interactive]:hover .value { fill: var(--accent-ink, var(--accent)); }
 

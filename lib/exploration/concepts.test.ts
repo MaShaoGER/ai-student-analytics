@@ -14,6 +14,41 @@ describe("concept exploration boundaries", () => {
     expect(parseConceptLocation(conceptHref(location, "demo"))).toEqual({ status: "valid", datasetId: "demo", location });
   });
 
+  it("publishes sample links without internal dataset IDs or redundant defaults", () => {
+    expect(conceptHref({ scene: "home", drawing: "rank" }, "demo")).toBe("/explore?source=sample");
+    expect(parseConceptLocation("/explore?source=sample")).toMatchObject({
+      status: "valid", datasetId: "demo", location: { scene: "home", drawing: "rank" },
+    });
+    expect(parseConceptLocation("/explore/course?source=oulad&course=AAA")).toMatchObject({
+      status: "valid", datasetId: "oulad", location: { scene: "course", course: "AAA", drawing: "bars" },
+    });
+  });
+
+  it("preserves relationship-dependent defaults and nondefault views in public deep links", () => {
+    for (const drawing of ["bars", "dots"] as const) {
+      const location: ConceptLocation = { scene: "metric", course: "数据结构 & 算法", term: "2025J", metric: "attendance", relation: "band-pass", drawing };
+      const href = conceptHref(location, "demo");
+      expect(new URL(href, "http://localhost").pathname).toBe("/explore/metric");
+      expect(href).not.toContain("demo");
+      expect(parseConceptLocation(href)).toEqual({ status: "valid", datasetId: "demo", location });
+    }
+  });
+
+  it("rejects conflicting public paths and source identities rather than changing scope", () => {
+    for (const href of [
+      "/explore/course?browse=home&course=AAA",
+      "/explore?source=sample&source=oulad",
+      "/explore?source=sample&dataset=oulad",
+      "/explore?source=demo",
+      "/explore?source=",
+    ]) expect(parseConceptLocation(href).status, href).toBe("invalid");
+    expect(ownsBrowseLocation("/chat", "demo")).toBe(false);
+    expect(ownsBrowseLocation("/reports", "demo")).toBe(false);
+    expect(ownsBrowseLocation("/settings", "demo")).toBe(false);
+    expect(ownsBrowseLocation("/admin", "demo")).toBe(false);
+    expect(ownsBrowseLocation("/explore?source=oulad", "demo")).toBe(false);
+  });
+
   it("rejects explicit empty or ambiguous addresses instead of silently opening a different topic", () => {
     for (const url of ["/?browse=", "/?browse=home&dataset=", "/?browse=home&term=", "/?browse=course&course=", "/?browse=home&dataset=demo&dataset=oulad", "/?browse=home&course=数据结构", "/?browse=metric&course=数据结构&indicator=attendance&relation=dist", "/?browse=metric&course=数据结构&indicator=constructor&relation=subject"]) {
       expect(parseConceptLocation(url).status, url).toBe("invalid");

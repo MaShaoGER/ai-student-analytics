@@ -16,6 +16,7 @@ import {
 } from "react";
 import { Icon } from "@/components/app-icons";
 import { conceptHref, parseConceptLocation, type ConceptLocation } from "@/lib/exploration/concepts";
+import { workspaceHref, workspaceParams, type WorkspaceView as View, type WorkspacePrimary as Primary } from "@/lib/navigation";
 import { LoginScreen } from "@/components/login-screen";
 import { BootScreen, WorkspaceSkeleton } from "@/components/workspace-loading";
 import { AccountPanel } from "@/components/workspace-account-panel";
@@ -65,9 +66,6 @@ const DataExplorer = dynamic(
   () => import("@/components/data-explorer").then((module) => module.DataExplorer),
   { loading: () => <WorkspaceSkeleton label="正在打开数据浏览…" /> },
 );
-type View = "overview" | "analysis" | "reports" | "admin" | "account";
-/** Two primary workspaces; subordinate pages inherit the primary that opened them. */
-type Primary = "explore" | "conversation";
 /** Direction of the workspace transition shared with CSS. */
 type ViewTransition = "primary-forward" | "primary-back" | "deeper" | "back";
 type AIStatus = { configured: boolean; enabled: boolean; model: string | null };
@@ -152,7 +150,7 @@ function sameSessionPresentation(left: SessionUser, right: SessionUser): boolean
 
 export function Workspace({ initialConversation = false }: { initialConversation?: boolean } = {}) {
   const motionPreference = useMotionPreferences();
-  const explorationLocation = useRef("/?workspace=overview");
+  const explorationLocation = useRef("/explore");
   const explorationState = useRef<Record<string, unknown> | null>(null);
   const conversationScroll = useRef(0);
   /**
@@ -289,7 +287,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
   }
 
   const expire = useCallback((notice: string | null = null) => {
-    explorationLocation.current = "/?workspace=overview";
+    explorationLocation.current = "/explore";
     explorationState.current = null;
     conversationScroll.current = 0;
     readingPositions.current?.clear();
@@ -342,7 +340,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
 
   const clearScopedState = useCallback(
     (nextView: View = "overview", notice: string | null = null) => {
-      explorationLocation.current = "/?workspace=overview";
+      explorationLocation.current = "/explore";
       explorationState.current = null;
       conversationScroll.current = 0;
       // A different signed-in scope must never inherit another account's reader
@@ -505,18 +503,13 @@ export function Workspace({ initialConversation = false }: { initialConversation
   }, [user, syncAccess]);
   useEffect(() => {
     if (bootLoading || !user || passwordChangeRequired) return;
-    const canonicalHref = (next: View, nextPrimary: Primary) => {
-      const params = new URLSearchParams({ workspace: next });
-      if (next !== "overview" && next !== "analysis") params.set("primary", nextPrimary);
-      return `/?${params}`;
-    };
     const replaceHref = (href: string) => {
       if (window.location.pathname + window.location.search !== href)
         window.history.replaceState(window.history.state, "", href);
     };
     const restoreLocation = () => {
       if (viewRef.current === "analysis") conversationScroll.current = window.scrollY;
-      const params = new URLSearchParams(window.location.search);
+      const params = workspaceParams(window.location.href);
       const requested = params.get("workspace");
       const views: View[] = ["overview", "analysis", "reports", "admin", "account"];
       const legacyAnalysis = requested === "analysis" && params.get("mode") === "metrics";
@@ -527,7 +520,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
       // URLs redirect to browsing instead of rendering a hidden legacy screen.
       if (requested === "data" || legacyAnalysis || invalid) {
         setWorkspaceRouteError(invalid ? "页面地址无效，请从数据浏览重新开始。" : "");
-        replaceHref("/?workspace=overview");
+        replaceHref("/explore");
         setPrimary("explore");
         setView("overview");
         return;
@@ -554,7 +547,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
       }
       setPrimary(nextPrimary);
       setView(next);
-      if (requested !== null && next !== "overview") replaceHref(canonicalHref(next, nextPrimary));
+      if (next !== "overview") replaceHref(workspaceHref(next, nextPrimary));
       if (next === "overview") {
         const route = parseConceptLocation(window.location.href);
         if (route.status === "valid" && route.datasetId) setDatasetId(route.datasetId);
@@ -961,7 +954,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
           if (
             route.status === "valid" &&
             route.datasetId &&
-            new URLSearchParams(window.location.search).get("workspace") !== "analysis"
+            workspaceParams(window.location.href).get("workspace") !== "analysis"
           ) {
             return route.datasetId;
           }
@@ -1093,9 +1086,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
     else if (primarySeries && nextPrimary !== primary)
       kind = nextPrimary === "conversation" ? "primary-forward" : "primary-back";
     else if (wasSubordinate && primarySeries) kind = "back";
-    const params = new URLSearchParams({ workspace: next });
-    if (next !== "overview" && next !== "analysis") params.set("primary", nextPrimary);
-    const href = next === "overview" ? explorationLocation.current : `/?${params}`;
+    const href = next === "overview" ? explorationLocation.current : workspaceHref(next, nextPrimary);
     if (window.location.pathname + window.location.search !== href) {
       const state = { ...window.history.state };
       if (next === "overview" && explorationState.current) {
@@ -1679,7 +1670,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
         </div>
         <div className="glass-tools" data-glass-pane="0.08">
           {eligibleDatasetId === "demo" && (
-            <span className="glass-demo-tag">模拟演示数据</span>
+            <span className="glass-demo-tag">合成校园数据</span>
           )}
           {view === "analysis" && (
             <button
@@ -1894,7 +1885,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
                       type="button"
                       className="text-button"
                       onClick={() => {
-                        explorationLocation.current = "/?workspace=overview";
+                        explorationLocation.current = "/explore";
                         explorationState.current = null;
                         setWorkspaceRouteError("");
                         navigate("overview");
