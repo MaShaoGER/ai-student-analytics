@@ -46,32 +46,6 @@
   color: var(--a-ink);
   -webkit-font-smoothing: antialiased;
 }
-:global(:root[data-theme="dark"]) .stage {
-  --a-surface: #0f1214;
-  --a-raised: #171b1e;
-  --a-ink: #ecebe6;
-  --a-muted: #9c9fa1;
-  --a-faint: #63686b;
-  --a-line: #ecebe617;
-  --a-line-strong: #ecebe633;
-  --a-accent: #ff6b3d;
-  --a-accent-soft: #ff6b3d24;
-  --a-bar: #343a3e;
-  --a-bar-hover: #454c51;
-  --a-live: #6fcf97;
-  --a-shadow: 0 0 0 1px #ffffff0f, 0 16px 40px #0000004d;
-  --a-ground: #08090a;
-  --a-glow-warm: #ff6b3d3d;
-  --a-glow-cool: #4f6a8a4d;
-  --a-glow-light: #c9d3dc14;
-  --a-glass: #121517a3;
-  --a-glass-dim: #0e1012b3;
-  --a-glass-edge: #ffffff14;
-  --a-grain-opacity: 0.1;
-  --a-surface-veil: color-mix(in srgb, var(--a-surface) 80%, transparent);
-  --a-surface-sheen: #ffffff12;
-  --a-surface-glint: #ff6b3d12;
-}
 
 /* ── Light field: blurred colour, fine grain, no rendered objects ── */
 .field {

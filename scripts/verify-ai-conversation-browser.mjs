@@ -59,9 +59,16 @@ const checks = [];
 try {
   await until(async () => { try { return (await fetch(base + "/api/auth/session")).ok; } catch { return false; } }, "startup timed out");
   await browser("open", base);
+  await evaluate('localStorage.setItem("student-analytics.appearance","dark")');
   assert.equal(await evaluate(`fetch('/api/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(${JSON.stringify({username,password})})}).then(r=>r.status)`), 200);
   await browser("reload");
   await until(() => evaluate('Array.from(document.querySelectorAll("button")).some(x=>x.textContent.trim()==="AI 对话")'), "login failed");
+  assert.deepEqual(
+    await evaluate('[document.documentElement.dataset.theme,getComputedStyle(document.documentElement).colorScheme]'),
+    ["light", "light"],
+    "saved dark appearance must not change the light-only workspace",
+  );
+  checks.push("旧深色偏好在重载后仍使用浅色界面");
   await browser("find", "role", "button", "click", "--name", "AI 对话", "--exact");
   await until(() => evaluate('!!document.querySelector("#analysis-question")'), "conversation not ready");
   const ai = await evaluate('fetch("/api/ai/status").then(r=>r.json())');
@@ -84,6 +91,15 @@ try {
   await until(() => evaluate('document.activeElement===document.querySelector("#analysis-question")'), "draft focus failed");
   assert.equal(await evaluate('document.querySelector("#analysis-question").value'), "保留这条草稿");
   checks.push("新建前保护草稿、取消保留、输入折叠和键盘回焦");
+
+  await until(() => evaluate('!!document.querySelector("[data-workspace-part=welcomeSuggestions] button:not([disabled])")'), "recommendations not ready");
+  await browser("click", "[data-workspace-part=welcomeSuggestions] button");
+  await until(() => evaluate('!!document.querySelector("dialog[open] #draft-guard-title")'), "recommendation discarded the draft without confirmation");
+  assert.equal(await evaluate('document.querySelector("#analysis-question").value'), "保留这条草稿");
+  await browser("press", "Escape");
+  await until(() => evaluate('!document.querySelector("dialog[open] #draft-guard-title")'), "recommendation confirmation did not cancel");
+  assert.equal(await evaluate('document.querySelector("#analysis-question").value'), "保留这条草稿");
+  checks.push("推荐问题发送前保护草稿，Escape取消后原文保留");
 
   await browser("fill", "#analysis-question", "Web前端开发从2025B到2025J均分下降了多少？");
   await until(() => evaluate('!document.querySelector("button[aria-label=发送]").disabled'), "dataset not ready");

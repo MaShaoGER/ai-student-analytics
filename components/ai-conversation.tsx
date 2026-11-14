@@ -204,6 +204,8 @@ export function ConversationWorkspace({
   expandedChartId,
   onQuestionChange,
   onAsk,
+  onSuggestion,
+  sendBlocked = false,
   onStop,
   onClear,
   onClearContext,
@@ -244,6 +246,13 @@ export function ConversationWorkspace({
   expandedChartId: string | null;
   onQuestionChange: (value: string) => void;
   onAsk: (question?: string) => void;
+  /**
+   * A recommended/nearby question. It goes through the workspace's draft guard
+   * instead of `onAsk`, so a card click never silently replaces an unsent draft.
+   */
+  onSuggestion: (question: string) => void;
+  /** A history detail read is in flight; sending would race its transcript. */
+  sendBlocked?: boolean;
   onStop: () => void;
   onClear: () => void;
   onClearContext?: () => void;
@@ -272,6 +281,16 @@ export function ConversationWorkspace({
   const foldFrom = useRef<DOMRect | null>(null);
   const { enabled: motionEnabled, reduced: reducedMotion } = useMotionPreferences();
   const [historyCollapsed, setHistoryCollapsed] = useState(true);
+  /**
+   * Clicking an entry closes the history layer before its read starts, so a
+   * failed read would leave its message inside a hidden panel. The workspace
+   * names the entry that failed; reopen the layer once so the error and its
+   * retry are actually reachable, without auto-retrying anything.
+   */
+  const failedHistoryId = history.failedId ?? null;
+  useEffect(() => {
+    if (failedHistoryId) setHistoryCollapsed(false);
+  }, [failedHistoryId]);
   const wasCollapsed = useRef(false);
   const stopRequested = useRef(false);
   const [animatedResponseId, setAnimatedResponseId] = useState<string | null>(null);
@@ -510,11 +529,11 @@ export function ConversationWorkspace({
                         key={item.id}
                         aria-label={item.question}
                         data-recommended={item.id === "compare-courses" || undefined}
-                        disabled={loading || !canRun}
+                        disabled={loading || !canRun || sendBlocked}
                         onClick={() => {
                           if (!aiAllowed) return;
                           scroll.begin();
-                          onAsk(item.question);
+                          onSuggestion(item.question);
                         }}
                       >
                         <Icon
@@ -673,12 +692,11 @@ export function ConversationWorkspace({
                           type="button"
                           className="secondary-button"
                           key={suggestion}
-                          disabled={loading}
+                          disabled={loading || sendBlocked}
                           onClick={() => {
-                            if (aiAllowed) {
-                              scroll.begin();
-                              onAsk(suggestion);
-                            }
+                            if (!aiAllowed) return;
+                            scroll.begin();
+                            onSuggestion(suggestion);
                           }}
                         >
                           {suggestion}
@@ -923,7 +941,7 @@ export function ConversationWorkspace({
                     type="submit"
                     key="send"
                     className={styles.send}
-                    disabled={!aiAllowed || !canRun || question.trim().length < 2}
+                    disabled={!aiAllowed || !canRun || sendBlocked || question.trim().length < 2}
                     aria-label="发送"
                   >
                     <Icon name="arrow" size={19} />

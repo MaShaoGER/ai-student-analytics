@@ -13,9 +13,6 @@
   overflow: visible;
   color-scheme: light;
 }
-:root[data-theme="dark"] .glass-workspace.glass-auth {
-  color-scheme: dark;
-}
 
 /* Clear surfaces: no refracting layer behind text or form fields. */
 .glass-auth .login-story,

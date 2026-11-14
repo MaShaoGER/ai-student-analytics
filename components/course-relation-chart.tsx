@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as echarts from "echarts";
 import { useMotionPreferences } from "@/components/ui/motion-preferences";
-import { useTheme } from "@/components/ui/theme-provider";
 import { relationKey, type CourseRelationData } from "@/lib/analysis/course-relations";
 import { courseColorTokens } from "@/lib/analysis/course-colors";
 import type { PickAnchor } from "@/lib/exploration/selection";
@@ -24,7 +23,6 @@ export function CourseRelationChart({
 }) {
   const root = useRef<HTMLDivElement>(null);
   const chart = useRef<echarts.ECharts | null>(null);
-  const { theme } = useTheme();
   const { enabled: motionEnabled, reduced: reducedMotion } = useMotionPreferences();
   const colors = useRef(new Map<string, string>());
   // The first paint grows the chord as one group; later filter/focus/hover updates
@@ -208,7 +206,7 @@ export function CourseRelationChart({
     });
     observer.observe(element);
     return () => observer.disconnect();
-  }, [data, theme, motionEnabled, reducedMotion]);
+  }, [data, motionEnabled, reducedMotion]);
 
   useEffect(() => {
     const instance = chart.current;
@@ -257,7 +255,7 @@ export function CourseRelationChart({
         },
       ],
     });
-  }, [data, course, selectedKey, hovered, theme]);
+  }, [data, course, selectedKey, hovered]);
 
   return (
     <div

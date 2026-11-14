@@ -26,6 +26,10 @@ const result: AnalysisResult = {
 };
 
 describe("analysis exports", () => {
+  it("does not invent dataset version metadata for an unversioned result", () => {
+    const [, row] = analysisCsv(result).trimEnd().split("\r\n");
+    expect(row.endsWith(',""')).toBe(true);
+  });
   it("explicitly labels unknown counts in legacy results", () => {
     const legacy = { ...result, filteredOutGroupCount: null };
     expect(analysisReportHtml(legacy)).toContain("未记录小样本过滤分组数，无法确定");

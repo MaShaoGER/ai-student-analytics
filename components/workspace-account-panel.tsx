@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Icon } from "@/components/app-icons";
 import { MotionToggle } from "@/components/ui/motion-preferences";
-import { ThemeToggle } from "@/components/ui/theme-provider";
 import { requestMessage } from "@/components/workspace-request";
 import type { SessionUser } from "@/lib/client-types";
 
@@ -137,8 +136,7 @@ export function AccountPanel({
           <span>你的账号权限由管理员统一管理。</span>
         </div>
         <div className="account-appearance">
-          <h3>外观与动效</h3>
-          <ThemeToggle />
+          <h3>交互动效</h3>
           <MotionToggle />
         </div>
       </section>

@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import * as echarts from "echarts";
 import { useMotionPreferences } from "@/components/ui/motion-preferences";
-import { useTheme } from "@/components/ui/theme-provider";
 import {
   buildStudioChart,
   chartPickKey,
@@ -45,7 +44,7 @@ export function StudioChart({
   // gets a canvas-level reveal; the handle lets a new entrance replace the old one.
   const canvasReveal = useRef<Animation | null>(null);
   // Remember what the previous draw showed so only a real data/type/view change
-  // replays the entrance; resizes and theme swaps redraw in place.
+  // replays the entrance; resizes redraw in place.
   const previousDraw = useRef<
     | {
         type: StudioChartType;
@@ -63,7 +62,6 @@ export function StudioChart({
     omitted: number;
   }>({ summary: "正在绘图…", error: "", details: [], omitted: 0 });
   const [selected, setSelected] = useState("");
-  const { theme } = useTheme();
   const { enabled: motionEnabled, reduced: reducedMotion } = useMotionPreferences();
 
   useEffect(() => {
@@ -225,7 +223,6 @@ export function StudioChart({
     fields,
     densityMode,
     aggregate,
-    theme,
     motionEnabled,
     reducedMotion,
     selectedPickKey,

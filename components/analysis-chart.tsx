@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import { useMotionPreferences } from "@/components/ui/motion-preferences";
-import { useTheme } from "@/components/ui/theme-provider";
 import * as echarts from "echarts";
 import type { AnalysisRow } from "@/lib/analysis/types";
 import { buildChartOption, type ChartColors } from "@/lib/analysis/chart-options";
@@ -42,7 +41,6 @@ export function AnalysisChart({
   const chartRef = useRef<echarts.ECharts | null>(null);
   const lastView = useRef<ChartViewType | undefined>(undefined);
   const lastDataKey = useRef<string | undefined>(undefined);
-  const { theme } = useTheme();
   const { enabled: motionEnabled, reduced: reducedMotion } = useMotionPreferences();
   const view = resolveChartView(chartType, unit, rows);
   const isTable = view === "table";
@@ -93,16 +91,16 @@ export function AnalysisChart({
       return `rgba(${r},${g},${b},${a / 255})`;
     };
     const colors: ChartColors = {
-      primary: token("--chart-primary", "#9aacc8"),
-      neutral: token("--chart-secondary", "#69717d"),
-      text: token("--chart-text", "#d7dde6"),
-      muted: token("--chart-muted", "#a4adba"),
-      grid: token("--chart-grid", "#383e47"),
-      tooltip: token("--chart-tooltip-bg", "#252b34"),
-      border: token("--chart-tooltip-border", "#4b5564"),
-      surface: token("--paper", "#222421"),
+      primary: token("--chart-primary", "#7666cc"),
+      neutral: token("--chart-secondary", "#232329"),
+      text: token("--chart-text", "#232329"),
+      muted: token("--chart-muted", "#6b6b76"),
+      grid: token("--chart-grid", "#24243614"),
+      tooltip: token("--chart-tooltip-bg", "#fbfbf8"),
+      border: token("--chart-tooltip-border", "#24243638"),
+      surface: token("--paper", "#f5f5f2"),
       palette: Array.from({ length: 10 }, (_, index) =>
-        token(`--chart-${multicolor ? "multi-" : ""}category-${index + 1}`, "#88baff"),
+        token(`--chart-${multicolor ? "multi-" : ""}category-${index + 1}`, "#7666cc"),
       ),
     };
     const draw = () => {
@@ -192,7 +190,6 @@ export function AnalysisChart({
     selected,
     onSelectDimension,
     comparison,
-    theme,
     multicolor,
     motionEnabled,
     reducedMotion,

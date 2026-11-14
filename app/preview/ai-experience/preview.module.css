@@ -122,17 +122,7 @@
   text-transform: uppercase;
 }
 
-.railBottom {
-  width: 100%;
-  margin-top: auto;
-  display: grid;
-  place-items: center;
-  gap: 8px;
-  /* Keep the preview's appearance control above the development toolbar. */
-  margin-bottom: 48px;
-}
 
-.railBottom > *,
 .rail > button {
   width: 44px;
   min-width: 44px;
@@ -1896,7 +1886,6 @@
     background-color: color-mix(in srgb, var(--ink) 4%, transparent);
   }
 
-  .railBottom > *:hover,
   .rail > button:hover {
     background: color-mix(in srgb, var(--button-ink) 12%, transparent);
   }
@@ -1923,7 +1912,6 @@
 .jumpButton,
 .quickAction,
 .iconButton,
-.railBottom > *,
 .rail > button,
 .sendButton,
 .stopButton {
@@ -2017,7 +2005,6 @@
     flex-basis: 32px;
   }
 
-  .railBottom > *,
   .rail > button {
     width: 44px;
   }

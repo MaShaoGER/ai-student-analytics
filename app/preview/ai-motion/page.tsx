@@ -4,7 +4,6 @@ import { useState } from "react";
 import type { AiStatusState } from "@/components/ui/ai-status";
 import { ConversationEvidence, ExecutionSteps } from "@/components/conversation-evidence";
 import { MotionToggle } from "@/components/ui/motion-preferences";
-import { ThemeToggle } from "@/components/ui/theme-provider";
 import type { AnalysisStep, ChatResponse } from "@/lib/ai/chat-types";
 import styles from "./preview.module.css";
 
@@ -67,7 +66,6 @@ export default function AIMotionPreview() {
     <main className={styles.preview}>
       <header className={styles.header}>
         <a href="/">返回学析台</a>
-        <ThemeToggle compact />
       </header>
       <p className={styles.eyebrow}>AI 对话 · 动效预览</p>
       <h1>让分析过程看得见。</h1>

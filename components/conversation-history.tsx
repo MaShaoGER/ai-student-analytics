@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "./app-icons";
 import styles from "./conversation-experience.module.css";
 
@@ -25,6 +26,12 @@ export type ConversationHistoryProps = {
   selectedId: string | null;
   loading: boolean;
   error?: string | null;
+  /**
+   * The entry whose detail read failed. Its own retry is offered next to the
+   * message: refreshing the list cannot re-open a conversation.
+   */
+  failedId?: string | null;
+  onRetry?: (id: string) => void;
   hasMore?: boolean;
   onMore?: () => void;
   onRefresh: () => void;
@@ -38,11 +45,22 @@ export function ConversationHistory(
     onToggle: () => void;
   },
 ) {
+  const { failedId, onRetry } = props;
   const panel = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const toggle = useRef(props.onToggle);
   toggle.current = props.onToggle;
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [mobileAnchor, setMobileAnchor] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 760px)");
+    const update = () =>
+      setMobileAnchor(media.matches ? document.getElementById("conversation-history-anchor") : null);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     if (props.collapsed) {
@@ -103,9 +121,15 @@ export function ConversationHistory(
       {props.error ? (
         <p role="alert" className={styles.historyError}>
           {props.error}
-          <button type="button" onClick={props.onRefresh}>
-            重新加载
-          </button>
+          {failedId && onRetry ? (
+            <button type="button" onClick={() => onRetry(failedId)}>
+              重试打开
+            </button>
+          ) : (
+            <button type="button" onClick={props.onRefresh}>
+              重新加载
+            </button>
+          )}
         </p>
       ) : null}
       {props.loading ? (
@@ -194,22 +218,25 @@ export function ConversationHistory(
       </div>
     </>
   );
+  const historyTrigger = (
+    <button
+      ref={trigger}
+      type="button"
+      data-workspace-part="historyToggle"
+      className={styles.historyToggle}
+      aria-label={props.collapsed ? "展开账号历史" : "收起账号历史"}
+      title="历史对话"
+      aria-expanded={!props.collapsed}
+      aria-controls="conversation-history-panel"
+      onClick={props.onToggle}
+    >
+      <Icon name="messages" size={16} />
+      <span>历史<span className={styles.historyLabelSuffix}>对话</span></span>
+    </button>
+  );
   return (
     <>
-      <button
-        ref={trigger}
-        type="button"
-        data-workspace-part="historyToggle"
-        className={styles.historyToggle}
-        aria-label={props.collapsed ? "展开账号历史" : "收起账号历史"}
-        title="历史对话"
-        aria-expanded={!props.collapsed}
-        aria-controls="conversation-history-panel"
-        onClick={props.onToggle}
-      >
-        <Icon name="messages" size={16} />
-        <span>历史对话</span>
-      </button>
+      {mobileAnchor ? createPortal(historyTrigger, mobileAnchor) : historyTrigger}
       <div
         ref={panel}
         data-workspace-part="historyRail"

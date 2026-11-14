@@ -79,43 +79,6 @@
   background: var(--background);
   font-family: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
-:root[data-theme="dark"] {
-  --ink: #ecebe6;
-  --muted: #a3a3ad;
-  --muted-on-sage: #a3a3ad;
-  --faint: #a3a3ad;
-  --accent: #9d8fe6;
-  --accent-ink: #c2b8f2;
-  --button-ink: #17171b;
-  --paper: #1d1d22;
-  --surface: #1d1d22;
-  --surface-inset: #26262c;
-  --surface-raised: #232329;
-  --background: #17171b;
-  --line: #ecebe61a;
-  --line-strong: #ecebe640;
-  --control-group: #26262c;
-  --sage: #a3a3ad;
-  --sage-surface: #232329;
-  --sage-soft: #26262c;
-  --instrument-bg: #1d1d22;
-  --instrument-ink: #ecebe6;
-  --instrument-muted: #a3a3ad;
-  --instrument-inset: #26262c;
-  --instrument-raised: #232329;
-  --instrument-line: #ecebe640;
-  --instrument-soft: #2c2840;
-  --instrument-grid: #ecebe614;
-  --instrument-tooltip: #232329;
-  --instrument-tooltip-line: #ecebe640;
-  --tone-paper: #ecebe6;
-  --teal-dark: #c2b8f2;
-  --teal-soft: #2c2840;
-  --success: #9dd2b4;
-  --warning: #f3c689;
-  --danger: #ffaba0;
-  color-scheme: dark;
-}
 :root,
 [data-metric] {
   /* Labels and tables identify categories; tones add hierarchy, not meaning. */
@@ -445,30 +408,6 @@ summary {
   background: var(--sage-surface);
   color: var(--ink);
   border: 1px solid var(--line);
-}
-.theme-toggle {
-  display: inline-flex;
-  gap: 0;
-  padding: 0;
-  border: 1px solid var(--line);
-  background: var(--surface-inset);
-  flex-shrink: 0;
-}
-.theme-toggle button {
-  min-height: 32px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 7px 9px;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font-size: 11px;
-}
-.theme-toggle button[aria-pressed="true"] {
-  color: var(--ink);
-  background: var(--sage-surface);
 }
 .workbench-main {
   grid-column: 2;
@@ -1437,12 +1376,6 @@ select {
   background: var(--paper);
   border-left: 18px solid var(--accent);
 }
-.login-appearance {
-  position: absolute;
-  right: 28px;
-  top: 20px;
-  z-index: 2;
-}
 .login-story {
   background: var(--paper);
   color: var(--ink);
@@ -1697,12 +1630,6 @@ html[data-motion="off"] button:active {
   .workbench-header .product-brand-wordmark small {
     display: none;
   }
-  .theme-toggle button span {
-    display: none;
-  }
-  .theme-toggle button {
-    padding: 7px;
-  }
   .workbench-page-heading {
     align-items: stretch;
     flex-direction: column;
@@ -1778,10 +1705,6 @@ html[data-motion="off"] button:active {
     border-left-width: 8px;
     padding-top: 58px;
   }
-  .login-appearance {
-    right: 18px;
-    top: 16px;
-  }
   .login-form-area {
     border-left: 0;
     border-top: 1px solid var(--line);
@@ -1802,10 +1725,6 @@ html[data-motion="off"] button:active {
   }
   .topbar-actions {
     gap: 4px;
-  }
-  .theme-toggle button {
-    min-width: 28px;
-    padding: 6px;
   }
   .topbar-avatar {
     width: 32px;
@@ -1894,9 +1813,6 @@ html[data-motion="off"] button:active {
   textarea,
   .overview-terminal input {
     font-size: 16px;
-  }
-  .theme-toggle button {
-    min-height: 40px;
   }
 }
 

@@ -19,6 +19,15 @@ services:
       OPENAI_INPUT_PRICE: ${OPENAI_INPUT_PRICE:-}
       OPENAI_OUTPUT_PRICE: ${OPENAI_OUTPUT_PRICE:-}
     restart: unless-stopped
+    # Same probe and thresholds as the image HEALTHCHECK; keeping them explicit makes
+    # `docker compose up -d --build --wait` wait for a servable app, and lets an
+    # environment tighten or loosen them. `running` alone is not readiness.
+    healthcheck:
+      test: ["CMD", "node", "scripts/healthcheck.mjs"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
 
 volumes:
   records:

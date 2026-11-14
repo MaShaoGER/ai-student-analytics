@@ -3,7 +3,7 @@
 ## 当前正式发行约定（2026-11-13）
 
 - 应用版本为 1.0.0，运行环境要求 Node.js 22+、pnpm 11.19.0；Next.js 版本以锁文件为准。版本号不代表下方旧 VPS 实例已更新，线上记录均按原日期保留。
-- 开发使用 `pnpm dev`；正式本地运行使用 `pnpm build` 后的 `pnpm start:standalone`。构建的 postbuild 将静态资源、正式公开资源、Rare UI 许可证与 DuckDB 原生库统一放入 `.next/standalone/`，Docker 也只消费这份准备好的应用树；镜像另保留三个账号 CLI 及 OULAD 来源说明。
+- 开发使用 `pnpm dev`；正式本地运行使用 `pnpm build` 后的 `pnpm start:standalone`。构建的 postbuild 将静态资源、正式公开资源、Rare UI 许可证与 DuckDB 原生库统一放入 `.next/standalone/`，Docker 也只消费这份准备好的应用树；镜像另保留三个账号 CLI、就绪探针 `scripts/healthcheck.mjs`（镜像 `HEALTHCHECK` 与 Compose 共用，见下文“应用就绪健康检查”）及 OULAD 来源说明。
 - 可将整个 standalone 目录复制到独立位置，用 `node server.js` 启动，无需原仓库的 `node_modules`。通过运行环境配置 `PORT`、`HOSTNAME`、准确的 `APP_ORIGIN`、绝对路径 `APP_STATE_DIR`／`ANALYSIS_RECORDS_DIR` 和持久保存的 `APP_SETTINGS_KEY`；OULAD 仍需另行挂载原始 CSV，不将已有真实账号和运行记录复制进构建产物。
 - `/preview`、`/previews` 及子路径仅在开发环境放行；生产环境返回 404，不提供可在生产重新打开的开关。设计源文件保留，静态预览和旧首页设计图不进入公开发行资源。数据源仍如实标注合成／外部／导入来源，不把模拟数据改名为真实数据。
 - 依赖审计发现的 [Zod 约束集合内存消耗公告](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5) 通过 4.6.5 → 4.6.6 补丁更新处理；保留入口请求体和查询资源限制，不以升级依赖代替边界控制。
@@ -142,6 +142,34 @@ docker compose down
 
 本机服务将在 `http://localhost:3000` 启动。首次部署需运行 `docker compose exec student-analytics node scripts/admin-init.mjs` 创建管理员，再从浏览器登录。远程生产访问需配置 HTTPS 和对应的 `APP_ORIGIN`。
 
+### 应用就绪健康检查
+
+镜像和 `docker-compose.yml` 使用同一个探针 `scripts/healthcheck.mjs`：它对容器内的 `127.0.0.1:$PORT`（默认 3000）发一次匿名 `GET /api/auth/session`，要求 HTTP 200、`application/json`，且响应对象包含 `user: null` 和布尔值 `setupRequired`；不限制无关的新增字段。连接失败、超时、3xx 重定向、非 200、非 JSON、缺少上述字段或字段类型不符都判为不健康。探针不跟随重定向，不做写请求，也不访问外部服务。
+
+尚未创建管理员的实例（`setupRequired: true`）同样算健康：首次部署必须先让容器可服务，才能执行 `docker compose exec student-analytics node scripts/admin-init.mjs`。因此健康检查不能把“没初始化管理员”当作故障，也不能只看“任意 200”。
+
+配置与含义：
+
+| 项 | 值 | 说明 |
+| --- | --- | --- |
+| `interval` | 30s | 每 30 秒执行一次探针 |
+| `timeout` | 5s | 单次探针整体上限（脚本内部 HTTP 超时为 3s，先于外层触发） |
+| `start_period` | 20s | 启动后的宽限期，此期间的失败不计入 `retries`，用于覆盖 Next standalone 冷启动 |
+| `retries` | 3 | 连续 3 次失败才标记 `unhealthy` |
+
+健康检查是应用级就绪判断，不是 liveness：容器进程还活着但不返回上述响应时仍会 `unhealthy`。`docker compose ps` 的 `running` 只表示进程存在，`healthy` 才表示该实例能响应匿名会话探测。
+
+`--wait` 等待的正是这份 healthcheck：
+
+```bash
+docker compose up -d --build --wait
+docker compose ps          # STATUS 应为 Up (healthy)
+```
+
+`--wait`（可加 `--wait-timeout 秒`）在服务变为 `healthy` 后返回；服务被标为 `unhealthy` 或等待超时则返回非零状态。它只证明匿名就绪，不证明登录、权限、数据可用或 AI 配置：回退或发布后仍须运行带认证的 smoke（`docs/smoke-release.md` 的 `scripts/smoke-release.mjs`），不要用 `--wait` 成功替代认证检查。
+
+无 Docker 环境时可单独运行同一探针，例如在生产构建启动后验证 `PORT=3000 node scripts/healthcheck.mjs`。
+
 ### 配置
 编辑 `docker-compose.yml` 中的环境变量或根据 `.env.example` 创建 `.env` 文件。至少设置与实际访问地址一致的 `APP_ORIGIN`，前端保存 AI 密钥还需要持久保存 `APP_SETTINGS_KEY`。以下是可选的服务端 AI 初始化参数：
 ```bash
@@ -196,15 +224,21 @@ pnpm dev
 
 ### Docker 验证
 ```bash
-# 构建镜像
-docker compose build
+# 构建并等待应用就绪（--wait 以 healthcheck 为准）
+docker compose up -d --build --wait
 
-# 启动并查看日志
-docker compose up
+# 查看状态与日志；STATUS 应为 Up (healthy)
+docker compose ps
+docker compose logs -f student-analytics
 
-# 在另一个终端验证基础就绪状态（管理员初始化后 setupRequired 应为 false）
-curl -fsS http://localhost:3000/api/auth/session | jq '{setupRequired}'
+# 手动复跑同一探针（未初始化管理员时 setupRequired 为 true 也算健康）
+docker compose exec student-analytics node scripts/healthcheck.mjs
+
+# 观察匿名会话响应本身（两种情况都正常：true=待初始化，false=已有管理员）
+curl -fsS http://localhost:3000/api/auth/session | jq '{user, setupRequired}'
 ```
+
+`up -d --build --wait` 成功只说明匿名 `/api/auth/session` 就绪，不代表登录、权限或数据可用。首次部署仍需 `docker compose exec student-analytics node scripts/admin-init.mjs` 创建管理员，然后按 `docs/smoke-release.md` 跑带认证的 smoke 才算业务验收。
 
 数据 API 需要应用登录，写接口还会校验本站 Origin。先在浏览器登录，在同一页面的开发者工具控制台执行；浏览器会自动携带会话和 Origin：
 
@@ -311,7 +345,7 @@ console.table((await response.json()).result?.rows);
 - [x] 仓库完整 records 备份/校验/恢复与单服务镜像回退工具；2026-10-13 VPS 独立恢复实例实际演练通过（见下文）
 - [x] 模拟数据云端测试环境与访问账号初始化（2026-10-11）
 - [ ] 正式在线演示环境、域名和可信 HTTPS 证书（第7周）
-- [~] 公开会话端点已用于基础就绪检查；独立健康端点、监控与告警待完成（第7周）
+- [~] 公开会话端点已用于基础就绪检查，镜像与 Compose 现已接入 `scripts/healthcheck.mjs`（见“应用就绪健康检查”）；指标、监控与告警仍待完成（第7周）
 
 ## 工作台登录与 AI 配置升级
 

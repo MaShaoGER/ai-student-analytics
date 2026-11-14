@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Icon } from "@/components/app-icons";
-import { useTheme } from "@/components/ui/theme-provider";
 import { useMotionPreferences } from "@/components/ui/motion-preferences";
 import styles from "./direction.module.css";
 
@@ -79,7 +78,6 @@ export default function DirectionAPreview() {
   const [scan, setScan] = useState(0);
   const menu = useRef<HTMLDivElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
-  const { theme, setTheme } = useTheme();
   const { enabled, reduced } = useMotionPreferences();
 
   useEffect(() => {
@@ -171,14 +169,6 @@ export default function DirectionAPreview() {
                   <strong>系统管理员</strong>
                   <span>admin · 全部数据权限</span>
                 </div>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-                >
-                  <Icon name={theme === "light" ? "moon" : "sun"} size={16} />
-                  {theme === "light" ? "深色外观" : "浅色外观"}
-                </button>
                 <button
                   type="button"
                   role="menuitem"

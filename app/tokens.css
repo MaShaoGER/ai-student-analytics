@@ -18,7 +18,7 @@ textarea:focus-visible {
   --exploration-background: #f5f5f2;
 }
 /* The document canvas is exposed during elastic scrolling. Match the fixed-light
-   exploration surface without changing the user's theme in other workspaces. */
+   exploration surface without affecting other workspaces. */
 :root:has(.glass-workspace[data-exploration="true"]),
 :root:has(.glass-workspace[data-exploration="true"]) body {
   background-color: var(--exploration-background);
@@ -172,73 +172,10 @@ textarea:focus-visible {
   font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
 }
-/* Dark workspaces use the same neutral paper/ink system as the light one,
-   with the lavender accent lifted for contrast. Data and status colours keep
-   their established meaning. */
-:root[data-theme="dark"] .glass-workspace:not([data-exploration="true"]) {
-  --background: #17171b;
-  --paper: #1d1d22;
-  --surface: #1d1d22;
-  --surface-inset: #26262c;
-  --surface-raised: #232329;
-  --control-group: #26262c;
 
-  --ink: #ecebe6;
-  --muted: #a3a3ad;
-  --muted-on-sage: #a3a3ad;
-  --faint: #a3a3ad;
-  --line: #ecebe61a;
-  --line-strong: #ecebe640;
-
-  --accent: #9d8fe6;
-  --accent-ink: #c2b8f2;
-  --accent-light: #3a3360;
-  --accent-transparent: rgba(157, 143, 230, 0.18);
-  --accent-soft: #2c2840;
-  --button-ink: #17171b;
-  --sage: #a3a3ad;
-  --sage-surface: #232329;
-  --sage-soft: #26262c;
-  --live: #6fcf97;
-
-
-  --instrument-grid: #ecebe614;
-  --chart-grid: #ecebe614;
-  --danger: #ffab9f;
-  --warning: #f3c689;
-  --success: #8fd6ad;
-
-  --glass-fill: #232329f0;
-  --glass-fill-dim: #232329f0;
-  --glass-fill-dense: #232329fa;
-  --glass-border: var(--line);
-  --glass-rim: #ecebe61a;
-  --glass-shadow: inset 0 1px 0 #ffffff10;
-  --glass-relief: none;
-  --surface-veil: var(--paper);
-  --surface-sheen: transparent;
-  --surface-glint: rgba(157, 143, 230, 0.06);
-  --surface-blur: none;
-  --surface-shadow: 0 1px 3px #0000004d;
-  --shadow-float: 0 12px 32px #0000004d;
-
-  --field-ground: #17171b;
-  --field-warm: #9d8fe60a;
-  --field-cool: #9d8fe60a;
-  --field-light: #9d8fe606;
-  color-scheme: dark;
-}
-
-/* The exploration canvas keeps the warm-white light contract in both themes,
-   as it did before: the light tokens above already apply, the dark block skips
-   this surface. */
-:root[data-theme="dark"] .glass-workspace[data-exploration="true"] {
-  color-scheme: light;
-}
-
+/* Reduced transparency keeps the glass surfaces solid but unchanged in tone. */
 @media (prefers-reduced-transparency: reduce) {
-  .glass-workspace,
-  :root[data-theme="dark"] .glass-workspace:not([data-exploration="true"]) {
+  .glass-workspace {
     --glass-fill: var(--surface-raised);
     --glass-fill-dim: var(--surface-raised);
     --glass-fill-dense: var(--surface-raised);
@@ -254,8 +191,7 @@ textarea:focus-visible {
 /* No backdrop-filter: floating surfaces fall back to a solid raised fill so
    menus and drawers stay legible. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass-workspace,
-  :root[data-theme="dark"] .glass-workspace:not([data-exploration="true"]) {
+  .glass-workspace {
     --glass-fill: var(--surface-raised);
     --glass-fill-dim: var(--surface-raised);
     --glass-fill-dense: var(--surface-raised);
@@ -266,8 +202,7 @@ textarea:focus-visible {
 
 /* Print: solid paper, no frost or glow, readable hairlines. */
 @media print {
-  .glass-workspace,
-  :root[data-theme="dark"] .glass-workspace:not([data-exploration="true"]) {
+  .glass-workspace {
     --background: #ffffff;
     --paper: #ffffff;
     --surface: #ffffff;

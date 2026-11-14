@@ -11,7 +11,7 @@ import "./glass-auth.css";
 import "./glass-controls.css";
 import "./glass-hierarchy.css";
 import "./tokens.css";
-import { ThemeProvider } from "@/components/ui/theme-provider";
+import { MotionPreferences } from "@/components/ui/motion-preferences";
 
 export const metadata: Metadata = {
   title: "学析台 | 学生学习数据分析",
@@ -25,29 +25,20 @@ export const metadata: Metadata = {
   },
 };
 
-// Browser chrome mirrors the shared light/dark workspace ground.
+// Browser chrome mirrors the single light workspace ground.
 // viewportFit: "cover" is what makes env(safe-area-inset-*) resolve on notched
 // phones, so the floating chat composer clears the home indicator.
 export const viewport: Viewport = {
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f5f5f2" },
-    { media: "(prefers-color-scheme: dark)", color: "#17171b" },
-  ],
+  colorScheme: "light",
+  themeColor: "#f5f5f2",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="zh-CN" data-theme="light" suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem('student-analytics.appearance');if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t}catch(e){document.documentElement.dataset.theme=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}`,
-          }}
-        />
-      </head>
+    <html lang="zh-CN" data-theme="light">
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <MotionPreferences>{children}</MotionPreferences>
       </body>
     </html>
   );

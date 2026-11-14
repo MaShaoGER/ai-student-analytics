@@ -770,10 +770,6 @@
   backdrop-filter: none;
 }
 
-:root[data-theme="dark"] .dialog::backdrop {
-  background: color-mix(in srgb, var(--surface-inset) 82%, transparent);
-}
-
 .dialogHeader {
   display: flex;
   align-items: flex-start;

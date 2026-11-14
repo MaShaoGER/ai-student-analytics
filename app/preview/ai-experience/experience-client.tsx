@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Icon } from "@/components/app-icons";
 import { ExecutionSteps } from "@/components/conversation-evidence";
 import { useMotionPreferences } from "@/components/ui/motion-preferences";
-import { ThemeToggle } from "@/components/ui/theme-provider";
 import type { AnalysisStep } from "@/lib/ai/chat-types";
 import {
   CLARIFICATION_CHOICES,
@@ -541,9 +540,6 @@ export function ExperienceClient() {
           <Icon name="messages" size={21} />
         </span>
         <span className={styles.railLabel}>LEARNING INTELLIGENCE</span>
-        <div className={styles.railBottom}>
-          <ThemeToggle compact />
-        </div>
       </aside>
       <header className={styles.header}>
         <a className={styles.brand} href="/">

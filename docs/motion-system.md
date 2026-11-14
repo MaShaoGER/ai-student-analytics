@@ -143,7 +143,7 @@ SVG 图表用 `data-enter` / 模块内 keyframes（stroke-dashoffset、clip）�
 
 ## 落地记录（2026-10-18）
 
-- 共享层：`app/motion.css`、`components/ui/animated-number.tsx`、`app/layout.tsx` 引入顺序。`components/ui/theme-provider.tsx` 直接切换主题 token；2026-11-03 移除旧全页圆形截图揭示，避免主题过渡时文档暂时不可交互。
+- 共享层：`app/motion.css`、`components/ui/animated-number.tsx`、`app/layout.tsx` 引入顺序。当前 `MotionPreferences` 由 `app/layout.tsx` 直接挂载；2026-11-14 产品固定浅色后，旧主题 Provider 与主题过渡逻辑已移除，动效开关独立保留。
 - 页面层（2026-10-18 历史落点，非当前文件清单）：当时包括 `learning-overview.tsx`、`workspace.tsx`、`analysis-result.tsx`、AI 对话及课程全景／关联、成绩分布、图表工坊、登录／管理页面。后续独立旧页面已退出；当前双入口由 `components/workspace.tsx`、`data-explorer.tsx`、`home-showcase.tsx`、`ai-conversation.tsx` 及其 CSS 承担，`course-panorama-chart.tsx`、`course-relation-chart.tsx`、`studio-chart.tsx` 仍用于图表呈现。不要按历史页面名称恢复已删除组件。
 - 交互开关补充：`MotionPreferences` 在重新开启动效时写入 `data-motion-replay-guard`，避免已渲染页面重播入场；`workspace.navigate/changeMode` 清除该标记，下一次视图切换恢复正常。
 
@@ -154,7 +154,7 @@ SVG 图表用 `data-enter` / 模块内 keyframes（stroke-dashoffset、clip）�
 - 全览纵向滚轮切主题，横向或 Shift＋滚轮切画法。44px累计阈值、280ms最短间隔，惯性尾波延长静默窗口，避免一次甩动连跳；不拦截 Ctrl／Command 缩放。方向键、按钮和滚轮使用同一选择状态。
 - 全览退出240ms，放射菜单退出168ms；保持原生对话框挂载直至结束，再取消或提交一次。放射菜单捕获当前可见帧，取消可打断尚未结束的展开动画，选项向中心收回。取消不改变图表、URL、history或阅读位置，结束后恢复触发点焦点。
 - 这两个空间导航对话框用 `data-navigation-motion` 保留方向键和 Esc 的连续动效，不受旧的“键盘交互一律0ms”规则影响。应用关闭动效或系统减少动态时仍即时完成，不等待退出计时器。
-- 图元鼠标高亮只作用于图形与颜色，不给文字或透明点击区描边；键盘焦点保留明确的局部图形提示。数据浏览固定浅色时，文档根底色同步画布，避免滚动边缘露出其他工作区的深色底；离开后恢复原主题。
+- 图元鼠标高亮只作用于图形与颜色，不给文字或透明点击区描边；键盘焦点保留明确的局部图形提示。数据浏览与其他页面统一使用浅色，文档根底色保持暖白，避免滚动边缘露出不同底色。
 
 ## 编辑式数据浏览（2026-11-04 起，现已纳入主项目）
 

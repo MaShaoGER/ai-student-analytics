@@ -1,7 +1,6 @@
 "use client";
 
 import { GlassBackdrop } from "@/components/glass-backdrop";
-import { ThemeToggle } from "@/components/ui/theme-provider";
 import { glassPatterns } from "@/lib/ui/glass-patterns";
 import "../optics-tiers.css";
 import styles from "./backgrounds.module.css";
@@ -17,7 +16,6 @@ export default function GlassBackgroundsPreview() {
           <p>四种背景，同一块磨砂玻璃。点开任意方案，查看全屏动态效果。</p>
         </div>
         <div className={styles.tools}>
-          <ThemeToggle compact />
           <a href="/preview/glass-material">当前背景 ↗</a>
         </div>
       </header>

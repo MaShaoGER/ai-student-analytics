@@ -21,7 +21,6 @@ import { Icon } from "@/components/app-icons";
 import { AdminManagement } from "@/components/admin-management";
 import { AnimatedNumber, useCountUp } from "@/components/ui/animated-number";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { ThemeToggle } from "@/components/ui/theme-provider";
 import { MotionToggle } from "@/components/ui/motion-preferences";
 import { AnalysisControls } from "@/components/analysis-controls";
 import { BAILIAN_QWEN_FLASH, isBailianQwenFlash } from "@/lib/ai/bailian";
@@ -807,8 +806,7 @@ export function AdminPanel({
                 </span>
               </div>
               <div className="account-appearance">
-                <h3>外观与动效</h3>
-                <ThemeToggle />
+                <h3>交互动效</h3>
                 <MotionToggle />
               </div>
             </section>

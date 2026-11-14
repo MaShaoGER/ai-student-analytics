@@ -2,7 +2,6 @@
 
 import { useMemo, useRef, useState, type CSSProperties } from "react";
 import { Icon } from "@/components/app-icons";
-import { useTheme } from "@/components/ui/theme-provider";
 import type { AnalysisResult } from "@/lib/analysis/types";
 import {
   analysisDimensionLabel,
@@ -31,8 +30,7 @@ export function ReportCenter({
   const [printError, setPrintError] = useState("");
   const selected = analyses.find((entry) => entry.key === selectedKey) ?? analyses[0];
   const result = selected?.result;
-  const { theme } = useTheme();
-  const html = useMemo(() => (result ? analysisReportHtml(result, theme) : ""), [result, theme]);
+  const html = useMemo(() => (result ? analysisReportHtml(result) : ""), [result]);
   function printReport() {
     if (!canExport) return;
     setPrintError("");

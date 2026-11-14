@@ -78,7 +78,7 @@ export function analysisCsv(result: AnalysisResult): string {
       result.period,
       result.minSampleSize,
       analysisSuppressionNote(result),
-      result.datasetVersion ?? "历史记录未标注",
+      result.datasetVersion ?? "",
     ]),
   ];
   return `\uFEFF${records.map((record) => record.map(csvCell).join(",")).join("\r\n")}\r\n`;
@@ -98,10 +98,7 @@ export function escapeHtml(value: string | number): string {
   );
 }
 
-export function analysisReportHtml(
-  result: AnalysisResult,
-  theme: "light" | "dark" = "light",
-): string {
+export function analysisReportHtml(result: AnalysisResult): string {
   const h = escapeHtml;
   // The printed report follows the on-screen numerals: scores keep two decimals,
   // participant counts stay whole with thousands, activity counts drop decimals.
@@ -122,7 +119,6 @@ export function analysisReportHtml(
     : "本次分析没有可展示的分组。";
   const filtered = analysisSuppressionNote(result);
   const max = Math.max(...result.rows.map((row) => row.value), 1);
-  const metricColors = ["#7666cc", "#e6e1f4", "#9d8fe6", "#2c2840"];
   // A restored history snapshot keeps `query` as an empty string on purpose,
   // so the report must explain that gap instead of printing a blank block.
   const query = (result.query ?? "").trim();
@@ -135,13 +131,12 @@ export function analysisReportHtml(
     })
     .join("");
   return `<!doctype html>
-<html lang="zh-CN" data-theme="${theme === "dark" ? "dark" : "light"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="zh-CN" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
 <title>${h(result.metricLabel)}分析报告 · 学析台</title>
 <style>
-:root{color-scheme:light;--bg:#f5f5f2;--paper:#f5f5f2;--ink:#232329;--muted:#6b6b76;--line:#24243624;--rule:#24243638;--inset:#ecece7;--accent:#7666cc;--metric:${metricColors[0]};--metric-soft:${metricColors[1]}}
-:root[data-theme="dark"]{color-scheme:dark;--bg:#17171b;--paper:#1d1d22;--ink:#ecebe6;--muted:#a3a3ad;--line:#ecebe61a;--rule:#ecebe640;--inset:#26262c;--accent:#9d8fe6;--metric:${metricColors[2]};--metric-soft:${metricColors[3]}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.75 "Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif;font-variant-numeric:tabular-nums}main{max-width:880px;margin:0 auto;padding:56px 40px 64px;background:transparent;border:0}h1{font-size:clamp(32px,4vw,44px);line-height:1.1;margin:20px 0 28px;font-weight:650;letter-spacing:-0.03em}h2{font-size:18px;line-height:1.4;margin:40px 0 12px;padding-top:16px;border-top:1px solid var(--rule);font-weight:600;letter-spacing:-0.01em}.brand{display:block;padding:0;border:0;background:none;color:var(--muted);font:500 11px/1.4 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:0.14em;text-transform:uppercase}.note{color:var(--muted);font-size:12px}.summary{margin:0 0 32px;padding:0 0 0 16px;border-left:2px solid var(--accent);background:none;font-size:16px;line-height:1.7}dl{display:grid;grid-template-columns:1fr 1fr;gap:0 32px;margin:0}dl div{border-bottom:1px solid var(--line);padding:12px 0}dt{font:500 11px/1.4 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted)}dd{margin:4px 0 0;overflow-wrap:anywhere}table{border-collapse:collapse;width:100%;min-width:360px;font-size:13px}.table-scroll{overflow-x:auto;overscroll-behavior-x:contain}caption{text-align:left;color:var(--muted);font:500 11px/1.4 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:0.14em;text-transform:uppercase;padding:10px 0}th,td{padding:11px 8px;border-bottom:1px solid var(--line);text-align:left}tbody th{overflow-wrap:anywhere}td.num{white-space:nowrap;font-variant-numeric:tabular-nums}thead th{white-space:nowrap;color:var(--muted);font:500 11px/1.4 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:0.08em;text-transform:uppercase;border-bottom:1px solid var(--rule)}.bar{height:6px;border-radius:0;background:var(--metric);min-width:1px}td:last-child{width:22%}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.7 ui-monospace,"SF Mono",Menlo,monospace;background:var(--inset);padding:16px;border-left:2px solid var(--rule);margin:0}footer{border-top:1px solid var(--rule);padding-top:18px;margin-top:40px}@media(max-width:600px){main{padding:32px 16px 48px}dl{grid-template-columns:1fr}}@page{size:A4;margin:16mm}@media print{:root,:root[data-theme="dark"]{color-scheme:light;--bg:#fff;--paper:#fff;--ink:#232329;--muted:#57636e;--line:#252b3126;--rule:#252b3140;--inset:#eef1f4;--accent:#7666cc;--metric:${metricColors[0]};--metric-soft:${metricColors[1]}}body{background:#fff}main{max-width:none;margin:0;padding:0}thead{display:table-header-group}tr,dl div,.summary{break-inside:avoid}.bar,thead{print-color-adjust:exact;-webkit-print-color-adjust:exact}h2{break-after:avoid}.table-scroll{overflow:visible}}
+:root{color-scheme:light;--bg:#f5f5f2;--paper:#f5f5f2;--ink:#232329;--muted:#6b6b76;--line:#24243624;--rule:#24243638;--inset:#ecece7;--accent:#7666cc;--metric:var(--accent);--metric-soft:#e6e1f4}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.75 "Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif;font-variant-numeric:tabular-nums}main{max-width:880px;margin:0 auto;padding:56px 40px 64px;background:transparent;border:0}h1{font-size:clamp(32px,4vw,44px);line-height:1.1;margin:20px 0 28px;font-weight:650;letter-spacing:-0.03em}h2{font-size:18px;line-height:1.4;margin:40px 0 12px;padding-top:16px;border-top:1px solid var(--rule);font-weight:600;letter-spacing:-0.01em}.brand{display:block;padding:0;border:0;background:none;color:var(--muted);font:500 11px/1.4 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:0.14em;text-transform:uppercase}.note{color:var(--muted);font-size:12px}.summary{margin:0 0 32px;padding:0 0 0 16px;border-left:2px solid var(--accent);background:none;font-size:16px;line-height:1.7}dl{display:grid;grid-template-columns:1fr 1fr;gap:0 32px;margin:0}dl div{border-bottom:1px solid var(--line);padding:12px 0}dt{font:500 11px/1.4 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted)}dd{margin:4px 0 0;overflow-wrap:anywhere}table{border-collapse:collapse;width:100%;min-width:360px;font-size:13px}.table-scroll{overflow-x:auto;overscroll-behavior-x:contain}caption{text-align:left;color:var(--muted);font:500 11px/1.4 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:0.14em;text-transform:uppercase;padding:10px 0}th,td{padding:11px 8px;border-bottom:1px solid var(--line);text-align:left}tbody th{overflow-wrap:anywhere}td.num{white-space:nowrap;font-variant-numeric:tabular-nums}thead th{white-space:nowrap;color:var(--muted);font:500 11px/1.4 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:0.08em;text-transform:uppercase;border-bottom:1px solid var(--rule)}.bar{height:6px;border-radius:0;background:var(--metric);min-width:1px}td:last-child{width:22%}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.7 ui-monospace,"SF Mono",Menlo,monospace;background:var(--inset);padding:16px;border-left:2px solid var(--rule);margin:0}footer{border-top:1px solid var(--rule);padding-top:18px;margin-top:40px}@media(max-width:600px){main{padding:32px 16px 48px}dl{grid-template-columns:1fr}}@page{size:A4;margin:16mm}@media print{:root{color-scheme:light;--bg:#fff;--paper:#fff;--ink:#232329;--muted:#57636e;--line:#252b3126;--rule:#252b3140;--inset:#eef1f4;--accent:#7666cc;--metric:var(--accent);--metric-soft:#e6e1f4}body{background:#fff}main{max-width:none;margin:0;padding:0}thead{display:table-header-group}tr,dl div,.summary{break-inside:avoid}.bar,thead{print-color-adjust:exact;-webkit-print-color-adjust:exact}h2{break-after:avoid}.table-scroll{overflow:visible}}
 </style></head><body><main>
 <span class="brand">学析台 · 学习数据分析报告</span><h1>${h(result.metricLabel)}按${h(dimension)}比较</h1>
 <p class="summary">${h(insight)}</p>

@@ -1354,86 +1354,139 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   border-radius: 0;
 }
 
-/* ---- Phones: the empty state has to fit above the floating input -----------
-   At 390×844 and 320×720 the hero, the explanation and all three recommended
-   questions must be visible (and tappable) without scrolling or being covered
-   by the dock. Each block below trims vertical rhythm rather than hiding the
-   questions; the privacy footnote goes entirely. */
+/* Approved phone composition: a left-aligned introduction and real, eligible
+   questions in two columns. The root scope wins over shared hierarchy defaults. */
 @media (max-width: 760px) {
   :global(.glass-workspace) .readingArea {
     margin-top: 0;
   }
-  :global(.glass-workspace) .empty {
-    padding: 4px 0 12px;
+  :global(.glass-workspace) .transcript {
+    padding-top: calc(var(--workspace-header-height, 97px) + 38px);
   }
-  :global(.glass-workspace) .empty h2 {
-    font-size: 24px;
-    line-height: 1.25;
-    letter-spacing: -0.02em;
-    margin: 10px 0 8px;
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .empty {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 0 6px;
+    align-items: center;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    text-align: left;
   }
-  :global(.glass-workspace) .empty > p {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    overflow: hidden;
-    margin-top: 8px;
-    line-height: 1.65;
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .welcomeMark {
+    display: grid;
+    grid-column: 1;
+    grid-row: 1;
+    width: 18px;
+    height: 18px;
+    margin: 0;
   }
-  :global(.glass-workspace) .empty .privacy {
+  .welcomeMark > svg {
+    width: 16px;
+    height: 16px;
+  }
+  .welcomeEyebrow {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 0;
+    line-height: 18px;
+    letter-spacing: 0;
+  }
+  .welcomeEyebrow::after {
+    content: "学习分析助手";
+    font-family: var(--font-sans);
+    font-size: 11px;
+  }
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .empty h2 {
+    grid-column: 1 / -1;
+    font-size: 30px;
+    line-height: 1.35;
+    letter-spacing: -0.04em;
+    margin: 14px 0 0;
+  }
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .empty > p,
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .empty .privacy {
     display: none;
   }
-  :global(.glass-workspace) .welcomeSuggestions {
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .empty[data-suggestion-count="0"] > p {
+    display: block;
+    grid-column: 1 / -1;
+    margin-top: 12px;
+  }
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .welcomeSuggestions {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
     margin-top: 10px;
-    gap: 4px;
+    gap: 10px;
   }
-  :global(.glass-workspace) .welcomeSuggestions button {
-    min-height: 44px;
-    padding: 8px 10px;
-    font-size: 12px;
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .suggestionHeading {
+    grid-column: 1 / -1;
+    margin-bottom: 12px;
+    font-size: 14px;
+    line-height: 1.6;
   }
-  :global(.glass-workspace) .suggestionHeading {
-    margin-bottom: 6px;
+  .suggestionHeading > span:last-child {
+    display: none;
+  }
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .welcomeSuggestions button {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) 14px;
+    grid-template-rows: 20px minmax(0, 1fr);
+    gap: 8px;
+    min-height: 96px;
+    padding: 14px;
+    text-align: left;
+  }
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .welcomeSuggestions button[data-recommended="true"] {
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+    background: color-mix(in srgb, var(--accent-soft) 38%, var(--paper));
+  }
+  .welcomeSuggestions button > svg:first-child {
+    grid-column: 1;
+    grid-row: 1;
+    width: 18px;
+    height: 18px;
+  }
+  .welcomeSuggestions button > svg:last-child {
+    grid-column: 3;
+    grid-row: 1;
+    width: 14px;
+    height: 14px;
+    margin: 0;
+  }
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .welcomeSuggestions :global(.welcome-start-label) {
+    position: static;
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-size: 10px;
+    line-height: 16px;
+    white-space: nowrap;
+  }
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .welcomeSuggestions :global(.welcome-question-copy) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    align-self: end;
+  }
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .welcomeSuggestions :global(.welcome-question-copy strong) {
+    font-size: 15px;
+  }
+  .welcomeSuggestions :global(.welcome-question-copy small) {
+    display: none;
+  }
+  .empty:is([data-suggestion-count="1"], [data-suggestion-count="3"]) .welcomeSuggestions button:last-child {
+    grid-column: 1 / -1;
   }
   :global(.glass-workspace) .composerDock[data-collapsed="false"] {
-    padding: 8px 10px max(8px, env(safe-area-inset-bottom, 0px));
+    padding: 10px 12px max(10px, env(safe-area-inset-bottom, 0px));
   }
-  :global(.glass-workspace) .composerDock[data-collapsed="true"] {
-    padding: 0 10px max(8px, env(safe-area-inset-bottom, 0px));
-  }
-  :global(.glass-workspace) .composerDock[data-collapsed="true"] .composer {
-    margin-right: 1px;
-  }
-  /* Three questions fit above the dock on a phone; once the model is on the
-     fourth question earns the space the description paragraph used. */
-  :global(.glass-workspace) .empty[data-suggestion-count="4"] > p {
-    display: none;
-  }
-  /* The same guidance is in the empty-state copy, label and placeholder; the
-     line would only eat the space the questions need on a phone. */
   :global(.glass-workspace) .composerDock .note {
     display: none;
-  }
-}
-
-/* 320-wide screens have ~50px less reading height: drop the decorative mark and
-   the suggestion caption so all three questions still clear the input card. */
-@media (max-width: 380px) {
-  :global(.glass-workspace) .welcomeMark {
-    display: none;
-  }
-  :global(.glass-workspace) .suggestionHeading {
-    display: none;
-  }
-  /* The compact hero already introduces the page; omit duplicate description. */
-  :global(.glass-workspace) .empty > p {
-    display: none;
-  }
-  :global(.glass-workspace) .welcomeSuggestions {
-    margin-top: 6px;
-  }
-  :global(.glass-workspace) .empty {
-    padding-bottom: 6px;
   }
 }
 
@@ -1575,7 +1628,7 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
 }
 @media (max-width: 760px) {
   :global(.glass-workspace) .conversation {
-    --conversation-inset: 20px;
+    --conversation-inset: 22px;
     padding: 0;
   }
   :global(.glass-workspace) .composerDock[data-collapsed] {
@@ -1589,39 +1642,96 @@ html[data-motion="on"][data-input-modality="pointer"] .loadingHint {
   :global(.glass-workspace) .composerDock[data-collapsed="true"] {
     width: 46px;
   }
-}
-
-/* On short phones, share the scope row with the two toolbar controls so the
-   send action stays visible without scrolling inside the input surface. */
-@media (max-width: 760px) and (max-height: 600px) {
   :global(.glass-workspace) .composerFields {
-    grid-template-columns: minmax(0, 1fr) 44px minmax(44px, max-content);
-    gap: 0 6px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0 8px;
   }
   :global(.glass-workspace) .composerHeading {
-    grid-column: 2 / -1;
-    grid-row: 1;
+    grid-column: 1;
+    grid-row: 2;
+    justify-content: flex-start;
     margin: 0;
   }
-  .contextRow {
-    grid-column: 1;
+  :global(.glass-workspace) .composer textarea {
+    grid-column: 1 / -1;
     grid-row: 1;
-    min-width: 0;
-    margin: 0;
+    min-height: 43px;
+    margin: 0 0 6px;
+    padding: 0;
+  }
+  .composerActions {
+    grid-column: 2;
+    grid-row: 2;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+  .composerActions > span {
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  .composerActions .stop {
+    white-space: nowrap;
+  }
+  .contextRow {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    margin-top: 8px;
   }
   .contextChip {
     min-width: 0;
     max-width: 100%;
   }
+  .contextNotice {
+    grid-row: 4;
+  }
+  .fieldError {
+    grid-row: 5;
+  }
+}
+@media (max-width: 380px) {
+  :global(.glass-workspace) .conversation {
+    --conversation-inset: 18px;
+  }
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .empty h2 {
+    font-size: 27px;
+  }
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .welcomeSuggestions button {
+    padding: 12px;
+    gap: 6px;
+  }
+}
+@media (max-width: 760px) and (max-height: 650px) {
+  :global(.glass-workspace) .transcript {
+    padding-top: calc(var(--workspace-header-height, 85px) + 16px);
+  }
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .welcomeMark,
+  .welcomeEyebrow {
+    display: none;
+  }
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .empty h2 {
+    margin: 0;
+    font-size: 26px;
+  }
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .welcomeSuggestions {
+    margin-top: 6px;
+    gap: 8px;
+  }
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .suggestionHeading {
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  :global(:root[data-theme] .glass-workspace[data-conversation="true"]) .welcomeSuggestions button {
+    min-height: 76px;
+    padding: 10px 12px;
+    gap: 6px;
+  }
+  :global(.glass-workspace) .composerDock[data-collapsed="false"] {
+    padding: 8px 10px max(8px, env(safe-area-inset-bottom, 0px));
+  }
   :global(.glass-workspace) .composer textarea {
-    grid-column: 1 / 3;
-    grid-row: 2;
-  }
-  .composerActions {
-    grid-column: 3;
-    grid-row: 2;
-  }
-  .composerActions .stop {
-    white-space: nowrap;
+    min-height: 32px;
+    margin-bottom: 4px;
   }
 }

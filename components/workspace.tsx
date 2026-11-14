@@ -23,7 +23,6 @@ import { AccountPanel } from "@/components/workspace-account-panel";
 import { DataSourceDetails } from "@/components/workspace-data-source-details";
 import { NETWORK_ERROR_MESSAGE, requestMessage } from "@/components/workspace-request";
 import { ReportCenter, type SessionAnalysis } from "@/components/workspace-report-center";
-import { ThemeToggle } from "@/components/ui/theme-provider";
 import { ConversationWorkspace, type ConversationTurn } from "@/components/ai-conversation";
 import type { ConversationScrollPosition } from "@/components/hooks/use-conversation-scroll";
 import experienceStyles from "@/components/conversation-experience.module.css";
@@ -72,11 +71,14 @@ type AIStatus = { configured: boolean; enabled: boolean; model: string | null };
 
 type FailedAsk = { question: string; code: string | null; retryable: boolean };
 /**
- * A history/新建 request held back until the reader decides what happens to the
- * unsent draft and the conversation on screen. It carries only the target, so
- * nothing is aborted, cleared or fetched before the decision.
+ * A history/新建/推荐问题 request held back until the reader decides what
+ * happens to the unsent draft. It carries only the target, so nothing is
+ * aborted, cleared or fetched before the decision.
  */
-type DraftIntent = { kind: "open"; id: string } | { kind: "new" };
+type DraftIntent =
+  | { kind: "open"; id: string }
+  | { kind: "new" }
+  | { kind: "ask"; question: string };
 /** Mirrors `isRetryableErrorCode` in lib/analysis/http-errors.ts; the server sends
  *  `retryable` itself, this set only covers an older server response. */
 const RETRYABLE_CODES = new Set([
@@ -213,6 +215,11 @@ export function Workspace({ initialConversation = false }: { initialConversation
   const [historyCursor, setHistoryCursor] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  /**
+   * The entry whose detail read failed. The list can only retry that entry, not
+   * re-open it by refreshing the index, so the message carries its own action.
+   */
+  const [historyFailedId, setHistoryFailedId] = useState<string | null>(null);
   const historyGeneration = useRef(0);
   const historySelectionPending = useRef(false);
   const [historySelecting, setHistorySelecting] = useState(false);
@@ -302,6 +309,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
     setConversationHistory([]);
     setHistoryCursor(null);
     setHistoryError(null);
+    setHistoryFailedId(null);
     setUser(null);
     userScope.current = "";
     setProfiles([]);
@@ -354,6 +362,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
       setConversationHistory([]);
       setHistoryCursor(null);
       setHistoryError(null);
+      setHistoryFailedId(null);
       setProfiles([]);
       profilesLoaded.current = false;
       setProfilesLoading(true);
@@ -525,6 +534,20 @@ export function Workspace({ initialConversation = false }: { initialConversation
         setView("overview");
         return;
       }
+      // `/admin`, `?workspace=admin` and a browser history entry kept from a
+      // wider grant all resolve here. A signed-in non-admin gets browsing and an
+      // explanation instead of an empty management page; the API keeps its own
+      // authorization and is never broadened by this redirect.
+      if (requested === "admin" && user.role !== "admin") {
+        // Reuse the dismissible workspace notice rather than blocking browsing:
+        // the reader is already being returned to a page they may use.
+        setError("当前账号不是管理员，已返回数据浏览。");
+        setWorkspaceRouteError("");
+        replaceHref("/explore");
+        setPrimary("explore");
+        setView("overview");
+        return;
+      }
       setWorkspaceRouteError("");
       const next: View =
         (requested as View | null) ??
@@ -556,7 +579,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
     restoreLocation();
     window.addEventListener("popstate", restoreLocation);
     return () => window.removeEventListener("popstate", restoreLocation);
-  }, [initialConversation, bootLoading, user?.id, passwordChangeRequired]);
+  }, [initialConversation, bootLoading, user?.id, user?.role, passwordChangeRequired]);
 
   const api = useCallback(
     async (url: string, options?: RequestInit, onStep?: (step: AnalysisStep) => void) => {
@@ -639,6 +662,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
       if (!scope) return;
       setHistoryLoading(true);
       setHistoryError(null);
+      setHistoryFailedId(null);
       try {
         const page = (await api(
           `/api/conversations${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
@@ -724,6 +748,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
     setFailedAsk(null);
   }
   async function openConversation(id: string) {
+    const draftAtSelection = question;
     askPending.current?.abort();
     askPending.current = null;
     generation.current++;
@@ -735,14 +760,23 @@ export function Workspace({ initialConversation = false }: { initialConversation
     setHistorySelecting(true);
     setAskLoading(false);
     setHistoryError(null);
+    setHistoryFailedId(null);
     try {
       const detail = (await api(`/api/conversations/${id}`)) as ConversationDetail;
       if (current !== historyGeneration.current || scope !== userScope.current) return;
       pendingTurn.current = null;
-      applyConversationDetail(detail);
+      applyConversationDetail(detail, { draft: { clearIfUnchanged: draftAtSelection } });
     } catch (error) {
-      if (current === historyGeneration.current && scope === userScope.current)
-        setHistoryError(requestMessage(error, "对话已过期、已删除或当前无权访问。"));
+      if (current === historyGeneration.current && scope === userScope.current) {
+        // Nothing was applied, so the conversation on screen and the draft stay
+        // as they were; only the announcement changes. The failed entry is kept
+        // so the message can retry that read instead of reloading the index.
+        const message = requestMessage(error, "对话已过期、已删除或当前无权访问。");
+        if (message) {
+          setHistoryFailedId(id);
+          setHistoryError(message);
+        }
+      }
     } finally {
       if (current === historyGeneration.current) {
         historySelectionPending.current = false;
@@ -757,7 +791,10 @@ export function Workspace({ initialConversation = false }: { initialConversation
       await api(`/api/conversations/${id}`, { method: "DELETE" });
       if (scope === userScope.current) await refreshConversationHistory();
     } catch (error) {
-      if (scope === userScope.current) setHistoryError(requestMessage(error, "删除失败，请重试。"));
+      if (scope === userScope.current) {
+        setHistoryFailedId(null);
+        setHistoryError(requestMessage(error, "删除失败，请重试。"));
+      }
     }
   }
   function newConversation() {
@@ -797,6 +834,12 @@ export function Workspace({ initialConversation = false }: { initialConversation
       void openConversation(intent.id);
       return;
     }
+    if (intent.kind === "ask") {
+      // The confirmed question replaces the draft and is what gets sent; the
+      // composer text follows it so nothing typed earlier lingers behind.
+      void ask(intent.question);
+      return;
+    }
     // A confirmed reset discards the draft even when there is no conversation
     // yet, which `newConversation` treats as a display-only no-op.
     if (question.trim()) setQuestion("");
@@ -804,13 +847,23 @@ export function Workspace({ initialConversation = false }: { initialConversation
   }
   /**
    * One confirmation surface for every action that would drop an unsent draft:
-   * the history list, the history list's 新建 button and the composer's 新对话
-   * all pass through here, and nothing is aborted or cleared before the answer.
+   * the history list, the history list's 新建 button, the composer's 新对话 and
+   * the recommended/follow-up questions all pass through here, and nothing is
+   * aborted or cleared before the answer.
    */
   function requestDraftIntent(intent: DraftIntent) {
     const hasDraft = question.trim().length > 0;
+    // A suggestion identical to the draft loses nothing by sending it.
+    if (intent.kind === "ask" && question === intent.question) {
+      runDraftIntent(intent);
+      return;
+    }
     const needsDecision =
-      intent.kind === "open" ? hasDraft : hasDraft || chatMessages.length > 0;
+      intent.kind === "open"
+        ? hasDraft
+        : intent.kind === "ask"
+          ? hasDraft
+          : hasDraft || chatMessages.length > 0;
     if (!needsDecision) {
       runDraftIntent(intent);
       return;
@@ -1489,7 +1542,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
           onClick={() => {
             setError(null);
             setFailedAsk(null);
-            void ask(retryableAsk.question);
+            requestDraftIntent({ kind: "ask", question: retryableAsk.question });
           }}
         >
           重试这次提问
@@ -1549,6 +1602,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
           当前账号没有 AI 使用权限
         </span>
       )}
+      <span id="conversation-history-anchor" className="workspace-history-anchor" />
     </nav>
   );
   const pageHeader = (
@@ -1580,9 +1634,11 @@ export function Workspace({ initialConversation = false }: { initialConversation
           description:
             draftIntent.kind === "open"
               ? "切换到所选对话会丢弃这段草稿；已保存的对话不会被删除。"
-              : "新建对话会丢弃这段草稿；已保存的对话不会被删除。",
+              : draftIntent.kind === "ask"
+                ? "发送这个问题会丢弃这段草稿；已保存的对话不会被删除。"
+                : "新建对话会丢弃这段草稿；已保存的对话不会被删除。",
           cancel: "保留草稿",
-          confirm: "丢弃草稿并继续",
+          confirm: draftIntent.kind === "ask" ? "丢弃草稿并发送" : "丢弃草稿并继续",
         }
       : {
           eyebrow: "SESSION / 新建对话",
@@ -1782,10 +1838,6 @@ export function Workspace({ initialConversation = false }: { initialConversation
               </button>
             )}
             <hr />
-            <div className="account-menu-row">
-              <span>外观</span>
-              <ThemeToggle />
-            </div>
             <div className="account-menu-motion"><MotionToggle /></div>
             <hr />
             <button
@@ -1950,7 +2002,7 @@ export function Workspace({ initialConversation = false }: { initialConversation
                         <button
                           type="button"
                           className="text-button"
-                          onClick={() => void openConversation(conversation.id)}
+                          onClick={() => requestDraftIntent({ kind: "open", id: conversation.id })}
                         >
                           刷新状态
                         </button>
@@ -1975,6 +2027,8 @@ export function Workspace({ initialConversation = false }: { initialConversation
                     selectedId: conversation?.id ?? null,
                     loading: historyLoading || historySelecting,
                     error: historyError,
+                    failedId: historyFailedId,
+                    onRetry: (id) => requestDraftIntent({ kind: "open", id }),
                     hasMore: Boolean(historyCursor),
                     onMore: () => {
                       if (historyCursor) void refreshConversationHistory(historyCursor);
@@ -2003,6 +2057,8 @@ export function Workspace({ initialConversation = false }: { initialConversation
                     if (inputError) setInputError(null);
                   }}
                   onAsk={(next) => void ask(next)}
+                  onSuggestion={(next) => requestDraftIntent({ kind: "ask", question: next })}
+                  sendBlocked={historySelecting}
                   onExpandChart={setExpandedChartId}
                   onChartChange={changeChatView}
                   onReport={previewReport}

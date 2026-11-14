@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 
 import type { SessionUser } from "@/lib/client-types";
 import { ProductBrand } from "@/components/product-brand";
 import { Icon } from "@/components/app-icons";
-import { ThemeToggle } from "@/components/ui/theme-provider";
 import { LightField } from "@/components/light-field";
 
 const REMEMBERED_USERNAME = "student-analytics.remembered-username";
@@ -45,7 +44,7 @@ export function LoginScreen({
   }, []);
 
   // Logout and session expiry both land here: start keyboard/reader users on the
-  // first real control instead of the appearance toggle or the page body.
+  // first real control instead of the page body.
   useEffect(() => {
     if (setupRequired) heading.current?.focus({ preventScroll: true });
     else usernameInput.current?.focus({ preventScroll: true });
@@ -99,9 +98,6 @@ export function LoginScreen({
   return (
     <main className="login-screen glass-workspace glass-auth">
       <LightField />
-      <div className="login-appearance" data-enter="fade">
-        <ThemeToggle />
-      </div>
       <section className="login-story" data-glass-pane="0.5" aria-labelledby="login-product-title">
         <div
           className="login-brand"

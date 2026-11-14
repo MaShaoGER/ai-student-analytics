@@ -24,7 +24,6 @@ const lightSource = `
     precision highp float;
     varying vec2 v_uv;
     uniform float u_time;
-    uniform float u_lightTheme;
     uniform float u_pattern;
 
     float band(float d, float width) {
@@ -163,7 +162,7 @@ const lightSource = `
         color = mix(color, front.rgb, front.a);
       }
       vec3 lightBase = u_pattern > 4.5 ? vec3(0.79, 0.80, 0.81) : vec3(0.72, 0.79, 0.77);
-      color = mix(color, lightBase + color * 0.30, u_lightTheme);
+      color = lightBase + color * 0.30;
       gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
     }
   `;
@@ -174,7 +173,6 @@ const glassSource = `
     uniform sampler2D u_light;
     uniform vec2 u_resolution;
     uniform float u_time;
-    uniform float u_lightTheme;
     uniform float u_pattern;
     uniform vec4 u_rects[12];
     uniform vec4 u_materials[12];
@@ -239,9 +237,8 @@ const glassSource = `
             float d = roundedRect(p, u_reliefRects[i], u_reliefMaterials[i].x);
             if (d < 0.0) {
               float relief = u_reliefMaterials[i].y * smoothstep(0.0, 2.0, -d);
-              // Nested accents emboss the outer pane; their relief value is a
-              // fraction of the tier-3 cap, which is theme dependent.
-              float reliefCap = mix(0.40, 0.55, u_lightTheme);
+              // Nested accents use the shallow relief cap of the light surface.
+              float reliefCap = 0.55;
               dotStrength = min(relief * reliefCap, reliefCap);
               lensLocal = p - u_reliefOrigins[i];
               surface.y = u_reliefMaterials[i].z;
@@ -309,8 +306,8 @@ const glassSource = `
           color = mix(color, softened, localFrost);
         }
 
-        color = mix(color, mix(vec3(0.055, 0.095, 0.12), vec3(0.83, 0.88, 0.86), u_lightTheme), 0.12 + frost * 0.18);
-        vec3 neutralFrost = mix(vec3(0.08, 0.09, 0.10), vec3(0.85, 0.86, 0.87), u_lightTheme);
+        color = mix(color, vec3(0.83, 0.88, 0.86), 0.12 + frost * 0.18);
+        vec3 neutralFrost = vec3(0.85, 0.86, 0.87);
         color = mix(color, neutralFrost, smoke * 0.12);
         float lightLevel = dot(color, vec3(0.21, 0.72, 0.07));
         // Facet shading is stationary and light-dependent, so the surface
@@ -319,7 +316,7 @@ const glassSource = `
           float facetLight = dot(facetNormal, normalize(vec2(-0.65, -0.8)));
           float emboss = facetLight * (0.015 + min(lightLevel, 0.65) * 0.06);
           float facetSpecular = pow(max(0.0, facetLight), 7.0);
-          vec3 coating = mix(vec3(0.76, 0.72, 0.95), vec3(0.32, 0.42, 0.48), u_lightTheme);
+          vec3 coating = vec3(0.32, 0.42, 0.48);
           color += dotStrength * coating * (emboss + facetSpecular * 0.035);
           color *= 1.0 - dotMask * 0.12;
           // Dense dots read heavier, so vivid panes compensate saturation.
@@ -337,19 +334,18 @@ const glassSource = `
         color = mix(lightAt(p), color, material.w);
       }
 
-      // Subtle stationary dither prevents broad dark gradients from banding.
+      // Subtle stationary dither prevents broad gradients from banding.
       float noise = fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
       color += (noise - 0.5) / 255.0;
       gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
     }
   `;
 
-type Playback = { animated: boolean; light: boolean; pattern?: GlassPattern };
+type Playback = { animated: boolean; pattern?: GlassPattern };
 type OpticalProgram = {
   handle: WebGLProgram;
   position: number;
   time: WebGLUniformLocation | null;
-  theme: WebGLUniformLocation | null;
   pattern: WebGLUniformLocation | null;
 };
 export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement) {
@@ -379,7 +375,7 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
     height = 1,
     lightWidth = 1,
     lightHeight = 1;
-  let options: Playback = { animated: false, light: false };
+  let options: Playback = { animated: false };
   let resizeObserver: ResizeObserver | undefined;
   let mutationObserver: MutationObserver | undefined;
   let intersectionObserver: IntersectionObserver | undefined;
@@ -466,7 +462,6 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
         handle,
         position: gl.getAttribLocation(handle, "a_position"),
         time: gl.getUniformLocation(handle, "u_time"),
-        theme: gl.getUniformLocation(handle, "u_lightTheme"),
         pattern: gl.getUniformLocation(handle, "u_pattern"),
       };
     };
@@ -695,7 +690,6 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
       gl.enableVertexAttribArray(pass.position);
       gl.vertexAttribPointer(pass.position, 2, gl.FLOAT, false, 0, 0);
       gl.uniform1f(pass.time, phase);
-      gl.uniform1f(pass.theme, options.light ? 1 : 0);
       gl.uniform1f(pass.pattern, glassPatternValue(options.pattern ?? "smoke"));
     };
     draw = () => {
@@ -757,10 +751,8 @@ export function createGlassOptics(canvas: HTMLCanvasElement, stage: HTMLElement)
     updateGeometry();
     return {
       update(next: Playback) {
-        // Tier tokens can depend on the theme (light glass raises dot strength)
-        // or the pattern, and those flip attributes outside this observer, so
-        // force a geometry/computed-style re-read when either changes.
-        if (next.light !== options.light || next.pattern !== options.pattern) dirty = true;
+        // Pattern-specific tier tokens require a fresh geometry/style read.
+        if (next.pattern !== options.pattern) dirty = true;
         options = next;
         sync();
       },

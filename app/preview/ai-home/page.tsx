@@ -2,7 +2,6 @@
 
 import { useRef, useState, type FormEvent } from "react";
 import { Icon } from "@/components/app-icons";
-import { ThemeToggle } from "@/components/ui/theme-provider";
 import styles from "./preview.module.css";
 
 const suggestions = [
@@ -50,9 +49,6 @@ export default function AIHomePreview() {
           <Icon name="dashboard" size={20} />
         </a>
         <span className={styles.railText}>LEARNING INTELLIGENCE</span>
-        <div className={styles.railBottom}>
-            <ThemeToggle compact />
-        </div>
       </aside>
 
       <div className={styles.canvas}>

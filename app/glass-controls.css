@@ -291,25 +291,6 @@
 .glass-workspace .glass-brand .product-brand-wordmark small {
   display: none;
 }
-.glass-workspace .theme-toggle {
-  border: 1px solid var(--line);
-  padding: 3px;
-  gap: 3px;
-  border-radius: 0;
-  background: var(--ui-inset);
-}
-.glass-workspace .theme-toggle button {
-  min-height: 30px;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font-size: 12px;
-}
-.glass-workspace .theme-toggle button[aria-pressed="true"] {
-  background: var(--ui-selected-bg);
-  color: var(--ui-selected-ink);
-}
 /* Preserve the larger primary action and readable fields at sign-in. */
 .glass-workspace.glass-auth .login-form .primary-button {
   min-height: 52px;

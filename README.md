@@ -79,6 +79,23 @@ pnpm start:standalone
 
 有导出权限的账号可下载聚合 CSV、预览或下载 HTML 报告、打印另存 PDF。报告中心只汇集本次页面会话的结果，刷新或退出后不保留列表；AI 对话有独立的服务端账号历史，不应混为一谈。服务器历史报告、报告分享、任意业务表导入和课程/班级级授权尚未开放。操作细节见[工作台使用指南](docs/workspace-guide.md)、[对话历史存储](docs/ai-conversation-storage.md)和[成绩导入边界](docs/grade-data-import.md)。
 
+### 测试数据准备
+
+只用内置模拟数据不需要 OULAD：`pnpm install && pnpm admin:init && pnpm dev` 后选择“模拟校园数据”即可完成本地开发与浏览。
+
+`pnpm test` 是例外：`oulad_raw/` 下的五份官方 CSV——`assessments.csv`、`courses.csv`、`studentAssessment.csv`、`studentInfo.csv`、`studentVle.csv`——必须存在。相关路由用例即便 mock 了查询，数据集可用性判断仍读取真实文件，缺文件会让这些用例失败。先按下面的命令准备数据，或只运行与 OULAD 无关的定向检查；不要靠跳过测试绕过。
+
+数据来源与校验值和 CI 相同（UCI 公开数据集，CC BY 4.0，不随仓库提交）：
+
+```bash
+curl --fail --location --silent --show-error --output oulad.zip \
+  'https://archive.ics.uci.edu/static/public/349/open+university+learning+analytics+dataset.zip' &&
+node -e "const {createHash}=require('node:crypto'),{readFileSync}=require('node:fs');const a=createHash('sha256').update(readFileSync('oulad.zip')).digest('hex');if(a!=='f2ed1902616c1fe8d2824d872c0b7d2d72be435bf0124d077044fe4be2c6d3e4'){console.error('OULAD zip checksum mismatch:',a);process.exit(1)}console.log('OULAD zip checksum OK')" &&
+unzip -q oulad.zip '*.csv' -d oulad_raw
+```
+
+这条 Node 校验命令在 macOS 与 Linux 上都能直接运行，等价于 CI 的 `sha256sum --check`。校验不通过时重新下载，不要跳过校验；`oulad.zip` 与 `oulad_raw/*.csv` 已被 `.gitignore` 排除，保持不提交。同一份 CSV 也是 `docker compose` 只读挂载的数据。
+
 验证命令：
 
 ```bash

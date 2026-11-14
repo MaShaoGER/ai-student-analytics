@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import type { GlassPattern } from "@/lib/ui/glass-patterns";
 import { createGlassOptics } from "@/lib/ui/glass-optics";
 import { useMotionPreferences } from "./ui/motion-preferences";
-import { useTheme } from "./ui/theme-provider";
 import styles from "./glass-backdrop.module.css";
 
 /** V4 optical renderer behind the DOM. The CSS material survives GPU failures. */
@@ -18,16 +17,13 @@ export function GlassBackdrop({
   const canvas = useRef<HTMLCanvasElement>(null);
   const renderer = useRef<ReturnType<typeof createGlassOptics>>(null);
   const { enabled, reduced } = useMotionPreferences();
-  const { theme } = useTheme();
   const [epoch, setEpoch] = useState(0);
   const preferences = useRef({
     animated: enabled && !reduced && !paused,
-    light: theme === "light",
     pattern,
   });
   preferences.current = {
     animated: enabled && !reduced && !paused,
-    light: theme === "light",
     pattern,
   };
   useEffect(() => {
@@ -43,11 +39,7 @@ export function GlassBackdrop({
         return;
       }
       renderer.current = createGlassOptics(element, stage);
-      if (renderer.current)
-        renderer.current.update({
-          ...preferences.current,
-          light: document.documentElement.dataset.theme === "light",
-        });
+      if (renderer.current) renderer.current.update(preferences.current);
       else stage.dataset.optics = "fallback";
     };
     const lost = (event: Event) => {
@@ -73,11 +65,8 @@ export function GlassBackdrop({
   useEffect(() => {
     const stage = canvas.current?.closest<HTMLElement>(".glass-workspace");
     if (stage) stage.dataset.glassPattern = pattern;
-    renderer.current?.update({
-      ...preferences.current,
-      light: document.documentElement.dataset.theme === "light",
-    });
-  }, [enabled, reduced, paused, theme, pattern]);
+    renderer.current?.update(preferences.current);
+  }, [enabled, reduced, paused, pattern]);
   return (
     <div className={styles.backdrop} data-pattern={pattern} aria-hidden="true">
       <div className={styles.halo} />

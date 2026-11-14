@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { GlassBackdrop } from "@/components/glass-backdrop";
 import { ProductBrand } from "@/components/product-brand";
-import { ThemeToggle } from "@/components/ui/theme-provider";
 import { useMotionPreferences } from "@/components/ui/motion-preferences";
 import { glassPatterns, type GlassPattern } from "@/lib/ui/glass-patterns";
 import { Icon } from "@/components/app-icons";
@@ -60,7 +59,6 @@ export default function GlassMaterialPreview() {
             <span aria-hidden="true">{playing ? "Ⅱ" : "▷"}</span>
             <span>{reduced ? "跟随系统静止" : playing ? "暂停流光" : "播放流光"}</span>
           </button>
-          <ThemeToggle compact />
           <a className={styles.openApp} href="/">
             进入工作台 <Icon name="arrowUpRight" size={14} />
           </a>

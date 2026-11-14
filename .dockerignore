@@ -30,4 +30,5 @@ scripts/*
 !scripts/admin-init.mjs
 !scripts/account-cli.mjs
 !scripts/reset-password.mjs
+!scripts/healthcheck.mjs
 !scripts/prepare-standalone-native.mjs

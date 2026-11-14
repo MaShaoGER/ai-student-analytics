@@ -40,11 +40,20 @@ COPY --from=builder /app/oulad_raw/OULAD.names ./oulad_raw/OULAD.names
 COPY --from=builder /app/scripts/admin-init.mjs ./scripts/admin-init.mjs
 COPY --from=builder /app/scripts/account-cli.mjs ./scripts/account-cli.mjs
 COPY --from=builder /app/scripts/reset-password.mjs ./scripts/reset-password.mjs
+COPY --from=builder /app/scripts/healthcheck.mjs ./scripts/healthcheck.mjs
 
 RUN mkdir -p /app/records
 
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+
+# Readiness, not liveness: the probe makes one anonymous GET /api/auth/session on
+# the loopback interface and requires status 200 with { user: null, setupRequired }.
+# A records volume with no administrator yet (setupRequired=true) is healthy, which
+# keeps `--wait` usable before `docker compose exec ... node scripts/admin-init.mjs`.
+# The same script backs the Compose healthcheck, so both read identical rules.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD ["node", "scripts/healthcheck.mjs"]
 
 CMD ["node", "server.js"]
