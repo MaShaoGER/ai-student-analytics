@@ -12,7 +12,18 @@
 - 发布先在隔离 records、无外部模型密钥的候选验证。切换前保存旧镜像、Compose、运行环境和持久化卷的一致性备份；保留 `APP_SETTINGS_KEY`、卷名和 OULAD 只读挂载。只更新 `app`，健康后重新加载网关解析；不要执行 `down -v`，也不要用空卷替换现有账号和历史。
 - IP 地址与自签名证书会继续显示浏览器安全警告。生产可信 HTTPS 需要可验证的证书与相符访问地址，不能靠改页面路径消除；部署验收不得通过关闭安全校验冒充可信证书。
 
-## 当前 VPS 部署：正式地址与图表（2026-11-13）
+## 当前 VPS 部署：交付收尾与浅色手机界面（2026-11-14）
+
+- 已发布源码 [`c68d79d`](https://github.com/MaShaoGER/ai-student-analytics/commit/c68d79d9f71d584544deb760dea50bfa3092b806)，包含草稿与历史保护、非管理员页面兜底、CSV 版本语义、应用健康检查、手机 AI 排版及统一浅色界面。[该源码 CI](https://github.com/MaShaoGER/ai-student-analytics/actions/runs/43556717134) 的类型检查、测试、构建、生产依赖审计和 HTTP 集成均成功；手动外部 AI 任务按设计未执行。
+- Linux x64 镜像为 `chuanzhi-student-analytics-test:release-20261114-c68d79d`，镜像 ID `sha256:9d4d527edecbac9be32ea0332aa2533fb689543505d711d9dab7a4a2a76f76b3`，OCI revision 为上述完整源码 SHA。候选在全新卷未初始化（`setupRequired=true`）和创建管理员后（`setupRequired=false`）均为 healthy；候选 smoke **69 项通过、1 项明确跳过**（全新 records 不含旧格式历史夹具），证据为 `releases/release-20261114-c68d79d/smoke.log`。
+- 切换前停止 app，备份位于 `/opt/chuanzhi-student-analytics-test/backups/release-20261114-c68d79d/`，目录权限为 700，包含原 Compose／运行环境、records 归档及切换前后哈希。六个 records 文件逐项哈希一致，`runtime.env` 校验不变；继续使用原 `chuanzhi-test_records` 与 OULAD 只读挂载，没有重置账号、密钥、会话或数据。
+- 正式 Compose 只替换 app 镜像并改用镜像内 `scripts/healthcheck.mjs`，保留原资源限制、网关和其他服务配置。`docker compose up -d --no-deps --wait app` 返回 healthy，随后 `nginx -t` 成功并热重载既有网关。
+- 公网使用现有测试 CA 验证：首页、数据浏览、AI 和匿名会话端点为 200；匿名 profile／用户管理为 401；两类生产预览和未知路径为 404。`nosniff`、`SAMEORIGIN` 保留。最终匿名浏览器验收使用全新配置目录，390／1440px 均为浅色、无横向溢出、无页面异常；未执行认证写操作或外部模型请求。
+- 候选容器、候选卷、临时凭据和本地临时发布文件已清理。专用 builder 回收 **4.041 GB** 后停止，未重建 builder，也未清理其他项目的缓存或容器。
+- 回滚：在服务器项目根目录执行 `cp backups/release-20261114-c68d79d/deploy/compose.yml deploy/compose.yml`，再执行 `docker compose -f deploy/compose.yml up -d --no-deps --wait app` 和 `docker exec chuanzhi-test-gateway-1 nginx -s reload`。旧镜像 `production-20261113-3987afe` 保留；正常回滚只切应用，不用备份覆盖回滚前继续产生的 records。
+- 真实外部 AI、真机软键盘与可信 CA HTTPS 不在本轮验收结论中；HTTPS 继续按既有决定暂缓。
+
+## 历史 VPS 部署：正式地址与图表（2026-11-13）
 
 - 已发布源码 [`3987afe`](https://github.com/MaShaoGER/ai-student-analytics/commit/3987afedb354e34c5baa63c275a498d18da9d943)，包含正式页面路径、公开数据源命名、新网站图标、统一图表／报告配色与此前尚未上线的 AI 全幅分层布局。[该源码 CI](https://github.com/MaShaoGER/ai-student-analytics/actions/runs/43392957361) 已成功。
 - Linux x64 镜像为 `chuanzhi-student-analytics-test:production-20261113-3987afe`，镜像 ID `sha256:c6ca7ed230729b6d7d07dde19783314f30833f9b999ebfc3bad22d0ad1a10a3b`；OCI revision 为上述完整源码 SHA。应用健康后重新加载既有 Nginx，未更换网关或其他服务容器。

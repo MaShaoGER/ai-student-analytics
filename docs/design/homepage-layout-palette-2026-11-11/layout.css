@@ -1,0 +1,21 @@
+
+/* Fixed desktop study only; formal application is untouched. */
+[class*="home-showcase-module"][class*="__showcase"]{padding:104px 64px 100px!important}
+[class*="home-showcase-module"][class*="__lead"]{max-width:1312px}
+[class*="home-showcase-module"][class*="__hero"]:not([class*="__heroCopy"]):not([class*="__heroScope"]):not([class*="__heroFooter"]){min-height:492px;padding:24px 0 64px;grid-template-columns:1fr 1.3fr;align-items:start}
+[class*="home-showcase-module"][class*="__heroCopy"]{padding-top:12px}
+[class*="home-showcase-module"][class*="__headline"]{font-size:88px;line-height:1.1;letter-spacing:-.065em}
+[class*="home-showcase-module"][class*="__kicker"]{font-size:12px;margin-bottom:20px;letter-spacing:.12em}
+[class*="home-showcase-module"][class*="__lede"]{max-width:440px;margin-top:22px;font-size:16px;line-height:1.85}
+[class*="home-showcase-module"][class*="__exploreButton"]{margin-top:24px;min-height:50px;min-width:210px;padding:12px 20px}
+[class*="home-showcase-module"][class*="__artwork"]{width:61%;height:420px;top:-15px;right:-18px}
+[class*="home-showcase-module"][class*="__heroScope"]{top:auto;bottom:68px;right:0;gap:12px}
+[class*="home-showcase-module"][class*="__heroScope"] strong{font-size:40px}
+[class*="home-showcase-module"][class*="__heroFooter"]{bottom:18px;font-size:12px;letter-spacing:.03em}
+[class*="home-showcase-module"][class*="__narrative"]{padding-top:32px;gap:64px}
+[class*="home-showcase-module"][class*="__figHead"]{grid-template-columns:28px 210px 1fr;gap:12px;margin-bottom:18px;padding-bottom:16px}
+[class*="home-showcase-module"][class*="__figHead"]>span:last-child{grid-column:3;grid-row:1;max-width:68ch;font-size:13px;line-height:1.7}
+[class*="home-showcase-module"][class*="__figHead"] strong{font-size:20px}
+[class*="home-showcase-module"][class*="__stat"]:not([class*="__stats"]):not([class*="__statHead"]):not([class*="__statIndex"]):not([class*="__statLabel"]):not([class*="__statValue"]):not([class*="__statNote"]){min-height:196px;padding:24px 20px 22px}
+[class*="home-showcase-module"][class*="__statValue"]{font-size:56px;letter-spacing:-.055em}
+[class*="home-showcase-module"][class*="__statNote"]{font-size:12px;line-height:1.7;max-width:27ch}

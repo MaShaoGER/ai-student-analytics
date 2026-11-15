@@ -830,7 +830,7 @@ describe("controlled multi-step analysis with real DuckDB", () => {
     // activity or returned zero would silently look plausible. Expect refusal.
     sequence(call("absence_stats", { metric: "absence", unit: "sessions" }), finish);
     const result = await converseUnified(
-      { question: "缺勤课时和成绩有关系吗？", datasetId: "demo" },
+      { question: "缺勤课时是多少？", datasetId: "demo" },
       {},
       deps,
     );
@@ -1028,7 +1028,7 @@ describe("controlled multi-step analysis with real DuckDB", () => {
     });
     sequence(call("absence_stats", { metric: "absence", unit: "sessions" }), finish);
     const result = await converseUnified(
-      { question: "缺勤课时和成绩有关系吗？", datasetId: "oulad" },
+      { question: "缺勤课时是多少？", datasetId: "oulad" },
       {},
       deps,
     );
