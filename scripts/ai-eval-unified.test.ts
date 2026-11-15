@@ -323,28 +323,53 @@ async function runLiveScenario(options: {
 }): Promise<ScenarioReport> {
   const requestId = crypto.randomUUID();
   const started = performance.now();
+  const toolTrace: NonNullable<ScenarioReport["toolTrace"]> = [];
+  const tracedDeps: UnifiedDependencies = {
+    ...liveDeps,
+    generate: async (messages, tools, modelOptions) => {
+      const turn = await liveDeps.generate(messages, tools, modelOptions);
+      toolTrace.push({
+        model: turn.model,
+        calls: turn.message.calls ?? [],
+        validationFeedback: messages
+          .filter(
+            (message) =>
+              message.role === "tool" && message.content.includes('"invalid_parameters"'),
+          )
+          .map((message) => ({ callId: message.callId, content: message.content })),
+      });
+      return turn;
+    },
+  };
   try {
     const input = typeof options.input === "function" ? await options.input() : options.input;
-    const response = await unified.converseUnified(input, { requestId }, liveDeps);
+    const response = await unified.converseUnified(input, { requestId }, tracedDeps);
     const durationMs = Math.round(performance.now() - started);
-    return summarizeScenario({
-      id: options.id,
-      label: options.label,
+    return {
+      ...summarizeScenario({
+        id: options.id,
+        label: options.label,
+        response,
+        durationMs,
+        checks: [...options.check(response), ...liveRequestLevelChecks(response, requestId)],
+        model: liveModel,
+        catalogLabels,
+      }),
+      toolTrace,
       response,
-      durationMs,
-      checks: [...options.check(response), ...liveRequestLevelChecks(response, requestId)],
-      model: liveModel,
-      catalogLabels,
-    });
+    };
   } catch (error) {
-    return summarizeScenario({
-      id: options.id,
-      label: options.label,
-      durationMs: Math.round(performance.now() - started),
-      checks: [],
-      error,
-      model: liveModel,
-    });
+    return {
+      ...summarizeScenario({
+        id: options.id,
+        label: options.label,
+        durationMs: Math.round(performance.now() - started),
+        checks: [],
+        error,
+        model: liveModel,
+      }),
+      toolTrace,
+    };
   }
 }
 
@@ -490,7 +515,9 @@ describe.skipIf(!ENABLED).sequential("unified conversation evaluation", () => {
             },
             {
               name: "dropped unverified sentence is disclosed",
-              passed: (response.warning ?? "").includes("未核验"),
+              passed:
+                /未绑定统计事实/.test(response.warning ?? "") &&
+                /已省略|已隐藏/.test(response.warning ?? ""),
             },
             { name: "two scripted model turns billed", passed: response.usage?.modelCalls === 2 },
           ];
@@ -898,6 +925,50 @@ describe.skipIf(!ENABLED).sequential("unified conversation evaluation", () => {
   });
 
   describe.skipIf(!LIVE).sequential("live mode: real model + real DuckDB", () => {
+    it("plots a nonempty activity-score relationship on the full sample dataset", async () => {
+      const report = await runLiveScenario({
+        id: "positive-activity-relationship",
+        label: "完整模拟数据上的活跃与成绩关系图",
+        input: {
+          question: `查看${latestTerm}学习活跃次数和平均成绩的关系，生成散点密度图。`,
+          datasetId: DATASET,
+        },
+        check: (response) => {
+          const chart = response.artifact;
+          const valid = chart?.kind === "studio" && chart.tool === "density";
+          return [
+            {
+              name: "requested relationship is the primary chart",
+              passed:
+                valid && response.context?.kind === "tool" && response.context.tool === "density",
+            },
+            {
+              name: "activity is not substituted by attendance",
+              passed: valid && chart.table.meta?.density?.metric === "activity",
+            },
+            {
+              name: "actual relationship bins are nonempty and satisfy privacy",
+              passed:
+                valid &&
+                chart.table.rows.length > 0 &&
+                chart.table.rows.every((row) => Number(row["频数"]) >= 3),
+            },
+            {
+              name: "facts bind to returned results",
+              passed: factBinding(response).ok && (response.resultRefs?.length ?? 0) > 0,
+            },
+            {
+              name: "no invented numerical explanation",
+              passed:
+                inventedNumbers(response.answer, catalogLabels, verifiedText(response)).length ===
+                0,
+            },
+          ];
+        },
+      });
+      reports.push(report);
+      expect(report.passed, JSON.stringify(report.checks)).toBe(true);
+    }, 180_000);
     it("answers a question that needs no tool", async () => {
       const report = await runLiveScenario({
         id: "direct-answer",
@@ -913,8 +984,8 @@ describe.skipIf(!ENABLED).sequential("unified conversation evaluation", () => {
             { name: "no resultRefs", passed: (response.resultRefs?.length ?? 0) === 0 },
             { name: "answer is prose", passed: response.answer.trim().length >= 10 },
             {
-              name: "unverified digits are disclosed instead of asserted",
-              passed: invented.length === 0 || (response.warning ?? "").includes("未核验"),
+              name: "unverified digits are not shown in a direct answer",
+              passed: invented.length === 0,
               detail: invented.join(","),
             },
             {

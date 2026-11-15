@@ -1,4 +1,5 @@
 import { studioComparisonLines } from "./studio-comparison-facts";
+import { studioCountSummary } from "./artifact-results";
 import { assertCurrentAccess } from "../auth/access";
 import { chartStudioData, courseRelations, coursePanorama } from "../analysis/duckdb";
 import type { QueryExecutionOptions } from "../security/query-execution";
@@ -268,7 +269,10 @@ export function toolFacts(artifact: Exclude<ChatArtifact, { kind: "analysis" | "
   if (artifact.kind === "studio")
     return [
       artifact.table.description,
-      `返回 ${artifact.table.rows.length} 个聚合数据行；下方图表和数值表使用同一份真实统计。`,
+      studioCountSummary(artifact).text,
+      ...(artifact.tool === "density" && !artifact.table.rows.length
+        ? ["当前范围没有达到最小样本要求的关系分组，无法据此判断相关性；空结果不代表没有关系。"]
+        : []),
       ...(artifact.tool === "dumbbell"
         ? [
             ...studioComparisonLines(artifact),

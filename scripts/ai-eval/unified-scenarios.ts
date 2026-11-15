@@ -39,6 +39,13 @@ export type ScenarioReport = {
   warning: string | null;
   checks: Check[];
   error?: string;
+  /** Synthetic evaluation calls only; excludes prompts, credentials and private histories. */
+  toolTrace?: Array<{
+    model: string;
+    calls: Array<{ id: string; name: string; arguments: string }>;
+    validationFeedback: Array<{ callId?: string; content: string }>;
+  }>;
+  response?: ChatResponse;
 };
 
 export type EvalReport = {

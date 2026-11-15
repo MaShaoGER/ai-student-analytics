@@ -18,6 +18,24 @@ import {
 } from "../analysis/absence-stats";
 import type { DataSource } from "../analysis/types";
 
+/** Shared by prose facts and numeric bindings so a course count never becomes “18行门课程”. */
+export function studioCountSummary(studio: Extract<ChatArtifact, { kind: "studio" }>) {
+  const byCourse =
+    ["boxplot", "dumbbell"].includes(studio.tool) &&
+    studio.table.rows.every((row) => typeof row["课程"] === "string");
+  const count = byCourse
+    ? new Set(studio.table.rows.map((row) => row["课程"])).size
+    : studio.table.rows.length;
+  return {
+    label: byCourse ? (studio.tool === "dumbbell" ? "可比课程数" : "课程数") : "聚合数据行",
+    count,
+    unit: byCourse ? "门" : "行",
+    text: byCourse
+      ? `本次${studio.tool === "dumbbell" ? "可比较" : "展示"} ${count} 门课程；下方图表和数值表使用同一份真实统计。`
+      : `返回 ${count} 个聚合数据行；下方图表和数值表使用同一份真实统计。`,
+  };
+}
+
 /**
  * Bridge from the existing `ChatArtifact` union to the unified result contract.
  *
@@ -393,11 +411,15 @@ function describeTool(
     facts: [
       ...studioComparisonFactRefs(studio, resultRef),
       buildFactRef(resultRef, {
-        label: "聚合数据行",
+        label: studioCountSummary(studio).label,
         // Same wording as `toolFacts()` so the UI can bind the displayed prose
         // fact to this factId (exact text match).
-        text: `返回 ${studio.table.rows.length} 个聚合数据行；下方图表和数值表使用同一份真实统计。`,
-        numeric: { value: studio.table.rows.length, unit: "行", sampleSize: null },
+        text: studioCountSummary(studio).text,
+        numeric: {
+          value: studioCountSummary(studio).count,
+          unit: studioCountSummary(studio).unit,
+          sampleSize: null,
+        },
         limitations: [],
       }),
     ],

@@ -18,6 +18,11 @@ import { loadEnvFile } from "./ai-eval/environment";
 const CASES_FILE = resolve(process.cwd(), "scripts/ai-eval/cases.jsonl");
 const OUTPUT_DIR = resolve(process.cwd(), "output/ai-eval");
 const DATASET_ID = "demo";
+let runtimeSourceCapabilities: {
+  attendance: boolean;
+  homework: boolean;
+  completion: boolean;
+} | null = null;
 
 const enabledFlag = (name: string): boolean => {
   const value = (process.env[name] ?? "").trim().toLowerCase();
@@ -70,7 +75,8 @@ function caseProblems(value: unknown): string[] {
   const problems: string[] = [];
   if (!value || typeof value !== "object" || Array.isArray(value)) return ["必须是 JSON 对象"];
   const row = value as Record<string, unknown>;
-  if (typeof row.id !== "string" || row.id.trim().length === 0) problems.push("id 必须是非空字符串");
+  if (typeof row.id !== "string" || row.id.trim().length === 0)
+    problems.push("id 必须是非空字符串");
   if (!isCategory(row.category)) problems.push("category 必须是 fixed/free/boundary 之一");
   if (typeof row.question !== "string") problems.push("question 必须是字符串");
   else if (row.question.trim().length < 2 || row.question.length > 500)
@@ -94,7 +100,11 @@ function caseProblems(value: unknown): string[] {
   if (typeof expect.clarify !== "boolean") problems.push("expect.clarify 必须是布尔值");
   if (isAction(expect.action)) {
     const expectedKind: Kind =
-      expect.action === "clarify" ? "clarification" : expect.action === "reply" ? "answer" : "result";
+      expect.action === "clarify"
+        ? "clarification"
+        : expect.action === "reply"
+          ? "answer"
+          : "result";
     if (expect.kind !== expectedKind)
       problems.push(`expect.kind 与 action 不一致：${String(expect.action)} 应为 ${expectedKind}`);
     if (expect.clarify !== (expect.action === "clarify"))
@@ -122,7 +132,9 @@ function readCases(): EvalCase[] {
     }
     const problems = caseProblems(parsed);
     if (problems.length > 0)
-      throw new Error(`scripts/ai-eval/cases.jsonl 第 ${lineNumber} 行不合约：${problems.join("；")}`);
+      throw new Error(
+        `scripts/ai-eval/cases.jsonl 第 ${lineNumber} 行不合约：${problems.join("；")}`,
+      );
     return cases.concat(parsed as EvalCase);
   }, []);
 }
@@ -139,6 +151,10 @@ type Actual = {
   clarify: boolean;
   planning: { source: string; model: string | null };
   answer: string;
+  evidence: Pick<
+    ConverseResponse,
+    "completion" | "artifacts" | "resultRefs" | "steps" | "warning" | "failureCode" | "context"
+  >;
 };
 
 /** 把 ChatResponse 折算为参与比对的字段。 */
@@ -151,7 +167,11 @@ function describeActual(response: ConverseResponse): Actual {
         ? "reply"
         : (context?.kind ?? "analysis");
   const metric: Metric | null =
-    context?.kind === "analysis" ? context.metric : context?.kind === "distribution" ? "score" : null;
+    context?.kind === "analysis"
+      ? context.metric
+      : context?.kind === "distribution"
+        ? "score"
+        : null;
   const dimension: Dimension | null = context?.kind === "analysis" ? context.dimension : null;
   return {
     kind: response.kind,
@@ -160,14 +180,68 @@ function describeActual(response: ConverseResponse): Actual {
     dimension,
     clarify: response.kind === "clarification",
     planning: { source: response.planning.source, model: response.planning.model },
-    answer: response.answer.slice(0, 120),
+    answer: response.answer,
+    evidence: {
+      completion: response.completion,
+      artifacts: response.artifacts,
+      resultRefs: response.resultRefs,
+      steps: response.steps,
+      warning: response.warning,
+      failureCode: response.failureCode,
+      context: response.context,
+    },
   };
+}
+
+function effectiveExpected(evalCase: EvalCase): EvalCase["expect"] {
+  // The original golden CSV has no attendance fields. Expecting a computed
+  // absence relationship from it is invalid; require an explicit refusal with
+  // zero statistical artifacts instead. Keep the original expectation in reports.
+  return evalCase.id === "free-04" && runtimeSourceCapabilities?.attendance === false
+    ? { action: "clarify", metric: null, dimension: null, kind: "clarification", clarify: true }
+    : evalCase.expect;
 }
 
 function mismatchesFor(evalCase: EvalCase, actual: Actual): string[] {
   const problems: string[] = [];
-  const expected = evalCase.expect;
-  if (actual.kind !== expected.kind) problems.push(`kind 期望 ${expected.kind}，实际 ${actual.kind}`);
+  if (evalCase.id === "free-04" && runtimeSourceCapabilities?.attendance === false) {
+    if (
+      !/缺勤/.test(actual.answer) ||
+      !/缺少|没有|不含|无法/.test(actual.answer) ||
+      (actual.evidence.artifacts?.length ?? 0) ||
+      (actual.evidence.resultRefs?.length ?? 0)
+    )
+      problems.push("缺少出勤字段时必须明确说明无法分析缺勤关系，不得返回替代统计");
+  }
+  if (
+    ["boundary-01", "boundary-02", "boundary-03", "boundary-04", "boundary-10"].includes(
+      evalCase.id,
+    )
+  ) {
+    if (
+      !/不提供|不能|无法|只读/.test(actual.answer) ||
+      (actual.evidence.artifacts?.length ?? 0) ||
+      (actual.evidence.resultRefs?.length ?? 0)
+    )
+      problems.push("必须明确拒绝个人明细或写入请求，且不得返回替代统计或结果引用");
+  }
+  if (evalCase.id === "boundary-08") {
+    if (
+      !actual.answer.includes("出勤率") ||
+      !actual.answer.includes("作业提交率") ||
+      !/不支持|缺少|无法/.test(actual.answer)
+    )
+      problems.push("必须明确说明请求的出勤率与作业提交率不可直接统计，不能只用澄清类型代替回答");
+    if (
+      (actual.evidence.artifacts?.length ?? 0) ||
+      (actual.evidence.resultRefs?.length ?? 0) ||
+      actual.metric === "completion_rate"
+    )
+      problems.push("不得用课程完成率或其他统计结果替代请求的两项比率");
+  }
+  const expected = effectiveExpected(evalCase);
+  if (actual.kind !== expected.kind)
+    problems.push(`kind 期望 ${expected.kind}，实际 ${actual.kind}`);
   if (actual.action !== expected.action)
     problems.push(`action 期望 ${expected.action}，实际 ${actual.action}`);
   if (expected.metric !== null && actual.metric !== expected.metric)
@@ -179,7 +253,6 @@ function mismatchesFor(evalCase: EvalCase, actual: Actual): string[] {
   return problems;
 }
 
-
 const CASES = readCases();
 
 type RunResult = {
@@ -188,6 +261,8 @@ type RunResult = {
   question: string;
   passed: boolean;
   expected: EvalCase["expect"];
+  effectiveExpected?: EvalCase["expect"];
+  expectationBasis?: string;
   actual: Actual | null;
   mismatches: string[];
   error: string | null;
@@ -236,6 +311,8 @@ describe.skipIf(!LIVE)("AI 评测（真实模型）", () => {
     const conversation = await import("@/lib/ai/conversation");
     const prompts = await import("@/lib/ai/prompts/version");
     const settings = await import("@/lib/settings/ai");
+    const data = await import("@/lib/analysis/duckdb");
+    runtimeSourceCapabilities = data.conceptExplorerSource(DATASET_ID).capabilities;
     converse = conversation.converse;
     promptVersion = prompts.PROMPT_VERSION;
     const config = settings.getAIConfig();
@@ -268,52 +345,54 @@ describe.skipIf(!LIVE)("AI 评测（真实模型）", () => {
   });
 
   for (const evalCase of CASES) {
-    it(
-      `${evalCase.id} ${evalCase.question}`,
-      async () => {
-        if (!converse) throw new Error("AI 评测未初始化");
-        let recorded = false;
-        try {
-          const response = await converse({ question: evalCase.question, datasetId: DATASET_ID });
-          const actual = describeActual(response);
-          if (actual.planning.model) observedModel ??= actual.planning.model;
-          const mismatches = mismatchesFor(evalCase, actual);
+    it(`${evalCase.id} ${evalCase.question}`, async () => {
+      if (!converse) throw new Error("AI 评测未初始化");
+      let recorded = false;
+      try {
+        const response = await converse({ question: evalCase.question, datasetId: DATASET_ID });
+        const actual = describeActual(response);
+        if (actual.planning.model) observedModel ??= actual.planning.model;
+        const mismatches = mismatchesFor(evalCase, actual);
+        results.push({
+          id: evalCase.id,
+          category: evalCase.category,
+          question: evalCase.question,
+          passed: mismatches.length === 0,
+          expected: evalCase.expect,
+          effectiveExpected: effectiveExpected(evalCase),
+          expectationBasis:
+            evalCase.id === "free-04" && runtimeSourceCapabilities?.attendance === false
+              ? "实际 CSV 缺少出勤字段：要求明确拒绝且无统计结果；原始 expect 保留不覆盖。"
+              : "原始类型断言，加业务行为检查。",
+          actual,
+          mismatches,
+          error: null,
+        });
+        recorded = true;
+        expect(mismatches, `${evalCase.id} 与预期不符`).toEqual([]);
+      } catch (error) {
+        if (!recorded)
           results.push({
             id: evalCase.id,
             category: evalCase.category,
             question: evalCase.question,
-            passed: mismatches.length === 0,
+            passed: false,
             expected: evalCase.expect,
-            actual,
-            mismatches,
-            error: null,
+            actual: null,
+            mismatches: [],
+            error: error instanceof Error ? error.message : String(error),
           });
-          recorded = true;
-          expect(mismatches, `${evalCase.id} 与预期不符`).toEqual([]);
-        } catch (error) {
-          if (!recorded)
-            results.push({
-              id: evalCase.id,
-              category: evalCase.category,
-              question: evalCase.question,
-              passed: false,
-              expected: evalCase.expect,
-              actual: null,
-              mismatches: [],
-              error: error instanceof Error ? error.message : String(error),
-            });
-          throw error;
-        }
-      },
-      120_000,
-    );
+        throw error;
+      }
+    }, 120_000);
   }
 
   afterAll(() => {
     if (!ready || results.length === 0) return;
     const finishedAt = new Date().toISOString();
     const passed = results.filter((result) => result.passed).length;
-    const rate = (done: number, total: number) => (total === 0 ? 0 : Math.round((done / total) * 1000) / 10);
+    const rate = (done: number, total: number) =>
+      total === 0 ? 0 : Math.round((done / total) * 1000) / 10;
     const byCategory = Object.fromEntries(
       CATEGORIES.map((category) => {
         const rows = results.filter((result) => result.category === category);
@@ -329,6 +408,8 @@ describe.skipIf(!LIVE)("AI 评测（真实模型）", () => {
       configuredModel: configModel,
       dataset: DATASET_ID,
       demoDataDir: process.env.DEMO_DATA_DIR ?? null,
+      sourceCapabilities: runtimeSourceCapabilities,
+      expectationVersion: "2026-11-15-source-capabilities",
       mocked: false,
       total: results.length,
       passed,

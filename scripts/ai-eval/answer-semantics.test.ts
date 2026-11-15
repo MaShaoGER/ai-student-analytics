@@ -26,6 +26,16 @@ describe("comparison evaluation checks meaning rather than number membership", (
       ).every((check) => check.passed),
     ).toBe(true);
   });
+  it("accepts a course-bound decline with 最大，为 without relaxing its amount or direction", () => {
+    const answer = "比较2024B与2024J，AAA的均分下降幅度最大，为30分。";
+    expect(comparisonAnswerChecks(answer, expected).every((check) => check.passed)).toBe(true);
+    for (const changed of [
+      answer.replace("30分", "20分"),
+      answer.replace("下降", "上升"),
+      answer.replace("AAA", "BBB"),
+    ])
+      expect(comparisonAnswerChecks(changed, expected).some((check) => !check.passed)).toBe(true);
+  });
   it.each([
     "其余多数课程呈上升趋势。",
     "2024B与2024J共比较30门课程。",

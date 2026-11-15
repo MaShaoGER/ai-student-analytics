@@ -149,9 +149,7 @@ function dimensionColumns(plan: AnalysisPlan, alias = "") {
  * `"A /" / B` versus `A / "/ B"`); ordinary values stay as they were imported.
  */
 function dimensionLabelPart(value: string): string {
-  return value.includes("/") || value.includes('"')
-    ? `"${value.replaceAll('"', '""')}"`
-    : value;
+  return value.includes("/") || value.includes('"') ? `"${value.replaceAll('"', '""')}"` : value;
 }
 
 /** Rebuild the same label from the raw grouping columns returned by the query. */
@@ -462,9 +460,7 @@ function csvHeader(filePath: string): Set<string> {
         .toString("utf8")
         .replace(/^\uFEFF/, "")
         .split(/\r?\n/, 1)[0] ?? "";
-    return new Set(
-      line.split(",").map((name) => name.trim().replace(/^"(.*)"$/, "$1")),
-    );
+    return new Set(line.split(",").map((name) => name.trim().replace(/^"(.*)"$/, "$1")));
   } catch {
     return new Set();
   } finally {
@@ -634,16 +630,32 @@ function explorationSources(
     attributes: () =>
       (attributes ??= (async () => {
         if (datasetId !== "demo") return null;
+        const columns = csvHeader(DEMO_OUTCOMES);
+        const has = (...names: string[]) => names.every((name) => columns.has(name));
+        if (
+          !["attendance_rate", "homework_completion_rate", "absent_sessions"].some((name) =>
+            columns.has(name),
+          )
+        )
+          return null;
         await sql(`CREATE TEMP TABLE exploration_attributes AS
         SELECT code_module, code_presentation, id_student,
-          AVG(CASE WHEN TRY_CAST(attendance_rate AS DOUBLE) BETWEEN 0 AND 100 THEN TRY_CAST(attendance_rate AS DOUBLE) END) AS attendance,
-          AVG(CASE WHEN TRY_CAST(homework_completion_rate AS DOUBLE) BETWEEN 0 AND 100 THEN TRY_CAST(homework_completion_rate AS DOUBLE) END) AS homework,
-          AVG(CASE WHEN TRY_CAST(absent_sessions AS DOUBLE) BETWEEN 0 AND TRY_CAST(scheduled_sessions AS DOUBLE)
+          ${has("attendance_rate") ? "AVG(CASE WHEN TRY_CAST(attendance_rate AS DOUBLE) BETWEEN 0 AND 100 THEN TRY_CAST(attendance_rate AS DOUBLE) END)" : "NULL::DOUBLE"} AS attendance,
+          ${has("homework_completion_rate") ? "AVG(CASE WHEN TRY_CAST(homework_completion_rate AS DOUBLE) BETWEEN 0 AND 100 THEN TRY_CAST(homework_completion_rate AS DOUBLE) END)" : "NULL::DOUBLE"} AS homework,
+          ${
+            has("absent_sessions", "scheduled_sessions", "excused_sessions")
+              ? `AVG(CASE WHEN TRY_CAST(absent_sessions AS DOUBLE) BETWEEN 0 AND TRY_CAST(scheduled_sessions AS DOUBLE)
             AND TRY_CAST(excused_sessions AS DOUBLE) BETWEEN 0 AND TRY_CAST(scheduled_sessions AS DOUBLE)
             AND TRY_CAST(absent_sessions AS DOUBLE) + TRY_CAST(excused_sessions AS DOUBLE) <= TRY_CAST(scheduled_sessions AS DOUBLE)
-            THEN TRY_CAST(absent_sessions AS DOUBLE) + TRY_CAST(excused_sessions AS DOUBLE) END) AS absence,
-          AVG(CASE WHEN TRY_CAST(absent_sessions AS DOUBLE) BETWEEN 0 AND TRY_CAST(scheduled_sessions AS DOUBLE)
-            THEN TRY_CAST(absent_sessions AS DOUBLE) END) AS unexcused
+            THEN TRY_CAST(absent_sessions AS DOUBLE) + TRY_CAST(excused_sessions AS DOUBLE) END)`
+              : "NULL::DOUBLE"
+          } AS absence,
+          ${
+            has("absent_sessions", "scheduled_sessions")
+              ? `AVG(CASE WHEN TRY_CAST(absent_sessions AS DOUBLE) BETWEEN 0 AND TRY_CAST(scheduled_sessions AS DOUBLE)
+            THEN TRY_CAST(absent_sessions AS DOUBLE) END)`
+              : "NULL::DOUBLE"
+          } AS unexcused
         FROM ${csv(DEMO_OUTCOMES)} GROUP BY ALL`);
         return "exploration_attributes";
       })()),
@@ -1295,8 +1307,8 @@ export async function chartStudioData(
         ["周次", "课程", "人均访问次数", "当周有记录人数"],
         `${activeTerm} · 按学生-课程-周汇总访问次数，再计算当周有记录学生的人均值；缺失组合留空，不当作零。`,
       );
-      if (datasetId === "demo") {
-        const attributeSource = await sources.attributes();
+      const attributeSource = datasetId === "demo" ? await sources.attributes() : null;
+      if (attributeSource) {
         await sql(`CREATE TEMP VIEW studio_attributes AS SELECT * FROM ${attributeSource}
           WHERE ${whereTerm}${whereCourse}${focused}`);
         const paths = await sql(`SELECT
@@ -1324,7 +1336,7 @@ export async function chartStudioData(
         );
       }
       if (
-        datasetId === "demo" &&
+        attributeSource &&
         (selection.densityMetric === "absence" || selection.densityMetric === "unexcused")
       ) {
         const metric = selection.densityMetric;

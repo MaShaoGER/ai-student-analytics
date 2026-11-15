@@ -88,7 +88,7 @@ export function comparisonAnswerChecks(answer: string, expected: ExpectedCompari
     return refersToCourse;
   });
   const declinePattern = new RegExp(
-    `(?:下降(?:了|幅度(?:为|是))?|降幅(?:为|是)?|减少(?:了)?)\\s*${amount(expected.decline)}\\s*分`,
+    `(?:下降(?:了|幅度(?:(?:最大|最多)[，,]?\\s*)?(?:为|是))?|降幅(?:(?:最大|最多)[，,]?\\s*)?(?:为|是)?|减少(?:了)?)\\s*${amount(expected.decline)}\\s*分`,
   );
   const scoreChecks = (
     [
